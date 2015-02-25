@@ -1,3 +1,4 @@
 str-imputer
 *.o
 *.d
+*~
