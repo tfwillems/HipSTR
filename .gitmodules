@@ -1,6 +1,6 @@
 [submodule "argweaver"]
 	path = argweaver
 	url = https://github.com/mdrasmus/argweaver.git
-[submodule "str-mut-models"]
-	path = str-mut-models
-	url = https://github.com/tfwillems/str-mut-models.git
+[submodule "str_mut_models"]
+	path = str_mut_models
+	url = https://github.com/tfwillems/str_mut_models.git
