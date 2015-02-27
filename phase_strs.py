@@ -170,8 +170,8 @@ def process_phasing_result(phasing_result, leaf_names, min_allele, min_confidenc
                 errors.append("%d_%d"%(gt_a, gt_b))
             else:
                 num_skip += 1
-    print("PHASING_ACCURACY\t%d\t%d\t%d\t%d\t%s"%(num_skip, num_homoz, num_correct, num_phased, ",".join(errors)))
-    return gt_dict
+    accuracy_string = "PHASING_ACCURACY\t%d\t%d\t%d\t%d\t%s"%(num_skip, num_homoz, num_correct, num_phased, ",".join(errors))
+    return gt_dict, accuracy_string
 
 def write_vcf(input_vcf_file, nrepeats_dict, median_allele, output_vcf_file):
     output = open(output_vcf_file, "w")
@@ -202,9 +202,10 @@ def main():
     parser.add_argument("--mu",      required=True,  dest="mu",      type=float, help="Mutation rate for mutation model")
     parser.add_argument("--beta",    required=True,  dest="beta",    type=float, help="Length constraint for mutation model")
     parser.add_argument("--pgeom",   required=True,  dest="pgeom",   type=float, help="Geometric parameter for mutation model")
-    parser.add_argument("--out",     required=True,  dest="out",     type=str,   help="Output path for phased VCF")
+    parser.add_argument("--out",     required=True,  dest="out",     type=str,   help="Output path prefix for phased VCF (_strs.vcf) and accuracy stats (_stats.txt)")
     parser.add_argument("--vcf",     required=True,  dest="vcf",     type=str,   help="Input path for VCF containing haploid STR calls")
     parser.add_argument("--samps",   required=False, dest="samps",   type=str,   help="File containing list of samples to consider")
+    parser.add_argument("--thresh",  required=False, dest="thresh",  type=float, help="Posterior probability threshold required to report phasing", default=0.5)
    
     # Scaling factor from edge length to # of generations
     parser.add_argument("--gen_per_len", required=False, dest="gen_per_len", type=float, default=1.0)
@@ -275,11 +276,14 @@ def main():
     rm_cmd = ["rm", "-f", graph_file, pairs_file]
     subprocess.call(rm_cmd)
 
-    # Assess accuracy and determine the new genotypes associated with each sample
-    phased_repeat_dict = process_phasing_result(res, leaf_names, min_allele, min_confidence = 0.5)
+    # Assess accuracy, output the statistics and determine the new genotypes associated with each sample
+    phased_repeat_dict, accuracy_string = process_phasing_result(res, leaf_names, min_allele, min_confidence = args.thresh)
+    output = open(args.out + "_stats.txt", "w")    
+    output.write(args.vcf + "\t" + accuracy_string + "\n")
+    output.close()
 
     # Construct a new VCF containing the phased alleles
-    write_vcf(args.vcf, phased_repeat_dict, median_allele, args.out)
+    write_vcf(args.vcf, phased_repeat_dict, median_allele, args.out + "_strs.vcf")
 
 if __name__ == "__main__":
     main()
