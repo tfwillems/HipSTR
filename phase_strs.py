@@ -202,7 +202,7 @@ def main():
     parser.add_argument("--mu",      required=True,  dest="mu",      type=float, help="Mutation rate for mutation model")
     parser.add_argument("--beta",    required=True,  dest="beta",    type=float, help="Length constraint for mutation model")
     parser.add_argument("--pgeom",   required=True,  dest="pgeom",   type=float, help="Geometric parameter for mutation model")
-    parser.add_argument("--out",     required=True,  dest="out",     type=str,   help="Output path prefix for phased VCF (_strs.vcf) and accuracy stats (_stats.txt)")
+    parser.add_argument("--out",     required=True,  dest="out",     type=str,   help="Output path prefix for phased VCF (+ _strs.vcf)")
     parser.add_argument("--vcf",     required=True,  dest="vcf",     type=str,   help="Input path for VCF containing haploid STR calls")
     parser.add_argument("--samps",   required=False, dest="samps",   type=str,   help="File containing list of samples to consider")
     parser.add_argument("--thresh",  required=False, dest="thresh",  type=float, help="Posterior probability threshold required to report phasing", default=0.5)
@@ -278,9 +278,7 @@ def main():
 
     # Assess accuracy, output the statistics and determine the new genotypes associated with each sample
     phased_repeat_dict, accuracy_string = process_phasing_result(res, leaf_names, min_allele, min_confidence = args.thresh)
-    output = open(args.out + "_stats.txt", "w")    
-    output.write(args.vcf + "\t" + accuracy_string + "\n")
-    output.close()
+    print(accuracy_string)
 
     # Construct a new VCF containing the phased alleles
     write_vcf(args.vcf, phased_repeat_dict, median_allele, args.out + "_strs.vcf")
