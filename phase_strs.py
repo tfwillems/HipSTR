@@ -51,13 +51,6 @@ def pair_gts(nrepeats_dict, pairs=None):
         pair_data.append((pairs[i][0], pairs[i][1], nrepeats_dict[pairs[i][0]], nrepeats_dict[pairs[i][1]]))
     return pair_data
 
-def unpair_gts(pair_data):
-    nrepeats_dict = {}
-    for i in xrange(len(pair_data)):
-        nrepeats_dict[pair_data[i][0]] = pair_data[i][2]
-        nrepeats_dict[pair_data[i][1]] = pair_data[i][3]
-    return nrepeats_dict
-
 def extract_newick_tree_from_smc(input_file, position):
     data        = gzip.open(input_file, "rb") if input_file.endswith(".gz") else  open(input_file, "r")
     name_tokens = data.readline().strip().split()
@@ -196,18 +189,15 @@ def write_vcf(input_vcf_file, nrepeats_dict, median_allele, output_vcf_file):
     output.write("\t".join(map(str, tokens)) + "\n")
     output.close()
 
-    
-
-
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--smc",   required=True,  dest="smc",   type=str)
-    parser.add_argument("--pos",   required=True,  dest="pos",   type=int)
-    parser.add_argument("--mu",    required=True,  dest="mu",    type=float)
-    parser.add_argument("--beta",  required=True,  dest="beta",  type=float)
-    parser.add_argument("--pgeom", required=True,  dest="pgeom", type=float)
-    parser.add_argument("--out",   required=True,  dest="out",   type=str)
-    parser.add_argument("--vcf",   required=True,  dest="vcf",   type=str)
+    parser.add_argument("--smc",   required=True,  dest="smc",   type=str,   help="SMC file for the region of interest")
+    parser.add_argument("--pos",   required=True,  dest="pos",   type=int,   help="Position of STR in region")
+    parser.add_argument("--mu",    required=True,  dest="mu",    type=float, help="Mutation rate for mutation model")
+    parser.add_argument("--beta",  required=True,  dest="beta",  type=float, help="Length constraint for mutation model")
+    parser.add_argument("--pgeom", required=True,  dest="pgeom", type=float, help="Geometric parameter for mutation model")
+    parser.add_argument("--out",   required=True,  dest="out",   type=str,   help="Output path for phased VCF")
+    parser.add_argument("--vcf",   required=True,  dest="vcf",   type=str,   help="Input path for VCF containing haploid STR calls")
     
     # Scaling factor from edge length to # of generations
     parser.add_argument("--gen_per_len", required=False, dest="gen_per_len", type=float, default=1.0)
@@ -215,8 +205,8 @@ def main():
     # Maximum TMRCA in generations
     parser.add_argument("--max_tmrca", required=False, dest="max_tmrca", type=int, default=25000)
 
-    args   = parser.parse_args()
-    tree   = extract_newick_tree_from_smc(args.smc, args.pos)
+    args = parser.parse_args()
+    tree = extract_newick_tree_from_smc(args.smc, args.pos)
 
     # Read haploid STR genotypes
     nrepeats_dict, median_allele = read_haploid_str_gts(args.vcf)
