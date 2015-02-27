@@ -3,13 +3,12 @@ import collections
 import dendropy
 import gzip
 import math
+import os
 import random
 import subprocess
 import sys
 import tempfile
 import vcf
-
-PHASE_CMD_PATH="./str-imputer"
 
 from cStringIO import StringIO
 
@@ -26,29 +25,39 @@ def compute_median(values, counts):
         target_val -= counts[i]
     return values[-1]
 
+def read_sample_list(input_file):
+    samples = set()
+    data    = open(input_file, "r")
+    for line in data:
+        samples.add(line.strip())
+    data.close()
+    return samples
+
 # Read the STR genotypes from the provided VCF file, normalize their lengths relative
 # to the median and return a dictionary mapping sample names to the number of normalized repeats
-def read_haploid_str_gts(vcf_file):
+def read_haploid_str_gts(vcf_file, sample_set=None):
     vcf_reader   = vcf.Reader(filename=vcf_file)
     record       = vcf_reader.next()
     gb_counts    = collections.defaultdict(int)
     for sample in record:
-        gb_counts[len(record.alleles[int(sample['GT'])])] += 1
+        if sample_set is None or sample.sample in sample_set:
+            gb_counts[len(record.alleles[int(sample['GT'])])] += 1
     median_allele = compute_median(gb_counts.keys(), gb_counts.values())    
     motif_len     = len(record.INFO['MOTIF'])
     nrepeats_dict = {}
     for sample in record:
-        nrepeats_dict[sample.sample.replace("n", "")] = (len(record.alleles[int(sample['GT'])])-median_allele)/motif_len
+        if sample_set is None or sample.sample in sample_set:
+            nrepeats_dict[sample.sample] = (len(record.alleles[int(sample['GT'])])-median_allele)/motif_len
     return nrepeats_dict, median_allele
         
-def pair_gts(nrepeats_dict, pairs=None):
+def pair_gts(nrepeats_dict, leaf_indices, pairs=None):
     if pairs is None:
         sample_order = nrepeats_dict.keys()
         random.shuffle(sample_order)
         pairs = map(lambda x: (sample_order[x], sample_order[x+1]), xrange(0, len(sample_order)/2*2, 2))
     pair_data = []
     for i in xrange(len(pairs)):
-        pair_data.append((pairs[i][0], pairs[i][1], nrepeats_dict[pairs[i][0]], nrepeats_dict[pairs[i][1]]))
+        pair_data.append((leaf_indices[pairs[i][0]], leaf_indices[pairs[i][1]], nrepeats_dict[pairs[i][0]], nrepeats_dict[pairs[i][1]]))
     return pair_data
 
 def extract_newick_tree_from_smc(input_file, position):
@@ -56,7 +65,9 @@ def extract_newick_tree_from_smc(input_file, position):
     name_tokens = data.readline().strip().split()
     if name_tokens[0] != "NAMES":
         exit("ERROR: First line of SMC file must contain NAMES")
-    name_mappings = dict(zip(map(str, range(len(name_tokens)-1)), name_tokens[1:]))
+
+    leaf_names   = name_tokens[1:]
+    leaf_indices = dict(zip(name_tokens[1:], range(len(name_tokens)-1)))
 
     for line in data:
         tokens = line.strip().split()
@@ -64,12 +75,8 @@ def extract_newick_tree_from_smc(input_file, position):
             continue
         if int(math.floor(float(tokens[1]))) <= position and int(math.ceil(float(tokens[2]))) >= position:
             data.close()
-
-            # Correct node names
             tree = dendropy.Tree(stream=StringIO(tokens[3]), schema="newick")
-            for taxon in tree.taxon_set:
-                taxon.label = name_mappings[taxon.label].replace("n", "")
-            return tree
+            return tree, leaf_names, leaf_indices
     data.close()
     exit("ERROR: Failed to extract tree from SMC file %s. No region contained position %d"%(input_file, position))
 
@@ -107,7 +114,7 @@ def write_factor_graph(tree, optimizer, pairs, min_allele, max_allele, gen_per_l
         output.write("\n")
 
     # Iterate through all haploid-haploid pairing factors
-    print("Iterating through paired nodes")
+    print("Iterating through node pairings")
     for i in xrange(len(pairs)):
         output.write("2\n")                                 # Number of variables in factor block (2)
         output.write("%s %s\n"%(pairs[i][0], pairs[i][1]))  # Names of variables
@@ -130,7 +137,7 @@ def write_factor_graph(tree, optimizer, pairs, min_allele, max_allele, gen_per_l
 
     output.close()
 
-def process_phasing_result(phasing_result, min_allele, min_confidence = 0.5):
+def process_phasing_result(phasing_result, leaf_names, min_allele, min_confidence = 0.5):
     num_skip    = 0
     num_correct = 0
     num_phased  = 0    
@@ -142,8 +149,8 @@ def process_phasing_result(phasing_result, min_allele, min_confidence = 0.5):
         id_1, id_2     = map(int, tokens[0:2])
         gt_a, gt_b     = map(int, tokens[2:4])
         if gt_a == gt_b:
-            gt_dict["n"+str(id_1)] = gt_a + min_allele
-            gt_dict["n"+str(id_2)] = gt_a + min_allele
+            gt_dict[leaf_names[id_1]] = gt_a + min_allele
+            gt_dict[leaf_names[id_2]] = gt_a + min_allele
             num_homoz += 1
             continue
         conf_1, conf_2 = map(float, tokens[4:6])
@@ -151,19 +158,19 @@ def process_phasing_result(phasing_result, min_allele, min_confidence = 0.5):
             if conf_1 > min_confidence:
                 num_correct  += 1
                 num_phased   += 1
-                gt_dict["n"+str(id_1)] = gt_a + min_allele
-                gt_dict["n"+str(id_2)] = gt_b + min_allele
+                gt_dict[leaf_names[id_1]] = gt_a + min_allele
+                gt_dict[leaf_names[id_2]] = gt_b + min_allele
             else:
                 num_skip += 1
         else:
             if conf_2 > min_confidence:
                 num_phased   += 1
-                gt_dict["n"+str(id_1)] = gt_b + min_allele
-                gt_dict["n"+str(id_2)] = gt_a + min_allele
+                gt_dict[leaf_names[id_1]] = gt_b + min_allele
+                gt_dict[leaf_names[id_2]] = gt_a + min_allele
                 errors.append("%d_%d"%(gt_a, gt_b))
             else:
                 num_skip += 1
-    print("ACCURACY\t%d\t%d\t%d\t%d\t%s"%(num_skip, num_homoz, num_correct, num_phased, ",".join(errors)))
+    print("PHASING_ACCURACY\t%d\t%d\t%d\t%d\t%s"%(num_skip, num_homoz, num_correct, num_phased, ",".join(errors)))
     return gt_dict
 
 def write_vcf(input_vcf_file, nrepeats_dict, median_allele, output_vcf_file):
@@ -176,7 +183,6 @@ def write_vcf(input_vcf_file, nrepeats_dict, median_allele, output_vcf_file):
 
     vcf_reader = vcf.Reader(filename=input_vcf_file)
     record     = vcf_reader.next()
-
     gt_indexes = {}
     gt_indexes[len(record.REF)] = 0
     for i in xrange(len(record.ALT)):
@@ -191,14 +197,15 @@ def write_vcf(input_vcf_file, nrepeats_dict, median_allele, output_vcf_file):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--smc",   required=True,  dest="smc",   type=str,   help="SMC file for the region of interest")
-    parser.add_argument("--pos",   required=True,  dest="pos",   type=int,   help="Position of STR in region")
-    parser.add_argument("--mu",    required=True,  dest="mu",    type=float, help="Mutation rate for mutation model")
-    parser.add_argument("--beta",  required=True,  dest="beta",  type=float, help="Length constraint for mutation model")
-    parser.add_argument("--pgeom", required=True,  dest="pgeom", type=float, help="Geometric parameter for mutation model")
-    parser.add_argument("--out",   required=True,  dest="out",   type=str,   help="Output path for phased VCF")
-    parser.add_argument("--vcf",   required=True,  dest="vcf",   type=str,   help="Input path for VCF containing haploid STR calls")
-    
+    parser.add_argument("--smc",     required=True,  dest="smc",     type=str,   help="SMC file for the region of interest")
+    parser.add_argument("--pos",     required=True,  dest="pos",     type=int,   help="Position of STR in region")
+    parser.add_argument("--mu",      required=True,  dest="mu",      type=float, help="Mutation rate for mutation model")
+    parser.add_argument("--beta",    required=True,  dest="beta",    type=float, help="Length constraint for mutation model")
+    parser.add_argument("--pgeom",   required=True,  dest="pgeom",   type=float, help="Geometric parameter for mutation model")
+    parser.add_argument("--out",     required=True,  dest="out",     type=str,   help="Output path for phased VCF")
+    parser.add_argument("--vcf",     required=True,  dest="vcf",     type=str,   help="Input path for VCF containing haploid STR calls")
+    parser.add_argument("--samps",   required=False, dest="samps",   type=str,   help="File containing list of samples to consider")
+   
     # Scaling factor from edge length to # of generations
     parser.add_argument("--gen_per_len", required=False, dest="gen_per_len", type=float, default=1.0)
 
@@ -206,25 +213,24 @@ def main():
     parser.add_argument("--max_tmrca", required=False, dest="max_tmrca", type=int, default=25000)
 
     args = parser.parse_args()
-    tree = extract_newick_tree_from_smc(args.smc, args.pos)
-
-    # Read haploid STR genotypes
-    nrepeats_dict, median_allele = read_haploid_str_gts(args.vcf)
-
-    # Randomly pair haploid to construct pseudodiploids (id_1, id_2, num_repeat_a, num_repeat_b)
-    pair_data = pair_gts(nrepeats_dict, pairs=None)
+    tree, leaf_names, leaf_indices = extract_newick_tree_from_smc(args.smc, args.pos)
+    samples = read_sample_list(args.samples) if args.samps is not None else None
     
+    # Read haploid STR genotypes
+    nrepeats_dict, median_allele = read_haploid_str_gts(args.vcf, sample_set=samples)
+
+    # Ensure that all of the sample nodes are contained within the tree
+    for key in nrepeats_dict:
+        if key not in leaf_indices:
+            exit("ERROR: Sample %s not present in provided tree"%(key))
+
+    # Randomly pair haploid to construct pseudodiploids (node_id_1, node_id_2, num_repeat_a, num_repeat_b)
+    pair_data = pair_gts(nrepeats_dict, leaf_indices, pairs=None)
+
     # Only deal with tree for diploid individuals
     if len(tree.leaf_nodes()) % 2 != 0:
         exit("ERROR: Tree contains an odd number of leaves")
-
-    # Ensure that all of the pairing nodes are contained within the tree
-    for i in xrange(len(pair_data)):
-        if not tree.taxon_set.has_taxon(label=pair_data[i][0]):
-            exit("ERROR: Sample %s not present in provided tree"%(pair_data[i][0]))
-        if not tree.taxon_set.has_taxon(label=pair_data[i][1]):
-            exit("ERROR: Sample %s not present in provided tree"%(pair_data[i][1]))
-
+    
     # Construct the mutation model
     print("Constructing the mutation model")
     allele_range, max_step = determine_allele_range(args.max_tmrca, args.mu, args.beta, args.pgeom, 0, 0)
@@ -249,7 +255,7 @@ def main():
     pairs_file = tempfile.mkstemp()[1]
     output     = open(pairs_file, "w") 
     for i in xrange(len(pair_data)):
-        output.write("%s\t%s\t%d\t%d\n"%(pair_data[i][0], pair_data[i][1], pair_data[i][2]-min_allele, pair_data[i][3]-min_allele))
+        output.write("%d\t%d\t%d\t%d\n"%(pair_data[i][0], pair_data[i][1], pair_data[i][2]-min_allele, pair_data[i][3]-min_allele))
     output.close()
 
     # Write out the factor graph file
@@ -257,15 +263,20 @@ def main():
     write_factor_graph(tree, optimizer, pair_data, min_allele, max_allele, args.gen_per_len, graph_file)
 
     # Run c++ package, parse results and remove temporary files
-    phase_cmd = [PHASE_CMD_PATH, graph_file, pairs_file]
+    phase_cmd_path = os.path.dirname(os.path.realpath(__file__)) + "/str-imputer"
+
+    phase_cmd = [phase_cmd_path, graph_file, pairs_file]
     proc = subprocess.Popen(phase_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print(proc.stderr.read().strip())
+
+    # TO DO: Utilize stderr messages to ensure convergence
+    #print(proc.stderr.read().strip())
+
     res  = proc.stdout.read().strip()
     rm_cmd = ["rm", "-f", graph_file, pairs_file]
     subprocess.call(rm_cmd)
 
     # Assess accuracy and determine the new genotypes associated with each sample
-    phased_repeat_dict = process_phasing_result(res, min_allele, min_confidence = 0.9)
+    phased_repeat_dict = process_phasing_result(res, leaf_names, min_allele, min_confidence = 0.5)
 
     # Construct a new VCF containing the phased alleles
     write_vcf(args.vcf, phased_repeat_dict, median_allele, args.out)
