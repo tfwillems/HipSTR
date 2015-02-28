@@ -8,7 +8,6 @@
 CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX
 #CXXFLAGS= -O0 -g -D_FILE_OFFSET_BITS=64 -std=c++0x
 
-
 ## Source code files, add new files to this list
 SRC = main.cpp
 
@@ -24,7 +23,7 @@ LIBDAI_LIB= $(LIBDAI_ROOT)/lib/libdai.a
 ARGWEAVER_LIB= argweaver/lib/libargweaver.a
 
 .PHONY: all
-all: str-imputer
+all: str-imputer snp_tree_test
 
 # Clean the generated files
 .PHONY: clean
@@ -51,3 +50,6 @@ str-imputer: $(OBJ) $(LIBDAI_LIB) $(ARGWEAVER_LIB)
 # Auto-Generate header dependencies for each CPP file.
 %.d: %.cpp
 	$(CXX) -c -MP -MD $(CXXFLAGS) $(INCLUDE) $< > $@
+
+snp_tree_test: snp_tree_test.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $^
