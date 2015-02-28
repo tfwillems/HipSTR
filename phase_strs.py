@@ -215,7 +215,7 @@ def main():
 
     args = parser.parse_args()
     tree, leaf_names, leaf_indices = extract_newick_tree_from_smc(args.smc, args.pos)
-    samples = read_sample_list(args.samples) if args.samps is not None else None
+    samples = read_sample_list(args.samps) if args.samps is not None else None
     
     # Read haploid STR genotypes
     nrepeats_dict, median_allele = read_haploid_str_gts(args.vcf, sample_set=samples)
@@ -268,11 +268,13 @@ def main():
 
     phase_cmd = [phase_cmd_path, graph_file, pairs_file]
     proc = subprocess.Popen(phase_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
+    stdout, stderr = proc.communicate() 
+    
     # TO DO: Utilize stderr messages to ensure convergence
     #print(proc.stderr.read().strip())
+    #res  = proc.stdout.read().strip()
+    res = stdout.strip()
 
-    res  = proc.stdout.read().strip()
     rm_cmd = ["rm", "-f", graph_file, pairs_file]
     subprocess.call(rm_cmd)
 
