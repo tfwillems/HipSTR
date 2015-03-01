@@ -4,3 +4,9 @@
 [submodule "str_mut_models"]
 	path = str_mut_models
 	url = https://github.com/tfwillems/str_mut_models.git
+[submodule "bamtools"]
+	path = bamtools
+	url = https://github.com/pezmaster31/bamtools.git
+[submodule "vcflib"]
+	path = vcflib
+	url = https://github.com/ekg/vcflib.git
