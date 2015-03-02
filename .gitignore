@@ -1,4 +1,6 @@
 str-imputer
+snp_tree_test
+vcf_test
 *.o
 *.d
 *~
