@@ -4,7 +4,8 @@
 #include <random>
 #include <time.h>
 #include <assert.h>
-#include "SNPTree.h"
+
+#include "snp_tree.h"
 
 uint32_t randKey(uint32_t floor, uint32_t ceiling) {
   uint32_t range = ceiling - floor;

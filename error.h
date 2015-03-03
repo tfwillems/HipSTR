@@ -4,4 +4,5 @@
 #include <string>
 
 void printErrorAndDie(std::string message);
+
 #endif

@@ -9,7 +9,7 @@ CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX
 #CXXFLAGS= -O0 -g -D_FILE_OFFSET_BITS=64 -std=c++0x
 
 ## Source code files, add new files to this list
-SRC = main.cpp
+SRC = main.cpp error.cpp factor_builder.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp
 
 # For each CPP file, generate an object file
 OBJ := $(SRC:.cpp=.o)
@@ -19,8 +19,8 @@ LIBDAI_ROOT=/Users/tfwillems/Downloads/libDAI-0.3.1
 VCFLIB_ROOT=vcflib
 
 # -lgmp -lgmpxx needed for libDAI linking 
-LIBS = -L./ -lz -lm -lgmp -lgmpxx -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/
-INCLUDE = -I$(LIBDAI_ROOT)/include/ -I/usr/local/opt/boost149/include -I$(VCFLIB_ROOT)/ 
+LIBS = -L./ -lz -lm -lgmp -lgmpxx -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/ 
+INCLUDE = -I$(LIBDAI_ROOT)/include/ -I/usr/local/opt/boost149/include -I$(VCFLIB_ROOT)/ -I$(BAMTOOLS_ROOT)/src
 LIBDAI_LIB = $(LIBDAI_ROOT)/lib/libdai.a
 ARGWEAVER_LIB = argweaver/lib/libargweaver.a
 BAMTOOLS_LIB = $(BAMTOOLS_ROOT)/lib/libbamtools.a
@@ -58,7 +58,7 @@ str-imputer: $(OBJ) $(LIBDAI_LIB) $(ARGWEAVER_LIB) $(BAMTOOLS_LIB) $(VCFLIB_LIB)
 snp_tree_test: snp_tree_test.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-vcf_test: vcf.cpp $(VCFLIB_LIB)
+vcf_test: vcf.cpp snp_tree.cpp  $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 # Rebuild VCFLIB if needed.
