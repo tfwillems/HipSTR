@@ -1,9 +1,13 @@
-#ifndef __SNP_TREE_H
-#define __SNP_TREE_H
+#ifndef SNP_TREE_H_
+#define SNP_TREE_H_
 
-#include <vector>
 #include <algorithm>
 #include <iostream>
+#include <map>
+#include <string>
+#include <vector>
+
+#include "vcflib/src/Variant.h"
 
 class SNP {
  private:
@@ -16,16 +20,13 @@ class SNP {
     base_1_ = base_1;
     base_2_ = base_2;
   }
+  
+  friend std::ostream& operator<< (std::ostream &out, SNP& snp);
 
   inline uint32_t pos()  const { return pos_;    }
   inline char base_one() const { return base_1_; }
   inline char base_two() const { return base_2_; }
 };
-
-std::ostream& operator<<(std::ostream& out, SNP& snp) {
-  out << "SNP: (" << snp.pos() << ", " << snp.base_one() << "|" << snp.base_two() << ")";
-  return out;
-}
 
 class SNPSorter {
  public:
@@ -120,14 +121,15 @@ class SNPTree {
  }
 
  void findContained(uint32_t start, uint32_t stop, std::vector<SNP>& overlapping) const {
+   if (left_ && start <= center_)
+     left_->findContained(start, stop, overlapping);
+   
    if (!snps_.empty() && ! (stop < snps_.front().pos())) {
      for (auto snp_iter = snps_.begin(); snp_iter != snps_.end(); ++snp_iter)
        if (snp_iter->pos() >= start && snp_iter->pos() <= stop)
 	 overlapping.push_back(*snp_iter);
    }
    
-   if (left_ && start <= center_)
-     left_->findContained(start, stop, overlapping);
    if (right_ && stop >= center_)
      right_->findContained(start, stop, overlapping);
  }
@@ -142,5 +144,11 @@ class SNPTree {
  }
  
 };
+
+
+void create_snp_trees(std::string& chrom, uint32_t start, uint32_t end, vcf::VariantCallFile& variant_file,
+                      std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*> snp_trees);
+
+void destroy_snp_trees(std::vector<SNPTree*> snp_trees);
 
 #endif
