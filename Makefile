@@ -32,7 +32,7 @@ all: str-imputer snp_tree_test vcf_test
 # Clean the generated files
 .PHONY: clean
 clean:
-	rm -f *.o *.d str-imputer snp_tree_test vcf_test
+	rm -f *.o *.d str-imputer snp_tree_test snp_tree_from_vcf_test
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -56,9 +56,9 @@ str-imputer: $(OBJ) $(LIBDAI_LIB) $(ARGWEAVER_LIB) $(BAMTOOLS_LIB) $(VCFLIB_LIB)
 	$(CXX) -c -MP -MD $(CXXFLAGS) $(INCLUDE) $< > $@
 
 snp_tree_test: snp_tree_test.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-vcf_test: vcf.cpp snp_tree.cpp  $(VCFLIB_LIB)
+snp_tree_from_vcf_test: snp_tree_from_vcf.cpp snp_tree.cpp $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 # Rebuild VCFLIB if needed.
