@@ -14,9 +14,9 @@ int main(int argc, char** argv) {
   else
     variant_file.open(std::cin);
 
-  std::string chrom = "X";
-  uint32_t start    = 50000000; 
-  uint32_t end      = 75000000;
+  std::string chrom = "22";
+  uint32_t start    = 10000000; 
+  uint32_t end      = 20000000;
   std::vector<SNPTree*> snp_trees;
   std::map<std::string, unsigned int> sample_indices;
   create_snp_trees(chrom, start, end, variant_file, sample_indices, snp_trees);

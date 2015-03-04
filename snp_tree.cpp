@@ -30,14 +30,18 @@ void create_snp_trees(std::string& chrom, uint32_t start, uint32_t end, vcf::Var
   // Iterate through all VCF entries
   std::vector< std::vector<SNP> > snps_by_sample(variant_file.sampleNames.size());
   vcf::Variant variant(variant_file);
-  uint32_t locus_count = 0;
+  uint32_t locus_count = 0, skip_count = 0;
   while(variant_file.getNextVariant(variant)){
     ++locus_count;
-    if (locus_count % 1000 == 0)   std::cout << "\rProcessing locus #" << locus_count << std::flush;
-    if(!is_biallelic_snp(variant)) continue;
-
+    if (locus_count % 1000 == 0)   std::cout << "\rProcessing locus #" << locus_count << " (skipped " << skip_count << ") at position " << variant.position << std::flush;
+    if(!is_biallelic_snp(variant)){
+      skip_count++;
+      continue;
+    }
     for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
       std::string gts = variant.getGenotype(*sample_iter);
+      if (gts.size() == 0)
+	continue;
       assert(gts.size() == 3);
       if (gts[1] == '|'){
         int gt_1 = gts[0]-'0';
@@ -52,7 +56,8 @@ void create_snp_trees(std::string& chrom, uint32_t start, uint32_t end, vcf::Var
       }
     }
   }
-
+  std::cout << std::endl;
+  
   // Create SNP trees
   for(unsigned int i = 0; i < snps_by_sample.size(); i++){
     std::cout << "Building interval tree for " << variant_file.sampleNames[i] << " containing " << snps_by_sample[i].size() << " heterozygous SNPs" << std::endl;

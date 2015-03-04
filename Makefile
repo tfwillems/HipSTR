@@ -5,8 +5,8 @@
 ## Default compilation flags.
 ## Override with:
 ##   make CXXFLAGS=XXXXX
-CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX
-#CXXFLAGS= -O0 -g -D_FILE_OFFSET_BITS=64 -std=c++0x
+#CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX
+CXXFLAGS= -O0 -g -D_FILE_OFFSET_BITS=64 -std=c++0x
 
 ## Source code files, add new files to this list
 SRC = main.cpp error.cpp factor_builder.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp
@@ -16,6 +16,7 @@ OBJ := $(SRC:.cpp=.o)
 
 BAMTOOLS_ROOT=bamtools
 LIBDAI_ROOT=/Users/tfwillems/Downloads/libDAI-0.3.1
+LIBDAI_ROOT=libDAI
 VCFLIB_ROOT=vcflib
 
 # -lgmp -lgmpxx needed for libDAI linking 
@@ -27,12 +28,12 @@ BAMTOOLS_LIB = $(BAMTOOLS_ROOT)/lib/libbamtools.a
 VCFLIB_LIB = vcflib/libvcflib.a
 
 .PHONY: all
-all: str-imputer snp_tree_test vcf_test
+all: str-imputer snp_tree_test vcf_snp_tree_test
 
 # Clean the generated files
 .PHONY: clean
 clean:
-	rm -f *.o *.d str-imputer snp_tree_test snp_tree_from_vcf_test
+	rm -f *.o *.d str-imputer snp_tree_test vcf_snp_tree_test
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -47,6 +48,12 @@ include $(subst .cpp,.d,$(SRC))
 str-imputer: $(OBJ) $(LIBDAI_LIB) $(ARGWEAVER_LIB) $(BAMTOOLS_LIB) $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
+snp_tree_test: snp_tree_test.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+vcf_snp_tree_test: vcf_snp_tree.cpp snp_tree.cpp $(VCFLIB_LIB)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
 # Build each object file independently
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ -c $<
@@ -55,11 +62,6 @@ str-imputer: $(OBJ) $(LIBDAI_LIB) $(ARGWEAVER_LIB) $(BAMTOOLS_LIB) $(VCFLIB_LIB)
 %.d: %.cpp
 	$(CXX) -c -MP -MD $(CXXFLAGS) $(INCLUDE) $< > $@
 
-snp_tree_test: snp_tree_test.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
-
-snp_tree_from_vcf_test: snp_tree_from_vcf.cpp snp_tree.cpp $(VCFLIB_LIB)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 # Rebuild VCFLIB if needed.
 $(VCFLIB_LIB):
