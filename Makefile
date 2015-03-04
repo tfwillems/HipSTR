@@ -51,7 +51,7 @@ str-imputer: $(OBJ) $(LIBDAI_LIB) $(ARGWEAVER_LIB) $(BAMTOOLS_LIB) $(VCFLIB_LIB)
 snp_tree_test: snp_tree_test.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-vcf_snp_tree_test: vcf_snp_tree.cpp snp_tree.cpp $(VCFLIB_LIB)
+vcf_snp_tree_test: vcf_snp_tree_test.cpp snp_tree.cpp $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 # Build each object file independently
