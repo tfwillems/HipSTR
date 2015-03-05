@@ -16,7 +16,7 @@ bool is_biallelic_snp(vcf::Variant& variant){
   return true;
 }
 
-void create_snp_trees(std::string& chrom, uint32_t start, uint32_t end, vcf::VariantCallFile& variant_file,
+void create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vcf::VariantCallFile& variant_file,
                       std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*> snp_trees){
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
   assert(variant_file.is_open());

@@ -146,7 +146,7 @@ class SNPTree {
 };
 
 
-void create_snp_trees(std::string& chrom, uint32_t start, uint32_t end, vcf::VariantCallFile& variant_file,
+void create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vcf::VariantCallFile& variant_file,
                       std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*> snp_trees);
 
 void destroy_snp_trees(std::vector<SNPTree*> snp_trees);
