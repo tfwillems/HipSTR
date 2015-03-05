@@ -28,6 +28,8 @@ public:
 
 void readRegions(std::string& input_file, std::vector<Region>& regions);
 
+void orderRegions(std::vector<Region>& regions);
+
 void orderRegions(std::vector<Region>& input_regions, 
 		  std::vector< std::vector<Region> >& output_regions, 
 		  std::map<std::string, int>& chrom_order);
