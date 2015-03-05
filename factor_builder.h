@@ -28,6 +28,10 @@ void add_read_factors(std::vector<int>& nrepeats, std::vector<double>& snp_log_p
 		      dai::Var& node_id1, dai::Var& node_id2,
 		      std::vector<dai::Factor>& factors);
 
+void add_read_factors(std::vector<int>& nrepeats, int min_allele, int max_allele, StutterModel& stutter_model,
+		      dai::Var& node_id1, dai::Var& node_id2,
+		      std::vector<dai::Factor>& factors);
+
 typedef std::vector<BamTools::BamAlignment> AlnVector;
 
 void add_read_factors(AlnVector& paired_str_reads, AlnVector& mate_reads, AlnVector& unpaired_str_reads,
