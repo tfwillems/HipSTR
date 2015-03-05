@@ -47,10 +47,12 @@ int main() {
   std::vector< std::pair<uint32_t, uint32_t> > queries;
     
   // generate a test set of target intervals
+  std::cerr << "Generating test set of SNPs" << std::endl;
   for (int i = 0; i < 100000; ++i)
     snps.push_back(randomSNP(10000000));
 
   // and queries
+  std::cerr << "Generating test set of queries" << std::endl;
   for (int i = 0; i < 10000; ++i)
     queries.push_back(randomInterval(10000000, 1000, 10000000 + 1));
 
@@ -58,6 +60,7 @@ int main() {
   typedef std::chrono::milliseconds milliseconds;
 
   // using brute-force search
+  std::cerr << "Running brute-force approach" << std::endl;
   std::vector<size_t> bruteforcecounts;
   Clock::time_point t0 = Clock::now();
   for (auto query_iter = queries.begin(); query_iter != queries.end(); ++query_iter) {
@@ -76,6 +79,7 @@ int main() {
   // using the SNP tree
   SNPTree tree = SNPTree(snps);
   std::vector<size_t> treecounts;
+  std::cerr << "Running SNP tree approach" << std::endl;
   t0 = Clock::now();
   for (auto query_iter = queries.begin(); query_iter != queries.end(); ++query_iter) {
     std::vector<SNP> results;
