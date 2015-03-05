@@ -27,13 +27,13 @@ class StutterModel {
 
   friend std::ostream& operator<< (std::ostream &out, StutterModel& model);
 
-  inline double calc_log_stutter(int sample_allele, int read_allele){
-    if (read_allele == sample_allele)
+  inline double calc_log_stutter(int sample_repeats, int read_repeats){
+    if (read_repeats == sample_repeats)
       return log_equal_;
-    if (read_allele < sample_allele)
-      return log_down_ + log_nostep_ + log_step_*(sample_allele-read_allele);
+    if (read_repeats < sample_repeats)
+      return log_down_ + log_nostep_ + log_step_*(sample_repeats-read_repeats);
     else
-      return log_up_   + log_nostep_ + log_step_*(read_allele-sample_allele);
+      return log_up_   + log_nostep_ + log_step_*(read_repeats-sample_repeats);
   }
 };
 
