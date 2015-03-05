@@ -44,26 +44,18 @@ void read_pair_genotypes(std::string input_file, std::vector<Node_Pair_GT>& pair
   input.close();
 }
 
+void read_node_ids(std::string input_file, std::vector<int>& node_ids){
+  int node_id;
+  std::ifstream input(input_file);
+  while (input >> node_id)
+    node_ids.push_back(node_id);
+  input.close();
+}
+
 void fix_genotypes(std::vector< std::pair<int,int> >& gt_info, dai::FactorGraph& fg){
   for (int i = 0; i < gt_info.size(); i++)
     fg.clamp(gt_info[i].first, gt_info[i].second, true);
 }
-
-
-void perform_phasing(dai::FactorGraph& fg, dai::PropertySet& opts, std::vector<Node_Pair_GT>& pair_gts){  
-  dai::BP bp(fg, opts("updates", std::string("SEQRND"))("logdomain",true));
-  bp.init();
-  bp.run();
-  for (int i = 0; i < pair_gts.size(); i++){
-    std::cout << pair_gts[i].id_1 << "\t" << pair_gts[i].id_2 << "\t"
-	      << pair_gts[i].gt_a << "\t" << pair_gts[i].gt_b << "\t" 
-	      << bp.belief(bp.var(pair_gts[i].id_1))[pair_gts[i].gt_a] << "\t" 
-	      << bp.belief(bp.var(pair_gts[i].id_1))[pair_gts[i].gt_b] << std::endl;
-  }
-  return;  
-}
-
-
 
 int main(int argc, char *argv[]) {
   dai::FactorGraph fg;
@@ -83,7 +75,26 @@ int main(int argc, char *argv[]) {
 
   std::vector<Node_Pair_GT> pair_gts;
   read_pair_genotypes(argv[2], pair_gts);
-  perform_phasing(fg, opts, pair_gts);
 
+  std::vector<int> node_ids;
+  read_node_ids(argv[3], node_ids);
+  
+  dai::BP bp(fg, opts("updates", std::string("SEQRND"))("logdomain",true));
+  bp.init();
+  bp.run();
+
+
+  for (unsigned int i = 0; i < pair_gts.size(); ++i){
+    std::cout << pair_gts[i].id_1 << "\t" << pair_gts[i].id_2 << "\t"
+	      << pair_gts[i].gt_a << "\t" << pair_gts[i].gt_b << "\t" 
+	      << bp.belief(bp.var(pair_gts[i].id_1))[pair_gts[i].gt_a] << "\t" 
+	      << bp.belief(bp.var(pair_gts[i].id_1))[pair_gts[i].gt_b] << std::endl;
+  }
+  
+  for (unsigned int i = 0; i < node_ids.size(); ++i){
+    std::cout << node_ids[i] << bp.belief(bp.var(node_ids[i])) << std::endl;
+  }
+
+  
   return 0;
 }
