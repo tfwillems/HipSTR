@@ -10,10 +10,10 @@ CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX
 
 
 ## Source code files, add new files to this list
-SRC_COMMON  = error.cpp region.cpp stringops.cpp
-SRC_STUTTER = stutter_main.cpp extract_indels.cpp zalgorithm.cpp alignment_filters.cpp seqio.cpp
+SRC_COMMON  = error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp
+SRC_STUTTER = stutter_main.cpp extract_indels.cpp 
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
-SRC_HIPSTR  = phase_main.cpp factor_builder.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp
+SRC_HIPSTR  = hipstr_main.cpp factor_builder.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp
 
 # For each CPP file, generate an object file
 OBJ_COMMON  := $(SRC_COMMON:.cpp=.o)
@@ -32,15 +32,13 @@ BAMTOOLS_LIB = $(BAMTOOLS_ROOT)/lib/libbamtools.a
 LIBDAI_LIB = $(LIBDAI_ROOT)/lib/libdai.a
 VCFLIB_LIB = vcflib/libvcflib.a
 
-#LIBS = -L./ -lz -lm -lgmp -lgmpxx -L$(BAMTOOLS_ROOT)/lib 
-
 .PHONY: all
-all: BamSieve HipSTR StutterTrainer snp_tree_test vcf_snp_tree_test
+all: BamSieve HipSTR Phaser StutterTrainer test/snp_tree_test test/vcf_snp_tree_test
 
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
 clean:
-	rm -f *.o *.d BamSieve HipSTR StutterTrainer snp_tree_test vcf_snp_tree_test
+	rm -f *.o *.d BamSieve HipSTR Phaser StutterTrainer snp_tree_test vcf_snp_tree_test
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -65,10 +63,13 @@ BamSieve: $(OBJ_COMMON) $(OBJ_SIEVE) $(BAMTOOLS_LIB)
 HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(LIBDAI_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-snp_tree_test: snp_tree.cpp snp_tree_test.cpp $(VCFLIB_LIB)
+Phaser: phase_main.cpp error.cpp $(LIBDAI_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-vcf_snp_tree_test: vcf_snp_tree_test.cpp snp_tree.cpp $(VCFLIB_LIB)
+test/snp_tree_test: snp_tree.cpp test/snp_tree_test.cpp $(VCFLIB_LIB)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp snp_tree.cpp $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 # Build each object file independently

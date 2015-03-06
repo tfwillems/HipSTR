@@ -1,8 +1,9 @@
 BamSieve
 HipSTR
+Phaser
 StutterTrainer
-snp_tree_test
-vcf_snp_tree_test
+test/snp_tree_test
+test/vcf_snp_tree_test
 *.o
 *.d
 *~
