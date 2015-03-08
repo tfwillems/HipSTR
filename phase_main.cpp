@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
   fg.ReadFromFile(factor_graph_file.c_str());
 
   size_t maxiter    = 2000;
-  dai::Real tol     = 1e-5;
+  dai::Real tol     = 1e-9;
   size_t verb       = 3;
   dai::Real damping = 0.01;
 

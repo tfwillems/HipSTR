@@ -3,6 +3,7 @@ import collections
 import dendropy
 import gzip
 import math
+import operator
 import os
 import random
 import subprocess
@@ -206,7 +207,7 @@ def write_factor_graph(tree, optimizer, pairs, min_allele, max_allele, gen_per_l
 
     output.close()
 
-def process_phasing_result(phasing_result, leaf_names, min_allele, min_confidence = 0.5):
+def process_phasing_result(phasing_result, leaf_names, min_allele, min_confidence=0.5):
     num_skip    = 0
     num_correct = 0
     num_phased  = 0    
@@ -217,12 +218,15 @@ def process_phasing_result(phasing_result, leaf_names, min_allele, min_confidenc
         tokens         = line.strip().split()
         id_1, id_2     = map(int, tokens[0:2])
         gt_a, gt_b     = map(int, tokens[2:4])
+        conf_1, conf_2 = map(float, tokens[4:6])
+        #print("%s\t%s\t%d\t%d\t%f\t%f"%(leaf_names[id_1], leaf_names[id_2], gt_a+min_allele, gt_b+min_allele, conf_1, conf_2))
+
         if gt_a == gt_b:
             gt_dict[leaf_names[id_1]] = gt_a + min_allele
             gt_dict[leaf_names[id_2]] = gt_a + min_allele
             num_homoz += 1
             continue
-        conf_1, conf_2 = map(float, tokens[4:6])
+        
         if conf_1 > 0.5:
             if conf_1 > min_confidence:
                 num_correct  += 1
@@ -242,16 +246,24 @@ def process_phasing_result(phasing_result, leaf_names, min_allele, min_confidenc
     accuracy_string = "PHASING_ACCURACY\t%d\t%d\t%d\t%d\t%s"%(num_skip, num_homoz, num_correct, num_phased, ",".join(errors))
     return gt_dict, accuracy_string
 
-def process_imputation_result(imputation_result, leaf_names, min_allele, max_allele):
-    print("%d\t%d"%(min_allele, max_allele))
+def process_imputation_result(imputation_result, leaf_names, min_allele, max_allele, min_confidence=0.0):
+    gts        = {}
+    posteriors = {}
+    dosages    = {}
+    #print("%d\t%d"%(min_allele, max_allele))
     for line in imputation_result.strip().split("\n"):
         toks    = map(lambda x: x.replace("(","").replace(")","").strip(), line.split(","))
         node_id = int(toks[0].split("{")[0])
         probs   = map(float, toks[1:])
-        print("%s\t%s"%(leaf_names[node_id], "\t".join(toks[1:])))
+        #print("%s\t%s"%(leaf_names[node_id], "\t".join(toks[1:])))
+        index,max_prob = max(enumerate(probs), key=operator.itemgetter(1))
+        dosage = sum(map(lambda x,y: x*y, xrange(len(probs)), probs)) + min_allele
+        gts[leaf_names[node_id]]        = index+min_allele
+        posteriors[leaf_names[node_id]] = max_prob
+        dosages[leaf_names[node_id]]    = dosage
+    return gts, posteriors, dosages
 
-
-def write_haploid_vcf(input_vcf_file, chrom, posnrepeats_dict, median_allele, output_vcf_file):
+def write_haploid_vcf(input_vcf_file, chrom, pos, nrepeats_dict, median_allele, output_vcf_file, posteriors=None, dosages=None):
     vcf_reader = vcf.Reader(filename=input_vcf_file)
     record     = vcf_reader.next()
     while record.CHROM != chrom or record.POS != pos:
@@ -263,22 +275,43 @@ def write_haploid_vcf(input_vcf_file, chrom, posnrepeats_dict, median_allele, ou
     for i in xrange(len(record.ALT)):
         gt_indexes[len(str(record.ALT[i]))] = i+1
 
-    tokens = [record.CHROM, record.POS, ".", record.REF, ",".join(map(str, record.ALT)), ".", "PASS", "MOTIF=%s"%(record.INFO['MOTIF']), "GT:GB"]
+    format_field = "GT:GB" 
+    if posteriors is not None:
+        format_field += ":POSTERIOR"
+    if dosages is not None:
+        format_field += ":DOSAGE"
+
+    tokens = [record.CHROM, record.POS, ".", record.REF, ",".join(map(str, record.ALT)), ".", "PASS", "MOTIF=%s"%(record.INFO['MOTIF']), format_field]
     for sample,nreps in sorted(nrepeats_dict.items()):
         bp_len = nreps*motif_len + median_allele
-        tokens.append("%d:%d"%(gt_indexes[bp_len], bp_len-len(record.REF)))
+        token  = "%d:%d"%(gt_indexes[bp_len], bp_len-len(record.REF)) 
+
+        if posteriors is not None:
+            post   = posteriors[sample]
+            token += ":%f"%(post)
+        if dosages is not None:
+            dosage = motif_len*dosages[sample] + median_allele
+            token += ":%f"%(dosage)
+
+        # Add sample information to list
+        tokens.append(token)
 
     output = open(output_vcf_file, "w")
     output.write("##fileformat=VCFv4.2\n")
     output.write("##INFO=<ID=MOTIF,Number=1,Type=String,Description=\"Canonical repeat motif\">\n")
-    output.write("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n")
-    output.write("##FORMAT=<ID=GB,Number=1,Type=String,Description=\"Genotype given in bp difference from reference\">\n")
+    output.write("##FORMAT=<ID=GT,Number=1,Type=Integer,Description=\"Genotype\">\n")
+    output.write("##FORMAT=<ID=GB,Number=1,Type=Integer,Description=\"Genotype given in bp difference from reference\">\n")
+    if posteriors is not None: 
+        output.write("##FORMAT=<ID=POSTERIOR,Number=1,Type=Float,Description=\"Posterior probability for allele\">\n")
+    if dosages is not None:
+        output.write("##FORMAT=<ID=DOSAGE,Number=1,Type=Float,Description=\"Posterior STR dosage in base pairs\">\n")
     output.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + "\t".join(map(lambda x: str(x), sorted(nrepeats_dict.keys()))) + "\n")
     output.write("\t".join(map(str, tokens)) + "\n")
     output.close()
 
-def write_diploid_vcf(input_vcf_file, chrom, pos, nrepeats_dict, median_allele, output_vcf_file):
-    sample_names = sorted(list(set(map(lambda x: x.split("_")[0], nrepeats_dict.keys()))))
+def write_diploid_vcf(input_vcf_file, chrom, pos, nrepeats_dict, median_allele, output_vcf_file, posteriors=None, dosages=None):
+    # Only utilize samples for which both _1 and _2 suffixes are in the genotype dictionary
+    sample_names = sorted(map(lambda x: x[0], filter(lambda x: x[1] == 2, collections.Counter(map(lambda x: x.split("_")[0], nrepeats_dict.keys())).items())))
     vcf_reader   = vcf.Reader(filename=input_vcf_file)
     record       = vcf_reader.next()
     while record.CHROM != chrom or record.POS != pos:
@@ -290,19 +323,41 @@ def write_diploid_vcf(input_vcf_file, chrom, pos, nrepeats_dict, median_allele, 
     for i in xrange(len(record.ALT)):
         gt_indexes[len(str(record.ALT[i]))] = i+1
 
-    tokens = [record.CHROM, record.POS, ".", record.REF, ",".join(map(str, record.ALT)), ".", "PASS", "MOTIF=%s"%(record.INFO['MOTIF']), "GT:GB"]
+    format_field = "GT:GB" 
+    if posteriors is not None:
+        format_field += ":POSTERIOR"
+    if dosages is not None:
+        format_field += ":DOSAGE"
+
+    tokens = [record.CHROM, record.POS, ".", record.REF, ",".join(map(str, record.ALT)), ".", "PASS", "MOTIF=%s"%(record.INFO['MOTIF']), format_field]
     for sample in sample_names:
-        nreps_a = nrepeats_dict[sample+"_1"]
-        nreps_b = nrepeats_dict[sample+"_2"]
-        len_a   = motif_len*nreps_a + median_allele
-        len_b   = motif_len*nreps_b + median_allele
-        tokens.append("%d|%d:%d|%d"%(gt_indexes[len_a], gt_indexes[len_b], len_a-len(record.REF), len_b-len(record.REF)))
+        nreps_a  = nrepeats_dict[sample+"_1"]
+        nreps_b  = nrepeats_dict[sample+"_2"]
+        len_a    = motif_len*nreps_a + median_allele
+        len_b    = motif_len*nreps_b + median_allele
+        token    = "%d|%d:%d|%d"%(gt_indexes[len_a], gt_indexes[len_b], len_a-len(record.REF), len_b-len(record.REF))
+        
+        if posteriors is not None:
+            post_a = posteriors[sample+"_1"]
+            post_b = posteriors[sample+"_2"]
+            token += ":%f|%f"%(post_a, post_b)
+        if dosages is not None:
+            dosage_a = motif_len*dosages[sample+"_1"] + median_allele
+            dosage_b = motif_len*dosages[sample+"_2"] + median_allele
+            token   += ":%f"%(dosage_a + dosage_b)
+
+        # Add sample information to list
+        tokens.append(token)
 
     output = open(output_vcf_file, "w")
     output.write("##fileformat=VCFv4.2\n")
     output.write("##INFO=<ID=MOTIF,Number=1,Type=String,Description=\"Canonical repeat motif\">\n")
     output.write("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n")
     output.write("##FORMAT=<ID=GB,Number=1,Type=String,Description=\"Genotype given in bp difference from reference\">\n")
+    if posteriors is not None: 
+        output.write("##FORMAT=<ID=POSTERIOR,Number=1,Type=String,Description=\"Posterior probabilites for each allele\">\n")
+    if dosages is not None:
+        output.write("##FORMAT=<ID=DOSAGE,Number=1,Type=Float,Description=\"Posterior STR dosage in base pairs\">\n")
     output.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + "\t".join(sample_names) + "\n")
     output.write("\t".join(map(str, tokens)) + "\n")
     output.close()
@@ -316,7 +371,7 @@ def main():
     parser.add_argument("--mu",      required=True,  dest="mu",      type=float, help="Mutation rate for mutation model")
     parser.add_argument("--beta",    required=True,  dest="beta",    type=float, help="Length constraint for mutation model")
     parser.add_argument("--pgeom",   required=True,  dest="pgeom",   type=float, help="Geometric parameter for mutation model")
-    parser.add_argument("--out",     required=True,  dest="out",     type=str,   help="Output path prefix for imputed/phased VCF (+ _strs.vcf)")
+    parser.add_argument("--out",     required=True,  dest="out",     type=str,   help="Output path prefix for imputed/phased VCF")
     parser.add_argument("--vcf",     required=True,  dest="vcf",     type=str,   help="VCF containing STR calls")
     parser.add_argument("--samps",   required=False, dest="samps",   type=str,   help="File containing list of samples to consider")
     parser.add_argument("--thresh",  required=False, dest="thresh",  type=float, help="Posterior probability threshold required to report phasing", default=0.5)
@@ -418,17 +473,23 @@ def main():
     # Assess accuracy, output the statistics and determine the new genotypes associated with each sample
     if args.phase:
         phased_repeat_dict, accuracy_string = process_phasing_result(res, leaf_names, min_allele, min_confidence=args.thresh)
-        print(accuracy_string)
+        #print(accuracy_string)
         
         # Construct a new VCF containing the phased alleles
         if args.diploid:
-            write_diploid_vcf(args.vcf, args.chrom, args.pos, phased_repeat_dict, median_allele, args.out + "_strs.vcf")
+            write_diploid_vcf(args.vcf, args.chrom, args.pos, phased_repeat_dict, median_allele, args.out + "_phased_strs.vcf")
         else:
-            write_haploid_vcf(args.vcf, args.chrom, args.pos, phased_repeat_dict, median_allele, args.out + "_strs.vcf")
+            write_haploid_vcf(args.vcf, args.chrom, args.pos, phased_repeat_dict, median_allele, args.out + "_phased_strs.vcf")
 
     # Determine the most probable posterior genotype for each sample
     elif args.impute:
-        process_imputation_result(res, leaf_names, min_allele, max_allele)
+        imputed_repeat_dict,posterior_dict,dosage_dict = process_imputation_result(res, leaf_names, min_allele, max_allele)
+        if args.diploid:
+            write_diploid_vcf(args.vcf, args.chrom, args.pos, imputed_repeat_dict, median_allele, args.out + "_imputed_strs.vcf", posteriors=posterior_dict, dosages=dosage_dict)
+        else:
+            write_haploid_vcf(args.vcf, args.chrom, args.pos, imputed_repeat_dict, median_allele, args.out + "_imputed_strs.vcf", posteriors=posterior_dict, dosages=dosage_dict)
+        
+
 
 if __name__ == "__main__":
     main()
