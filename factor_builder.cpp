@@ -24,8 +24,8 @@ void add_GT_factors(vcf::Variant& variant, std::map<std::string, int>& sample_in
     std::string gts  = variant.getGenotype(*sample_iter);
     size_t pos;
     if ((pos=gts.find("|") != std::string::npos) || (pos=gts.find("/") != std::string::npos)){
-      std::string allele_1 = variant.alleles.at(atoi(gts.substr(0, pos).c_str()));
-      std::string allele_2 = variant.alleles.at(atoi(gts.substr(pos+1).c_str()));
+      std::string& allele_1 = variant.alleles.at(atoi(gts.substr(0, pos).c_str()));
+      std::string& allele_2 = variant.alleles.at(atoi(gts.substr(pos+1).c_str()));
       assert(allele_1.size() >= min_bp_length && allele_1.size() <= max_bp_length);
       assert(allele_2.size() >= min_bp_length && allele_2.size() <= max_bp_length);
       
@@ -173,3 +173,65 @@ void add_read_factors(AlnVector& paired_str_reads, AlnVector& mate_reads, AlnVec
   add_read_factors(nrepeats, snp_log_p1s, snp_log_p2s, min_allele, max_allele, model, node_id1, node_id2, factors);
 }
 
+
+
+
+
+
+void add_sample_factors(std::vector<std::string>& samples, int num_alleles, 
+			std::vector<dai::Var>& node_1s, std::vector<dai::Var>& node_2s, std::map<std::string, int>& sample_indices){
+  assert(node_1s.size() == 0 && node_2s.size() == 0 && sample_indices.size() == 0);
+  int node_index = 0;
+  for (unsigned int i = 0; i < samples.size(); ++i){
+    sample_indices[samples[i]] = i;
+    node_1s.push_back(dai::Var(node_index++, num_alleles));
+    node_2s.push_back(dai::Var(node_index++, num_alleles));
+  }
+}
+
+
+
+
+/*
+// Outline
+// Create variables for samples
+// i)   Add GTs if provided
+// ii)  Add GLs if provided
+// iii) Add reads if provided
+// Enusre that only 1 of i,ii,iii was added for each sample
+
+
+// Input
+vcf::Variant variant;
+int min_bp_length, int max_bp_length, bool ignore_phase;
+int min_allele, int max_allele, motif_len;
+std::vector<AlnVector> paired_str_reads, mate_reads, unpaired_str_reads;
+std::vector<SNPTree*> snp_trees;
+StutterModel model;
+
+
+
+// Output
+std::vector<dai::Var> node_1s, node_2s;
+std::map<std::string, int>& sample_indices;
+std::vector<dai::Factor>& factors;
+std::vector< std::pair<dai::Var,int> >& clamps;
+
+
+int num_alleles = max_allele - min_allele + 1;
+
+add_sample_factors(samples, num_alleles, node_1s, node_2s, sample_indices);
+
+if (variant != NULL)
+  add_GT_factors(*variant, sample_indices, min_bp_length, max_bp_length, ignore_phase, node_1s, node_2s, factors, clamps);
+
+if (variant != NULL)
+  add_GL_factors(*variant, sample_indices, min_allele, max_allele, node_1s, node_2s, factors);
+
+for (unsigned int i = 0; i < sample.size(); ++i){
+  int sample_index = sample_indices[samples[i]];
+  add_read_factors(paired_str_reads[i], mate_reads[i], unpaired_str_reads, base_qualities, snp_trees[i],
+		   min_allele, max_allele, motif_len, model, node_1s[sample_index], node_2s[sample_index],
+		   factors);
+ }
+*/

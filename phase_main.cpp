@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
   std::string factor_graph_file="", pair_file="", id_file="";
   parse_command_line_args(argc, argv, factor_graph_file, pair_file, id_file);
   if (factor_graph_file.empty())
-    1;
+    printErrorAndDie("--factor-graph argument required");
 
 
   dai::FactorGraph fg;

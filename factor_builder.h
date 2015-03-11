@@ -39,4 +39,7 @@ void add_read_factors(AlnVector& paired_str_reads, AlnVector& mate_reads, AlnVec
 		      dai::Var node_id1, dai::Var node_id2,
 		      std::vector<dai::Factor>& factors);
 
+void add_sample_factors(std::vector<std::string>& samples, int num_alleles,
+                        std::vector<dai::Var>& node_1s, std::vector<dai::Var>& node_2s, std::map<std::string, int>& sample_indices);
+
 #endif

@@ -136,10 +136,6 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
   readRegions(region_file, regions);
   orderRegions(regions);
   
-  // Data structures for accessing proximal SNP haplotypes
-  //std::vector<SNPTree*> snp_trees;
-  //std::map<std::string, unsigned int> sample_indices;
-
   std::string ref_seq;
   BamTools::RefVector ref_vector = reader.GetReferenceData();
   int32_t str_start, str_stop;
@@ -155,17 +151,6 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
       std::cerr << "Reading fasta file for " << chrom << std::endl;
       readFasta(chrom+".fa", fasta_dir, chrom_seq);
     }
-
-    // Construct SNP trees for heterozygous SNPs around the current region
-    /*
-    if (have_vcf){
-      destroy_snp_trees(snp_trees);
-      snp_trees.clear();
-      sample_indices.clear();
-      create_snp_trees(region_iter->chrom(), (region_iter->start() > MAX_MATE_DIST ? region_iter->start()-MAX_MATE_DIST : 1), 
-		       region_iter->stop()+MAX_MATE_DIST, phased_vcf, sample_indices, snp_trees);
-    }
-    */
 
     if(!reader.SetRegion(chrom_id, region_iter->start(), chrom_id, region_iter->stop()))
       printErrorAndDie("One or more BAM files failed to set the region properly");

@@ -24,6 +24,7 @@ OBJ_HIPSTR  := $(SRC_HIPSTR:.cpp=.o)
 BAMTOOLS_ROOT=bamtools
 LIBDAI_ROOT=libDAI
 VCFLIB_ROOT=vcflib
+LIBDAI_ROOT=/Users/tfwillems/Downloads/libDAI-0.3.1
 
 LIBS = -L./ -lz -lm -lgmp -lgmpxx -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/
 INCLUDE = -I$(BAMTOOLS_ROOT)/src -I$(LIBDAI_ROOT)/include/ -I$(VCFLIB_ROOT)/ -I/usr/local/opt/boost149/include

@@ -7,3 +7,4 @@ test/vcf_snp_tree_test
 *.o
 *.d
 *~
+*.dSYM
