@@ -8,3 +8,4 @@ test/vcf_snp_tree_test
 *.d
 *~
 *.dSYM
+libDAI
