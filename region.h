@@ -26,7 +26,7 @@ public:
   int     period() const { return period_; }     
 };
 
-void readRegions(std::string& input_file, std::vector<Region>& regions);
+void readRegions(std::string& input_file, std::vector<Region>& regions, int32_t max_regions);
 
 void orderRegions(std::vector<Region>& regions);
 
