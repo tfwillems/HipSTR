@@ -102,7 +102,7 @@ int main(int argc, char** argv){
   std::vector<Region> regions;
   std::vector< std::vector<Region> > ordered_regions;
   std::map<std::string, int> chrom_order;
-  readRegions(region_file, regions);
+  readRegions(region_file, regions, -1);
   orderRegions(regions, ordered_regions, chrom_order);
 
   // Filter BAM
