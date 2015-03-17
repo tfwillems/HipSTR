@@ -13,17 +13,42 @@
 
 class BamProcessor {
  private:
+  /*
   void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, 
 			     std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& file_read_groups, 
 			     std::vector<std::string>& rg_names, std::vector< std::vector<BamTools::BamAlignment> >& alignments_by_rg, 
 			     BamTools::BamWriter& bam_writer);
+  */
+
+ void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq,
+			    std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& file_read_groups,
+			    std::vector<std::string>& rg_names,
+			    std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,                                                             
+			    std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,                                                              
+			    std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,                                                           
+			    BamTools::BamWriter& bam_writer);
+
+
   public:
   void process_regions(BamTools::BamMultiReader& reader, 
 		       std::string& region_file, std::string& fasta_dir,
 		       std::map<std::string, std::string>& file_read_groups,
-		       BamTools::BamWriter& bam_writer, std::ostream& out);
+		       BamTools::BamWriter& bam_writer, std::ostream& out, int32_t max_regions);
   
-  void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& alignments_by_rg, std::vector<std::string>& rg_names, Region& region, std::ostream& out);
+  /*
+  virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& alignments_by_rg, std::vector<std::string>& rg_names, Region& region, std::ostream& out){
+    std::cerr << "Doing nothing with reads" << std::endl;
+  }
+  */
+
+  virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
+			     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
+			     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
+			     std::vector<std::string>& rg_names, Region& region, 
+			     std::ostream& out){
+    std::cerr << "Doing nothing with reads" << std::endl;
+  }
+
    
   int MAX_MATE_DIST            = 1000;
   int MIN_BP_BEFORE_INDEL      = 7;
