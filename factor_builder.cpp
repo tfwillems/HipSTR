@@ -164,8 +164,8 @@ void add_read_factors(AlnVector& paired_str_reads, AlnVector& mate_reads, AlnVec
   */
 
   // Extract the phasing qualities determined from overlapping heterozygous SNPs
-  calc_het_snp_factors(paired_str_reads, mate_reads, base_qualities, snp_tree, snp_log_p1s, snp_log_p2s);
-  calc_het_snp_factors(unpaired_str_reads, base_qualities, snp_tree, snp_log_p1s, snp_log_p2s);
+  //calc_het_snp_factors(paired_str_reads, mate_reads, base_qualities, snp_tree, snp_log_p1s, snp_log_p2s);
+  //calc_het_snp_factors(unpaired_str_reads, base_qualities, snp_tree, snp_log_p1s, snp_log_p2s);
 
   // TO DO: Filter vectors to only include successful reads
 

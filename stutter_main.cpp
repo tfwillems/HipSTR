@@ -29,16 +29,18 @@ void printCounts(std::map<int,int>& counts, std::ostream& out){
 
 class StutterBamProcessor : public BamProcessor {
 public:
-  void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& alignments_by_rg, std::vector<std::string>& rg_names, Region& region, std::ostream& out){
+  void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
+		     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
+		     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
+		     std::vector<std::string>& rg_names, Region& region, std::ostream& out){
     out << region.chrom() << "\t" << region.start() << "\t" << region.stop() << "\t" << region.period() << "\t";
     
-    // Process each set of reads separately
-    for (unsigned int i = 0; i < alignments_by_rg.size(); i++){
+    for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
       // Determine the indel size associated with each read
       std::map<int, int> indel_counts;
       int fail_count = 0;
-      for (unsigned int j = 0; j < alignments_by_rg[i].size(); j++){
-	BamTools::BamAlignment& alignment = alignments_by_rg[i][j];
+      for (unsigned int j = 0; j < paired_strs_by_rg[i].size(); j++){
+	BamTools::BamAlignment& alignment = paired_strs_by_rg[i][j];
 	int bp_diff;
 	bool got_size = ExtractCigar(alignment.CigarData, alignment.Position, region.start(), region.stop(), bp_diff);
 	if (got_size) 
@@ -196,7 +198,7 @@ int main(int argc, char** argv){
   }
 
   // Run analysis
-  bam_processor.process_regions(reader, region_file, fasta_dir, file_read_groups, bam_writer, stutter_output);
+  bam_processor.process_regions(reader, region_file, fasta_dir, file_read_groups, bam_writer, stutter_output, -1);
 
   if (!bam_out_file.empty()) bam_writer.Close();
   stutter_output.close();
