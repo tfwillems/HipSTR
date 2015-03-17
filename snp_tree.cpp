@@ -16,11 +16,15 @@ bool is_biallelic_snp(vcf::Variant& variant){
   return true;
 }
 
-void create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vcf::VariantCallFile& variant_file,
-                      std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*> snp_trees){
+bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vcf::VariantCallFile& variant_file,
+                      std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees){
+
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
   assert(variant_file.is_open());
-  assert(variant_file.setRegion(chrom, start, end));
+
+  if (!variant_file.setRegion(chrom, start, end)){
+    return false;
+  }
 
   // Index samples
   unsigned int sample_count = 0;
@@ -51,7 +55,9 @@ void create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vc
         if (gt_1 != gt_2){
           char a1 = variant.alleles[gt_1][0];
           char a2 = variant.alleles[gt_2][0];
-          snps_by_sample[sample_indices[*sample_iter]].push_back(SNP(variant.position, a1, a2));
+	  
+	  // IMPORTANT NOTE: VCFs are 1-based, but BAMs are 0-based. Decrease VCF coordinate by 1 for consistency
+          snps_by_sample[sample_indices[*sample_iter]].push_back(SNP(variant.position-1, a1, a2)); 
         }
       }
     }
@@ -66,9 +72,12 @@ void create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vc
 
   // Discard SNPs
   snps_by_sample.clear();
+  
+  return true;
 }
 
-void destroy_snp_trees(std::vector<SNPTree*> snp_trees){
+void destroy_snp_trees(std::vector<SNPTree*>& snp_trees){
   for (int i = 0; i < snp_trees.size(); i++)
     delete snp_trees[i];
+  snp_trees.clear();
 }
