@@ -12,10 +12,12 @@
 #include "vcflib/src/Variant.h"
 
 #include "bam_processor.h"
+#include "base_quality.h"
 #include "error.h"
 #include "extract_indels.h"
 #include "region.h"
 #include "seqio.h"
+#include "snp_phasing_quality.h"
 #include "snp_tree.h"
 #include "stringops.h"
 
@@ -23,14 +25,20 @@ class SNPBamProcessor : public BamProcessor {
 private:
   bool have_vcf;
   vcf::VariantCallFile phased_vcf;
+  BaseQuality base_qualities;
+  int32_t match_count_, mismatch_count_;
 
 public:
   SNPBamProcessor(){
-    have_vcf = false;
+    have_vcf        = false;
+    match_count_    = 0;
+    mismatch_count_ = 0;
   }
 
   SNPBamProcessor(std::string& vcf_file){
     set_vcf(vcf_file);
+    match_count_    = 0;
+    mismatch_count_ = 0;
   }
 
   void set_vcf(std::string& vcf_file){
@@ -39,19 +47,38 @@ public:
     have_vcf = true;
   }
 
-  void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& alignments_by_rg, std::vector<std::string>& rg_names, Region& region, std::ostream& out){
+  void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
+		     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
+		     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
+		     std::vector<std::string>& rg_names, Region& region,
+		     std::ostream& out){
+    if(paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
+      return;
+
     if (have_vcf){
       std::vector<SNPTree*> snp_trees;
       std::map<std::string, unsigned int> sample_indices;
       
-      create_snp_trees(region.chrom(), (region.start() > MAX_MATE_DIST ? region.start()-MAX_MATE_DIST : 1), 
-		       region.stop()+MAX_MATE_DIST, phased_vcf, sample_indices, snp_trees);
-      
-      destroy_snp_trees(snp_trees);
+      if(create_snp_trees(region.chrom(), (region.start() > MAX_MATE_DIST ? region.start()-MAX_MATE_DIST : 1), 
+			  region.stop()+MAX_MATE_DIST, phased_vcf, sample_indices, snp_trees)){
+	for (unsigned int i = 0; i < paired_strs_by_rg.size(); ++i){
+	  assert(sample_indices.find(rg_names[i]) != sample_indices.end());
+	  std::vector<double> log_p1s, log_p2s;
+	  SNPTree* snp_tree = snp_trees[sample_indices[rg_names[i]]];
+	  calc_het_snp_factors(paired_strs_by_rg[i], mate_pairs_by_rg[i], base_qualities, snp_tree, log_p1s, log_p2s, match_count_, mismatch_count_);
+	  calc_het_snp_factors(unpaired_strs_by_rg[i], base_qualities, snp_tree, log_p1s, log_p2s, match_count_, mismatch_count_);
+	}
+      }
+
+      destroy_snp_trees(snp_trees);      
     }
     else {
-
+     
     }
+  }
+
+  void finish(){
+    std::cerr << "SNP matching statistics: " << match_count_ << "\t" << mismatch_count_ << std::endl;
   }
 };
 
@@ -61,8 +88,8 @@ void parse_command_line_args(int argc, char** argv,
 			     std::string& fasta_dir, std::string& region_file,  std::string& vcf_file, std::string& chrom, 
 			     std::string& bam_out_file, BamProcessor& bam_processor){
    if (argc == 1){
-     std::cerr << "Usage: StutterTrainer --bams <list_of_bams> --indexes <list_of_bam_indexes> --rgs <list_of_read_groups>" << "\n"
-	       << "                      --stutter-out <stutter.txt> --regions <region_file.bed> --fasta <dir> [--bam-out <spanning_reads.bam>] [--rem-multimaps]"   << "\n\n"
+     std::cerr << "Usage: StutterTrainer --bams <list_of_bams>  --indexes <list_of_bam_indexes> --rgs <list_of_read_groups>" << "\n"
+	       << "                      --fasta <dir>          --regions <region_file.bed> [--bam-out <spanning_reads.bam>] [--rem-multimaps]" << "\n\n"
 	       << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of .bam files"                                                  << "\n"
 	       << "\t" << "--indexes       <list_of_bam_indexes> "  << "\t" << "Comma separated list of .bai files in same order as .bam files"                      << "\n"
 	       << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as .bam files"                     << "\n" 
@@ -195,7 +222,9 @@ int main(int argc, char** argv){
     bam_processor.set_vcf(vcf_file);
 
   // Run analysis
-  bam_processor.process_regions(reader, region_file, fasta_dir, file_read_groups, bam_writer, std::cout);
+  bam_processor.process_regions(reader, region_file, fasta_dir, file_read_groups, bam_writer, std::cout, 1000);
+
+  bam_processor.finish();
 
   if (!bam_out_file.empty()) bam_writer.Close();
   reader.Close();
