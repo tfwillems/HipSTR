@@ -13,6 +13,7 @@
 
 #include "bam_processor.h"
 #include "base_quality.h"
+#include "em_stutter_genotyper.h"
 #include "error.h"
 #include "extract_indels.h"
 #include "region.h"
@@ -21,6 +22,10 @@
 #include "snp_tree.h"
 #include "stringops.h"
 
+int MAX_EM_ITER         = 100;
+double ABS_LL_CONVERGE  = 0.01;  // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
+double FRAC_LL_CONVERGE = 0.001; // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
+
 class SNPBamProcessor : public BamProcessor {
 private:
   bool have_vcf;
@@ -28,17 +33,34 @@ private:
   BaseQuality base_qualities;
   int32_t match_count_, mismatch_count_;
 
+  // Settings controlling EM algorithm convergence
+  int max_em_iter_;
+  double LL_abs_change_, LL_frac_change_;
+  
+  // Counters for EM convergence
+  int num_em_converge_, num_em_fail_;
+
 public:
-  SNPBamProcessor(){
-    have_vcf        = false;
-    match_count_    = 0;
-    mismatch_count_ = 0;
+  SNPBamProcessor(int max_iter, double LL_abs_change, double LL_frac_change){
+    have_vcf         = false;
+    match_count_     = 0;
+    mismatch_count_  = 0;
+    max_em_iter_     = max_iter;
+    LL_abs_change_   = LL_abs_change;
+    LL_frac_change_  = LL_frac_change;
+    num_em_converge_ = 0;
+    num_em_fail_     = 0;
   }
 
-  SNPBamProcessor(std::string& vcf_file){
+  SNPBamProcessor(int max_iter, double LL_abs_change, double LL_frac_change, std::string& vcf_file){
     set_vcf(vcf_file);
     match_count_    = 0;
     mismatch_count_ = 0;
+    max_em_iter_    = max_iter;
+    LL_abs_change_  = LL_abs_change;
+    LL_frac_change_ = LL_frac_change;
+    num_em_converge_ = 0;
+    num_em_fail_     = 0;
   }
 
   void set_vcf(std::string& vcf_file){
@@ -52,33 +74,71 @@ public:
 		     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
 		     std::vector<std::string>& rg_names, Region& region,
 		     std::ostream& out){
+    assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
     if(paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
       return;
 
+    std::vector< std::vector<double> > log_p1s, log_p2s;
     if (have_vcf){
       std::vector<SNPTree*> snp_trees;
-      std::map<std::string, unsigned int> sample_indices;
-      
+      std::map<std::string, unsigned int> sample_indices;      
       if(create_snp_trees(region.chrom(), (region.start() > MAX_MATE_DIST ? region.start()-MAX_MATE_DIST : 1), 
 			  region.stop()+MAX_MATE_DIST, phased_vcf, sample_indices, snp_trees)){
 	for (unsigned int i = 0; i < paired_strs_by_rg.size(); ++i){
 	  assert(sample_indices.find(rg_names[i]) != sample_indices.end());
-	  std::vector<double> log_p1s, log_p2s;
+	  std::vector<double> log_p1, log_p2;
 	  SNPTree* snp_tree = snp_trees[sample_indices[rg_names[i]]];
-	  calc_het_snp_factors(paired_strs_by_rg[i], mate_pairs_by_rg[i], base_qualities, snp_tree, log_p1s, log_p2s, match_count_, mismatch_count_);
-	  calc_het_snp_factors(unpaired_strs_by_rg[i], base_qualities, snp_tree, log_p1s, log_p2s, match_count_, mismatch_count_);
+	  calc_het_snp_factors(paired_strs_by_rg[i], mate_pairs_by_rg[i], base_qualities, snp_tree, log_p1, log_p2, match_count_, mismatch_count_);
+	  calc_het_snp_factors(unpaired_strs_by_rg[i], base_qualities, snp_tree, log_p1, log_p2, match_count_, mismatch_count_);
+	  log_p1s.push_back(log_p1);
+	  log_p2s.push_back(log_p2);
 	}
       }
-
       destroy_snp_trees(snp_trees);      
     }
+
+    // Extract STR sizes for each read (if possible) and their associated phasing likelihoods
+    std::vector< std::vector<int> > str_bp_lengths(paired_strs_by_rg.size());
+    std::vector< std::vector<double> > str_log_p1s(paired_strs_by_rg.size()), str_log_p2s(paired_strs_by_rg.size());
+    for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
+      for (int read_type = 0; read_type < 2; read_type++){
+	std::vector<BamTools::BamAlignment>& reads = (read_type == 0 ? paired_strs_by_rg[i] : unpaired_strs_by_rg[i]);
+	unsigned int read_index = 0;
+	for (unsigned int j = 0; j < reads.size(); ++j, ++read_index){
+	  int bp_diff;
+	  bool got_size = ExtractCigar(reads[read_index].CigarData, reads[read_index].Position, region.start(), region.stop(), bp_diff);
+	  if (got_size){
+	    str_bp_lengths[i].push_back(bp_diff);
+	    if (log_p1s.size() == 0){
+	      str_log_p1s[i].push_back(-1); str_log_p2s[i].push_back(-1); // Assign equal phasing LLs as no SNP info is available
+	    }
+	    else {
+	      str_log_p1s[i].push_back(log_p1s[i][read_index]); str_log_p2s[i].push_back(log_p2s[i][read_index]);
+	    }
+	  }
+	}
+      }
+    }
+	
+    // Train stutter model and genotype each sample
+    std::cerr << "Building EM stutter genotyper" << std::endl;
+    EMStutterGenotyper stutter_genotyper(str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period());
+    std::cerr << "Training EM sutter genotyper" << std::endl;
+    bool trained = stutter_genotyper.train(max_em_iter_, LL_abs_change_, LL_frac_change_);
+    if (trained){
+      num_em_converge_++;
+      stutter_genotyper.genotype();
+      std::cerr << "Learned stutter model: " << (*stutter_genotyper.get_stutter_model()) << std::endl;
+    }
     else {
-     
+      num_em_fail_++;
+      std::cerr << "Stutter model failed to converge" << std::endl;
     }
   }
 
   void finish(){
-    std::cerr << "SNP matching statistics: " << match_count_ << "\t" << mismatch_count_ << std::endl;
+    std::cerr << "SNP matching statistics: "   << match_count_     << "\t" << mismatch_count_ << "\n"
+	      << "EM convergence statistics: " << num_em_converge_ << "\t" << num_em_fail_ << std::endl;
   }
 };
 
@@ -166,7 +226,7 @@ void parse_command_line_args(int argc, char** argv,
 }
 
 int main(int argc, char** argv){
-  SNPBamProcessor bam_processor;
+  SNPBamProcessor bam_processor(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
   std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", vcf_file="", bam_out_file="";
   parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, vcf_file, chrom, bam_out_file, bam_processor);
   int num_flank = 0;
