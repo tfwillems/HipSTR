@@ -10,8 +10,8 @@ CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX
 
 
 ## Source code files, add new files to this list
-SRC_COMMON  = error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp
-SRC_STUTTER = stutter_main.cpp extract_indels.cpp 
+SRC_COMMON  = error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp extract_indels.cpp
+SRC_STUTTER = stutter_main.cpp
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
 SRC_HIPSTR  = hipstr_main.cpp factor_builder.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp
 
@@ -24,7 +24,7 @@ OBJ_HIPSTR  := $(SRC_HIPSTR:.cpp=.o)
 BAMTOOLS_ROOT=bamtools
 LIBDAI_ROOT=libDAI
 VCFLIB_ROOT=vcflib
-#LIBDAI_ROOT=/Users/tfwillems/Downloads/libDAI-0.3.1
+LIBDAI_ROOT=/Users/tfwillems/Downloads/libDAI-0.3.1
 
 LIBS = -L./ -lz -lm -lgmp -lgmpxx -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/
 INCLUDE = -I$(BAMTOOLS_ROOT)/src -I$(LIBDAI_ROOT)/include/ -I$(VCFLIB_ROOT)/ -I/usr/local/opt/boost149/include
