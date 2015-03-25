@@ -2,12 +2,14 @@
 #define EM_STUTTER_GENOTYPER_H_
 
 #include <algorithm>
+#include <iostream>
 #include <map>
 #include <math.h>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "error.h"
 #include "stutter_model.h"
 
 
@@ -23,7 +25,10 @@ class EMStutterGenotyper{
   int* sample_label_ = NULL;                  // Sample index for each read
 
   StutterModel* stutter_model_ = NULL;
-  std::vector<std::string> sample_names_;
+
+  std::vector<std::string> sample_names_;     // List of sample names
+  std::map<std::string, int> sample_indices_; // Mapping from sample name to index
+
   std::vector<int> bps_per_allele_;   // Size of each STR allele in bps
   std::vector<int> reads_per_sample_;
   double* log_gt_priors_ = NULL;
@@ -61,8 +66,11 @@ class EMStutterGenotyper{
 		     std::vector<std::string>& sample_names, int motif_len){
     assert(num_bps.size() == log_p1.size() && num_bps.size() == log_p2.size() && num_bps.size() == sample_names.size());
     num_samples_  = num_bps.size();
-    sample_names_ = sample_names;
     motif_len_    = motif_len;
+
+    sample_names_ = sample_names;
+    for (unsigned int i = 0; i < sample_names.size(); i++)
+      sample_indices_.insert(std::pair<std::string,int>(sample_names[i], i));
 
     // Compute total number of reads and set of allele sizes
     std::set<int> allele_sizes;
@@ -114,8 +122,25 @@ class EMStutterGenotyper{
     delete [] log_read_phase_posteriors_;
     delete stutter_model_;
   }  
+
+
+  void write_vcf_record(std::string chrom, uint32_t pos, std::vector<std::string>& sample_names, std::ostream& out);
   
-  bool run_EM(int max_iter, double min_LL_abs_change, double min_LL_frac_change);
+  void set_stutter_model(double inframe_geom,  double inframe_up,  double inframe_down,
+			 double outframe_geom, double outframe_up, double outframe_down){
+    delete stutter_model_;
+    stutter_model_ = new StutterModel(inframe_geom,  inframe_up,  inframe_down, outframe_geom, outframe_up, outframe_down, motif_len_);
+  }
+
+  void genotype();
+  
+  bool train(int max_iter, double min_LL_abs_change, double min_LL_frac_change);
+
+  StutterModel* get_stutter_model(){
+    if (stutter_model_ == NULL)
+      printErrorAndDie("No stutter model has been specified or learned");
+    return stutter_model_;
+  }
 };
 
 #endif

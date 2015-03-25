@@ -2,6 +2,7 @@
 #include <cfloat>
 
 #include "em_stutter_genotyper.h"
+#include "error.h"
 
 inline double EMStutterGenotyper::sum(double* begin, double* end){
   double total = 0.0;
@@ -144,8 +145,8 @@ double EMStutterGenotyper::recalc_log_sample_posteriors(){
       int len_2 = bps_per_allele_[index_2];
       std::fill(LL_ptr, LL_ptr+num_samples_, log_gt_priors_[index_1]+log_gt_priors_[index_2]); // Initialize LL's with log genotype priors  
       for (int read_index = 0; read_index < num_reads_; ++read_index)
-	LL_ptr[sample_label_[read_index]] += log_sum_exp(log_p1_[read_index]+stutter_model_->calc_log_stutter(len_1, bps_per_allele_[allele_index_[read_index]]), 
-							 log_p2_[read_index]+stutter_model_->calc_log_stutter(len_2, bps_per_allele_[allele_index_[read_index]]));
+	LL_ptr[sample_label_[read_index]] += log_sum_exp(log_p1_[read_index]+stutter_model_->log_stutter_pmf(len_1, bps_per_allele_[allele_index_[read_index]]), 
+							 log_p2_[read_index]+stutter_model_->log_stutter_pmf(len_2, bps_per_allele_[allele_index_[read_index]]));
       // Update the per-sample maximum LLs
       for (int sample_index = 0; sample_index < num_samples_; ++sample_index)
 	sample_max_LLs[sample_index] = std::max(sample_max_LLs[sample_index], LL_ptr[sample_index]);
@@ -184,8 +185,8 @@ void EMStutterGenotyper::recalc_log_read_phase_posteriors(){
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
       int len_2 = bps_per_allele_[index_2];
       for (int read_index = 0; read_index < num_reads_; ++read_index){
-	double log_phase_one   = log_p1_[read_index] + stutter_model_->calc_log_stutter(len_1, bps_per_allele_[allele_index_[read_index]]);
-	double log_phase_two   = log_p2_[read_index] + stutter_model_->calc_log_stutter(len_2, bps_per_allele_[allele_index_[read_index]]);
+	double log_phase_one   = log_p1_[read_index] + stutter_model_->log_stutter_pmf(len_1, bps_per_allele_[allele_index_[read_index]]);
+	double log_phase_two   = log_p2_[read_index] + stutter_model_->log_stutter_pmf(len_2, bps_per_allele_[allele_index_[read_index]]);
 	double log_phase_total = log_sum_exp(log_phase_one, log_phase_two);
 	log_phase_ptr[0] = log_phase_one-log_phase_total;
 	log_phase_ptr[1] = log_phase_two-log_phase_total;
@@ -195,7 +196,7 @@ void EMStutterGenotyper::recalc_log_read_phase_posteriors(){
   }
 }
 
-bool EMStutterGenotyper::run_EM(int max_iter, double min_LL_abs_change, double min_LL_frac_change){
+bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double min_LL_frac_change){
   // Initialization
   init_log_gt_priors();
   init_stutter_model();
@@ -214,7 +215,6 @@ bool EMStutterGenotyper::run_EM(int max_iter, double min_LL_abs_change, double m
     recalc_log_gt_priors();
     recalc_stutter_model();
     
-
     double abs_change  = new_LL - LL;
     double frac_change = -(new_LL - LL)/LL;
     if (abs_change < min_LL_abs_change && frac_change < min_LL_frac_change){
@@ -226,4 +226,89 @@ bool EMStutterGenotyper::run_EM(int max_iter, double min_LL_abs_change, double m
     num_iter++;
   }
   return false;
+}
+
+void EMStutterGenotyper::genotype(){
+  if (stutter_model_ == NULL)
+    printErrorAndDie("Must specify stutter model before running genotype()");
+  recalc_log_sample_posteriors();
+  recalc_log_read_phase_posteriors();
+}
+
+void EMStutterGenotyper::write_vcf_record(std::string chrom, uint32_t pos, std::vector<std::string>& sample_names, std::ostream& out){
+  std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
+  std::vector<double> log_phased_posteriors(num_samples_, DBL_MIN);
+  std::vector< std::vector<double> > log_read_phases;
+  std::vector<double> log_unphased_posteriors, phase_probs;
+
+  // TO DO: Consider selecting GT based on genotype with maximum UNPHASED posterior instead of maximum PHASED posterior
+  // Are we then double-counting het GTs vs hom GTs?
+
+  // Extract each sample's MAP genotype and the associated posterior
+  double* log_post_ptr = log_sample_posteriors_;
+  for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
+    for (int index_2 = 0; index_2 < num_alleles_; ++index_2)
+      for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index, ++log_post_ptr){
+	if (*log_post_ptr > log_phased_posteriors[sample_index]){
+	  log_phased_posteriors[sample_index] = *log_post_ptr;
+	  gts[sample_index] = std::pair<int,int>(index_1, index_2);
+	}
+      }
+
+  // Extract the phasing probability condition on the determined sample genotypes
+  for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++){
+    int gt_a = gts[sample_index].first, gt_b = gts[sample_index].second;
+    if (gt_a == gt_b){
+      log_unphased_posteriors.push_back(log_phased_posteriors[sample_index]);
+      phase_probs.push_back(1.0);
+    }
+    else {
+      double log_p1  = log_phased_posteriors[sample_index];
+      double log_p2  = log_sample_posteriors_[gt_a*num_alleles_*num_samples_ + gt_b*num_samples_ + sample_index];
+      double log_tot = log_sum_exp(log_p1, log_p2);
+      log_unphased_posteriors.push_back(log_tot);
+      phase_probs.push_back(exp(log_p1-log_tot));
+    }
+  }
+  
+  // Extract each read's phase posterior conditioned on the determined sample genotypes
+  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
+    int gt_a = gts[sample_label_[read_index]].first;
+    int gt_b = gts[sample_label_[read_index]].second;
+    log_read_phases[sample_label_[read_index]].push_back(log_read_phase_posteriors_[2*num_reads_*(gt_a*num_alleles_ + gt_b) + 2*read_index]);
+  }
+
+  //VCF line format = CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE_1 SAMPLE_2 ... SAMPLE_N
+  out << chrom << "\t" << pos << "\t" << ".";
+
+  // Add info field items
+  out << "\tINFRAME_PGEOM=" << stutter_model_->get_parameter(true,  'P') << ";" 
+      << "INFRAME_UP="      << stutter_model_->get_parameter(true,  'U') << ";" 
+      << "INFRAME_DOWN="    << stutter_model_->get_parameter(true,  'D') << ";" 
+      << "OUTFRAME_PGEOM="  << stutter_model_->get_parameter(false, 'P') << ";" 
+      << "OUTFRAME_UP="     << stutter_model_->get_parameter(false, 'U') << ";" 
+      << "OUTFRAME_DOWN="   << stutter_model_->get_parameter(false, 'D') << ";";
+
+  // Add FORMAT field
+  out << "\tGT:POSTERIOR:TOTALREADS:CHROMREADS:PHASEDREADS";
+
+
+  for (unsigned int i = 0; i < sample_names.size(); i++){
+    out << "\t";
+    auto sample_iter = sample_indices_.find(sample_names[i]);
+    if (sample_iter == sample_indices_.end()){
+      out << ".";
+      continue;
+    }
+
+    int sample_index    = sample_iter->second;
+    int total_reads     = reads_per_sample_[sample_index];
+    double phase1_reads = exp(log_sum_exp(log_read_phases[sample_index]));
+    double phase2_reads = total_reads - phase1_reads;
+
+    out << gts[sample_index].first << "|" << gts[sample_index].second     // Genotype
+	<< ":" << exp(log_phased_posteriors[sample_index])                // Posterior
+	<< ":" << total_reads                                             // Total reads
+	<< ":" << phase1_reads << "|" << phase2_reads;                    // Reads per allele
+  }
 }
