@@ -78,8 +78,7 @@ void add_log_phasing_probs(BamTools::BamAlignment& aln, SNPTree* tree, BaseQuali
     for (unsigned int i = 0; i < snps.size(); ++i){
       if (bases[i] != '-'){
 	  log_p1 += (bases[i] == snps[i].base_one() ? base_qualities.log_prob_correct(quals[i]) : base_qualities.log_prob_error(quals[i]));
-	  log_p2 += (bases[i] == snps[i].base_two() ? base_qualities.log_prob_correct(quals[i]) : base_qualities.log_prob_error(quals[i]));
-	  
+	  log_p2 += (bases[i] == snps[i].base_two() ? base_qualities.log_prob_correct(quals[i]) : base_qualities.log_prob_error(quals[i]));	  
 	  if (bases[i] != snps[i].base_one() && bases[i] != snps[i].base_two())
 	    mismatch_count++;
 	  else
