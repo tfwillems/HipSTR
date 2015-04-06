@@ -1,3 +1,4 @@
+#include "error.h"
 #include "extract_indels.h"
 
 /* Returns true iff the function successfully extracted the base pair difference
@@ -9,13 +10,15 @@ bool ExtractCigar(std::vector<BamTools::CigarOp>& cigar_data,
 		  const int& cigar_start,
 		  const int& region_start, const int& region_end,
 		  int& bp_diff_from_ref) {
+  assert(cigar_start >= 0 && region_end >= region_start);
+
   int pos = cigar_start;        // beginning position of current cigar item
   size_t cigar_start_index = 0; // position in cigar string where region starts
   size_t last_match_index = 0;  // position of last 'M' cigar
   int bp = 0;
   char cigar_type; // type of the cigar item
 
-  // *** Determine cigar end *** //
+  // Determine cigar end
   int cigar_region_length = 0;
   for (size_t i = 0; i < cigar_data.size(); i++) {
     bp = cigar_data[i].Length;
@@ -24,13 +27,11 @@ bool ExtractCigar(std::vector<BamTools::CigarOp>& cigar_data,
       cigar_region_length += bp;
   }
 
-  // *** Checks for boundaries *** //
-  if (cigar_start < 0) { return false; }
-  if (region_start < cigar_start || region_start >= cigar_start+cigar_region_length) { return false; }
-  if (region_end < cigar_start || region_end >= cigar_start+cigar_region_length) { return false; }
-  if (region_end < region_start) { return false; }
+  // Checks for boundaries
+  if (region_start < cigar_start) return false;
+  if (region_end   >= cigar_start+cigar_region_length) return false;
 
-  // *** Set start index *** //
+  // Set start index
   while (pos < region_start && cigar_start_index < cigar_data.size()) {
     bp = cigar_data[cigar_start_index].Length;
     cigar_type = cigar_data[cigar_start_index].Type;
@@ -79,3 +80,55 @@ bool ExtractCigar(std::vector<BamTools::CigarOp>& cigar_data,
   }
   return true;
 }
+
+
+
+bool ExtractCigarSingleFlank(std::vector<BamTools::CigarOp>& cigar_data,
+			     const int& cigar_start, const int& region_start, const int& region_end,
+			     int& min_bp_length){
+
+  int pos = cigar_start;        // beginning position of current cigar item
+  size_t cigar_start_index = 0; // position in cigar string where region starts
+  size_t last_match_index = 0;  // position of last 'M' cigar
+  int bp = 0;
+  char cigar_type; // type of the cigar item
+
+  // Determine cigar end
+  int cigar_region_length = 0;
+  for (size_t i = 0; i < cigar_data.size(); i++) {
+    bp = cigar_data[i].Length;
+    cigar_type = cigar_data[i].Type;
+    if (cigar_type == 'M' || cigar_type == '=' || cigar_type == 'X' || cigar_type == 'D')
+      cigar_region_length += bp;
+  }
+
+  // Checks for boundaries
+  bool extract_from_left  = false;
+  bool extract_from_right = false;
+  if (region_start < cigar_start){
+    if (region_end >= cigar_start+cigar_region_length)
+      return false;
+    extract_from_right = true;
+  }
+  else if (region_end >= cigar_start+cigar_region_length)
+    extract_from_left = true;
+  else {
+    extract_from_left  = true;
+    extract_from_right = true;
+  }
+
+  // TO DO: Implement extraction from left or right flank
+  if (extract_from_left){
+    printErrorAndDie("Function still unimplemented");
+  }
+  else {
+    printErrorAndDie("Function still unimplemented");
+  }
+
+  return false;
+}
+
+
+
+
+
