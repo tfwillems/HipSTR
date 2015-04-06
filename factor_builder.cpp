@@ -113,8 +113,8 @@ void add_read_factors(std::vector<int>& nrepeats,
     for (int gt_2 = min_allele; gt_2 <= max_allele; ++gt_2){
       double log_val = 0.0;
       for (unsigned int k = 0; k < nrepeats.size(); ++k)
-	log_val += log_sum_exp(LOG_ONE_HALF + snp_log_p1s[k] + model.calc_log_stutter(gt_1, nrepeats[k]), 
-			       LOG_ONE_HALF + snp_log_p2s[k] + model.calc_log_stutter(gt_2, nrepeats[k]));
+	log_val += log_sum_exp(LOG_ONE_HALF + snp_log_p1s[k] + model.log_stutter_pmf(gt_1, nrepeats[k]), 
+			       LOG_ONE_HALF + snp_log_p2s[k] + model.log_stutter_pmf(gt_2, nrepeats[k]));
       log_vals.push_back(log_val);
     }
   }
