@@ -41,7 +41,7 @@ private:
   int num_em_converge_, num_em_fail_;
 
 public:
-  SNPBamProcessor(int max_iter, double LL_abs_change, double LL_frac_change){
+  SNPBamProcessor(bool use_lobstr_rg, int max_iter, double LL_abs_change, double LL_frac_change):BamProcessor(use_lobstr_rg){
     have_vcf         = false;
     match_count_     = 0;
     mismatch_count_  = 0;
@@ -52,7 +52,7 @@ public:
     num_em_fail_     = 0;
   }
 
-  SNPBamProcessor(int max_iter, double LL_abs_change, double LL_frac_change, std::string& vcf_file){
+  SNPBamProcessor(bool use_lobstr_rg, int max_iter, double LL_abs_change, double LL_frac_change, std::string& vcf_file):BamProcessor(use_lobstr_rg){
     set_vcf(vcf_file);
     match_count_    = 0;
     mismatch_count_ = 0;
@@ -154,7 +154,6 @@ void parse_command_line_args(int argc, char** argv,
 	       << "Required parameters:" << "\n"
 	       << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of .bam files"                                                  << "\n"
 	       << "\t" << "--indexes       <list_of_bam_indexes> "  << "\t" << "Comma separated list of .bai files in same order as .bam files"                      << "\n"
-	       << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as .bam files"                     << "\n" 
 	       << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located"                      << "\n"
 	       << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                                 << "\n" << "\n"
 	       << "Optional parameters:" << "\n"
@@ -163,6 +162,9 @@ void parse_command_line_args(int argc, char** argv,
 	       << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << bam_processor.MAX_MATE_DIST << ")" << "\n"
        	       << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
 	       << "\t" << "--vcf           <phased_snp_gts.vcf>  "  << "\t" << "VCF file containing phased SNP genotypes"                                            << "\n"
+	       << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as .bam files. "                   << "\n"
+	       << "\t" << "                                      "  << "\t" << "Assign each read the RG tag corresponding to its file. By default, "                 << "\n"
+	       << "\t" << "                                      "  << "\t" << "each read must have an RG flag from lobSTR and this is used instead"                 << "\n"
 	       << "\n";
      exit(0);
   }
@@ -229,7 +231,7 @@ void parse_command_line_args(int argc, char** argv,
 }
 
 int main(int argc, char** argv){
-  SNPBamProcessor bam_processor(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
+  SNPBamProcessor bam_processor(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false);
   std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", vcf_file="", bam_out_file="";
   parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, vcf_file, chrom, bam_out_file, bam_processor);
   int num_flank = 0;
@@ -237,8 +239,6 @@ int main(int argc, char** argv){
     printErrorAndDie("--bams option required");
   else if (bamindex_string.empty())
     printErrorAndDie("--indexes option required");
-  else if (rg_string.empty())
-    printErrorAndDie("--rgs option required");
   else if (region_file.empty())
     printErrorAndDie("--region option required");
   else if (fasta_dir.empty())
@@ -257,23 +257,28 @@ int main(int argc, char** argv){
   std::vector<std::string> bam_indexes;
   split_by_delim(bamindex_string, ',', bam_indexes);
   std::vector<std::string> read_groups;
-  split_by_delim(rg_string, ',', read_groups);
+  if (!rg_string.empty())
+    split_by_delim(rg_string, ',', read_groups);
   std::cerr << "Detected " << bam_files.size() << " BAM files" << std::endl;
   if (bam_files.size() != bam_indexes.size())
     printErrorAndDie("Number of .bam and .bai files must match");
-  if (bam_files.size() != read_groups.size())
-    printErrorAndDie("Number of .bam and RGs must match");
 
   // Open all .bam and .bai files
   BamTools::BamMultiReader reader;
   if (!reader.Open(bam_files)) printErrorAndDie("Failed to open one or more BAM files");
   if (!reader.OpenIndexes(bam_indexes)) printErrorAndDie("Failed to open one or more BAM index files");
 
-  // Construct filename->read group map
+  // Construct filename->read group map (if one has been specified)
   std::map<std::string, std::string> file_read_groups;
-  for (int i = 0; i < bam_files.size(); i++)
-    file_read_groups[bam_files[i]] = read_groups[i];
-
+  if (!rg_string.empty()){
+    if(bam_files.size() != read_groups.size())
+      printErrorAndDie("Number of .bam and RGs must match");
+    for (int i = 0; i < bam_files.size(); i++)
+      file_read_groups[bam_files[i]] = read_groups[i];
+  }
+  else
+    bam_processor.set_lobstr_rg_usage(true);
+    
   BamTools::BamWriter bam_writer;
   if (!bam_out_file.empty()){
     BamTools::RefVector ref_vector = reader.GetReferenceData();

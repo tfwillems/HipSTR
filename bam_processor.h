@@ -13,6 +13,8 @@
 
 class BamProcessor {
  private:
+  bool use_lobstr_rg_;
+
  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq,
 			    std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& file_read_groups,
 			    std::vector<std::string>& rg_names,
@@ -23,10 +25,16 @@ class BamProcessor {
 
 
   public:
+ BamProcessor(bool use_lobstr_rg){
+   use_lobstr_rg_ = use_lobstr_rg;
+ }
+
   void process_regions(BamTools::BamMultiReader& reader, 
 		       std::string& region_file, std::string& fasta_dir,
 		       std::map<std::string, std::string>& file_read_groups,
 		       BamTools::BamWriter& bam_writer, std::ostream& out, int32_t max_regions);
+
+  std::string parse_lobstr_rg(BamTools::BamAlignment& aln);
   
   /*
   virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& alignments_by_rg, std::vector<std::string>& rg_names, Region& region, std::ostream& out){
@@ -40,6 +48,10 @@ class BamProcessor {
 			     std::vector<std::string>& rg_names, Region& region, 
 			     std::ostream& out){
     std::cerr << "Doing nothing with reads" << std::endl;
+  }
+
+  void set_lobstr_rg_usage(bool use_lobstr_rg){
+    use_lobstr_rg_ = use_lobstr_rg;
   }
 
    

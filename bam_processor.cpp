@@ -9,6 +9,21 @@
 #include "seqio.h"
 #include "stringops.h"
 
+std::string BamProcessor::parse_lobstr_rg(BamTools::BamAlignment& aln){
+  std::string rg;
+  std::string rg_tag = "RG";
+  char tag_type = 'Z';
+  if (!aln.GetTagType(rg_tag, tag_type))
+    printErrorAndDie("Failed to retrieve BAM alignment's RG tag");
+  aln.GetTag("RG", rg);
+  std::vector<std::string> rg_tokens;
+  split_by_delim(rg, ';', rg_tokens);
+  if (rg_tokens.size() != 0 || rg_tokens[0].compare("lobSTR") != 0)
+    printErrorAndDie("Improperly formatted lobSTR RG tag: " + rg);
+  return rg_tokens[1];
+}
+
+
 void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, 
 					 std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& file_read_groups,
 					 std::vector<std::string>& rg_names, 
@@ -139,8 +154,10 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   if (bam_writer.IsOpen()){
     for (auto read_iter = region_alignments.begin(); read_iter != region_alignments.end(); read_iter++){
       // Add RG to BAM record based on file
-      std::string rg_tag = "lobSTR;" + file_read_groups[read_iter->Filename] + ";" + file_read_groups[read_iter->Filename];
-      read_iter->AddTag("RG", "Z", rg_tag);
+      if (!use_lobstr_rg_){
+	std::string rg_tag = "lobSTR;" + file_read_groups[read_iter->Filename] + ";" + file_read_groups[read_iter->Filename];
+	read_iter->AddTag("RG", "Z", rg_tag);
+      }
       
       // Add STR start and stop tags
       bool success;
@@ -161,7 +178,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   // Separate the reads based on their associated read groups
   std::map<std::string, int> rg_indices;
   for (unsigned int i = 0; i < paired_str_alns.size(); ++i){
-    std::string rg = file_read_groups[paired_str_alns[i].Filename];
+    std::string rg = use_lobstr_rg_ ? parse_lobstr_rg(paired_str_alns[i]) : file_read_groups[paired_str_alns[i].Filename];
     int rg_index;
     auto index_iter = rg_indices.find(rg);
     if (index_iter == rg_indices.end()){
@@ -180,7 +197,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     mate_pairs_by_rg[rg_index].push_back(mate_alns[i]);
   }
   for (unsigned int i = 0; i < unpaired_str_alns.size(); ++i){
-    std::string rg = file_read_groups[unpaired_str_alns[i].Filename];
+    std::string rg = use_lobstr_rg_ ? parse_lobstr_rg(unpaired_str_alns[i]) : file_read_groups[unpaired_str_alns[i].Filename];
     int rg_index;
     auto index_iter = rg_indices.find(rg);
     if (index_iter == rg_indices.end()){
