@@ -148,18 +148,21 @@ void parse_command_line_args(int argc, char** argv,
 			     std::string& fasta_dir, std::string& region_file,  std::string& vcf_file, std::string& chrom, 
 			     std::string& bam_out_file, BamProcessor& bam_processor){
    if (argc == 1){
-     std::cerr << "Usage: StutterTrainer --bams <list_of_bams>  --indexes <list_of_bam_indexes> --rgs <list_of_read_groups>" << "\n"
-	       << "                      --fasta <dir>          --regions <region_file.bed> [--bam-out <spanning_reads.bam>] [--rem-multimaps]" << "\n\n"
+     std::cerr << "Usage: HipSTR --bams  <list_of_bams>  --indexes <list_of_bam_indexes> --rgs <list_of_read_groups>" << "\n"
+	       << "              --fasta <dir>           --regions <region_file.bed>" << "\n"
+	       << "              [--bam-out <spanning_reads.bam>] [--rem-multimaps] [--chrom <chrom>] [--vcf <phased_snp_gts.vcf>]" << "\n\n"
+	       << "Required parameters:" << "\n"
 	       << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of .bam files"                                                  << "\n"
 	       << "\t" << "--indexes       <list_of_bam_indexes> "  << "\t" << "Comma separated list of .bai files in same order as .bam files"                      << "\n"
 	       << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as .bam files"                     << "\n" 
 	       << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located"                      << "\n"
-	       << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
-	       << "\t" << "--vcf           <phased_gts.vcf>      "  << "\t" << "VCF file containing phased genotypes"                                                << "\n"
-	       << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                                 << "\n"
+	       << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                                 << "\n" << "\n"
+	       << "Optional parameters:" << "\n"
 	       << "\t" << "--bam-out       <spanning_reads.bam   "  << "\t" << "Output a BAM file containing the reads spanning each region to the provided file"    << "\n"
 	       << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
 	       << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << bam_processor.MAX_MATE_DIST << ")" << "\n"
+       	       << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
+	       << "\t" << "--vcf           <phased_snp_gts.vcf>  "  << "\t" << "VCF file containing phased SNP genotypes"                                            << "\n"
 	       << "\n";
      exit(0);
   }
