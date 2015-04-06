@@ -12,7 +12,6 @@
 void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, 
 					 std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& file_read_groups,
 					 std::vector<std::string>& rg_names, 
-					 //std::vector< std::vector<BamTools::BamAlignment> >& alignments_by_rg, 
 					 std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 					 std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 					 std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
@@ -198,26 +197,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     // Record unpaired STR read
     unpaired_strs_by_rg[rg_index].push_back(unpaired_str_alns[i]);
   }
-  
-
-  /*
-  // Separate the reads based on their associated read groups
-  std::map<std::string, int> rg_indices;
-  for (auto align_iter = region_alignments.begin(); align_iter != region_alignments.end(); align_iter++){
-    std::string rg = file_read_groups[align_iter->Filename];
-    int rg_index;
-    auto index_iter = rg_indices.find(rg);
-    if (index_iter == rg_indices.end()){
-      rg_index = rg_indices.size(); 
-      rg_indices[rg] = rg_index;
-      rg_names.push_back(rg);
-      alignments_by_rg.push_back(std::vector<BamTools::BamAlignment>());
-    }
-    else
-      rg_index = index_iter->second;
-    alignments_by_rg[rg_index].push_back(*align_iter);
-  }
-  */
 }
 
 void BamProcessor::process_regions(BamTools::BamMultiReader& reader, 

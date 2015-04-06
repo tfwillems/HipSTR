@@ -13,13 +13,6 @@
 
 class BamProcessor {
  private:
-  /*
-  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, 
-			     std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& file_read_groups, 
-			     std::vector<std::string>& rg_names, std::vector< std::vector<BamTools::BamAlignment> >& alignments_by_rg, 
-			     BamTools::BamWriter& bam_writer);
-  */
-
  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq,
 			    std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& file_read_groups,
 			    std::vector<std::string>& rg_names,
