@@ -77,12 +77,12 @@ void add_log_phasing_probs(BamTools::BamAlignment& aln, SNPTree* tree, BaseQuali
     assert(snps.size() == bases.size());
     for (unsigned int i = 0; i < snps.size(); ++i){
       if (bases[i] != '-'){
-	  log_p1 += (bases[i] == snps[i].base_one() ? base_qualities.log_prob_correct(quals[i]) : base_qualities.log_prob_error(quals[i]));
-	  log_p2 += (bases[i] == snps[i].base_two() ? base_qualities.log_prob_correct(quals[i]) : base_qualities.log_prob_error(quals[i]));	  
-	  if (bases[i] != snps[i].base_one() && bases[i] != snps[i].base_two())
-	    mismatch_count++;
-	  else
-	    match_count++;
+	log_p1 += (bases[i] == snps[i].base_one() ? base_qualities.log_prob_correct(quals[i]) : base_qualities.log_prob_error(quals[i]));
+	log_p2 += (bases[i] == snps[i].base_two() ? base_qualities.log_prob_correct(quals[i]) : base_qualities.log_prob_error(quals[i]));
+	if (bases[i] != snps[i].base_one() && bases[i] != snps[i].base_two())
+	  mismatch_count++;
+	else
+	  match_count++;
       }
     }
   }
@@ -93,8 +93,6 @@ void calc_het_snp_factors(std::vector<BamTools::BamAlignment>& str_reads, std::v
 			  BaseQuality& base_qualities, SNPTree* snp_tree,
 			  std::vector<double>& log_p1s, std::vector<double>& log_p2s, int& match_count, int& mismatch_count) {
   assert(str_reads.size() == mate_reads.size());
-  log_p1s.resize(str_reads.size(), 0.0);
-  log_p2s.resize(str_reads.size(), 0.0);
   for (unsigned int i = 0; i < str_reads.size(); i++){
     double log_p1 = 0.0, log_p2 = 0.0;
     add_log_phasing_probs(str_reads[i],  snp_tree, base_qualities, log_p1, log_p2, match_count, mismatch_count);
@@ -106,7 +104,7 @@ void calc_het_snp_factors(std::vector<BamTools::BamAlignment>& str_reads, std::v
 
 void calc_het_snp_factors(std::vector<BamTools::BamAlignment>& str_reads, BaseQuality& base_qualities, SNPTree* snp_tree, 
 			  std::vector<double>& log_p1s, std::vector<double>& log_p2s, int& match_count, int& mismatch_count){
-  for (unsigned int i = 0; i < str_reads.size(); ++i){
+  for (unsigned int i = 0; i < str_reads.size(); i++){
     double log_p1 = 0.0, log_p2 = 0.0;
     add_log_phasing_probs(str_reads[i], snp_tree, base_qualities, log_p1, log_p2, match_count, mismatch_count);
     log_p1s.push_back(log_p1);
