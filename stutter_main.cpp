@@ -29,6 +29,10 @@ void printCounts(std::map<int,int>& counts, std::ostream& out){
 
 class StutterBamProcessor : public BamProcessor {
 public:
+  StutterBamProcessor(bool use_lobstr_rg, bool check_mate_chroms):BamProcessor(use_lobstr_rg, check_mate_chroms){
+
+  }
+
   void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 		     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 		     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
@@ -139,7 +143,7 @@ void parse_command_line_args(int argc, char** argv,
 }
 
 int main(int argc, char** argv){
-  StutterBamProcessor bam_processor;
+  StutterBamProcessor bam_processor(false, true);
   std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", stutter_out_file="", fasta_dir="", bam_out_file="";
   parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, 
 			  region_file, stutter_out_file, bam_out_file, bam_processor);
