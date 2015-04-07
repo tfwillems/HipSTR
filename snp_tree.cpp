@@ -18,12 +18,15 @@ bool is_biallelic_snp(vcf::Variant& variant){
 
 bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vcf::VariantCallFile& variant_file,
                       std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees){
+  std::cerr << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
 
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
   assert(variant_file.is_open());
 
   if (!variant_file.setRegion(chrom, start, end)){
-    return false;
+    // Retry setting region if chr is in chromosome name
+    if (chrom.size() <= 3 || chrom.substr(0, 3).compare("chr") != 0 || !variant_file.setRegion(chrom.substr(3), start, end))
+      return false;
   }
 
   // Index samples
@@ -66,7 +69,7 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vc
   
   // Create SNP trees
   for(unsigned int i = 0; i < snps_by_sample.size(); i++){
-    std::cout << "Building interval tree for " << variant_file.sampleNames[i] << " containing " << snps_by_sample[i].size() << " heterozygous SNPs" << std::endl;
+    //std::cout << "Building interval tree for " << variant_file.sampleNames[i] << " containing " << snps_by_sample[i].size() << " heterozygous SNPs" << std::endl;
     snp_trees.push_back(new SNPTree(snps_by_sample[i]));
   }
 
