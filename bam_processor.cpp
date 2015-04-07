@@ -18,9 +18,19 @@ std::string BamProcessor::parse_lobstr_rg(BamTools::BamAlignment& aln){
   aln.GetTag("RG", rg);
   std::vector<std::string> rg_tokens;
   split_by_delim(rg, ';', rg_tokens);
-  if (rg_tokens.size() != 0 || rg_tokens[0].compare("lobSTR") != 0)
+  if (rg_tokens.size() != 3 || rg_tokens[0].compare("lobSTR") != 0){
     printErrorAndDie("Improperly formatted lobSTR RG tag: " + rg);
+  }
   return rg_tokens[1];
+}
+
+std::string BamProcessor::trim_alignment_name(BamTools::BamAlignment& aln){
+  std::string aln_name = aln.Name;
+  if (aln_name.size() > 2){
+    if (aln_name[aln_name.size()-2] == '/')
+      aln_name.resize(aln_name.size()-2);
+  }
+  return aln_name;
 }
 
 
@@ -43,16 +53,19 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   while (reader.GetNextAlignment(alignment)){
     read_count++;
     
-    // Ignore read if its mate pair chromosome doesn't match
-    if (alignment.RefID != alignment.MateRefID){
-      diff_chrom_mate++;
-      continue;
+    if (check_mate_info_){
+      // Ignore read if its mate pair chromosome doesn't match
+      if (alignment.RefID != alignment.MateRefID){
+	diff_chrom_mate++;
+	continue;
+      }
+      // Ignore read if its mate pair is unmapped
+      if (alignment.InsertSize == 0){
+	unmapped_mate++;
+	continue;
+      }
     }
-    // Ignore read if its mate pair is unmapped
-    if (alignment.InsertSize == 0){
-      unmapped_mate++;
-      continue;
-    }
+
     // Ignore read if its mate pair distance exceeds the threshold
     if (abs(alignment.InsertSize) > MAX_MATE_DIST){
       insert_size++;
@@ -108,25 +121,28 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     if (pass)
       region_alignments.push_back(alignment);
 
+    //std::cerr << alignment.Name << "\t";
+    std::string aln_key = trim_alignment_name(alignment);
+
     if (pass){
-      auto aln_iter = potential_mates.find(alignment.Name);
+      auto aln_iter = potential_mates.find(aln_key);
       if (aln_iter != potential_mates.end()){
 	paired_str_alns.push_back(alignment);
 	mate_alns.push_back(aln_iter->second);
 	potential_mates.erase(aln_iter);
       }
       else 
-	potential_strs.insert(std::pair<std::string, BamTools::BamAlignment>(alignment.Name, alignment));
+	potential_strs.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
     }
     else {
-      auto aln_iter = potential_strs.find(alignment.Name);
+      auto aln_iter = potential_strs.find(aln_key);
       if (aln_iter != potential_strs.end()){
 	paired_str_alns.push_back(aln_iter->second);
 	mate_alns.push_back(alignment);
 	potential_strs.erase(aln_iter);
       }
       else 
-	potential_mates.insert(std::pair<std::string, BamTools::BamAlignment>(alignment.Name, alignment));
+	potential_mates.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
     }
   }
 
@@ -136,7 +152,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   potential_mates.clear();
   std::cerr << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads" << std::endl;
 
-  /*
+  
   std::cerr << read_count << " reads overlapped region, of which " 
 	    << "\n\t" << diff_chrom_mate  << " had mates on a different chromosome"
 	    << "\n\t" << unmapped_mate    << " had unmapped mates"
@@ -148,7 +164,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	    << "\n\t" << end_match_window << " did not have the maximal number of end matches within the specified window"
 	    << "\n\t" << num_end_matches  << " had too few bp matches along the ends"
   	    << "\n"   << region_alignments.size() << " PASSED ALL FILTERS" << "\n" << std::endl; 
-  */  
+    
 
   // Output the spanning reads to a BAM file, if requested
   if (bam_writer.IsOpen()){

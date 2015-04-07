@@ -9,11 +9,13 @@
 #include "bamtools/include/api/BamMultiReader.h"
 #include "bamtools/include/api/BamWriter.h"
 
+#include "error.h"
 #include "region.h"
 
 class BamProcessor {
  private:
   bool use_lobstr_rg_;
+  bool check_mate_info_;
 
  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq,
 			    std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& file_read_groups,
@@ -23,10 +25,14 @@ class BamProcessor {
 			    std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,                                                           
 			    BamTools::BamWriter& bam_writer);
 
+ std::string parse_lobstr_rg(BamTools::BamAlignment& aln);
+
+ std::string trim_alignment_name(BamTools::BamAlignment& aln);
 
   public:
- BamProcessor(bool use_lobstr_rg){
-   use_lobstr_rg_ = use_lobstr_rg;
+ BamProcessor(bool use_lobstr_rg, bool filter_by_mate){
+   use_lobstr_rg_    = use_lobstr_rg;
+   check_mate_info_  = filter_by_mate;
  }
 
   void process_regions(BamTools::BamMultiReader& reader, 
@@ -34,14 +40,7 @@ class BamProcessor {
 		       std::map<std::string, std::string>& file_read_groups,
 		       BamTools::BamWriter& bam_writer, std::ostream& out, int32_t max_regions);
 
-  std::string parse_lobstr_rg(BamTools::BamAlignment& aln);
   
-  /*
-  virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& alignments_by_rg, std::vector<std::string>& rg_names, Region& region, std::ostream& out){
-    std::cerr << "Doing nothing with reads" << std::endl;
-  }
-  */
-
   virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 			     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 			     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
