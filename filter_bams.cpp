@@ -8,6 +8,16 @@
 #include "bamtools/include/api/BamWriter.h"
 
 
+std::string trim_alignment_name(BamTools::BamAlignment& aln){
+  std::string aln_name = aln.Name;
+  if (aln_name.size() > 2){
+    if (aln_name[aln_name.size()-2] == '/')
+      aln_name.resize(aln_name.size()-2);
+  }
+  return aln_name;
+}
+
+
 /*
   Filter BAMs in which paired end reads are adjacent to one another in the BAM file.
   Utilizes an interval tree to determine if each pair overlaps a region of interest.
@@ -53,7 +63,10 @@ void filter_bam_paired_mode(BamTools::BamReader& reader,
     if (aln_count == 0)
       aln_count++;
     else {
-      if (alignments[0].Name.compare(alignments[1].Name) == 0){
+      std::string key_a = trim_alignment_name(alignments[0]);
+      std::string key_b = trim_alignment_name(alignments[1]);
+
+      if (key_a.compare(key_b) == 0){
 	// Process set of paired reads
 	bool overlaps = interval_trees[alignments[0].RefID+1].overlaps(alignments[0].Position, alignments[0].GetEndPosition()); 
 	overlaps     |= interval_trees[alignments[1].RefID+1].overlaps(alignments[1].Position, alignments[1].GetEndPosition());
@@ -116,6 +129,16 @@ void filter_bam(BamTools::BamReader& reader,
       std::cerr << "\tProcessing read # " << read_count << std::endl;
       if (analyze_insert_size)
 	counter.output_summary_statistics(std::cerr);
+      
+           
+      // Clear unaligned reads without identified mate pairs and likely don't have any mapped mates
+      auto unaln_iter = unaligned_mate_pairs.begin();
+      while (unaln_iter != unaligned_mate_pairs.end()){
+	if (prev_pos - unaln_iter->second.Position > 100000)
+	  unaligned_mate_pairs.erase(unaln_iter++);
+	else
+	  unaln_iter++;
+      }
     }
 
     if (alignment.RefID != chrom_id){
@@ -147,43 +170,42 @@ void filter_bam(BamTools::BamReader& reader,
     while (region_idx < max_regions && regions[chrom_idx][region_idx].stop() < alignment.Position)
       region_idx++;
 
+    std::string aln_key = trim_alignment_name(alignment);
+
     if (region_idx < max_regions && regions[chrom_idx][region_idx].start() <= alignment.GetEndPosition()){
       // Process region overlap
       if (!writer.SaveAlignment(alignment))  printErrorAndDie("Failed to save alignment for STR-containing read");
-      
-      auto iter = unaligned_mate_pairs.find(alignment.Name);
+
+      auto iter = unaligned_mate_pairs.find(aln_key);
       if (iter != unaligned_mate_pairs.end()){
 	if (!writer.SaveAlignment(iter->second))
 	  printErrorAndDie("Failed to save alignment for mate pair read");
 	unaligned_mate_pairs.erase(iter);
       }
       else {
-	auto iter = aligned_mate_pairs.find(alignment.Name);
+	auto iter = aligned_mate_pairs.find(aln_key);
 	if (iter != aligned_mate_pairs.end())
 	  aligned_mate_pairs.erase(iter);
 	else
-	  aligned_mate_pairs.insert(std::pair<std::string, int32_t>(alignment.Name, alignment.Position));
+	  aligned_mate_pairs.insert(std::pair<std::string, int32_t>(aln_key, alignment.Position));
       }
     }
     else {
       // No region overlap but examine any relevant mate pair information
-      auto iter = aligned_mate_pairs.find(alignment.Name);
+      auto iter = aligned_mate_pairs.find(aln_key);
       if (iter != aligned_mate_pairs.end()){
 	aligned_mate_pairs.erase(iter);
 	if (!writer.SaveAlignment(alignment))
           printErrorAndDie("Failed to save alignment for mate pair read");
       }
       else {
-	auto iter = unaligned_mate_pairs.find(alignment.Name);
+	auto iter = unaligned_mate_pairs.find(aln_key);
 	if (iter != unaligned_mate_pairs.end())
 	  unaligned_mate_pairs.erase(iter);
 	else 
-	  unaligned_mate_pairs.insert(std::pair<std::string, BamTools::BamAlignment>(alignment.Name, alignment));
+	  unaligned_mate_pairs.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
       }
-    }
-
-    // TO DO: Clear unneeded mate pairs
-    
+    } 
   }
   writer.Close();
 }
