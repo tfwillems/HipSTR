@@ -28,8 +28,8 @@ double FRAC_LL_CONVERGE = 0.001; // For EM convergence, -(new_LL-prev_LL)/prev_L
 
 class SNPBamProcessor : public BamProcessor {
 private:
-  bool have_vcf;
-  vcf::VariantCallFile phased_vcf;
+  bool have_snp_vcf;
+  vcf::VariantCallFile phased_snp_vcf;
   BaseQuality base_qualities;
   int32_t match_count_, mismatch_count_;
 
@@ -40,9 +40,16 @@ private:
   // Counters for EM convergence
   int num_em_converge_, num_em_fail_;
 
+  // Output file for STR genotypes
+  bool output_str_gts_;
+  std::ofstream str_vcf_;
+  std::vector<std::string> samples_to_genotype_;
+
+
 public:
-  SNPBamProcessor(bool use_lobstr_rg, int max_iter, double LL_abs_change, double LL_frac_change):BamProcessor(use_lobstr_rg){
-    have_vcf         = false;
+  SNPBamProcessor(bool use_lobstr_rg, bool check_mate_chroms, 
+		  int max_iter, double LL_abs_change, double LL_frac_change):BamProcessor(use_lobstr_rg, check_mate_chroms){
+    have_snp_vcf     = false;
     match_count_     = 0;
     mismatch_count_  = 0;
     max_em_iter_     = max_iter;
@@ -50,93 +57,140 @@ public:
     LL_frac_change_  = LL_frac_change;
     num_em_converge_ = 0;
     num_em_fail_     = 0;
+    output_str_gts_  = false;
   }
 
-  SNPBamProcessor(bool use_lobstr_rg, int max_iter, double LL_abs_change, double LL_frac_change, std::string& vcf_file):BamProcessor(use_lobstr_rg){
-    set_vcf(vcf_file);
-    match_count_    = 0;
-    mismatch_count_ = 0;
-    max_em_iter_    = max_iter;
-    LL_abs_change_  = LL_abs_change;
-    LL_frac_change_ = LL_frac_change;
-    num_em_converge_ = 0;
-    num_em_fail_     = 0;
+  void set_output_str_vcf(std::string& vcf_file, std::set<std::string>& samples_to_output){
+    output_str_gts_ = true;
+    str_vcf_.open(vcf_file, std::ofstream::out);
+    if (!str_vcf_.is_open())
+      printErrorAndDie("Failed to open VCF file for STR genotypes");
+
+    // Print floats with exactly 3 decimal places
+    str_vcf_.precision(3);
+    str_vcf_.setf(std::ios::fixed, std::ios::floatfield);
+
+    // Assemble a list of sample names for genotype output
+    std::copy(samples_to_output.begin(), samples_to_output.end(), std::back_inserter(samples_to_genotype_));
+    std::sort(samples_to_genotype_.begin(), samples_to_genotype_.end());
+
+    // Write VCF header
+    EMStutterGenotyper::write_vcf_header(samples_to_genotype_, str_vcf_);
   }
 
-  void set_vcf(std::string& vcf_file){
-    if(!phased_vcf.open(vcf_file))
-      printErrorAndDie("Failed to open VCF file");
-    have_vcf = true;
+  void set_input_snp_vcf(std::string& vcf_file){
+    if(!phased_snp_vcf.open(vcf_file))
+      printErrorAndDie("Failed to open input SNP VCF file");
+    have_snp_vcf = true;
   }
 
   void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 		     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 		     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
-		     std::vector<std::string>& rg_names, Region& region,
+		     std::vector<std::string>& rg_names, Region& region, std::string& ref_allele,
 		     std::ostream& out){
     assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
     if(paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
       return;
 
     std::vector< std::vector<double> > log_p1s, log_p2s;
-    if (have_vcf){
+    if (have_snp_vcf){
       std::vector<SNPTree*> snp_trees;
       std::map<std::string, unsigned int> sample_indices;      
       if(create_snp_trees(region.chrom(), (region.start() > MAX_MATE_DIST ? region.start()-MAX_MATE_DIST : 1), 
-			  region.stop()+MAX_MATE_DIST, phased_vcf, sample_indices, snp_trees)){
+			  region.stop()+MAX_MATE_DIST, phased_snp_vcf, sample_indices, snp_trees)){
+	std::set<std::string> bad_samples, good_samples;
 	for (unsigned int i = 0; i < paired_strs_by_rg.size(); ++i){
-	  assert(sample_indices.find(rg_names[i]) != sample_indices.end());
-	  std::vector<double> log_p1, log_p2;
-	  SNPTree* snp_tree = snp_trees[sample_indices[rg_names[i]]];
-	  calc_het_snp_factors(paired_strs_by_rg[i], mate_pairs_by_rg[i], base_qualities, snp_tree, log_p1, log_p2, match_count_, mismatch_count_);
-	  calc_het_snp_factors(unpaired_strs_by_rg[i], base_qualities, snp_tree, log_p1, log_p2, match_count_, mismatch_count_);
-	  log_p1s.push_back(log_p1);
-	  log_p2s.push_back(log_p2);
+	  if (sample_indices.find(rg_names[i]) != sample_indices.end()){
+	    good_samples.insert(rg_names[i]);
+	    std::vector<double> log_p1, log_p2;
+	    SNPTree* snp_tree = snp_trees[sample_indices[rg_names[i]]];
+	    calc_het_snp_factors(paired_strs_by_rg[i], mate_pairs_by_rg[i], base_qualities, snp_tree, log_p1, log_p2, match_count_, mismatch_count_);
+	    calc_het_snp_factors(unpaired_strs_by_rg[i], base_qualities, snp_tree, log_p1, log_p2, match_count_, mismatch_count_);
+	    log_p1s.push_back(log_p1); log_p2s.push_back(log_p2);
+	  }
+	  else {
+	    std::vector<double> log_p1, log_p2;
+	    for (unsigned int j = 0; j < paired_strs_by_rg[i].size()+unpaired_strs_by_rg[i].size(); ++j){
+	      log_p1.push_back(0); log_p2.push_back(0); // Assign equal phasing LLs as no SNP info is available
+	    }
+	    log_p1s.push_back(log_p1); log_p2s.push_back(log_p2);
+	    bad_samples.insert(rg_names[i]);
+	  }
 	}
+	std::cerr << "Found VCF info for " << good_samples.size() << " out of " << good_samples.size()+bad_samples.size() << " samples with STR reads" << std::endl;
       }
+      else 
+	std::cerr << "Warning: Failed to construct SNP trees for " << region.chrom() << ":" << region.start() << "-" << region.stop() << std::endl; 
       destroy_snp_trees(snp_trees);      
     }
 
     // Extract STR sizes for each read (if possible) and their associated phasing likelihoods
+    int snp_power = 0, no_snp_power = 0, phased_samples = 0;
+
     std::vector< std::vector<int> > str_bp_lengths(paired_strs_by_rg.size());
     std::vector< std::vector<double> > str_log_p1s(paired_strs_by_rg.size()), str_log_p2s(paired_strs_by_rg.size());
+    std::vector<std::string> names;
     for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
+      bool sample_phased = false;
+      unsigned int read_index = 0;
       for (int read_type = 0; read_type < 2; read_type++){
 	std::vector<BamTools::BamAlignment>& reads = (read_type == 0 ? paired_strs_by_rg[i] : unpaired_strs_by_rg[i]);
-	unsigned int read_index = 0;
 	for (unsigned int j = 0; j < reads.size(); ++j, ++read_index){
 	  int bp_diff;
-	  bool got_size = ExtractCigar(reads[read_index].CigarData, reads[read_index].Position, region.start(), region.stop(), bp_diff);
+	  bool got_size = ExtractCigar(reads[j].CigarData, reads[j].Position, region.start(), region.stop(), bp_diff);
 	  if (got_size){
+	    if (bp_diff < -(int)(region.stop()-region.start()+1)) {
+	      std::cerr << "WARNING: Excluding read with bp difference greater than reference allele: " << reads[j].Name << std::endl;
+	      continue;
+	    }
 	    str_bp_lengths[i].push_back(bp_diff);
 	    if (log_p1s.size() == 0){
-	      str_log_p1s[i].push_back(-1); str_log_p2s[i].push_back(-1); // Assign equal phasing LLs as no SNP info is available
+	      str_log_p1s[i].push_back(0); str_log_p2s[i].push_back(0); // Assign equal phasing LLs as no SNP info is available
 	    }
 	    else {
 	      str_log_p1s[i].push_back(log_p1s[i][read_index]); str_log_p2s[i].push_back(log_p2s[i][read_index]);
 	    }
+	    if (str_log_p1s[i].back() != str_log_p2s[i].back()){
+	      snp_power++;
+	      sample_phased = true;
+	    }
+	    else
+	      no_snp_power++;
 	  }
 	}
       }
+      if (sample_phased) phased_samples++;
     }
+    std::cout << "Phased SNPs add info for " << snp_power << " out of " << snp_power+no_snp_power << " reads" 
+	      << " and " << phased_samples << " samples" << std::endl;
 	
     // Train stutter model and genotype each sample
     std::cerr << "Building EM stutter genotyper" << std::endl;
-    EMStutterGenotyper stutter_genotyper(str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period());
+    EMStutterGenotyper stutter_genotyper(str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
+
     std::cerr << "Training EM sutter genotyper" << std::endl;
     bool trained = stutter_genotyper.train(max_em_iter_, LL_abs_change_, LL_frac_change_);
     if (trained){
       num_em_converge_++;
-      stutter_genotyper.genotype();
-      std::cerr << "Learned stutter model: " << (*stutter_genotyper.get_stutter_model()) << std::endl;
+      std::cerr << "Learned stutter model: " << *(stutter_genotyper.get_stutter_model()) << std::endl;
+      bool use_pop_freqs = false;
+      stutter_genotyper.genotype(use_pop_freqs);
+
+      if (output_str_gts_)
+	stutter_genotyper.write_vcf_record(region.chrom(), region.start(), ref_allele, samples_to_genotype_, str_vcf_);
     }
     else {
       num_em_fail_++;
-      std::cerr << "Stutter model failed to converge" << std::endl;
+      std::cerr << "Stutter model training failed for locus " << region.chrom() << ":" << region.start() << "-" << region.stop() 
+		<< " with " << snp_power+no_snp_power << " informative reads" << std::endl;
     }
   }
 
   void finish(){
+    if (output_str_gts_)
+      str_vcf_.close();
+
     std::cerr << "SNP matching statistics: "   << match_count_     << "\t" << mismatch_count_ << "\n"
 	      << "EM convergence statistics: " << num_em_converge_ << "\t" << num_em_fail_ << std::endl;
   }
@@ -146,7 +200,7 @@ public:
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string, std::string& bamindex_string, std::string& rg_string,
 			     std::string& fasta_dir, std::string& region_file,  std::string& vcf_file, std::string& chrom, 
-			     std::string& bam_out_file, BamProcessor& bam_processor){
+			     std::string& bam_out_file, std::string& str_vcf_out_file, BamProcessor& bam_processor){
    if (argc == 1){
      std::cerr << "Usage: HipSTR --bams  <list_of_bams>  --indexes <list_of_bam_indexes> --rgs <list_of_read_groups>" << "\n"
 	       << "              --fasta <dir>           --regions <region_file.bed>" << "\n"
@@ -157,11 +211,12 @@ void parse_command_line_args(int argc, char** argv,
 	       << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located"                      << "\n"
 	       << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                                 << "\n" << "\n"
 	       << "Optional parameters:" << "\n"
+	       << "\t" << "--str-vcf       <str_gts.vcf>         "  << "\t" << "Output a VCF file containing phased STR genotypes"                                   << "\n"
 	       << "\t" << "--bam-out       <spanning_reads.bam   "  << "\t" << "Output a BAM file containing the reads spanning each region to the provided file"    << "\n"
 	       << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
 	       << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << bam_processor.MAX_MATE_DIST << ")" << "\n"
        	       << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
-	       << "\t" << "--vcf           <phased_snp_gts.vcf>  "  << "\t" << "VCF file containing phased SNP genotypes"                                            << "\n"
+	       << "\t" << "--snp-vcf       <phased_snp_gts.vcf>  "  << "\t" << "Input VCF file containing phased SNP genotypes"                                      << "\n"
 	       << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as .bam files. "                   << "\n"
 	       << "\t" << "                                      "  << "\t" << "Assign each read the RG tag corresponding to its file. By default, "                 << "\n"
 	       << "\t" << "                                      "  << "\t" << "each read must have an RG flag from lobSTR and this is used instead"                 << "\n"
@@ -176,8 +231,9 @@ void parse_command_line_args(int argc, char** argv,
     {"fasta",           required_argument, 0, 'f'},
     {"rgs",             required_argument, 0, 'g'},
     {"indexes",         required_argument, 0, 'i'},
+    {"str-vcf",         required_argument, 0, 'o'},
     {"regions",         required_argument, 0, 'r'},
-    {"vcf",             required_argument, 0, 'v'},
+    {"snp-vcf",         required_argument, 0, 'v'},
     {"bam-out",         required_argument, 0, 'w'},
     {"rem-multimaps",   no_argument, &(bam_processor.REMOVE_MULTIMAPPERS), 1},
     {0, 0, 0, 0}
@@ -186,7 +242,7 @@ void parse_command_line_args(int argc, char** argv,
   int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "nb:f:i:m:o:r:v:", long_options, &option_index);
+    c = getopt_long(argc, argv, "b:c:d:f:g:i:o:r:v:w:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -211,6 +267,9 @@ void parse_command_line_args(int argc, char** argv,
     case 'i':
       bamindex_string = std::string(optarg);
       break;
+    case 'o':
+      str_vcf_out_file = std::string(optarg);
+      break;
     case 'r':
       region_file = std::string(optarg);
       break;
@@ -231,9 +290,10 @@ void parse_command_line_args(int argc, char** argv,
 }
 
 int main(int argc, char** argv){
-  SNPBamProcessor bam_processor(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false);
-  std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", vcf_file="", bam_out_file="";
-  parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, vcf_file, chrom, bam_out_file, bam_processor);
+  bool check_mate_chroms = false;
+  SNPBamProcessor bam_processor(false, check_mate_chroms, MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
+  std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", vcf_file="", bam_out_file="", str_vcf_out_file="";
+  parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, vcf_file, chrom, bam_out_file, str_vcf_out_file, bam_processor);
   int num_flank = 0;
   if (bamfile_string.empty())
     printErrorAndDie("--bams option required");
@@ -268,17 +328,34 @@ int main(int argc, char** argv){
   if (!reader.Open(bam_files)) printErrorAndDie("Failed to open one or more BAM files");
   if (!reader.OpenIndexes(bam_indexes)) printErrorAndDie("Failed to open one or more BAM index files");
 
-  // Construct filename->read group map (if one has been specified)
+  // Construct filename->read group map (if one has been specified) 
+  // and determine the list of samples of interest based on either
+  // the specified names or the RG tags in the BAM headers
+  std::set<std::string> rg_samples;
   std::map<std::string, std::string> file_read_groups;
   if (!rg_string.empty()){
     if(bam_files.size() != read_groups.size())
       printErrorAndDie("Number of .bam and RGs must match");
-    for (int i = 0; i < bam_files.size(); i++)
+    for (int i = 0; i < bam_files.size(); i++){
       file_read_groups[bam_files[i]] = read_groups[i];
+      rg_samples.insert(read_groups[i]);
+    }
+    std::cerr << "User-specified read groups for " << rg_samples.size() << " unique samples" << std::endl;
   }
-  else
+  else {
     bam_processor.set_lobstr_rg_usage(true);
-    
+    if (!reader.GetHeader().HasReadGroups())
+      printErrorAndDie("Provided BAM files don't contain read groups in the header and the --rgs flag was not specified");
+
+    BamTools::SamReadGroupDictionary rg_dict = reader.GetHeader().ReadGroups;
+    for (auto rg_iter = rg_dict.Begin(); rg_iter != rg_dict.End(); rg_iter++){
+      if (!rg_iter->HasID() || !rg_iter->HasSample())
+	printErrorAndDie("RG in BAM header is lacking the ID or SM tag");
+      rg_samples.insert(rg_iter->Sample);
+    }
+    std::cerr << "BAMs contain read groups for " << rg_samples.size() << " unique samples" << std::endl;
+  }
+  
   BamTools::BamWriter bam_writer;
   if (!bam_out_file.empty()){
     BamTools::RefVector ref_vector = reader.GetReferenceData();
@@ -287,7 +364,10 @@ int main(int argc, char** argv){
   }
 
   if (!vcf_file.empty())
-    bam_processor.set_vcf(vcf_file);
+    bam_processor.set_input_snp_vcf(vcf_file);
+
+  if(!str_vcf_out_file.empty())
+    bam_processor.set_output_str_vcf(str_vcf_out_file, rg_samples);
 
   // Run analysis
   bam_processor.process_regions(reader, region_file, fasta_dir, file_read_groups, bam_writer, std::cout, 1000);

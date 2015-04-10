@@ -30,7 +30,7 @@ class EMStutterGenotyper{
   std::map<std::string, int> sample_indices_; // Mapping from sample name to index
 
   std::vector<int> bps_per_allele_;   // Size of each STR allele in bps
-  std::vector<int> reads_per_sample_;
+  std::vector<int> reads_per_sample_; // Number of reads for each sample
   double* log_gt_priors_ = NULL;
 
   // Iterates through allele_1, allele_2 and then samples by their indices
@@ -56,18 +56,20 @@ class EMStutterGenotyper{
   void recalc_stutter_model();
   
   // Functions for the E step of the EM algorithm
-  double recalc_log_sample_posteriors();  
+  double recalc_log_sample_posteriors(bool use_pop_freqs);  
   void recalc_log_read_phase_posteriors();
+
+
+  std::string get_allele(std::string& ref_allele, int bp_diff);
 
  public:
   EMStutterGenotyper(std::vector< std::vector<int> >& num_bps, 
 		     std::vector< std::vector<double> >& log_p1, 
 		     std::vector< std::vector<double> >& log_p2, 
-		     std::vector<std::string>& sample_names, int motif_len){
+		     std::vector<std::string>& sample_names, int motif_len, int ref_allele){
     assert(num_bps.size() == log_p1.size() && num_bps.size() == log_p2.size() && num_bps.size() == sample_names.size());
     num_samples_  = num_bps.size();
     motif_len_    = motif_len;
-
     sample_names_ = sample_names;
     for (unsigned int i = 0; i < sample_names.size(); i++)
       sample_indices_.insert(std::pair<std::string,int>(sample_names[i], i));
@@ -82,9 +84,17 @@ class EMStutterGenotyper{
       num_reads_ += num_bps[i].size();
     }
 
-    // Construct a sorted list of allele sizes and a mapping from allele size to allele index
+    // Remove the reference allele if it's in the list of alleles
+    if (allele_sizes.find(ref_allele) != allele_sizes.end())
+      allele_sizes.erase(ref_allele);
+
+    // Construct a list of allele sizes (including the reference allele)
+    // The reference allele is stored as the first element but the remaining elements are sorted
     bps_per_allele_ = std::vector<int>(allele_sizes.begin(), allele_sizes.end());
     std::sort(bps_per_allele_.begin(), bps_per_allele_.end());
+    bps_per_allele_.insert(bps_per_allele_.begin(), ref_allele);
+
+    // Construct a mapping from allele size to allele index
     num_alleles_ = bps_per_allele_.size();
     std::map<int, int> allele_indices;
     for (unsigned int i = 0; i < bps_per_allele_.size(); i++)
@@ -104,12 +114,14 @@ class EMStutterGenotyper{
     for (unsigned int i = 0; i < num_bps.size(); i++){
       reads_per_sample_.push_back(num_bps[i].size());
       for (unsigned int j = 0; j < num_bps[i].size(); ++j, ++read_index){
+	assert(log_p1[i][j] <= 0.0 && log_p2[i][j] <= 0.0);
         allele_index_[read_index] = allele_indices[num_bps[i][j]];
 	log_p1_[read_index]       = log_p1[i][j];
 	log_p2_[read_index]       = log_p2[i][j];
 	sample_label_[read_index] = i;
       }
     }
+    assert(read_index == num_reads_);
   }
 
   ~EMStutterGenotyper(){
@@ -123,8 +135,9 @@ class EMStutterGenotyper{
     delete stutter_model_;
   }  
 
+  static void write_vcf_header(std::vector<std::string>& sample_names, std::ostream& out);
 
-  void write_vcf_record(std::string chrom, uint32_t pos, std::vector<std::string>& sample_names, std::ostream& out);
+  void write_vcf_record(std::string chrom, uint32_t pos, std::string& ref_allele, std::vector<std::string>& sample_names, std::ostream& out);
   
   void set_stutter_model(double inframe_geom,  double inframe_up,  double inframe_down,
 			 double outframe_geom, double outframe_up, double outframe_down){
@@ -132,7 +145,7 @@ class EMStutterGenotyper{
     stutter_model_ = new StutterModel(inframe_geom,  inframe_up,  inframe_down, outframe_geom, outframe_up, outframe_down, motif_len_);
   }
 
-  void genotype();
+  void genotype(bool use_pop_freqs);
   
   bool train(int max_iter, double min_LL_abs_change, double min_LL_frac_change);
 
