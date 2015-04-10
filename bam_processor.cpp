@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <locale>
 #include <sstream>
 #include <stdlib.h>
 
@@ -33,6 +34,14 @@ std::string BamProcessor::trim_alignment_name(BamTools::BamAlignment& aln){
   return aln_name;
 }
 
+std::string get_str_ref_allele(uint32_t start, uint32_t end, std::string& chrom_seq){
+  std::locale loc;
+  std::string seq = chrom_seq.substr(start-1, end-start+1);
+  std::stringstream ss;
+  for (unsigned int i = 0; i < seq.size(); i++)
+    ss << std::toupper(seq[i], loc);
+  return ss.str();
+}
 
 void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, 
 					 std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& file_read_groups,
@@ -121,9 +130,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     if (pass)
       region_alignments.push_back(alignment);
 
-    //std::cerr << alignment.Name << "\t";
     std::string aln_key = trim_alignment_name(alignment);
-
     if (pass){
       auto aln_iter = potential_mates.find(aln_key);
       if (aln_iter != potential_mates.end()){
@@ -151,7 +158,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   potential_strs.clear();
   potential_mates.clear();
   std::cerr << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads" << std::endl;
-
   
   std::cerr << read_count << " reads overlapped region, of which " 
 	    << "\n\t" << diff_chrom_mate  << " had mates on a different chromosome"
@@ -165,7 +171,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	    << "\n\t" << num_end_matches  << " had too few bp matches along the ends"
   	    << "\n"   << region_alignments.size() << " PASSED ALL FILTERS" << "\n" << std::endl; 
     
-
   // Output the spanning reads to a BAM file, if requested
   if (bam_writer.IsOpen()){
     for (auto read_iter = region_alignments.begin(); read_iter != region_alignments.end(); read_iter++){
@@ -190,7 +195,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     }
   }
 
-  
   // Separate the reads based on their associated read groups
   std::map<std::string, int> rg_indices;
   for (unsigned int i = 0; i < paired_str_alns.size(); ++i){
@@ -264,7 +268,7 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
     std::vector<std::string> rg_names;
     std::vector< std::vector<BamTools::BamAlignment> > paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg;
     read_and_filter_reads(reader, chrom_seq, region_iter, file_read_groups, rg_names, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, bam_writer);
-
-    process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, *region_iter, out);
+    std::string ref_allele = get_str_ref_allele(region_iter->start(), region_iter->stop(), chrom_seq);
+    process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, *region_iter, ref_allele, out);
   }
 }

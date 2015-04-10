@@ -44,7 +44,7 @@ class BamProcessor {
   virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 			     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 			     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
-			     std::vector<std::string>& rg_names, Region& region, 
+			     std::vector<std::string>& rg_names, Region& region, std::string& ref_allele,
 			     std::ostream& out){
     std::cerr << "Doing nothing with reads" << std::endl;
   }
