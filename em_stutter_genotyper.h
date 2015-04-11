@@ -137,7 +137,7 @@ class EMStutterGenotyper{
 
   static void write_vcf_header(std::vector<std::string>& sample_names, std::ostream& out);
 
-  void write_vcf_record(std::string chrom, uint32_t pos, std::string& ref_allele, std::vector<std::string>& sample_names, std::ostream& out);
+  void write_vcf_record(std::string chrom, uint32_t start, uint32_t end, std::string& ref_allele, std::vector<std::string>& sample_names, std::ostream& out);
   
   void set_stutter_model(double inframe_geom,  double inframe_up,  double inframe_down,
 			 double outframe_geom, double outframe_up, double outframe_down){

@@ -138,7 +138,8 @@ public:
 	std::vector<BamTools::BamAlignment>& reads = (read_type == 0 ? paired_strs_by_rg[i] : unpaired_strs_by_rg[i]);
 	for (unsigned int j = 0; j < reads.size(); ++j, ++read_index){
 	  int bp_diff;
-	  bool got_size = ExtractCigar(reads[j].CigarData, reads[j].Position, region.start(), region.stop(), bp_diff);
+	  //bool got_size = ExtractCigar(reads[j].CigarData, reads[j].Position, region.start(), region.stop(), bp_diff);
+	  bool got_size = ExtractCigar(reads[j].CigarData, reads[j].Position, region.start()-region.period(), region.stop()+region.period(), bp_diff);
 	  if (got_size){
 	    if (bp_diff < -(int)(region.stop()-region.start()+1)) {
 	      std::cerr << "WARNING: Excluding read with bp difference greater than reference allele: " << reads[j].Name << std::endl;
@@ -178,7 +179,7 @@ public:
       stutter_genotyper.genotype(use_pop_freqs);
 
       if (output_str_gts_)
-	stutter_genotyper.write_vcf_record(region.chrom(), region.start(), ref_allele, samples_to_genotype_, str_vcf_);
+	stutter_genotyper.write_vcf_record(region.chrom(), region.start(), region.stop(), ref_allele, samples_to_genotype_, str_vcf_);
     }
     else {
       num_em_fail_++;

@@ -12,13 +12,14 @@ void EMStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names
   out << "##fileformat=VCFv4.1" << "\n";
 
   // Info field descriptors
-  out << "##INFO=<ID=" << "INFRAME_PGEOM,"  << "Number=1,Type=Float,Description=\""  << "Parameter for in-frame geometric step size distribution" << "\">" << "\n"
-      << "##INFO=<ID=" << "INFRAME_UP,"     << "Number=1,Type=Float,Description=\""  << "Probability that stutter causes an in-frame increase in obs. STR size" << "\">" << "\n"
-      << "##INFO=<ID=" << "INFRAME_DOWN,"   << "Number=1,Type=Float,Description=\""  << "Probability that stutter causes an in-frame decrease in obs. STR size" << "\">" << "\n"
-      << "##INFO=<ID=" << "OUTFRAME_PGEOM," << "Number=1,Type=Float,Description=\"" << "Parameter for out-of-frame geometric step size distribution" << "\">" << "\n"
-      << "##INFO=<ID=" << "OUTFRAME_UP,"    << "Number=1,Type=Float,Description=\"" << "Probability that stutter causes an out-of-frame increase in obs. STR size" << "\">" << "\n"
-      << "##INFO=<ID=" << "OUTFRAME_DOWN,"  << "Number=1,Type=Float,Description=\"" << "Probability that stutter causes an out-of-frame decrease in obs. STR size" << "\">" << "\n"
-      << "##INFO=<ID=" << "BPDIFFS,"        << "Number=A,Type=Integer,Description=\"" << "Base pair difference of each alternate allele from the reference allele" << "\">" << "\n";
+  out << "##INFO=<ID=" << "INFRAME_PGEOM,"  << "Number=1,Type=Float,Description=\""   << "Parameter for in-frame geometric step size distribution"                   << "\">\n"
+      << "##INFO=<ID=" << "INFRAME_UP,"     << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame increase in obs. STR size"     << "\">\n"
+      << "##INFO=<ID=" << "INFRAME_DOWN,"   << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame decrease in obs. STR size"     << "\">\n"
+      << "##INFO=<ID=" << "OUTFRAME_PGEOM," << "Number=1,Type=Float,Description=\""   << "Parameter for out-of-frame geometric step size distribution"               << "\">\n"
+      << "##INFO=<ID=" << "OUTFRAME_UP,"    << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame increase in obs. STR size" << "\">\n"
+      << "##INFO=<ID=" << "OUTFRAME_DOWN,"  << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame decrease in obs. STR size" << "\">\n"
+      << "##INFO=<ID=" << "BPDIFFS,"        << "Number=A,Type=Integer,Description=\"" << "Base pair difference of each alternate allele from the reference allele"   << "\">\n"
+      << "##INFO=<ID=" << "END,"            << "Number=1,Type=Integer,Description=\"" << "Inclusive end coordinate for STR's reference allele"                       << "\">\n";
 
   // Format field descriptors
   out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""   << "Genotype" << "\">" << "\n"
@@ -338,7 +339,7 @@ std::string EMStutterGenotyper::get_allele(std::string& ref_allele, int bp_diff)
   }
 }
 
-void EMStutterGenotyper::write_vcf_record(std::string chrom, uint32_t pos, std::string& ref_allele, std::vector<std::string>& sample_names, std::ostream& out){
+void EMStutterGenotyper::write_vcf_record(std::string chrom, uint32_t start, uint32_t end, std::string& ref_allele, std::vector<std::string>& sample_names, std::ostream& out){
   std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
   std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX);
   std::vector< std::vector<double> > log_read_phases(num_samples_);
@@ -393,7 +394,7 @@ void EMStutterGenotyper::write_vcf_record(std::string chrom, uint32_t pos, std::
   }
 
   //VCF line format = CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE_1 SAMPLE_2 ... SAMPLE_N
-  out << chrom << "\t" << pos << "\t" << ".";
+  out << chrom << "\t" << start << "\t" << ".";
 
   // Add reference allele and alternate alleles
   out << "\t" << get_allele(ref_allele, bps_per_allele_[0]) << "\t";
@@ -414,7 +415,8 @@ void EMStutterGenotyper::write_vcf_record(std::string chrom, uint32_t pos, std::
       << "INFRAME_DOWN="    << stutter_model_->get_parameter(true,  'D') << ";" 
       << "OUTFRAME_PGEOM="  << stutter_model_->get_parameter(false, 'P') << ";" 
       << "OUTFRAME_UP="     << stutter_model_->get_parameter(false, 'U') << ";" 
-      << "OUTFRAME_DOWN="   << stutter_model_->get_parameter(false, 'D') << ";";
+      << "OUTFRAME_DOWN="   << stutter_model_->get_parameter(false, 'D') << ";"
+      << "END="             << end << ";";
   if (num_alleles_ > 1){
    out << "BPDIFFS=" << bps_per_allele_[1];
     for (unsigned int i = 2; i < num_alleles_; i++)
