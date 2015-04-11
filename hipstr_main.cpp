@@ -168,7 +168,7 @@ public:
 	
     // Train stutter model and genotype each sample
     std::cerr << "Building EM stutter genotyper" << std::endl;
-    EMStutterGenotyper stutter_genotyper(str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
+    EMStutterGenotyper stutter_genotyper(region.chrom(), region.start(), region.stop(), str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
 
     std::cerr << "Training EM sutter genotyper" << std::endl;
     bool trained = stutter_genotyper.train(max_em_iter_, LL_abs_change_, LL_frac_change_);
@@ -179,7 +179,7 @@ public:
       stutter_genotyper.genotype(use_pop_freqs);
 
       if (output_str_gts_)
-	stutter_genotyper.write_vcf_record(region.chrom(), region.start(), region.stop(), ref_allele, samples_to_genotype_, str_vcf_);
+	stutter_genotyper.write_vcf_record(ref_allele, samples_to_genotype_, str_vcf_);
     }
     else {
       num_em_fail_++;

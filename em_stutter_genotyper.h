@@ -9,12 +9,18 @@
 #include <string>
 #include <vector>
 
+#include "vcflib/src/Variant.h"
+
 #include "error.h"
 #include "stutter_model.h"
 
 
 class EMStutterGenotyper{
  private:
+  // Locus information
+  std::string chrom_;
+  uint32_t start_, end_;
+
   int num_reads_;   // Total number of reads across all samples
   int num_samples_; // Total number of samples
   int num_alleles_; // Total number of valid alleles
@@ -38,6 +44,10 @@ class EMStutterGenotyper{
   
   // Iterates through allele_1, allele_2, and then reads and phases 1 or 2 by their indices
   double* log_read_phase_posteriors_ = NULL; 
+
+  // Iterates through allele_1, allele 2 and then samples by their indices
+  // Only used if per-allele priors have been specified for each sample
+  double* log_allele_priors_ = NULL;
   
   // Various functions to compute the sum and logsumexp of values and arrays of values
   inline double sum(double* begin, double* end);
@@ -59,15 +69,18 @@ class EMStutterGenotyper{
   double recalc_log_sample_posteriors(bool use_pop_freqs);  
   void recalc_log_read_phase_posteriors();
 
-
   std::string get_allele(std::string& ref_allele, int bp_diff);
 
  public:
-  EMStutterGenotyper(std::vector< std::vector<int> >& num_bps, 
+  EMStutterGenotyper(const std::string& chrom, uint32_t start, uint32_t end,
+		     std::vector< std::vector<int> >& num_bps, 
 		     std::vector< std::vector<double> >& log_p1, 
 		     std::vector< std::vector<double> >& log_p2, 
 		     std::vector<std::string>& sample_names, int motif_len, int ref_allele){
     assert(num_bps.size() == log_p1.size() && num_bps.size() == log_p2.size() && num_bps.size() == sample_names.size());
+    chrom_        = chrom;
+    start_        = start;
+    end_          = end;
     num_samples_  = num_bps.size();
     motif_len_    = motif_len;
     sample_names_ = sample_names;
@@ -132,12 +145,15 @@ class EMStutterGenotyper{
     delete [] log_gt_priors_;
     delete [] log_sample_posteriors_;
     delete [] log_read_phase_posteriors_;
+    delete [] log_allele_priors_;
     delete stutter_model_;
   }  
 
   static void write_vcf_header(std::vector<std::string>& sample_names, std::ostream& out);
 
-  void write_vcf_record(std::string chrom, uint32_t start, uint32_t end, std::string& ref_allele, std::vector<std::string>& sample_names, std::ostream& out);
+  void set_allele_priors(vcf::VariantCallFile& variant_file);
+
+  void write_vcf_record(std::string& ref_allele, std::vector<std::string>& sample_names, std::ostream& out);
   
   void set_stutter_model(double inframe_geom,  double inframe_up,  double inframe_down,
 			 double outframe_geom, double outframe_up, double outframe_down){

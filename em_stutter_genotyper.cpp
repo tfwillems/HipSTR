@@ -79,6 +79,45 @@ inline double EMStutterGenotyper::log_sum_exp(std::vector<double>& log_vals){
   return max_val + log(total);
 }
 
+void EMStutterGenotyper::set_allele_priors(vcf::VariantCallFile& variant_file){
+  delete [] log_allele_priors_;
+  log_allele_priors_ = new double[num_alleles_*num_alleles_*num_samples_];
+  
+  std::string GP_KEY = "GP";
+  
+
+  if (!variant_file.setRegion(chrom_, start_, end_)){
+    // Retry setting region if chr is in chromosome name
+    if (chrom_.size() <= 3 || chrom_.substr(0, 3).compare("chr") != 0 || !variant_file.setRegion(chrom_.substr(3), start_, end_))
+      printErrorAndDie("Failed to set VCF region when obtaining allele priors");
+  }
+  vcf::Variant variant(variant_file);
+  if (!variant_file.getNextVariant(variant))
+    printErrorAndDie("Failed to extract VCF entry when obtaining allele priors");
+
+  int sample_count = 0;
+  for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
+    if (sample_indices_.find(*sample_iter) == sample_indices_.end())
+      continue;
+    int sample_index = sample_indices_.find(*sample_iter)->second;
+    sample_count++;
+
+    int gp_index = 0;
+    for (unsigned int i = 0; i < num_alleles_; i++){
+      for (unsigned int j = 0; j <= i; ++j, ++gp_index){
+	double prob = variant.getSampleValueFloat(GP_KEY, *sample_iter, gp_index);
+      }
+    }
+    
+    // TO DO: Parse BEAGLE format fields to set priors
+    printErrorAndDie("set_allele_priors() function not fully implemented");
+  }
+
+  // Ensure that the VCF contained priors for all samples
+  if (sample_count != num_samples_)
+    printErrorAndDie("BEAGLE VCF only contained allele priors for a subset of samples");
+}
+
 void EMStutterGenotyper::init_log_gt_priors(){
   std::fill(log_gt_priors_, log_gt_priors_+num_alleles_, 1); // Use 1 sample pseudocount                                                                                  
   for (int i = 0; i < num_reads_; i++)
@@ -198,14 +237,24 @@ void EMStutterGenotyper::recalc_stutter_model(){
 double EMStutterGenotyper::recalc_log_sample_posteriors(bool use_pop_freqs){
   std::vector<double> sample_max_LLs(num_samples_, -DBL_MAX);
   double* LL_ptr = log_sample_posteriors_;
+
+  if (use_pop_freqs){
+    // If per-allele priors have been set for each sample, use them
+    if (log_allele_priors_ != NULL)
+      memcpy(log_sample_posteriors_, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
+
+    // Otherwise we'll set them in the for loop below on a per-allele basis
+  }
+  else
+    std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), -2*log(num_alleles_));
+
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
     int len_1 = bps_per_allele_[index_1];
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
       int len_2 = bps_per_allele_[index_2];
-      if (use_pop_freqs)
-	std::fill(LL_ptr, LL_ptr+num_samples_, log_gt_priors_[index_1]+log_gt_priors_[index_2]); // Initialize LL's with log genotype priors  
-      else
-	std::fill(LL_ptr, LL_ptr+num_samples_, -2*log(num_alleles_));
+      if (use_pop_freqs && log_allele_priors_ == NULL)
+	  std::fill(LL_ptr, LL_ptr+num_samples_, log_gt_priors_[index_1]+log_gt_priors_[index_2]); // Initialize LL's with log genotype priors  
+
       for (int read_index = 0; read_index < num_reads_; ++read_index){
 	LL_ptr[sample_label_[read_index]] += log_sum_exp(LOG_ONE_HALF + log_p1_[read_index]+stutter_model_->log_stutter_pmf(len_1, bps_per_allele_[allele_index_[read_index]]), 
 							 LOG_ONE_HALF + log_p2_[read_index]+stutter_model_->log_stutter_pmf(len_2, bps_per_allele_[allele_index_[read_index]]));
@@ -243,7 +292,6 @@ double EMStutterGenotyper::recalc_log_sample_posteriors(bool use_pop_freqs){
   return total_LL;
 }
 
- 
 void EMStutterGenotyper::recalc_log_read_phase_posteriors(){
   double* log_phase_ptr = log_read_phase_posteriors_;
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
@@ -282,13 +330,12 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
     std::cerr << std::endl;
     
     assert(new_LL <= TOLERANCE);
-
     if (new_LL < LL+TOLERANCE)
       return false;
-    //assert(new_LL >= LL);
 
-    // M-step                                                                                                                                                               
-    recalc_log_gt_priors();
+    // M-step
+    if (log_allele_priors_ == NULL) 
+      recalc_log_gt_priors();
     recalc_stutter_model();
     
     double abs_change  = new_LL - LL;
@@ -339,7 +386,7 @@ std::string EMStutterGenotyper::get_allele(std::string& ref_allele, int bp_diff)
   }
 }
 
-void EMStutterGenotyper::write_vcf_record(std::string chrom, uint32_t start, uint32_t end, std::string& ref_allele, std::vector<std::string>& sample_names, std::ostream& out){
+void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<std::string>& sample_names, std::ostream& out){
   std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
   std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX);
   std::vector< std::vector<double> > log_read_phases(num_samples_);
@@ -394,7 +441,7 @@ void EMStutterGenotyper::write_vcf_record(std::string chrom, uint32_t start, uin
   }
 
   //VCF line format = CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE_1 SAMPLE_2 ... SAMPLE_N
-  out << chrom << "\t" << start << "\t" << ".";
+  out << chrom_ << "\t" << start_ << "\t" << ".";
 
   // Add reference allele and alternate alleles
   out << "\t" << get_allele(ref_allele, bps_per_allele_[0]) << "\t";
@@ -416,7 +463,7 @@ void EMStutterGenotyper::write_vcf_record(std::string chrom, uint32_t start, uin
       << "OUTFRAME_PGEOM="  << stutter_model_->get_parameter(false, 'P') << ";" 
       << "OUTFRAME_UP="     << stutter_model_->get_parameter(false, 'U') << ";" 
       << "OUTFRAME_DOWN="   << stutter_model_->get_parameter(false, 'D') << ";"
-      << "END="             << end << ";";
+      << "END="             << end_ << ";";
   if (num_alleles_ > 1){
    out << "BPDIFFS=" << bps_per_allele_[1];
     for (unsigned int i = 2; i < num_alleles_; i++)
