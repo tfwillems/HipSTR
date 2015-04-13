@@ -49,14 +49,6 @@ class EMStutterGenotyper{
   // Only used if per-allele priors have been specified for each sample
   double* log_allele_priors_ = NULL;
   
-  // Various functions to compute the sum and logsumexp of values and arrays of values
-  inline double sum(double* begin, double* end);
-  inline double sum(std::vector<double>& vals);
-  inline double log_sum_exp(double* begin, double* end);
-  inline double log_sum_exp(double log_v1, double log_v2);
-  inline double log_sum_exp(double log_v1, double log_v2, double log_v3);
-  inline double log_sum_exp(std::vector<double>& log_vals);
-
   // Initialization functions for the EM algorithm
   void init_log_gt_priors();
   void init_stutter_model();
