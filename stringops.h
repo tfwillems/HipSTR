@@ -7,5 +7,6 @@
 void split_by_delim(const std::string &s, char delim, 
 		    std::vector<std::string>& substrings);
 
+std::string uppercase(std::string str);
 
 #endif
