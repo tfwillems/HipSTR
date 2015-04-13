@@ -3,6 +3,8 @@
 
 #include "mathops.h"
 
+const double LOG_ONE_HALF = log(0.5);
+
 double sum(double* begin, double* end){
   double total = 0.0;
   for (double* iter = begin; iter != end; iter++)

@@ -3,6 +3,8 @@
 
 #include <vector>
 
+extern const double LOG_ONE_HALF;
+
 double sum(double* begin, double* end);
 
 double sum(std::vector<double>& vals);
