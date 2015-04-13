@@ -4,7 +4,7 @@
 
 #include "em_stutter_genotyper.h"
 #include "error.h"
-#include "MathOps.h"
+#include "mathops.h"
 
 const double LOG_ONE_HALF = log(0.5);
 const double TOLERANCE    = 1e-10;

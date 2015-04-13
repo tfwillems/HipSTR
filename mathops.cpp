@@ -1,6 +1,7 @@
+#include <algorithm>
 #include <math.h>
 
-#include "MathOps.h"
+#include "mathops.h"
 
 double sum(double* begin, double* end){
   double total = 0.0;
