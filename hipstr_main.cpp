@@ -132,9 +132,12 @@ public:
           unpaired.back().push_back(new_alignment);
         }
       }
-      
+
+      // TO DO: Replace parameters with values learned from length-based EM algorithm
+      StutterModel stutter_model(0.9, 0.05, 0.05, 0.7, 0.005, 0.005, region.period());
+
       std::vector<HapBlock*> blocks;
-      Haplotype* haplotype = generate_haplotype(region, chrom_seq, paired, unpaired, blocks);
+      Haplotype* haplotype = generate_haplotype(region, chrom_seq, paired, unpaired, &stutter_model, blocks);
       do {
 	haplotype->print(std::cerr);
 

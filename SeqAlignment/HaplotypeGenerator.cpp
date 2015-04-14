@@ -194,6 +194,7 @@ void generate_candidate_str_seqs(std::string& ref_seq,
 Haplotype* generate_haplotype(Region& str_region, std::string& chrom_seq,
 			      std::vector< std::vector<Alignment> >& paired_strs_by_rg,
 			      std::vector< std::vector<Alignment> >& unpaired_strs_by_rg,
+			      StutterModel* stutter_model,
 			      std::vector<HapBlock*>& blocks){
   // Determine the minimum and maximum alignment boundaries
   int32_t min_start = INT_MAX, max_stop = INT_MIN;
@@ -222,7 +223,8 @@ Haplotype* generate_haplotype(Region& str_region, std::string& chrom_seq,
   assert(str_seqs[0].compare(uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))) == 0);
   blocks.clear();
   blocks.push_back(new HapBlock(min_start,        rep_region_start, uppercase(chrom_seq.substr(min_start, rep_region_start-min_start))));    // Ref sequence preceding STRS
-  blocks.push_back(new RepeatBlock(rep_region_start, rep_region_end, uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start)), str_region.period()));
+  blocks.push_back(new RepeatBlock(rep_region_start, rep_region_end, 
+				   uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start)), str_region.period(), stutter_model));
   blocks.push_back(new HapBlock(rep_region_end,   max_stop,         uppercase(chrom_seq.substr(rep_region_end, max_stop-rep_region_end))));  // Ref sequence following STRs
   for (unsigned int j = 1; j < str_seqs.size(); j++)
     blocks[1]->add_alternate(str_seqs[j]);
