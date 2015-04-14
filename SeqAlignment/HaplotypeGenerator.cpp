@@ -12,13 +12,13 @@
 const double MIN_FRAC_READS   = 0.01;
 const double MIN_FRAC_SAMPLES = 0.01;
 
-void trim_from_left(int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
+void trim_from_left(int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   int min_len = INT_MAX;
   for (unsigned int i = 0; i < sequences.size(); i++)
     min_len = std::min(min_len, (int)sequences[i].size());
  
   int left_trim = 0;
-  while (left_trim < min_len){
+  while (left_trim < min_len-ideal_min_length){
     unsigned int j = 1;
     while (j < sequences.size()){
       if (sequences[j][left_trim] != sequences[j-1][left_trim])
@@ -37,13 +37,13 @@ void trim_from_left(int32_t& rep_region_start, int32_t& rep_region_end, std::vec
 }
 
 
-void trim_from_right(int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
+void trim_from_right(int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   int min_len = INT_MAX;
   for (unsigned int i = 0; i < sequences.size(); i++)
     min_len = std::min(min_len, (int)sequences[i].size());
 
   int right_trim = 0;
-  while (right_trim < min_len){
+  while (right_trim < min_len-ideal_min_length){
     char c = sequences[0][sequences[0].size()-1-right_trim];
     unsigned int j = 1;
     while (j < sequences.size()){
@@ -138,7 +138,7 @@ bool stringLengthLT(const std::string& s1, const std::string& s2){
   return s1.size() < s2.size();
 }
 
-void generate_candidate_str_seqs(std::string& ref_seq,
+void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
 				 std::vector< std::vector<Alignment> >& paired_strs_by_rg,
 				 std::vector< std::vector<Alignment> >& unpaired_strs_by_rg,
 				 int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
@@ -187,8 +187,8 @@ void generate_candidate_str_seqs(std::string& ref_seq,
   std::sort(sequences.begin()+1, sequences.end(), stringLengthLT);
 
   // Trim to remove identical sequences
-  trim_from_left(rep_region_start, rep_region_end, sequences);
-  trim_from_right(rep_region_start, rep_region_end, sequences);
+  trim_from_left(ideal_min_length, rep_region_start, rep_region_end, sequences);
+  trim_from_right(ideal_min_length, rep_region_start, rep_region_end, sequences);
 }
 
 Haplotype* generate_haplotype(Region& str_region, std::string& chrom_seq,
@@ -211,13 +211,16 @@ Haplotype* generate_haplotype(Region& str_region, std::string& chrom_seq,
     }
   }
   
-  // Extract candidate STR sequences  (use some padding to ensure indels near STR ends are included)
+  // Extract candidate STR sequences (use some padding to ensure indels near STR ends are included)
   std::vector<std::string> str_seqs;
   int32_t rep_region_start = str_region.start() < 5 ? 0 : str_region.start()-5;
   int32_t rep_region_end   = str_region.stop() + 5;
   std::string ref_seq      = uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start));
-  generate_candidate_str_seqs(ref_seq, paired_strs_by_rg, unpaired_strs_by_rg, rep_region_start, rep_region_end, str_seqs);
+  int ideal_min_length     = 3*str_region.period(); // Would ideally have at least 3 repeat units in each allele after trimming
+  generate_candidate_str_seqs(ref_seq, ideal_min_length, paired_strs_by_rg, unpaired_strs_by_rg, rep_region_start, rep_region_end, str_seqs);
   
+  // TO DO: Trim reference flanks so that they're not too long
+
   // Create a set of haplotype regions, consisting of STR sequence block flanked by two reference sequence stretches
   assert(rep_region_start > min_start && rep_region_end < max_stop);
   assert(str_seqs[0].compare(uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))) == 0);
