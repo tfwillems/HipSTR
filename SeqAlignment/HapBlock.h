@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "../error.h"
-#include "RepeatInfo.h"
+#include "RepeatStutterInfo.h"
 
 class HapBlock {
  private:
@@ -43,7 +43,7 @@ class HapBlock {
     r_homopolymer_lens.clear();
   }
 
-  virtual RepeatInfo* get_repeat_info() {
+  virtual RepeatStutterInfo* get_repeat_info() {
     return NULL;
   }
 

@@ -116,18 +116,6 @@ public:
       RepeatRegion rep_region(region.start(), region.stop(), region.period(), ref_allele);
       std::stringstream ss; ss << region.chrom() << ":" << region.start() << "-" << region.stop();
 
-      /*
-      std::vector<BamTools::BamAlignment> alignments;
-      for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
-	alignments.insert(alignments.end(), paired_strs_by_rg[i].begin(),   paired_strs_by_rg[i].end());
-	alignments.insert(alignments.end(), unpaired_strs_by_rg[i].begin(), unpaired_strs_by_rg[i].end());
-      }
-      std::cerr << "Generating alignment haplotypes/visualization" << std::endl;
-      arrangeAlignments(rep_region, chrom_seq, alignments, ss.str(), true, viz_pdf_, empty_sample_info, base_qualities, NULL);
-      */
-
-
-      
       std::cerr << "Realigning reads" << std::endl;
       std::vector< std::vector<Alignment> > paired, unpaired;
       for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
@@ -145,31 +133,26 @@ public:
         }
       }
       
-      int32_t region_start = region.start()-5;
-      int32_t region_end   = region.stop()+5;
-      std::string ref_seq  = uppercase(chrom_seq.substr(region_start, region_end-region_start));
-      std::cerr << ref_seq << std::endl;
-      std::vector<std::string> sequences;
-      //generate_candidates(region, ref_seq, paired, unpaired, region_start, region_end, sequences);
-
-  
       std::vector<HapBlock*> blocks;
-      Haplotype* haplotype = generate_haplotype(region, ref_seq, chrom_seq, paired, unpaired, blocks);
+      Haplotype* haplotype = generate_haplotype(region, chrom_seq, paired, unpaired, blocks);
       do {
 	haplotype->print(std::cerr);
 
 	for (unsigned int i = 0; i < haplotype->num_blocks(); i++){
 	  const std::string& block_seq = haplotype->get_seq(i);
-	  std::cerr << i << " " << block_seq << std::endl;
+	  std::cerr << i << " " << block_seq << " IS_REPEAT? " << (haplotype->get_block(i)->get_repeat_info() != NULL) << std::endl;
+	  /*
 	  for (unsigned int j = 0; j < block_seq.size(); j++){
 	    std::cerr << haplotype->homopolymer_length(i,j) << " ";
 	  }
 	  std::cerr << std::endl;	  
+	  */
 	}
-
-
       } while (haplotype->next());
     
+
+
+
       // Clean up created data structures
       for (int i = 0; i < blocks.size(); i++)
 	delete blocks[i];

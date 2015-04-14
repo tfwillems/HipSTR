@@ -1,5 +1,5 @@
-#ifndef REPEAT_INFO_H_
-#define REPEAT_INFO_H_
+#ifndef REPEAT_STUTTER_INFO_H_
+#define REPEAT_STUTTER_INFO_H_
 
 #include <algorithm>
 #include <string>
@@ -10,13 +10,13 @@
 const int MAX_STUTTER_REPEAT_INS = 3;
 const int MAX_STUTTER_REPEAT_DEL = -3;
 
-class RepeatInfo {
+class RepeatStutterInfo {
  private:
   int period_;
   int max_ins_, max_del_;
 
  public:
-  RepeatInfo(int period, std::string& ref_allele ){
+  RepeatStutterInfo(int period, std::string& ref_allele ){
     period_  = period;
     max_ins_ = MAX_STUTTER_REPEAT_INS*period_;
     max_del_ = std::max(MAX_STUTTER_REPEAT_DEL*period_, -(int)ref_allele.size());

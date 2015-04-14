@@ -5,15 +5,15 @@
 
 #include "error.h"
 #include "HapBlock.h"
-#include "RepeatInfo.h"
+#include "RepeatStutterInfo.h"
 
 class RepeatBlock : public HapBlock {
  private:
-    RepeatInfo* repeat_info_;
+    RepeatStutterInfo* repeat_info_;
 
  public:
    RepeatBlock(int32_t start, int32_t end, std::string ref_seq, int period): HapBlock(start, end, ref_seq){
-      repeat_info_ = new RepeatInfo(period, ref_seq); 
+      repeat_info_ = new RepeatStutterInfo(period, ref_seq); 
     }
     
     ~RepeatBlock(){
@@ -25,7 +25,7 @@ class RepeatBlock : public HapBlock {
       repeat_info_->add_alternate_allele(alt);
     }
 
-    RepeatInfo* get_repeat_info(){ return repeat_info_; }
+    RepeatStutterInfo* get_repeat_info(){ return repeat_info_; }
 };
 
 

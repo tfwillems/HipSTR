@@ -53,12 +53,12 @@ void HaplotypeAligner::align_left_flank(const char* seq_0,
       // NOTE: Stutter block emission probability is invariant to direction of alignment, so we can align
       // left->right instead right->left as would be typically required
 
-      RepeatInfo* rep_info = haplotype_->get_block(block_index)->get_repeat_info();
-      int period           = rep_info->get_period();
-      int block_option     = haplotype_->cur_index(block_index);
-      int block_len        = block_seq.size();
-      int prev_row_index   = seq_len*(haplotype_index-1);            // Index into matrix for haplotype character preceding stutter block (column = 0) 
-      matrix_index         = seq_len*(haplotype_index+block_len-1);  // Index into matrix for rightmost character in stutter block (column = 0)
+      RepeatStutterInfo* rep_info = haplotype_->get_block(block_index)->get_repeat_info();
+      int period                  = rep_info->get_period();
+      int block_option            = haplotype_->cur_index(block_index);
+      int block_len               = block_seq.size();
+      int prev_row_index          = seq_len*(haplotype_index-1);            // Index into matrix for haplotype character preceding stutter block (column = 0) 
+      matrix_index                = seq_len*(haplotype_index+block_len-1);  // Index into matrix for rightmost character in stutter block (column = 0)
 
       for (int j = 0; j < seq_len; ++j, ++matrix_index){
 	std::vector<double> block_probs;
@@ -172,12 +172,12 @@ void HaplotypeAligner::align_right_flank(const char* seq_n,
     bool stutter_block           = haplotype_->get_block(block_index)->get_repeat_info() != NULL;
 
     if (stutter_block){
-      RepeatInfo* rep_info = haplotype_->get_block(block_index)->get_repeat_info();
-      int period           = rep_info->get_period();
-      int block_option     = haplotype_->cur_index(block_index);
-      int block_len        = block_seq.size();
-      int prev_row_index   = seq_len*(haplotype_index-1);            // Index into matrix for haplotype character preceding stutter block (column = 0) 
-      matrix_index         = seq_len*(haplotype_index+block_len-1);  // Index into matrix for rightmost character in stutter block (column = 0)
+      RepeatStutterInfo* rep_info = haplotype_->get_block(block_index)->get_repeat_info();
+      int period                  = rep_info->get_period();
+      int block_option            = haplotype_->cur_index(block_index);
+      int block_len               = block_seq.size();
+      int prev_row_index          = seq_len*(haplotype_index-1);            // Index into matrix for haplotype character preceding stutter block (column = 0) 
+      matrix_index                = seq_len*(haplotype_index+block_len-1);  // Index into matrix for rightmost character in stutter block (column = 0)
 
       for (int j = 0; j < seq_len; ++j, ++matrix_index){
 	std::vector<double> block_probs;

@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "HapBlock.h"
-#include "RepeatInfo.h"
 
 class Haplotype {
  private:
