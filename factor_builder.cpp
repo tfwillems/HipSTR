@@ -3,8 +3,6 @@
 #include "factor_builder.h"
 #include "snp_phasing_quality.h"
 
-const double LOG_ONE_HALF = -0.69314718056;
-
 inline double log_sum_exp(double v1, double v2){
   return (v1 > v2 ? v1 + log(1 + exp(v2-v1)) : v2 + log(1 + exp(v1-v2)));
 }
