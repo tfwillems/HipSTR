@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "error.h"
+#include "mathops.h"
 
 class StutterModel {
  private:
@@ -26,21 +27,8 @@ class StutterModel {
   
   int motif_len_;
 
-  inline double log_sum_exp(std::vector<double>& log_vals){
-    double max_val = *std::max_element(log_vals.begin(), log_vals.end());
-    double total   = 0;
-    for (auto iter = log_vals.begin(); iter != log_vals.end(); iter++)
-      total += exp(*iter - max_val);
-    return max_val + log(total);
-  }
-
-  inline double log_geom_geq(double p, int n){
-    return (n-1)*log(1-p);
-  }
-  
-  inline double log_geom_leq(double p, int n){
-    return log(1-pow(1-p,n));
-  }
+  inline double log_geom_geq(double p, int n){ return (n-1)*log(1-p);    }
+  inline double log_geom_leq(double p, int n){ return log(1-pow(1-p,n)); }
 
  public:
   StutterModel(double inframe_geom,  double inframe_up,  double inframe_down, 
