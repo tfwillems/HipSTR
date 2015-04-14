@@ -1,7 +1,7 @@
 #include "AlignmentOps.h"
-#include "error.h"
+#include "../error.h"
 #include "NWNoRefEndPenalty.h"
-#include "StringOps.h"
+#include "../stringops.h"
 
 extern const std::string START_TAG  = "XS";
 extern const std::string STOP_TAG   = "XE";

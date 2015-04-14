@@ -12,8 +12,8 @@ class RepeatBlock : HapBlock {
     RepeatInfo* repeat_info_;
 
  public:
-   RepeatBlock(int32_t start, int32_t end, std::string ref_seq, std::string motif): HapBlock(start, end, ref_seq){
-      repeat_info_ = new RepeatInfo(motif, ref_seq); 
+   RepeatBlock(int32_t start, int32_t end, std::string ref_seq, int period): HapBlock(start, end, ref_seq){
+      repeat_info_ = new RepeatInfo(period, ref_seq); 
     }
     
     ~RepeatBlock(){

@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "bamtools/include/api/BamAlignment.h"
+#include "../bamtools/include/api/BamAlignment.h"
 #include "AlignmentData.h"
 
 

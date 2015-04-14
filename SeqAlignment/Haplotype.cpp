@@ -17,11 +17,7 @@ void Haplotype::init(){
 
 
 void Haplotype::reset(){
-  /*
-  if (counter_ == ncombs_-1)
-    next(false);
-    else*/
-    init();
+  init();
   counter_      = 0;
   last_changed_ = -1;
 }
@@ -62,7 +58,9 @@ void Haplotype::print_block_structure(int max_ref_len,
       if (n < blocks_[i]->num_options()){
 	num_chars = blocks_[i]->get_seq(n).size();
 	if (num_chars > char_limit){
-	  out << blocks_[i]->get_seq(n).substr(0, char_limit-3) << "...";
+	  int v1 = char_limit/2;
+	  int v2 = char_limit - v1 - 3;
+	  out << blocks_[i]->get_seq(n).substr(0, v1) << "..." << blocks_[i]->get_seq(n).substr(blocks_[i]->get_seq(n).size()-v2, v2);
 	  num_chars = char_limit;
 	}
 	else
@@ -115,7 +113,6 @@ int Haplotype::right_homopolymer_len(char c, int block_index){
 int Haplotype::homopolymer_length(int block_index, int base_index){
   HapBlock* block        = blocks_[block_index];
   const std::string& seq = block->get_seq(counts_[block_index]);
-
   int llen = block->left_homopolymer_len(counts_[block_index],  base_index);
   int rlen = block->right_homopolymer_len(counts_[block_index], base_index);
   if (base_index-llen == 0)

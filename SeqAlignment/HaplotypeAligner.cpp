@@ -6,7 +6,7 @@
 #include "AlignmentModel.h"
 #include "HaplotypeAligner.h"
 #include "HapBlock.h"
-#include "MathOps.h"
+#include "../mathops.h"
 #include "RepeatBlock.h"
 #include "StutterAligner.h"
 

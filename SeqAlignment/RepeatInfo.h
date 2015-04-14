@@ -4,31 +4,30 @@
 #include <algorithm>
 #include <string>
 
-#include "error.h"
+#include "../error.h"
 
 // Maximum number of repeats that PCR stutter can add or remove from block's sequence
-const int MAX_STUTTER_REPEAT_INS = 5;
-const int MAX_STUTTER_REPEAT_DEL = -5;
+const int MAX_STUTTER_REPEAT_INS = 3;
+const int MAX_STUTTER_REPEAT_DEL = -3;
 
 class RepeatInfo {
  private:
-  std::string motif_;
+  int period_;
   int max_ins_, max_del_;
 
  public:
-  RepeatInfo(std::string motif, std::string& ref_allele ){
-    motif_   = motif;
-    max_ins_ = MAX_STUTTER_REPEAT_INS*motif_.size();
-    max_del_ = std::max(MAX_STUTTER_REPEAT_DEL*motif_.size(), -ref_allele.size());
+  RepeatInfo(int period, std::string& ref_allele ){
+    period_  = period;
+    max_ins_ = MAX_STUTTER_REPEAT_INS*period_;
+    max_del_ = std::max(MAX_STUTTER_REPEAT_DEL*period_, -(int)ref_allele.size());
   }
   
-  inline const std::string& get_motif() const  { return motif_; }
-  inline const int get_period()         const  { return motif_.size(); }
+  inline const int get_period()         const  { return period_;  }
   inline const int max_insertion()      const  { return max_ins_; }
-  inline const int max_deletion()       const  { return max_del_;}
+  inline const int max_deletion()       const  { return max_del_; }
 
   void add_alternate_allele(std::string& alt_allele){
-    max_del_ = std::max(MAX_STUTTER_REPEAT_DEL*motif_.size(), -alt_allele.size());
+    max_del_ = std::max(max_del_, -(int)alt_allele.size());
   }
 
   /*

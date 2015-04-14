@@ -1,9 +1,9 @@
 #include <iostream>
 
 #include "constants.h"
-#include "error.h"
+#include "../error.h"
 #include "HTMLCreator.h"
-#include "StringOps.h"
+#include "../stringops.h"
 
 // TO DO: Specify a relative file path
 std::string css_file = "/Users/tfwillems/Desktop/Coding/HipSTR/css/display_style.css";

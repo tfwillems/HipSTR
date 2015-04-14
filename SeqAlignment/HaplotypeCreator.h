@@ -27,4 +27,10 @@ void extractRegionSequences(std::vector<Alignment>& alignments,
 			    std::vector< std::vector<std::string> >& region_seqs);
 
 
+/*
+   Merge regions which overlap the provided repeat interval into a single region
+ */
+void mergeRegions(int32_t str_start, int32_t str_end, std::vector< std::pair<int32_t, int32_t> >& regions);
+
+
 #endif

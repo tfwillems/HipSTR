@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <climits>
 #include <iostream>
 #include <list>
 #include <map>
@@ -8,9 +9,9 @@
 
 #include "AlignmentData.h"
 #include "HaplotypeCreator.h"
-#include "error.h"
+#include "../error.h"
 #include "RepeatRegion.h"
-#include "StringOps.h"
+#include "../stringops.h"
 
 // TO DO: New region identification strategy
 // Identify regions on a per-sample basis:
@@ -91,7 +92,6 @@ void getHaplotypeRegions(std::vector<Alignment>& alignments,
       }
     }
   }
-
  
   // Reduce set of regions by merging ones that overlap or are adjacent to one another
   regions.clear();
@@ -255,4 +255,30 @@ void extractRegionSequences(std::vector<Alignment>& alignments,
     }
   }
 }
+
+
+void mergeRegions(int32_t str_start, int32_t str_end, std::vector< std::pair<int32_t, int32_t> >& regions){
+  int ins_index = 0;
+  int32_t rep_start = INT_MAX, rep_end = INT_MIN;
+  
+  for (unsigned int i = 0; i < regions.size(); i++){
+    if (regions[i].second < str_start)
+      regions[ins_index++] = regions[i];
+    else if (regions[i].first > str_end) {
+      if (rep_start != INT_MAX && rep_end != INT_MIN)
+	regions[ins_index++] = std::pair<int32_t, int32_t>(rep_start, rep_end);
+      rep_start = INT_MAX; rep_end = INT_MIN;
+      regions[ins_index++] = regions[i];
+    }
+    else {
+      rep_start = std::min(rep_start, regions[i].first);
+      rep_end   = std::max(rep_end,   regions[i].second);
+    }
+  }
+  
+  if (rep_start != INT_MAX && rep_end != INT_MIN)
+    regions[ins_index++] = std::pair<int32_t, int32_t>(rep_start, rep_end);
+  regions.resize(ins_index);
+}
+
 

@@ -22,6 +22,12 @@
 #include "snp_tree.h"
 #include "stringops.h"
 
+// Exploratory
+#include "SeqAlignment/AlignmentOps.h"
+#include "SeqAlignment/STRSeqAligner.h"
+#include "SeqAlignment/HaplotypeGenerator.h"
+#include "SeqAlignment/Haplotype.h"
+
 int MAX_EM_ITER         = 100;
 double ABS_LL_CONVERGE  = 0.01;  // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
 double FRAC_LL_CONVERGE = 0.001; // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
@@ -45,6 +51,9 @@ private:
   std::ofstream str_vcf_;
   std::vector<std::string> samples_to_genotype_;
 
+  // Output file to visualize alignments
+  bool output_viz_;
+  std::ofstream viz_pdf_;
 
 public:
   SNPBamProcessor(bool use_lobstr_rg, bool check_mate_chroms, 
@@ -58,6 +67,14 @@ public:
     num_em_converge_ = 0;
     num_em_fail_     = 0;
     output_str_gts_  = false;
+    output_viz_      = false;
+  }
+
+  void set_viz_output(std::string& pdf_file){
+    output_viz_ = true;
+    viz_pdf_.open(pdf_file, std::ofstream::out);
+    if (!viz_pdf_.is_open())
+      printErrorAndDie("Failed to open PDF file for alignment visualization");
   }
 
   void set_output_str_vcf(std::string& vcf_file, std::set<std::string>& samples_to_output){
@@ -87,11 +104,82 @@ public:
   void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 		     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 		     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
-		     std::vector<std::string>& rg_names, Region& region, std::string& ref_allele,
-		     std::ostream& out){
+		     std::vector<std::string>& rg_names, Region& region, 
+		     std::string& ref_allele, std::string& chrom_seq, std::ostream& out){
     assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
     if(paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
       return;
+
+        // Exploratory code related to sequence-based genotyping
+    if (output_viz_){
+      std::map<std::string, std::string> empty_sample_info;
+      RepeatRegion rep_region(region.start(), region.stop(), region.period(), ref_allele);
+      std::stringstream ss; ss << region.chrom() << ":" << region.start() << "-" << region.stop();
+
+      /*
+      std::vector<BamTools::BamAlignment> alignments;
+      for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
+	alignments.insert(alignments.end(), paired_strs_by_rg[i].begin(),   paired_strs_by_rg[i].end());
+	alignments.insert(alignments.end(), unpaired_strs_by_rg[i].begin(), unpaired_strs_by_rg[i].end());
+      }
+      std::cerr << "Generating alignment haplotypes/visualization" << std::endl;
+      arrangeAlignments(rep_region, chrom_seq, alignments, ss.str(), true, viz_pdf_, empty_sample_info, base_qualities, NULL);
+      */
+
+
+      
+      std::cerr << "Realigning reads" << std::endl;
+      std::vector< std::vector<Alignment> > paired, unpaired;
+      for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
+	paired.push_back(std::vector<Alignment>());
+	for (unsigned int j = 0; j < paired_strs_by_rg[i].size(); j++){
+	  Alignment new_alignment;
+	  realign(paired_strs_by_rg[i][j], chrom_seq, new_alignment);
+	  paired.back().push_back(new_alignment);
+	}
+	unpaired.push_back(std::vector<Alignment>());
+	for (unsigned int j = 0; j < unpaired_strs_by_rg[i].size(); j++){
+          Alignment new_alignment;
+          realign(unpaired_strs_by_rg[i][j], chrom_seq, new_alignment);
+          unpaired.back().push_back(new_alignment);
+        }
+      }
+      
+      int32_t region_start = region.start()-5;
+      int32_t region_end   = region.stop()+5;
+      std::string ref_seq  = uppercase(chrom_seq.substr(region_start, region_end-region_start));
+      std::cerr << ref_seq << std::endl;
+      std::vector<std::string> sequences;
+      //generate_candidates(region, ref_seq, paired, unpaired, region_start, region_end, sequences);
+
+  
+      std::vector<HapBlock*> blocks;
+      Haplotype* haplotype = generate_haplotype(region, ref_seq, chrom_seq, paired, unpaired, blocks);
+      do {
+	haplotype->print(std::cerr);
+
+	for (unsigned int i = 0; i < haplotype->num_blocks(); i++){
+	  const std::string& block_seq = haplotype->get_seq(i);
+	  std::cerr << i << " " << block_seq << std::endl;
+	  for (unsigned int j = 0; j < block_seq.size(); j++){
+	    std::cerr << haplotype->homopolymer_length(i,j) << " ";
+	  }
+	  std::cerr << std::endl;	  
+	}
+
+
+      } while (haplotype->next());
+    
+      // Clean up created data structures
+      for (int i = 0; i < blocks.size(); i++)
+	delete blocks[i];
+      blocks.clear();
+      delete haplotype;
+
+      return; // Temporary
+    }
+    // End of exploratory section
+
 
     std::vector< std::vector<double> > log_p1s, log_p2s;
     if (have_snp_vcf){
@@ -192,6 +280,9 @@ public:
     if (output_str_gts_)
       str_vcf_.close();
 
+    if (output_viz_)
+      viz_pdf_.close();
+
     std::cerr << "SNP matching statistics: "   << match_count_     << "\t" << mismatch_count_ << "\n"
 	      << "EM convergence statistics: " << num_em_converge_ << "\t" << num_em_fail_ << std::endl;
   }
@@ -201,28 +292,30 @@ public:
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string, std::string& bamindex_string, std::string& rg_string,
 			     std::string& fasta_dir, std::string& region_file,  std::string& vcf_file, std::string& chrom, 
-			     std::string& bam_out_file, std::string& str_vcf_out_file, BamProcessor& bam_processor){
-   if (argc == 1){
-     std::cerr << "Usage: HipSTR --bams  <list_of_bams>  --indexes <list_of_bam_indexes> --rgs <list_of_read_groups>" << "\n"
-	       << "              --fasta <dir>           --regions <region_file.bed>" << "\n"
+			     std::string& bam_out_file, std::string& str_vcf_out_file, std::string& viz_out_file, BamProcessor& bam_processor){
+  int def_mdist = bam_processor.MAX_MATE_DIST;
+  if (argc == 1){
+    std::cerr << "Usage: HipSTR --bams  <list_of_bams>  --indexes <list_of_bam_indexes> --rgs <list_of_read_groups>" << "\n"
+	      << "              --fasta <dir>           --regions <region_file.bed>" << "\n"
 	       << "              [--bam-out <spanning_reads.bam>] [--rem-multimaps] [--chrom <chrom>] [--vcf <phased_snp_gts.vcf>]" << "\n\n"
-	       << "Required parameters:" << "\n"
-	       << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of .bam files"                                                  << "\n"
-	       << "\t" << "--indexes       <list_of_bam_indexes> "  << "\t" << "Comma separated list of .bai files in same order as .bam files"                      << "\n"
-	       << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located"                      << "\n"
-	       << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                                 << "\n" << "\n"
-	       << "Optional parameters:" << "\n"
-	       << "\t" << "--str-vcf       <str_gts.vcf>         "  << "\t" << "Output a VCF file containing phased STR genotypes"                                   << "\n"
-	       << "\t" << "--bam-out       <spanning_reads.bam   "  << "\t" << "Output a BAM file containing the reads spanning each region to the provided file"    << "\n"
-	       << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
-	       << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << bam_processor.MAX_MATE_DIST << ")" << "\n"
-       	       << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
-	       << "\t" << "--snp-vcf       <phased_snp_gts.vcf>  "  << "\t" << "Input VCF file containing phased SNP genotypes"                                      << "\n"
-	       << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as .bam files. "                   << "\n"
-	       << "\t" << "                                      "  << "\t" << "Assign each read the RG tag corresponding to its file. By default, "                 << "\n"
-	       << "\t" << "                                      "  << "\t" << "each read must have an RG flag from lobSTR and this is used instead"                 << "\n"
-	       << "\n";
-     exit(0);
+	      << "Required parameters:" << "\n"
+	      << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of .bam files"                                                  << "\n"
+	      << "\t" << "--indexes       <list_of_bam_indexes> "  << "\t" << "Comma separated list of .bai files in same order as .bam files"                      << "\n"
+	      << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located"                      << "\n"
+	      << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                                 << "\n" << "\n"
+	      << "Optional parameters:" << "\n"
+      	      << "\t" << "--bam-out       <spanning_reads.bam   "  << "\t" << "Output a BAM file containing the reads spanning each region to the provided file"    << "\n"
+	      << "\t" << "--str-vcf       <str_gts.vcf>         "  << "\t" << "Output a VCF file containing phased STR genotypes"                                   << "\n"
+	      << "\t" << "--viz-out       <viz.pdf>             "  << "\t" << "Output a PDF file visualizing the alignments for each locus"                         << "\n"
+	      << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
+	      << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
+	      << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
+	      << "\t" << "--snp-vcf       <phased_snp_gts.vcf>  "  << "\t" << "Input VCF file containing phased SNP genotypes"                                      << "\n"
+	      << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as .bam files. "                   << "\n"
+	      << "\t" << "                                      "  << "\t" << "Assign each read the RG tag corresponding to its file. By default, "                 << "\n"
+	      << "\t" << "                                      "  << "\t" << "each read must have an RG flag from lobSTR and this is used instead"                 << "\n"
+	      << "\n";
+    exit(0);
   }
  
   static struct option long_options[] = {
@@ -233,6 +326,7 @@ void parse_command_line_args(int argc, char** argv,
     {"rgs",             required_argument, 0, 'g'},
     {"indexes",         required_argument, 0, 'i'},
     {"str-vcf",         required_argument, 0, 'o'},
+    {"viz-out",         required_argument, 0, 'p'},
     {"regions",         required_argument, 0, 'r'},
     {"snp-vcf",         required_argument, 0, 'v'},
     {"bam-out",         required_argument, 0, 'w'},
@@ -271,6 +365,9 @@ void parse_command_line_args(int argc, char** argv,
     case 'o':
       str_vcf_out_file = std::string(optarg);
       break;
+    case 'p':
+      viz_out_file = std::string(optarg);
+      break;
     case 'r':
       region_file = std::string(optarg);
       break;
@@ -293,8 +390,10 @@ void parse_command_line_args(int argc, char** argv,
 int main(int argc, char** argv){
   bool check_mate_chroms = false;
   SNPBamProcessor bam_processor(false, check_mate_chroms, MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
-  std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", vcf_file="", bam_out_file="", str_vcf_out_file="";
-  parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, vcf_file, chrom, bam_out_file, str_vcf_out_file, bam_processor);
+  std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", vcf_file="";
+  std::string bam_out_file="", str_vcf_out_file="", viz_out_file="";
+  parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, vcf_file, chrom, 
+			  bam_out_file, str_vcf_out_file, viz_out_file, bam_processor);
   int num_flank = 0;
   if (bamfile_string.empty())
     printErrorAndDie("--bams option required");
@@ -366,9 +465,10 @@ int main(int argc, char** argv){
 
   if (!vcf_file.empty())
     bam_processor.set_input_snp_vcf(vcf_file);
-
   if(!str_vcf_out_file.empty())
     bam_processor.set_output_str_vcf(str_vcf_out_file, rg_samples);
+  if(!viz_out_file.empty())
+    bam_processor.set_viz_output(viz_out_file);
 
   // Run analysis
   bam_processor.process_regions(reader, region_file, fasta_dir, file_read_groups, bam_writer, std::cout, 1000);

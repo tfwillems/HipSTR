@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "vcflib/src/Variant.h"
+#include "../vcflib/src/Variant.h"
 
 void writeHeader(std::ostream& output);
 

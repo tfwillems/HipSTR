@@ -1,6 +1,7 @@
 #ifndef HAPBLOCK_H_
 #define HAPBLOCK_H_
 
+#include <assert.h>
 #include <stdint.h>
 #include <algorithm>
 #include <stdexcept>
@@ -8,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "error.h"
+#include "../error.h"
 #include "RepeatInfo.h"
 
 class HapBlock {
@@ -55,11 +56,10 @@ class HapBlock {
     max_size_ = std::max(max_size_, (int)alt.size());
   }
 
-  void order_alternates_by_length();
-
   int max_size() const { return max_size_; }
 
   void print(std::ostream& out);
+  void order_alternates_by_length();
 
   int size(int index) const {
     if (index == 0)
@@ -67,7 +67,7 @@ class HapBlock {
     else if (index-1 < alt_seqs_.size())
       return alt_seqs_[index-1].size();
     else
-      throw std::out_of_range("Index out of bounds in HapBlock.size()");
+      throw std::out_of_range("Index out of bounds in HapBlock::size()");
   }
 
   const std::string& get_seq(int index) {
@@ -76,16 +76,20 @@ class HapBlock {
     else if (index-1 < alt_seqs_.size())
       return alt_seqs_[index-1];
     else
-      throw std::out_of_range("Index out of bounds in HapBlock.get_seq()");
+      throw std::out_of_range("Index out of bounds in HapBlock::get_seq()");
   }
 
   inline int left_homopolymer_len(int seq_index, int base_index) {
-    return (seq_index == 0 ? l_homopolymer_lens[0][base_index] : l_homopolymer_lens[seq_index-1][base_index]);
+    assert(seq_index < l_homopolymer_lens.size());
+    return l_homopolymer_lens[seq_index][base_index];
   }
 
   inline int right_homopolymer_len(int seq_index, int base_index) {
-    return (seq_index == 0 ? r_homopolymer_lens[0][base_index] : r_homopolymer_lens[seq_index-1][base_index]);
+    assert(seq_index < r_homopolymer_lens.size());
+    return r_homopolymer_lens[seq_index][base_index];
   }
+  
+  void initialize();
 };
 
 #endif

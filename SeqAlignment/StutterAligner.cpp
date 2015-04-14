@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <vector>
 
-#include "error.h"
-#include "MathOps.h"
+#include "../error.h"
+#include "../mathops.h"
 #include "StutterAligner.h"
 
 

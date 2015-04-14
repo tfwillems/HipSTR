@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "AlignmentData.h"
-#include "BaseQuality.h"
+#include "../base_quality.h"
 #include "Haplotype.h"
 
 class HaplotypeAligner {

@@ -4,7 +4,7 @@
 #include <vector>
 #include <iostream>
 
-#include "error.h"		    
+#include "../error.h"		    
 #include "NWNoRefEndPenalty.h"
 
 class IndelTracker {
