@@ -26,7 +26,7 @@
 #include "SeqAlignment/AlignmentOps.h"
 #include "SeqAlignment/HaplotypeGenerator.h"
 #include "SeqAlignment/Haplotype.h"
-#include "SeqAlignment/RepeatRegion.h"
+//#include "SeqAlignment/RepeatRegion.h"
 
 int MAX_EM_ITER         = 100;
 double ABS_LL_CONVERGE  = 0.01;  // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
@@ -113,7 +113,7 @@ public:
         // Exploratory code related to sequence-based genotyping
     if (output_viz_){
       std::map<std::string, std::string> empty_sample_info;
-      RepeatRegion rep_region(region.start(), region.stop(), region.period(), ref_allele);
+      //RepeatRegion rep_region(region.start(), region.stop(), region.period(), ref_allele);
       std::stringstream ss; ss << region.chrom() << ":" << region.start() << "-" << region.stop();
 
       std::cerr << "Realigning reads" << std::endl;
