@@ -7,7 +7,7 @@
 #include "HapBlock.h"
 #include "RepeatInfo.h"
 
-class RepeatBlock : HapBlock {
+class RepeatBlock : public HapBlock {
  private:
     RepeatInfo* repeat_info_;
 
@@ -20,7 +20,7 @@ class RepeatBlock : HapBlock {
       delete repeat_info_;
     }
 
-    void add_alternate(std::string alt){
+    void add_alternate(std::string& alt){
       HapBlock::add_alternate(alt);
       repeat_info_->add_alternate_allele(alt);
     }

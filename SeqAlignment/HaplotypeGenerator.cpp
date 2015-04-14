@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "HaplotypeGenerator.h"
+#include "RepeatBlock.h"
 #include "../stringops.h"
 
 const double MIN_FRAC_READS   = 0.01;
@@ -190,7 +191,7 @@ void generate_candidate_str_seqs(std::string& ref_seq,
   trim_from_right(rep_region_start, rep_region_end, sequences);
 }
 
-Haplotype* generate_haplotype(Region& str_region, std::string& ref_seq, std::string& chrom_seq,
+Haplotype* generate_haplotype(Region& str_region, std::string& chrom_seq,
 			      std::vector< std::vector<Alignment> >& paired_strs_by_rg,
 			      std::vector< std::vector<Alignment> >& unpaired_strs_by_rg,
 			      std::vector<HapBlock*>& blocks){
@@ -213,6 +214,7 @@ Haplotype* generate_haplotype(Region& str_region, std::string& ref_seq, std::str
   std::vector<std::string> str_seqs;
   int32_t rep_region_start = str_region.start() < 5 ? 0 : str_region.start()-5;
   int32_t rep_region_end   = str_region.stop() + 5;
+  std::string ref_seq      = uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start));
   generate_candidate_str_seqs(ref_seq, paired_strs_by_rg, unpaired_strs_by_rg, rep_region_start, rep_region_end, str_seqs);
   
   // Create a set of haplotype regions, consisting of STR sequence block flanked by two reference sequence stretches
@@ -220,12 +222,12 @@ Haplotype* generate_haplotype(Region& str_region, std::string& ref_seq, std::str
   assert(str_seqs[0].compare(uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))) == 0);
   blocks.clear();
   blocks.push_back(new HapBlock(min_start,        rep_region_start, uppercase(chrom_seq.substr(min_start, rep_region_start-min_start))));    // Ref sequence preceding STRS
-  blocks.push_back(new HapBlock(rep_region_start, rep_region_end,   uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))));
+  blocks.push_back(new RepeatBlock(rep_region_start, rep_region_end, uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start)), str_region.period()));
   blocks.push_back(new HapBlock(rep_region_end,   max_stop,         uppercase(chrom_seq.substr(rep_region_end, max_stop-rep_region_end))));  // Ref sequence following STRs
   for (unsigned int j = 1; j < str_seqs.size(); j++)
     blocks[1]->add_alternate(str_seqs[j]);
 
-  // Initialize each block's datastructures, namely the homopolymer length information
+  // Initialize each block's data structures, namely the homopolymer length information
   for (unsigned int i = 0; i < blocks.size(); i++)
     blocks[i]->initialize();
  
