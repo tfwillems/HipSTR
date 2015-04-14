@@ -36,7 +36,8 @@ public:
   void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 		     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 		     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
-		     std::vector<std::string>& rg_names, Region& region, std::ostream& out){
+		     std::vector<std::string>& rg_names, Region& region, 
+		     std::string& ref_allele, std::string& chrom_seq, std::ostream& out){
     out << region.chrom() << "\t" << region.start() << "\t" << region.stop() << "\t" << region.period() << "\t";
     
     for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){

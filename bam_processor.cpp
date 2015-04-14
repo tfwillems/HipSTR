@@ -37,10 +37,7 @@ std::string BamProcessor::trim_alignment_name(BamTools::BamAlignment& aln){
 std::string get_str_ref_allele(uint32_t start, uint32_t end, std::string& chrom_seq){
   std::locale loc;
   std::string seq = chrom_seq.substr(start-1, end-start+1);
-  std::stringstream ss;
-  for (unsigned int i = 0; i < seq.size(); i++)
-    ss << std::toupper(seq[i], loc);
-  return ss.str();
+  return uppercase(seq);
 }
 
 void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, 
@@ -269,6 +266,6 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
     std::vector< std::vector<BamTools::BamAlignment> > paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg;
     read_and_filter_reads(reader, chrom_seq, region_iter, file_read_groups, rg_names, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, bam_writer);
     std::string ref_allele = get_str_ref_allele(region_iter->start(), region_iter->stop(), chrom_seq);
-    process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, *region_iter, ref_allele, out);
+    process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, *region_iter, ref_allele, chrom_seq, out);
   }
 }

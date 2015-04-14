@@ -44,7 +44,7 @@ class BamProcessor {
   virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 			     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 			     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
-			     std::vector<std::string>& rg_names, Region& region, std::string& ref_allele,
+			     std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq,
 			     std::ostream& out){
     std::cerr << "Doing nothing with reads" << std::endl;
   }
@@ -53,7 +53,7 @@ class BamProcessor {
     use_lobstr_rg_ = use_lobstr_rg;
   }
 
-   
+
   int MAX_MATE_DIST            = 1000;
   int MIN_BP_BEFORE_INDEL      = 7;
   int MIN_FLANK                = 5;
