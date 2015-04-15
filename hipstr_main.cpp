@@ -26,7 +26,7 @@
 #include "SeqAlignment/AlignmentOps.h"
 #include "SeqAlignment/HaplotypeGenerator.h"
 #include "SeqAlignment/Haplotype.h"
-//#include "SeqAlignment/RepeatRegion.h"
+#include "SeqAlignment/HapAligner.h"
 
 int MAX_EM_ITER         = 100;
 double ABS_LL_CONVERGE  = 0.01;  // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
@@ -110,26 +110,28 @@ public:
     if(paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
       return;
 
-        // Exploratory code related to sequence-based genotyping
+    // Exploratory code related to sequence-based genotyping
     if (output_viz_){
       std::map<std::string, std::string> empty_sample_info;
-      //RepeatRegion rep_region(region.start(), region.stop(), region.period(), ref_allele);
       std::stringstream ss; ss << region.chrom() << ":" << region.start() << "-" << region.stop();
 
       std::cerr << "Realigning reads" << std::endl;
       std::vector< std::vector<Alignment> > paired, unpaired;
+      int total_reads = 0;
       for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
 	paired.push_back(std::vector<Alignment>());
 	for (unsigned int j = 0; j < paired_strs_by_rg[i].size(); j++){
 	  Alignment new_alignment;
 	  realign(paired_strs_by_rg[i][j], chrom_seq, new_alignment);
 	  paired.back().push_back(new_alignment);
+	  total_reads++;
 	}
 	unpaired.push_back(std::vector<Alignment>());
 	for (unsigned int j = 0; j < unpaired_strs_by_rg[i].size(); j++){
           Alignment new_alignment;
           realign(unpaired_strs_by_rg[i][j], chrom_seq, new_alignment);
           unpaired.back().push_back(new_alignment);
+	  total_reads++;
         }
       }
 
@@ -138,12 +140,17 @@ public:
 
       std::vector<HapBlock*> blocks;
       Haplotype* haplotype = generate_haplotype(region, chrom_seq, paired, unpaired, &stutter_model, blocks);
+      std::cerr << "Max block sizes: ";
+      for (unsigned int i = 0; i < haplotype->num_blocks(); i++)
+	std::cerr << haplotype->get_block(i)->max_size() << " ";
+      std::cerr << std::endl;
+      
       do {
 	haplotype->print(std::cerr);
 
 	for (unsigned int i = 0; i < haplotype->num_blocks(); i++){
 	  const std::string& block_seq = haplotype->get_seq(i);
-	  std::cerr << i << " " << block_seq << " IS_REPEAT? " << (haplotype->get_block(i)->get_repeat_info() != NULL) << std::endl;
+	  std::cerr << i << " " << " " << block_seq << " IS_REPEAT? " << (haplotype->get_block(i)->get_repeat_info() != NULL) << std::endl;
 	  /*
 	  for (unsigned int j = 0; j < block_seq.size(); j++){
 	    std::cerr << haplotype->homopolymer_length(i,j) << " ";
@@ -152,9 +159,15 @@ public:
 	  */
 	}
       } while (haplotype->next());
-    
 
-
+      std::cerr << "Beginning sequence-specific functions" << std::endl;
+      HapAligner hap_aligner(haplotype, region, &base_qualities, total_reads);
+      int read_index = 0;
+      for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
+	hap_aligner.process_reads(paired[i],   read_index); read_index += paired[i].size();
+	hap_aligner.process_reads(unpaired[i], read_index); read_index += unpaired[i].size();
+      }
+      assert(read_index == total_reads);
 
       // Clean up created data structures
       for (int i = 0; i < blocks.size(); i++)

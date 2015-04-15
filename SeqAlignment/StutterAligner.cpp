@@ -113,7 +113,7 @@ double align_stutter_region(int block_len,               const std::string& bloc
 			   int D){
   if (D == 0)
     return align_no_artifact(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct);
-  else if (D < 0)
+  else if (D > 0)
     return align_pcr_insertion(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct, D);
   else
     return align_pcr_deletion(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct, D);

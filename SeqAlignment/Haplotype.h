@@ -59,29 +59,12 @@ class Haplotype {
     out << std::endl;
   }
   
-  inline const std::string& get_seq(int block_index) {
-    return blocks_[block_index]->get_seq(counts_[block_index]);
-  }
-
-  inline const std::vector<int32_t>& get_repeat_starts() {
-    return repeat_starts_;
-  }
-
-  inline const std::vector<int32_t>& get_repeat_stops() {
-    return repeat_stops_;
-  }
-
-  inline HapBlock* get_block(int block_index) {
-    return blocks_[block_index];
-  }
-
-  inline char get_first_char() {
-    return blocks_[0]->get_seq(counts_[0])[0];
-  }
-
-  inline char get_last_char() {
-    return blocks_.back()->get_seq(counts_[blocks_.size()-1]).back();
-  }
+  inline const std::string& get_seq(int block_index)     { return blocks_[block_index]->get_seq(counts_[block_index]); }
+  inline const std::vector<int32_t>& get_repeat_starts() { return repeat_starts_; }
+  inline const std::vector<int32_t>& get_repeat_stops()  { return repeat_stops_; }
+  inline HapBlock* get_block(int block_index)            { return blocks_[block_index]; }
+  inline char get_first_char()                           { return blocks_[0]->get_seq(counts_[0])[0]; }
+  inline char get_last_char()                            { return blocks_.back()->get_seq(counts_[blocks_.size()-1]).back(); }
 
   inline int num_blocks()   const { return blocks_.size(); }
   inline int num_combs()    const { return ncombs_; }
