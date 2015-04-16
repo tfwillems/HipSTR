@@ -9,7 +9,7 @@ CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX
 #CXXFLAGS= -O0 -g -D_FILE_OFFSET_BITS=64 -std=c++0x
 
 ## Source code files, add new files to this list
-SRC_COMMON  = error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp extract_indels.cpp mathops.cpp
+SRC_COMMON  = error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp extract_indels.cpp mathops.cpp debug_tools.cpp
 SRC_STUTTER = stutter_main.cpp
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
 SRC_HIPSTR  = hipstr_main.cpp factor_builder.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp
@@ -34,12 +34,12 @@ LIBDAI_LIB = $(LIBDAI_ROOT)/lib/libdai.a
 VCFLIB_LIB = vcflib/libvcflib.a
 
 .PHONY: all
-all: BamSieve HipSTR Phaser StutterTrainer test/snp_tree_test test/vcf_snp_tree_test
+all: BamSieve HipSTR Phaser StutterTrainer test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test
 
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
 clean:
-	rm -f *.o *.d BamSieve HipSTR Phaser StutterTrainer snp_tree_test vcf_snp_tree_test SeqAlignment/*.o
+	rm -f *.o *.d BamSieve HipSTR Phaser StutterTrainer test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test SeqAlignment/*.o
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -72,6 +72,12 @@ test/snp_tree_test: snp_tree.cpp test/snp_tree_test.cpp $(VCFLIB_LIB)
 
 test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp snp_tree.cpp $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+test/hap_aligner_test: test/hap_aligner_test.cpp SeqAlignment/AlignmentData.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+test/stutter_aligner_test: test/stutter_aligner_test.cpp SeqAlignment/StutterAligner.cpp mathops.cpp error.cpp debug_tools.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
 # Build each object file independently
 %.o: %.cpp $(BAMTOOLS_LIB)

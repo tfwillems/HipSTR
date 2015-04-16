@@ -10,19 +10,16 @@
 #include "RepeatBlock.h"
 #include "StutterAligner.h"
 
-
 // Minimum distance of a seed base from an indel, mismatch or a repetitive region
 const int32_t MIN_SEED_DIST = 5;
 
 // Large negative value to prevent impossible or undesirable configurations 
 const double IMPOSSIBLE = -1000000000;
 
-
 void HapAligner::align_left_flank(const char* seq_0, int seq_len, 
 				  const double* base_log_wrong, const double* base_log_correct,
 				  double* match_matrix, double* insert_matrix, double& left_prob){
   // NOTE: Input matrix structure: Row = Haplotype position, Column = Read index
-
   double L_log_probs[seq_len];
  
   // Initialize first row of matrix (each base position matched with leftmost haplotype base)
@@ -121,7 +118,7 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
 	  }
 	  else {
 	    // Add deletion transitions up until stutter_R+1
-	    for (int k = 1; k  <= std::min(haplotype_index-stutter_R-1, MAX_SEQ_DEL); k++){
+	    for (int k = 1; k <= std::min(haplotype_index-stutter_R-1, MAX_SEQ_DEL); k++){
 	      match_probs.push_back(match_matrix[del_index]+LOG_DEL_N[homopolymer_len][k]);
 	      del_index -= seq_len;
 	    }
@@ -245,7 +242,7 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
 
 	  match_probs.push_back(insert_matrix[matrix_index-1]+LOG_MATCH_TO_INS[homopolymer_len]); // Add insertion-related probability
 	  double match_emit           = (seq_n[-j] == hap_char ? base_log_correct[-j] : base_log_wrong[-j]);
-	  match_matrix[matrix_index]  = match_emit          + log_sum_exp(match_probs); 
+	  match_matrix[matrix_index]  = match_emit           + log_sum_exp(match_probs); 
 	  insert_matrix[matrix_index] = base_log_correct[-j] + log_sum_exp(match_matrix[matrix_index-seq_len-1]+LOG_INS_TO_MATCH, 
 									   insert_matrix[matrix_index-1]+LOG_INS_TO_INS);
 	}
