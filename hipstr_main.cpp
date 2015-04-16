@@ -23,6 +23,7 @@
 #include "stringops.h"
 
 // Exploratory
+#include "SeqAlignment/AlignmentModel.h"
 #include "SeqAlignment/AlignmentOps.h"
 #include "SeqAlignment/HaplotypeGenerator.h"
 #include "SeqAlignment/Haplotype.h"
@@ -163,6 +164,7 @@ public:
 
       
       std::cerr << "Beginning sequence-specific functions" << std::endl;
+      init_alignment_model();
       HapAligner hap_aligner(haplotype, region, max_ref_flank_len, &base_qualities, total_reads);
       int read_index = 0;
       for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){

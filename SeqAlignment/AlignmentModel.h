@@ -16,7 +16,7 @@ extern double LOG_MATCH_TO_INS[MAX_HOMOP_LEN+1];
 extern double LOG_DEL_N[MAX_HOMOP_LEN+1][MAX_SEQ_DEL+1];
 
 
-void init_probabilities();
-void print_parameters();
+void init_alignment_model();
+void print_alignment_model();
 
 #endif

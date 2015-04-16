@@ -18,7 +18,7 @@ double LOG_DEL_N[MAX_HOMOP_LEN+1][MAX_SEQ_DEL+1];
   The remaining deletions then have total probability P(M->I) where P(d) is proportional to e^(-(d-1)). 
   This results in a symmetric treatment of insertions and deletions w.r.t. transtion probabilities
  */
-void init_probabilities(){
+void init_alignment_model(){
   LOG_MATCH_TO_INS[0] = 0;
   for (int j = 0; j <= MAX_SEQ_DEL; j++)
     LOG_DEL_N[0][j] = 0.0;
@@ -39,7 +39,7 @@ void init_probabilities(){
 }
 
 
-void print_parameters(){
+void print_alignment_model(){
   std::cout << "Match->Insertion transition probabilities:\n" 
 	    << " homopolymer_len: log_P \n";
   for (int i = 0; i <= MAX_HOMOP_LEN; i++)
