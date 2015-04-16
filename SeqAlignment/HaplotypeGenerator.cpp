@@ -191,7 +191,7 @@ void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
   trim_from_right(ideal_min_length, rep_region_start, rep_region_end, sequences);
 }
 
-Haplotype* generate_haplotype(Region& str_region, std::string& chrom_seq,
+Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
 			      std::vector< std::vector<Alignment> >& paired_strs_by_rg,
 			      std::vector< std::vector<Alignment> >& unpaired_strs_by_rg,
 			      StutterModel* stutter_model,
@@ -211,6 +211,11 @@ Haplotype* generate_haplotype(Region& str_region, std::string& chrom_seq,
     }
   }
   
+  // Trim boundaries so that the reference flanks aren't too long
+  if (str_region.start() > max_ref_flank_len)
+    min_start = std::max((int32_t)str_region.start()-max_ref_flank_len, min_start);
+  max_stop = std::min((int32_t)str_region.stop()+max_ref_flank_len, max_stop);
+			 
   // Extract candidate STR sequences (use some padding to ensure indels near STR ends are included)
   std::vector<std::string> str_seqs;
   int32_t rep_region_start = str_region.start() < 5 ? 0 : str_region.start()-5;
@@ -219,8 +224,6 @@ Haplotype* generate_haplotype(Region& str_region, std::string& chrom_seq,
   int ideal_min_length     = 3*str_region.period(); // Would ideally have at least 3 repeat units in each allele after trimming
   generate_candidate_str_seqs(ref_seq, ideal_min_length, paired_strs_by_rg, unpaired_strs_by_rg, rep_region_start, rep_region_end, str_seqs);
   
-  // TO DO: Trim reference flanks so that they're not too long
-
   // Create a set of haplotype regions, consisting of STR sequence block flanked by two reference sequence stretches
   assert(rep_region_start > min_start && rep_region_end < max_stop);
   assert(str_seqs[0].compare(uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))) == 0);

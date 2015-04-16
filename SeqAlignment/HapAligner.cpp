@@ -340,6 +340,12 @@ int HapAligner::calc_seed_base(Alignment& aln){
       if (max_region < repeat_stop)
 	max_region = std::min(max_region, repeat_start-1);
 
+      // Clip region so that the seed doesn't extend beyond the maximal sequence flanking the repeats
+      // Only this region will be used to construct putative haplotypes
+      if (region_->start() > max_ref_flank_len_)
+	min_region = std::max(min_region, (int32_t)region_->start() - max_ref_flank_len_);
+      max_region = std::min(max_region, (int32_t)region_->stop() + max_ref_flank_len_);
+
       if (min_region <= max_region){
 	// Choose larger of valid two regions
 	if (min_region < repeat_start && max_region >= repeat_stop)
@@ -414,7 +420,7 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
       double* r_match_matrix  = new double [(base_seq_len-seed_base-1)*max_hap_size];
       double* r_insert_matrix = new double [(base_seq_len-seed_base-1)*max_hap_size];
 
-      std::cerr << "Aligning read " << i+init_read_index;
+      std::cerr << "Aligning read " << i+init_read_index << " " << alignments[i].get_sequence() << std::endl;
       do {
 	// Perform alignment to current haplotype
 	double l_prob, r_prob;
@@ -422,7 +428,9 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
 	align_right_flank(base_seq+offset, base_seq_len-1-seed_base, base_log_wrong+offset, base_log_correct+offset, r_match_matrix, r_insert_matrix, r_prob);
 	double LL = compute_aln_logprob(base_seq_len, seed_base, base_seq[seed_base], base_log_wrong[seed_base], base_log_correct[seed_base],
 					l_match_matrix, l_insert_matrix, l_prob, r_match_matrix, r_insert_matrix, r_prob);
-	std::cerr << "\t" << LL;
+	std::cerr << "\t" << LL << "\t";
+	haplotype_->print(std::cerr);
+	std::cerr << std::endl;
       } while (haplotype_->next());
       haplotype_->reset();
       std::cerr << std::endl;

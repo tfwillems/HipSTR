@@ -139,7 +139,8 @@ public:
       StutterModel stutter_model(0.9, 0.05, 0.05, 0.7, 0.005, 0.005, region.period());
 
       std::vector<HapBlock*> blocks;
-      Haplotype* haplotype = generate_haplotype(region, chrom_seq, paired, unpaired, &stutter_model, blocks);
+      int max_ref_flank_len = 20;
+      Haplotype* haplotype = generate_haplotype(region, max_ref_flank_len, chrom_seq, paired, unpaired, &stutter_model, blocks);
       std::cerr << "Max block sizes: ";
       for (unsigned int i = 0; i < haplotype->num_blocks(); i++)
 	std::cerr << haplotype->get_block(i)->max_size() << " ";
@@ -160,14 +161,16 @@ public:
 	}
       } while (haplotype->next());
 
+      
       std::cerr << "Beginning sequence-specific functions" << std::endl;
-      HapAligner hap_aligner(haplotype, region, &base_qualities, total_reads);
+      HapAligner hap_aligner(haplotype, region, max_ref_flank_len, &base_qualities, total_reads);
       int read_index = 0;
       for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
 	hap_aligner.process_reads(paired[i],   read_index); read_index += paired[i].size();
 	hap_aligner.process_reads(unpaired[i], read_index); read_index += unpaired[i].size();
       }
       assert(read_index == total_reads);
+      
 
       // Clean up created data structures
       for (int i = 0; i < blocks.size(); i++)
