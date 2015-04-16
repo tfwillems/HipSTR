@@ -420,7 +420,8 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
       double* r_match_matrix  = new double [(base_seq_len-seed_base-1)*max_hap_size];
       double* r_insert_matrix = new double [(base_seq_len-seed_base-1)*max_hap_size];
 
-      std::cerr << "Aligning read " << i+init_read_index << " " << alignments[i].get_sequence() << std::endl;
+      std::cerr << "Aligning read " << i+init_read_index << " " << alignments[i].get_sequence() << std::endl
+		<<  alignments[i].get_sequence().substr(0, seed_base) << " " <<  alignments[i].get_sequence().substr(seed_base) << std::endl;
       do {
 	// Perform alignment to current haplotype
 	double l_prob, r_prob;
