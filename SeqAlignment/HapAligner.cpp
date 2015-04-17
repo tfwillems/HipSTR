@@ -32,9 +32,9 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
     L_log_probs[j]   = left_prob;
   }
 
-  int  haplotype_index = 1;
-  int  matrix_index    = seq_len;
-  int  stutter_R       = -1; // Haplotype index for right boundary of most recent stutter block
+  int haplotype_index = 1;
+  int matrix_index    = seq_len;
+  int stutter_R       = -1; // Haplotype index for right boundary of most recent stutter block
 
   // Fill in matrix row by row, iterating through each haplotype block
   for (int block_index = 0; block_index < haplotype_->num_blocks(); block_index++){
@@ -51,17 +51,18 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
       int block_len               = block_seq.size();
       int prev_row_index          = seq_len*(haplotype_index-1);            // Index into matrix for haplotype character preceding stutter block (column = 0) 
       matrix_index                = seq_len*(haplotype_index+block_len-1);  // Index into matrix for rightmost character in stutter block (column = 0)
+      int num_stutter_artifacts   = (rep_info->max_insertion()-rep_info->max_deletion())/period + 1;
 
+      std::vector<double> block_probs(num_stutter_artifacts); // Reuse in each iteration to avoid reallocation penalty
       for (int j = 0; j < seq_len; ++j, ++matrix_index){
-	std::vector<double> block_probs;
-
 	// Consider valid range of insertions and deletions, including no stutter artifact
+	int art_idx = 0;
 	for (int artifact_size = rep_info->max_deletion(); artifact_size <= rep_info->max_insertion(); artifact_size += period){
 	  int base_len    = std::min(block_len+artifact_size, j+1);
 	  int ptr_offset  = j - base_len + 1;
 	  double prob     = align_stutter_region(block_len, block_seq, base_len, seq_0+ptr_offset, base_log_wrong+ptr_offset, base_log_correct+ptr_offset, artifact_size);
 	  double pre_prob = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
-	  block_probs.push_back(rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob);
+	  block_probs[art_idx++] = rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob;
 	}
 	match_matrix[matrix_index] = log_sum_exp(block_probs);
       }
@@ -102,10 +103,9 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
 	  continue;
 	}
 
+	std::vector<double> match_probs; match_probs.reserve(MAX_SEQ_DEL+1); // Reuse for each iteration to avoid reallocation penalty
 	for (int j = 1; j < seq_len; ++j, ++matrix_index){
 	  // Compute all match-related deletion probabilities (including normal read extension, where k = 1)
-	  std::vector<double> match_probs;
-
 	  int del_index = matrix_index - seq_len - 1;
 	  if (stutter_R == -1){
 	    for (int k = 1; k <= std::min(haplotype_index, MAX_SEQ_DEL); k++){
@@ -129,6 +129,7 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
 	  match_matrix[matrix_index]  = match_emit          + log_sum_exp(match_probs); 
 	  insert_matrix[matrix_index] = base_log_correct[j] + log_sum_exp(match_matrix[matrix_index-seq_len-1]+LOG_INS_TO_MATCH, 
 									  insert_matrix[matrix_index-1]+LOG_INS_TO_INS);
+	  match_probs.clear();
 	}	
       }
     }
@@ -153,9 +154,9 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
     R_log_probs[j]   = right_prob;
   }
 
-  int  haplotype_index = 1;
-  int  matrix_index    = seq_len;
-  int  stutter_L       = -1; // Haplotype index for left boundary of most recent stutter block
+  int haplotype_index = 1;
+  int matrix_index    = seq_len;
+  int stutter_L       = -1; // Haplotype index for left boundary of most recent stutter block
 
   // Fill in matrix row by row, iterating through each haplotype block
   for (int block_index = haplotype_->num_blocks()-1; block_index >= 0; block_index--){
@@ -169,16 +170,17 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
       int block_len               = block_seq.size();
       int prev_row_index          = seq_len*(haplotype_index-1);            // Index into matrix for haplotype character preceding stutter block (column = 0) 
       matrix_index                = seq_len*(haplotype_index+block_len-1);  // Index into matrix for rightmost character in stutter block (column = 0)
+      int num_stutter_artifacts   = (rep_info->max_insertion()-rep_info->max_deletion())/period + 1;
 
+      std::vector<double> block_probs(num_stutter_artifacts); // Reuse in each iteration to avoid reallocation penalty
       for (int j = 0; j < seq_len; ++j, ++matrix_index){
-	std::vector<double> block_probs;
-
 	// Consider valid range of insertions and deletions, including no stutter artifact
+	int art_idx = 0;
 	for (int artifact_size = rep_info->max_deletion(); artifact_size <= rep_info->max_insertion(); artifact_size += period){
 	  int base_len    = std::min(block_len+artifact_size, j+1);
 	  double prob     = align_stutter_region(block_len, block_seq, base_len, seq_n-j, base_log_wrong-j, base_log_correct-j, artifact_size);
 	  double pre_prob = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
-	  block_probs.push_back(rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob);
+	  block_probs[art_idx++] = rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob;
 	}
 	match_matrix[matrix_index] = log_sum_exp(block_probs);
       }
@@ -219,9 +221,9 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
 	  continue;
 	}
 
+	std::vector<double> match_probs; match_probs.reserve(MAX_SEQ_DEL+1); // Reuse for each iteration to avoid reallocation penalty
 	for (int j = 1; j < seq_len; ++j, ++matrix_index){
 	  // Compute all match-related deletion probabilities (including normal read extension, where k = 1)
-	  std::vector<double> match_probs;	
 	  int del_index = matrix_index - 1 - seq_len;
 	  if (stutter_L == -1){
 	    for (int k = 1; k <= std::min(haplotype_index, MAX_SEQ_DEL); k++){
@@ -234,7 +236,7 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
 	  }
 	  else {
 	    // Add deletion transitions up until stutter_L+1
-	    for (int k = 1; k  <= std::min(haplotype_index-stutter_L-1, MAX_SEQ_DEL); k++){
+	    for (int k = 1; k <= std::min(haplotype_index-stutter_L-1, MAX_SEQ_DEL); k++){
 	      match_probs.push_back(match_matrix[del_index]+LOG_DEL_N[homopolymer_len][k]);
 	      del_index -= seq_len;
 	    }
@@ -245,6 +247,7 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
 	  match_matrix[matrix_index]  = match_emit           + log_sum_exp(match_probs); 
 	  insert_matrix[matrix_index] = base_log_correct[-j] + log_sum_exp(match_matrix[matrix_index-seq_len-1]+LOG_INS_TO_MATCH, 
 									   insert_matrix[matrix_index-1]+LOG_INS_TO_INS);
+	  match_probs.clear();
 	}
       }
     }
