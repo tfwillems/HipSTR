@@ -34,7 +34,7 @@ LIBDAI_LIB = $(LIBDAI_ROOT)/lib/libdai.a
 VCFLIB_LIB = vcflib/libvcflib.a
 
 .PHONY: all
-all: BamSieve HipSTR Phaser StutterTrainer test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test
+all: BamSieve HipSTR Phaser StutterTrainer test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test
 
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
@@ -77,6 +77,9 @@ test/hap_aligner_test: test/hap_aligner_test.cpp SeqAlignment/AlignmentData.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/stutter_aligner_test: test/stutter_aligner_test.cpp SeqAlignment/StutterAligner.cpp mathops.cpp error.cpp debug_tools.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
+
+test/fast_ops_test: test/fast_ops_test.cpp mathops.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
 # Build each object file independently

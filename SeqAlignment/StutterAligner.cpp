@@ -25,7 +25,7 @@ double align_pcr_insertion(int block_len,                const std::string& bloc
 			   const double* base_log_wrong, const double* base_log_correct,
 			   int D){
   assert(D > 0 && base_seq_len <= block_len+D);
-  std::vector<double> log_probs;
+  std::vector<double> log_probs; log_probs.reserve(block_len+1);
   double log_prior = log(1.0/(block_len+1));
 
   // Compute probability for i = 0
@@ -74,7 +74,7 @@ double align_pcr_deletion(int block_len,                const std::string& block
 			  const double* base_log_wrong, const double* base_log_correct,
 			  int D){
   assert(D < 0 && block_len+D >= 0 && base_seq_len <= block_len+D);
-  std::vector<double> log_probs;
+  std::vector<double> log_probs; log_probs.reserve(block_len+D+1);
   double log_prior = log(1.0/(block_len+D+1));
 
   // Compute probability for i = 0

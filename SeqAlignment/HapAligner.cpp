@@ -41,6 +41,15 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
     const std::string& block_seq = haplotype_->get_seq(block_index);
     bool stutter_block           = (haplotype_->get_block(block_index)->get_repeat_info()) != NULL;
 
+    // Skip any blocks to the left of the last changed block (as we can reuse the alignments)
+    if (haplotype_->last_changed() != -1 && block_index < haplotype_->last_changed()){
+      haplotype_index += block_seq.size() + (block_index == 0 ? -1 : 0);
+      matrix_index     = seq_len*haplotype_index;
+      if (stutter_block)
+	stutter_R = haplotype_index - 1;
+      continue;
+    }
+
     if (stutter_block){
       // NOTE: Stutter block emission probability is invariant to direction of alignment, so we can align
       // left->right instead right->left as would be typically required
@@ -162,6 +171,15 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
   for (int block_index = haplotype_->num_blocks()-1; block_index >= 0; block_index--){
     const std::string& block_seq = haplotype_->get_seq(block_index);
     bool stutter_block           = haplotype_->get_block(block_index)->get_repeat_info() != NULL;
+
+    // Skip any blocks to the right of the last changed block (as we can reuse the alignments)
+    if (haplotype_->last_changed() != -1 && block_index > haplotype_->last_changed()){
+      haplotype_index += block_seq.size() + (block_index == haplotype_->num_blocks()-1 ? -1 : 0);
+      matrix_index     = seq_len*haplotype_index;
+      if (stutter_block)
+	stutter_L = haplotype_index - 1;
+      continue;
+    }
 
     if (stutter_block){
       RepeatStutterInfo* rep_info = haplotype_->get_block(block_index)->get_repeat_info();
@@ -420,8 +438,9 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
       double* r_match_matrix  = new double [(base_seq_len-seed_base-1)*max_hap_size];
       double* r_insert_matrix = new double [(base_seq_len-seed_base-1)*max_hap_size];
 
-      std::cerr << "Aligning read " << i+init_read_index << " " << alignments[i].get_sequence() << std::endl
-		<<  alignments[i].get_sequence().substr(0, seed_base) << " " <<  alignments[i].get_sequence().substr(seed_base) << std::endl;
+      std::cerr << "Aligning read " << i+init_read_index << " " << alignments[i].get_sequence() << std::endl;
+      //		<<  alignments[i].get_sequence().substr(0, seed_base) << " " <<  alignments[i].get_sequence().substr(seed_base) << std::endl;
+
       do {
 	// Perform alignment to current haplotype
 	double l_prob, r_prob;
@@ -429,11 +448,11 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
 	align_right_flank(base_seq+offset, base_seq_len-1-seed_base, base_log_wrong+offset, base_log_correct+offset, r_match_matrix, r_insert_matrix, r_prob);
 	double LL = compute_aln_logprob(base_seq_len, seed_base, base_seq[seed_base], base_log_wrong[seed_base], base_log_correct[seed_base],
 					l_match_matrix, l_insert_matrix, l_prob, r_match_matrix, r_insert_matrix, r_prob);
-	std::cerr << "\t" << LL << "\t";
-	haplotype_->print(std::cerr);
+	//std::cerr << "\t" << LL << "\t";
+	//haplotype_->print(std::cerr);
       } while (haplotype_->next());
       haplotype_->reset();
-      std::cerr << std::endl;
+      //std::cerr << std::endl;
 
       // Deallocate scoring matrices
       delete [] l_match_matrix;
