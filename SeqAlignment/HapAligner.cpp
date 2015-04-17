@@ -428,7 +428,6 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
 					l_match_matrix, l_insert_matrix, l_prob, r_match_matrix, r_insert_matrix, r_prob);
 	std::cerr << "\t" << LL << "\t";
 	haplotype_->print(std::cerr);
-	std::cerr << std::endl;
       } while (haplotype_->next());
       haplotype_->reset();
       std::cerr << std::endl;

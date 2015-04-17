@@ -51,7 +51,7 @@ class HapBlock {
   int32_t end()     const { return end_;   }
   int num_options() const { return 1 + alt_seqs_.size(); }
 
-  void add_alternate(std::string& alt) {
+  virtual void add_alternate(std::string& alt) {
     alt_seqs_.push_back(alt);
     max_size_ = std::max(max_size_, (int)alt.size());
   }

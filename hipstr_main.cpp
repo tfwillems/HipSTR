@@ -28,6 +28,7 @@
 #include "SeqAlignment/HaplotypeGenerator.h"
 #include "SeqAlignment/Haplotype.h"
 #include "SeqAlignment/HapAligner.h"
+#include "SeqAlignment/RepeatStutterInfo.h"
 
 int MAX_EM_ITER         = 100;
 double ABS_LL_CONVERGE  = 0.01;  // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
@@ -140,28 +141,19 @@ public:
       StutterModel stutter_model(0.9, 0.05, 0.05, 0.7, 0.005, 0.005, region.period());
 
       std::vector<HapBlock*> blocks;
-      int max_ref_flank_len = 20;
+      int max_ref_flank_len = 30;
       Haplotype* haplotype = generate_haplotype(region, max_ref_flank_len, chrom_seq, paired, unpaired, &stutter_model, blocks);
       std::cerr << "Max block sizes: ";
       for (unsigned int i = 0; i < haplotype->num_blocks(); i++)
 	std::cerr << haplotype->get_block(i)->max_size() << " ";
       std::cerr << std::endl;
-      
-      do {
-	haplotype->print(std::cerr);
 
-	for (unsigned int i = 0; i < haplotype->num_blocks(); i++){
-	  const std::string& block_seq = haplotype->get_seq(i);
-	  std::cerr << i << " " << " " << block_seq << " IS_REPEAT? " << (haplotype->get_block(i)->get_repeat_info() != NULL) << std::endl;
-	  /*
-	  for (unsigned int j = 0; j < block_seq.size(); j++){
-	    std::cerr << haplotype->homopolymer_length(i,j) << " ";
-	  }
-	  std::cerr << std::endl;	  
-	  */
-	}
-      } while (haplotype->next());
-
+      // Print information about the stutter model
+      std::cerr << "Stutter model information" << std::endl;
+      RepeatStutterInfo* stutter_info = blocks[1]->get_repeat_info();
+      for (int i = stutter_info->max_deletion(); i <= stutter_info->max_insertion(); i += stutter_info->get_period())
+	std::cerr << i << " " << stutter_info->log_prob_pcr_artifact(1, i) << std::endl;
+      std::cerr << std::endl;
       
       std::cerr << "Beginning sequence-specific functions" << std::endl;
       init_alignment_model();
@@ -172,7 +164,6 @@ public:
 	hap_aligner.process_reads(unpaired[i], read_index); read_index += unpaired[i].size();
       }
       assert(read_index == total_reads);
-      
 
       // Clean up created data structures
       for (int i = 0; i < blocks.size(); i++)
