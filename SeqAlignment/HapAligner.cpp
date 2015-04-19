@@ -412,10 +412,14 @@ int HapAligner::calc_seed_base(Alignment& aln){
   return best_seed;
 }
 
-void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read_index){
+void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read_index, double* aln_probs){
+  double* prob_ptr = aln_probs + (init_read_index*haplotype_->num_combs());
   for (unsigned int i = 0; i < alignments.size(); i++){
     int seed_base = calc_seed_base(alignments[i]);
-    if (seed_base != -1){
+    if (seed_base == -1){
+      prob_ptr += haplotype_->num_combs();
+    }
+    else {
       assert(alignments[i].get_sequence().size() == alignments[i].get_base_qualities().size());
 
       // Extract probabilites related to base quality scores
@@ -448,6 +452,8 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
 	align_right_flank(base_seq+offset, base_seq_len-1-seed_base, base_log_wrong+offset, base_log_correct+offset, r_match_matrix, r_insert_matrix, r_prob);
 	double LL = compute_aln_logprob(base_seq_len, seed_base, base_seq[seed_base], base_log_wrong[seed_base], base_log_correct[seed_base],
 					l_match_matrix, l_insert_matrix, l_prob, r_match_matrix, r_insert_matrix, r_prob);
+	*prob_ptr = LL;
+	prob_ptr++;
 	//std::cerr << "\t" << LL << "\t";
 	//haplotype_->print(std::cerr);
       } while (haplotype_->next());
@@ -461,5 +467,4 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
       delete [] r_insert_matrix; 
     }
   }
-  init_read_index++;
 }

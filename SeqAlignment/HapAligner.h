@@ -65,7 +65,7 @@ class HapAligner {
   int calc_seed_base(Alignment& alignment);
 
 
-  void process_reads(std::vector<Alignment>& alignments, int init_read_index);
+  void process_reads(std::vector<Alignment>& alignments, int init_read_index, double* aln_probs);
 };
 
 #endif
