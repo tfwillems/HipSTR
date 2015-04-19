@@ -417,7 +417,9 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
   for (unsigned int i = 0; i < alignments.size(); i++){
     int seed_base = calc_seed_base(alignments[i]);
     if (seed_base == -1){
-      prob_ptr += haplotype_->num_combs();
+      // Assign all haplotypes the same LL
+      for (unsigned int i = 0; i < haplotype_->num_combs(); ++i, ++prob_ptr)
+	*prob_ptr = 0;
     }
     else {
       assert(alignments[i].get_sequence().size() == alignments[i].get_base_qualities().size());
