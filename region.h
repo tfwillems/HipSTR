@@ -23,7 +23,8 @@ public:
   const std::string& chrom() const { return chrom_;}
   uint32_t start() const { return start_;}
   uint32_t  stop() const { return stop_; }
-  int     period() const { return period_; }     
+  int     period() const { return period_; }
+  Region*   copy() const { return new Region(chrom_, start_, stop_, period_); }
 };
 
 void readRegions(std::string& input_file, std::vector<Region>& regions, int32_t max_regions);
