@@ -139,36 +139,31 @@ bool stringLengthLT(const std::string& s1, const std::string& s2){
 }
 
 void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
-				 std::vector< std::vector<Alignment> >& paired_strs_by_rg,
-				 std::vector< std::vector<Alignment> >& unpaired_strs_by_rg,
+				 std::vector< std::vector<Alignment> >& alignments,
 				 int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
-  assert(paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
   std::map<std::string, double> sample_counts;
   std::map<std::string, int>    read_counts;
 
   // Determine the number of reads and number of samples supporting each allele
-  int num_reads = 0;
-  for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
-    int num_reads = paired_strs_by_rg[i].size() + unpaired_strs_by_rg[i].size();
-    for (unsigned int j = 0; j < 2; j++){
-      std::vector<Alignment>& reads = (j == 0 ? paired_strs_by_rg[i] : unpaired_strs_by_rg[i]);
-      for (unsigned int k = 0; k < reads.size(); k++){
-	std::string subseq;
-	if (extract_sequence(reads[k], rep_region_start, rep_region_end, subseq)){
-	  sample_counts[subseq] += 1.0/num_reads;
-	  read_counts[subseq]   += 1;
-	  num_reads++;
-	}
-      } 
-    }   
-  }
+  int tot_reads = 0;
+  for (unsigned int i = 0; i < alignments.size(); i++){
+    int num_reads = alignments[i].size();
+    for (unsigned int j = 0; j < alignments[i].size(); j++){
+      std::string subseq;
+      if (extract_sequence(alignments[i][j], rep_region_start, rep_region_end, subseq)){
+	sample_counts[subseq] += 1.0/num_reads;
+	read_counts[subseq]   += 1;
+	tot_reads++;
+      }
+    } 
+  } 
 
   // Identify reads satisfying thresholds
-  int num_samples = paired_strs_by_rg.size();
+  int num_samples = alignments.size();
   int ref_index   = -1;
   sequences.clear();
   for (auto iter = sample_counts.begin(); iter != sample_counts.end(); iter++){
-    if (iter->second > MIN_FRAC_SAMPLES*num_samples && read_counts[iter->first] > MIN_FRAC_READS*num_reads){
+    if (iter->second > MIN_FRAC_SAMPLES*num_samples && read_counts[iter->first] > MIN_FRAC_READS*tot_reads){
       sequences.push_back(iter->first);
       if (ref_index == -1 && (iter->first.compare(ref_seq) == 0))
 	ref_index = sequences.size()-1;
@@ -192,19 +187,12 @@ void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
 }
 
 Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
-			      std::vector< std::vector<Alignment> >& paired_strs_by_rg,
-			      std::vector< std::vector<Alignment> >& unpaired_strs_by_rg,
+			      std::vector< std::vector<Alignment> >& alignments,
 			      StutterModel* stutter_model,
 			      std::vector<HapBlock*>& blocks){
   // Determine the minimum and maximum alignment boundaries
   int32_t min_start = INT_MAX, max_stop = INT_MIN;
-  for (auto vec_iter = paired_strs_by_rg.begin(); vec_iter != paired_strs_by_rg.end(); vec_iter++){
-    for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++){
-      min_start = std::min(min_start, aln_iter->get_start());
-      max_stop  = std::max(max_stop,  aln_iter->get_stop());
-    }
-  }
-  for (auto vec_iter = unpaired_strs_by_rg.begin(); vec_iter != unpaired_strs_by_rg.end(); vec_iter++){
+  for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++){
     for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++){
       min_start = std::min(min_start, aln_iter->get_start());
       max_stop  = std::max(max_stop,  aln_iter->get_stop());
@@ -222,16 +210,16 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
   int32_t rep_region_end   = str_region.stop() + 5;
   std::string ref_seq      = uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start));
   int ideal_min_length     = 3*str_region.period(); // Would ideally have at least 3 repeat units in each allele after trimming
-  generate_candidate_str_seqs(ref_seq, ideal_min_length, paired_strs_by_rg, unpaired_strs_by_rg, rep_region_start, rep_region_end, str_seqs);
+  generate_candidate_str_seqs(ref_seq, ideal_min_length, alignments, rep_region_start, rep_region_end, str_seqs);
   
   // Create a set of haplotype regions, consisting of STR sequence block flanked by two reference sequence stretches
   assert(rep_region_start > min_start && rep_region_end < max_stop);
   assert(str_seqs[0].compare(uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))) == 0);
   blocks.clear();
-  blocks.push_back(new HapBlock(min_start,        rep_region_start, uppercase(chrom_seq.substr(min_start, rep_region_start-min_start))));    // Ref sequence preceding STRS
+  blocks.push_back(new HapBlock(min_start, rep_region_start, uppercase(chrom_seq.substr(min_start, rep_region_start-min_start))));    // Ref sequence preceding STRS
   blocks.push_back(new RepeatBlock(rep_region_start, rep_region_end, 
 				   uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start)), str_region.period(), stutter_model));
-  blocks.push_back(new HapBlock(rep_region_end,   max_stop,         uppercase(chrom_seq.substr(rep_region_end, max_stop-rep_region_end))));  // Ref sequence following STRs
+  blocks.push_back(new HapBlock(rep_region_end, max_stop, uppercase(chrom_seq.substr(rep_region_end, max_stop-rep_region_end))));  // Ref sequence following STRs
   for (unsigned int j = 1; j < str_seqs.size(); j++)
     blocks[1]->add_alternate(str_seqs[j]);
 

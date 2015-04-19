@@ -11,8 +11,7 @@
 #include "HapBlock.h"
 
 Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
-                              std::vector< std::vector<Alignment> >& paired_strs_by_rg,
-                              std::vector< std::vector<Alignment> >& unpaired_strs_by_rg,
+                              std::vector< std::vector<Alignment> >& alignments,
 			      StutterModel* stutter_model,
 			      std::vector<HapBlock*>& blocks);
 
