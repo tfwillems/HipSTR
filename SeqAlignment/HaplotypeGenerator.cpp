@@ -164,6 +164,8 @@ void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
   sequences.clear();
   for (auto iter = sample_counts.begin(); iter != sample_counts.end(); iter++){
     if (iter->second > MIN_FRAC_SAMPLES*num_samples && read_counts[iter->first] > MIN_FRAC_READS*tot_reads){
+      std::cerr << "Sequence stats: " << iter->first << " " << iter->first.size() << " " 
+		<< iter->second*1.0/num_samples << " " << read_counts[iter->first]*1.0/tot_reads << std::endl;
       sequences.push_back(iter->first);
       if (ref_index == -1 && (iter->first.compare(ref_seq) == 0))
 	ref_index = sequences.size()-1;

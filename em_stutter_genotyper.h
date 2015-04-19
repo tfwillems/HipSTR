@@ -14,8 +14,7 @@
 #include "error.h"
 #include "stutter_model.h"
 
-
-class EMStutterGenotyper{
+class EMStutterGenotyper {
  private:
   // Locus information
   std::string chrom_;

@@ -36,11 +36,11 @@ class BaseQuality {
    */
   double log_prob_error(char quality) {
     if (quality < MIN_BASE_QUALITY){
-      std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using minimum expected score " << std::endl; 
+      //std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using minimum expected score " << std::endl; 
       return log_error_[MIN_BASE_QUALITY];
     }
     else if (quality > MAX_BASE_QUALITY) {
-      std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using maximum expected score " << std::endl;
+      //std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using maximum expected score " << std::endl;
       return log_error_[MAX_BASE_QUALITY];
     }
     else
@@ -54,11 +54,11 @@ class BaseQuality {
    */  
   double log_prob_correct(char quality){
     if (quality < MIN_BASE_QUALITY){
-      std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using minimum expected score " << std::endl; 
+      ///std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using minimum expected score " << std::endl; 
       return log_correct_[MIN_BASE_QUALITY];
     }
     else if (quality > MAX_BASE_QUALITY) {
-      std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using maximum expected score " << std::endl;
+      //std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using maximum expected score " << std::endl;
       return log_correct_[MAX_BASE_QUALITY];
     }
     else

@@ -373,7 +373,7 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
     }
     else {
       double log_p1  = log_phased_posteriors[sample_index];
-      double log_p2  = log_sample_posteriors_[gt_a*num_alleles_*num_samples_ + gt_b*num_samples_ + sample_index];
+      double log_p2  = log_sample_posteriors_[gt_b*num_alleles_*num_samples_ + gt_a*num_samples_ + sample_index];
       double log_tot = log_sum_exp(log_p1, log_p2);
       log_unphased_posteriors.push_back(log_tot);
       phase_probs.push_back(exp(log_p1-log_tot));
@@ -459,3 +459,4 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
 
   out << "\n";
 }
+
