@@ -73,7 +73,7 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
 	  double pre_prob = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
 	  block_probs[art_idx++] = rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob;
 	}
-	match_matrix[matrix_index] = log_sum_exp(block_probs);
+	match_matrix[matrix_index] = fast_log_sum_exp(block_probs);
       }
       
       // Adjust indices appropriately
@@ -135,9 +135,9 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
 
 	  match_probs.push_back(insert_matrix[matrix_index-1]+LOG_MATCH_TO_INS[homopolymer_len]); // Add insertion-related probability
 	  double match_emit           = (seq_0[j] == hap_char ? base_log_correct[j] : base_log_wrong[j]);
-	  match_matrix[matrix_index]  = match_emit          + log_sum_exp(match_probs); 
-	  insert_matrix[matrix_index] = base_log_correct[j] + log_sum_exp(match_matrix[matrix_index-seq_len-1]+LOG_INS_TO_MATCH, 
-									  insert_matrix[matrix_index-1]+LOG_INS_TO_INS);
+	  match_matrix[matrix_index]  = match_emit          + fast_log_sum_exp(match_probs); 
+	  insert_matrix[matrix_index] = base_log_correct[j] + fast_log_sum_exp(match_matrix[matrix_index-seq_len-1]+LOG_INS_TO_MATCH, 
+									       insert_matrix[matrix_index-1]+LOG_INS_TO_INS);
 	  match_probs.clear();
 	}	
       }
@@ -200,7 +200,7 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
 	  double pre_prob = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
 	  block_probs[art_idx++] = rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob;
 	}
-	match_matrix[matrix_index] = log_sum_exp(block_probs);
+	match_matrix[matrix_index] = fast_log_sum_exp(block_probs);
       }
       
       // Adjust indices appropriately
@@ -262,9 +262,9 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
 
 	  match_probs.push_back(insert_matrix[matrix_index-1]+LOG_MATCH_TO_INS[homopolymer_len]); // Add insertion-related probability
 	  double match_emit           = (seq_n[-j] == hap_char ? base_log_correct[-j] : base_log_wrong[-j]);
-	  match_matrix[matrix_index]  = match_emit           + log_sum_exp(match_probs); 
-	  insert_matrix[matrix_index] = base_log_correct[-j] + log_sum_exp(match_matrix[matrix_index-seq_len-1]+LOG_INS_TO_MATCH, 
-									   insert_matrix[matrix_index-1]+LOG_INS_TO_INS);
+	  match_matrix[matrix_index]  = match_emit           + fast_log_sum_exp(match_probs); 
+	  insert_matrix[matrix_index] = base_log_correct[-j] + fast_log_sum_exp(match_matrix[matrix_index-seq_len-1]+LOG_INS_TO_MATCH, 
+										insert_matrix[matrix_index-1]+LOG_INS_TO_INS);
 	  match_probs.clear();
 	}
       }
@@ -336,7 +336,7 @@ double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base,
       }
     }
   }
-  double total_LL = log_sum_exp(log_probs);
+  double total_LL = fast_log_sum_exp(log_probs);
   return total_LL;
 }
 
