@@ -11,8 +11,6 @@ Copyright (C) 2014 Thomas Willems <twillems@mit.edu>
 
 #include "bamtools/include/api/BamAlignment.h"
 
-//#include "src/AlignedRead.h"
-
 namespace AlignmentFilters {
   /* Returns the CIGAR string corresponding to the vector of CigarOps. */
   std::string GetCigarString(std::vector<BamTools::CigarOp>& cigar_ops); 

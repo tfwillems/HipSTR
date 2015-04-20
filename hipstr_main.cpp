@@ -10,15 +10,9 @@
 
 #include "bamtools/include/api/BamAlignment.h"
 
-#include "em_stutter_genotyper.h"
 #include "error.h"
-//#include "length_em_bam_processor.h"
 #include "genotyper_bam_processor.h"
-
-
-#include "seq_stutter_genotyper.h"
 #include "stringops.h"
-
 
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string, std::string& bamindex_string, std::string& rg_string,
@@ -35,6 +29,7 @@ void parse_command_line_args(int argc, char** argv,
 	      << "\t" << "--indexes       <list_of_bam_indexes> "  << "\t" << "Comma separated list of .bai files in same order as .bam files"                      << "\n"
 	      << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located"                      << "\n"
 	      << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                                 << "\n" << "\n"
+	    
 	      << "Optional input parameters:" << "\n"
 	      << "\t" << "--snp-vcf       <phased_snp_gts.vcf>  "  << "\t" << "Input VCF file containing phased SNP genotypes"                                      << "\n"
 	      << "\t" << "--stutter-in    <stutter_models.txt>  "  << "\t" << "Input file containing stutter models for each locus. By default, an EM algorithm "   << "\n"
@@ -44,7 +39,8 @@ void parse_command_line_args(int argc, char** argv,
 	      << "\t" << "--bam-out       <spanning_reads.bam   "  << "\t" << "Output a BAM file containing the reads spanning each region to the provided file"    << "\n"
 	      << "\t" << "--str-vcf       <str_gts.vcf>         "  << "\t" << "Output a VCF file containing phased STR genotypes"                                   << "\n"
 	      << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n" << "\n"
-	      << "Other Optional parameters:" << "\n"
+	      
+	      << "Other optional parameters:" << "\n"
       	      << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"	    
 	      << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
       	      << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"

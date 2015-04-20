@@ -63,7 +63,7 @@ class SeqStutterGenotyper{
   /* Compute the posteriors for each sample, given the haplotype probabilites and stutter model */
   double calc_log_sample_posteriors();  
 
-  // Set up the relative data structures. Invoked by the constructor 
+  // Set up the relevant data structures. Invoked by the constructor 
   void init(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 	    std::vector< std::vector<double> >& log_p1,
 	    std::vector< std::vector<double> >& log_p2,
