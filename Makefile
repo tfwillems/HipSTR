@@ -9,7 +9,7 @@ CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX
 #CXXFLAGS= -O0 -g -D_FILE_OFFSET_BITS=64 -std=c++0x
 
 ## Source code files, add new files to this list
-SRC_COMMON  = error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp extract_indels.cpp mathops.cpp debug_tools.cpp
+SRC_COMMON  = error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp extract_indels.cpp mathops.cpp
 SRC_STUTTER = stutter_main.cpp
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
 SRC_HIPSTR  = hipstr_main.cpp factor_builder.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp
@@ -76,7 +76,7 @@ test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp snp_tree.cpp $(VCFLIB_LIB)
 test/hap_aligner_test: test/hap_aligner_test.cpp SeqAlignment/AlignmentData.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/stutter_aligner_test: test/stutter_aligner_test.cpp SeqAlignment/StutterAligner.cpp mathops.cpp error.cpp debug_tools.cpp
+test/stutter_aligner_test: test/stutter_aligner_test.cpp SeqAlignment/StutterAligner.cpp mathops.cpp error.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
 test/fast_ops_test: test/fast_ops_test.cpp mathops.cpp

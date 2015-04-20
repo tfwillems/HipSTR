@@ -28,9 +28,8 @@ void parse_command_line_args(int argc, char** argv,
 			     BamProcessor& bam_processor){
   int def_mdist = bam_processor.MAX_MATE_DIST;
   if (argc == 1){
-    std::cerr << "Usage: HipSTR --bams  <list_of_bams>  --indexes <list_of_bam_indexes> --rgs <list_of_read_groups>" << "\n"
-	      << "              --fasta <dir>           --regions <region_file.bed>" << "\n"
-	       << "              [--bam-out <spanning_reads.bam>] [--rem-multimaps] [--chrom <chrom>] [--vcf <phased_snp_gts.vcf>]" << "\n\n"
+    std::cerr << "Usage: HipSTR --bams  <list_of_bams>  --indexes <list_of_bam_indexes>" << "\n"
+	      << "              --fasta <dir>           --regions <region_file.bed>"     << "\n" << "\n"
 	      << "Required parameters:" << "\n"
 	      << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of .bam files"                                                  << "\n"
 	      << "\t" << "--indexes       <list_of_bam_indexes> "  << "\t" << "Comma separated list of .bai files in same order as .bam files"                      << "\n"
