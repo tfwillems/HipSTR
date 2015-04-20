@@ -12,7 +12,10 @@
 
 #include "em_stutter_genotyper.h"
 #include "error.h"
-#include "length_em_bam_processor.h"
+//#include "length_em_bam_processor.h"
+#include "genotyper_bam_processor.h"
+
+
 #include "seq_stutter_genotyper.h"
 #include "stringops.h"
 
@@ -20,7 +23,9 @@
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string, std::string& bamindex_string, std::string& rg_string,
 			     std::string& fasta_dir, std::string& region_file,  std::string& vcf_file, std::string& chrom, 
-			     std::string& bam_out_file, std::string& str_vcf_out_file, BamProcessor& bam_processor){
+			     std::string& bam_out_file, std::string& str_vcf_out_file, 
+			     std::string& stutter_in_file, std::string& stutter_out_file, int& use_hap_aligner,
+			     BamProcessor& bam_processor){
   int def_mdist = bam_processor.MAX_MATE_DIST;
   if (argc == 1){
     std::cerr << "Usage: HipSTR --bams  <list_of_bams>  --indexes <list_of_bam_indexes> --rgs <list_of_read_groups>" << "\n"
@@ -31,16 +36,26 @@ void parse_command_line_args(int argc, char** argv,
 	      << "\t" << "--indexes       <list_of_bam_indexes> "  << "\t" << "Comma separated list of .bai files in same order as .bam files"                      << "\n"
 	      << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located"                      << "\n"
 	      << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                                 << "\n" << "\n"
-	      << "Optional parameters:" << "\n"
-      	      << "\t" << "--bam-out       <spanning_reads.bam   "  << "\t" << "Output a BAM file containing the reads spanning each region to the provided file"    << "\n"
-	      << "\t" << "--str-vcf       <str_gts.vcf>         "  << "\t" << "Output a VCF file containing phased STR genotypes"                                   << "\n"
-	      << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
-	      << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
-	      << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
+	      << "Optional input parameters:" << "\n"
 	      << "\t" << "--snp-vcf       <phased_snp_gts.vcf>  "  << "\t" << "Input VCF file containing phased SNP genotypes"                                      << "\n"
+	      << "\t" << "--stutter-in    <stutter_models.txt>  "  << "\t" << "Input file containing stutter models for each locus. By default, an EM algorithm "   << "\n"
+      	      << "\t" << "                                      "  << "\t" << "  will be used to learn locus-specific models"                                       << "\n" << "\n"
+
+      	      << "Optional output parameters:" << "\n"
+	      << "\t" << "--bam-out       <spanning_reads.bam   "  << "\t" << "Output a BAM file containing the reads spanning each region to the provided file"    << "\n"
+	      << "\t" << "--str-vcf       <str_gts.vcf>         "  << "\t" << "Output a VCF file containing phased STR genotypes"                                   << "\n"
+	      << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n" << "\n"
+	      << "Other Optional parameters:" << "\n"
+      	      << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"	    
+	      << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
+      	      << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
 	      << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as .bam files. "                   << "\n"
-	      << "\t" << "                                      "  << "\t" << "Assign each read the RG tag corresponding to its file. By default, "                 << "\n"
-	      << "\t" << "                                      "  << "\t" << "each read must have an RG flag from lobSTR and this is used instead"                 << "\n"
+	      << "\t" << "                                      "  << "\t" << "  Assign each read the RG tag corresponding to its file. By default, "               << "\n"
+	      << "\t" << "                                      "  << "\t" << "  each read must have an RG flag from lobSTR and this is used instead"               << "\n"
+      	      << "\t" << "--seq-genotyper                       "  << "\t" << "Use a haplotype-based aligment model to genotype each STR. This option is much "     << "\n"
+	      << "\t" << "                                      "  << "\t" << "  more accurate than the default length-based model but also requires substantially" << "\n"
+	      << "\t" << "                                      "  << "\t" << "  more computation time"                                                             << "\n"
+
 	      << "\n";
     exit(0);
   }
@@ -55,6 +70,9 @@ void parse_command_line_args(int argc, char** argv,
     {"str-vcf",         required_argument, 0, 'o'},
     {"regions",         required_argument, 0, 'r'},
     {"snp-vcf",         required_argument, 0, 'v'},
+    {"seq-genotyper",   no_argument, &use_hap_aligner, 1},
+    {"stutter-in",      required_argument, 0, 'm'},
+    {"stutter-out",     required_argument, 0, 's'},
     {"bam-out",         required_argument, 0, 'w'},
     {"rem-multimaps",   no_argument, &(bam_processor.REMOVE_MULTIMAPPERS), 1},
     {0, 0, 0, 0}
@@ -63,7 +81,7 @@ void parse_command_line_args(int argc, char** argv,
   int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "b:c:d:f:g:i:o:r:v:w:", long_options, &option_index);
+    c = getopt_long(argc, argv, "b:c:d:f:g:i:o:r:v:m:s:w:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -88,11 +106,17 @@ void parse_command_line_args(int argc, char** argv,
     case 'i':
       bamindex_string = std::string(optarg);
       break;
+    case 'm':
+      stutter_in_file = std::string(optarg);
+      break;
     case 'o':
       str_vcf_out_file = std::string(optarg);
       break;
     case 'r':
       region_file = std::string(optarg);
+      break;
+    case 's':
+      stutter_out_file = std::string(optarg);
       break;
     case 'v':
       vcf_file = std::string(optarg);
@@ -112,12 +136,16 @@ void parse_command_line_args(int argc, char** argv,
 
 int main(int argc, char** argv){
   bool check_mate_chroms = false;
-  LengthEMBamProcessor bam_processor(false, check_mate_chroms);
-
+  GenotyperBamProcessor bam_processor(false, check_mate_chroms, false);
+  
+  int use_hap_aligner = 0;
   std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", vcf_file="";
-  std::string bam_out_file="", str_vcf_out_file="";
+  std::string bam_out_file="", str_vcf_out_file="", stutter_in_file, stutter_out_file;
   parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, vcf_file, chrom, 
-			  bam_out_file, str_vcf_out_file, bam_processor);
+			  bam_out_file, str_vcf_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, bam_processor);
+  if (use_hap_aligner)
+    bam_processor.use_seq_aligner();
+
   int num_flank = 0;
   if (bamfile_string.empty())
     printErrorAndDie("--bams option required");
@@ -191,6 +219,10 @@ int main(int argc, char** argv){
     bam_processor.set_input_snp_vcf(vcf_file);
   if(!str_vcf_out_file.empty())
     bam_processor.set_output_str_vcf(str_vcf_out_file, rg_samples);
+  if (!stutter_in_file.empty())
+    bam_processor.set_input_stutter(stutter_in_file);
+  if (!stutter_out_file.empty())
+    bam_processor.set_output_stutter(stutter_out_file);
 
   // Run analysis
   bam_processor.process_regions(reader, region_file, fasta_dir, file_read_groups, bam_writer, std::cout, 1000);
