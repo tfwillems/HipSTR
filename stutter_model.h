@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <math.h>
 #include <iostream>
+#include <map>
 #include <vector>
 
 #include "error.h"
@@ -68,6 +69,14 @@ class StutterModel {
   double log_stutter_pmf(int sample_bps, int read_bps);
 
   double log_stutter_geq(int sample_bps, int min_read_bps);
+
+  void write(std::ostream& output);
+
+  void write_model(const std::string& chrom, int32_t start, int32_t end, std::ostream& output);
+
+  static StutterModel* read(std::istream& input);
+
+  static void read_models(std::istream& input, std::map< std::pair<std::string, std::pair<int32_t, int32_t> >, StutterModel*>& models);
 };
 
 #endif

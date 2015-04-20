@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include "stutter_model.h"
 
 std::ostream& operator<< (std::ostream &out, StutterModel& model){
@@ -83,3 +85,38 @@ double StutterModel::log_stutter_geq(int sample_bps, int min_read_bps){
   
   return log_sum_exp(log_probs);
 }
+
+
+void StutterModel::write(std::ostream& output){
+  output << in_geom_  << "\t" << in_down_  << "\t" << in_up_  << "\t" 
+	 << out_geom_ << "\t" << out_down_ << "\t" << out_up_ << "\t" << motif_len_ << std::endl;
+}
+
+void StutterModel::write_model(const std::string& chrom, int32_t start, int32_t end, std::ostream& output){
+  output << chrom << "\t" << start << "\t" << end << "\t";
+  write(output);
+}
+
+StutterModel* StutterModel::read(std::istream& input){
+  double inframe_geom,  inframe_up,  inframe_down;
+  double outframe_geom, outframe_up, outframe_down;
+  int motif_len;
+  std::string line;
+  std::getline(input, line); 
+  std::istringstream ss(line);
+  if (!(ss >> inframe_geom >> inframe_down >> inframe_up >> outframe_geom >> outframe_down >> outframe_up >> motif_len))
+    printErrorAndDie("Improperly formatted stutter model file");
+  return new StutterModel(inframe_geom, inframe_up, inframe_down, outframe_geom, outframe_up, outframe_down, motif_len);
+}
+
+void StutterModel::read_models(std::istream& input, std::map< std::pair<std::string, std::pair<int32_t, int32_t> > , StutterModel*>& models){
+  assert(models.size() == 0);
+  while (!input.eof()){
+    std::string chrom;
+    int32_t start, end;
+    input >> chrom >> start, end;
+    StutterModel* model = read(input);
+    models[std::pair<std::string, std::pair<int32_t, int32_t> >(chrom, std::pair<int32_t,int32_t>(start, end))] = model;
+  }
+}
+

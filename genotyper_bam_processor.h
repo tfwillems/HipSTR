@@ -17,6 +17,10 @@ private:
   // Counters for EM convergence
   int num_em_converge_, num_em_fail_;
 
+  // Output file for stutter models
+  bool output_stutter_models_;
+  std::ofstream stutter_model_out_;
+
   // Output file for STR genotypes
   bool output_str_gts_;
   std::ofstream str_vcf_;
@@ -27,8 +31,16 @@ private:
 
 public:
  GenotyperBamProcessor(bool use_lobstr_rg, bool check_mate_chroms, bool use_seq_aligner):SNPBamProcessor(use_lobstr_rg, check_mate_chroms){
-    output_str_gts_  = false;
-    use_seq_aligner_ = use_seq_aligner;
+    output_stutter_models_ = false;
+    output_str_gts_        = false;
+    use_seq_aligner_       = use_seq_aligner;
+  }
+
+  void set_output_stutter(std::string& model_file){
+    output_stutter_models_ = true;
+    stutter_model_out_.open(model_file, std::ofstream::out);
+    if (!stutter_model_out_.is_open())
+      printErrorAndDie("Failed to open output file for stutter models");
   }
 
   void set_output_str_vcf(std::string& vcf_file, std::set<std::string>& samples_to_output){
@@ -59,7 +71,9 @@ public:
   void finish(){
     SNPBamProcessor::finish();
     if (output_str_gts_)
-      str_vcf_.close();  
+      str_vcf_.close();
+    if (output_stutter_models_)
+      stutter_model_out_.close();
   }
 
   // EM parameters for length-based stutter learning
