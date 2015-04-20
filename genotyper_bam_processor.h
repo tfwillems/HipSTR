@@ -2,6 +2,7 @@
 #define GENOTYPER_BAM_PROCESSOR_H_
 
 #include <fstream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -11,11 +12,16 @@
 #include "region.h"
 #include "seq_stutter_genotyper.h"
 #include "snp_bam_processor.h"
+#include "stutter_model.h"
 
 class GenotyperBamProcessor : public SNPBamProcessor {
 private:  
   // Counters for EM convergence
   int num_em_converge_, num_em_fail_;
+
+  // Parameters for stutter models read from file
+  bool read_stutter_models_;
+  std::map<Region, StutterModel*> stutter_models_;
 
   // Output file for stutter models
   bool output_stutter_models_;
@@ -33,9 +39,31 @@ public:
  GenotyperBamProcessor(bool use_lobstr_rg, bool check_mate_chroms, bool use_seq_aligner):SNPBamProcessor(use_lobstr_rg, check_mate_chroms){
     output_stutter_models_ = false;
     output_str_gts_        = false;
+    read_stutter_models_   = false;
     use_seq_aligner_       = use_seq_aligner;
   }
 
+  ~GenotyperBamProcessor(){
+    for (auto iter = stutter_models_.begin(); iter != stutter_models_.end(); iter++)
+      delete iter->second;
+    stutter_models_.clear();
+  }
+
+  void use_seq_aligner(){
+    use_seq_aligner_ = true;
+  }
+
+  void set_input_stutter(std::string& model_file){
+    std::ifstream input;
+    input.open(model_file, std::ifstream::in);
+    if (!input.is_open())
+      printErrorAndDie("Failed to open input file for stutter models");
+    StutterModel::read_models(input, stutter_models_);
+    std::cerr << stutter_models_.size() << std::endl;
+    read_stutter_models_ = true;
+    input.close();
+  }
+  
   void set_output_stutter(std::string& model_file){
     output_stutter_models_ = true;
     stutter_model_out_.open(model_file, std::ofstream::out);
