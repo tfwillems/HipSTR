@@ -10,6 +10,7 @@
 
 #include "error.h"
 #include "mathops.h"
+#include "region.h"
 
 class StutterModel {
  private:
@@ -70,13 +71,15 @@ class StutterModel {
 
   double log_stutter_geq(int sample_bps, int min_read_bps);
 
+  int period(){ return motif_len_; }
+
   void write(std::ostream& output);
 
   void write_model(const std::string& chrom, int32_t start, int32_t end, std::ostream& output);
 
   static StutterModel* read(std::istream& input);
 
-  static void read_models(std::istream& input, std::map< std::pair<std::string, std::pair<int32_t, int32_t> >, StutterModel*>& models);
+  static void read_models(std::istream& input, std::map<Region, StutterModel*>& models);
 };
 
 #endif
