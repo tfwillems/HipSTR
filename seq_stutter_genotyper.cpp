@@ -113,13 +113,14 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##INFO=<ID=" << "END,"            << "Number=1,Type=Integer,Description=\"" << "Inclusive end coordinate for STR's reference allele"                       << "\">\n";
 
   // Format field descriptors
-  out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""   << "Genotype" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "GB"          << ",Number=1,Type=String,Description=\""   << "Base pair differences of genotype from reference" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "POSTERIOR"   << ",Number=1,Type=Float,Description=\""    << "Posterior probability of phased genotype"                      << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\""  << "Total observed reads for sample"                               << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\""  << "Total observed reads for sample with SNP phasing information"  << "\">" << "\n"
-      << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""   << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
-      << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\""  << "Base pair difference observed in each read"                    << "\">" << "\n";
+  out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""  << "Genotype" << "\">" << "\n"
+      << "##FORMAT=<ID=" << "GB"          << ",Number=1,Type=String,Description=\""  << "Base pair differences of genotype from reference" << "\">" << "\n"
+      << "##FORMAT=<ID=" << "POSTERIOR"   << ",Number=1,Type=Float,Description=\""   << "Posterior probability of phased genotype"                      << "\">" << "\n"
+      << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\"" << "Total observed reads for sample"                               << "\">" << "\n"
+      << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\"" << "Total observed reads for sample with SNP phasing information"  << "\">" << "\n"
+      << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""  << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
+      << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\"" << "Base pair difference observed in each read"                    << "\">" << "\n"
+      << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probabilities"<< "\">" << "\n";
 
   // Sample names
   out << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
@@ -326,9 +327,18 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   for (unsigned int i = 0; i < alleles_.size(); i++)
     bp_diffs.push_back((int)alleles_[i].size() - (int)alleles_[0].size());
 
+  // Determine the posterior bp differences observed in reads for each sample
+  read_LL_ptr = log_aln_probs_;
+  std::vector< std::vector<double> > posterior_bps_per_sample(num_samples_);
+  for (unsigned int read_index = 0;  read_index < num_reads_; read_index++){
+    posterior_bps_per_sample[sample_label_[read_index]].push_back(expected_value(read_LL_ptr, bp_diffs));
+    read_LL_ptr += num_alleles_;
+  }
+
   // Add reference allele and alternate alleles
   out << "\t" << alleles_[0] << "\t";
   if (num_alleles_ == 1)
+
     out << ".";
   else {
     for (int i = 1; i < num_alleles_-1; i++)
@@ -355,7 +365,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   }
 
   // Add FORMAT field
-  out << "\tGT:GB:POSTERIOR:DP:DSNP:PDP:ALLREADS";
+  out << "\tGT:GB:POSTERIOR:DP:DSNP:PDP:ALLREADS:PALLREADS";
 
   for (unsigned int i = 0; i < sample_names.size(); i++){
     out << "\t";
@@ -384,6 +394,18 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       for (unsigned int j = 1; j < bps_per_sample[sample_index].size(); j++)
 	out << "," << bps_per_sample[sample_index][j];
     }
+    else
+      out << ":" << ".";
+
+    // Expected base pair differences from alignment probabilities
+    if (posterior_bps_per_sample[sample_index].size() != 0){
+      std::sort(posterior_bps_per_sample[sample_index].begin(), posterior_bps_per_sample[sample_index].end());
+      out << ":" << posterior_bps_per_sample[sample_index][0];
+      for (unsigned int j = 1; j < posterior_bps_per_sample[sample_index].size(); j++)
+        out << "," << posterior_bps_per_sample[sample_index][j];
+    }
+    else
+      out << ":" << ".";
   }
   out << "\n";
 }
