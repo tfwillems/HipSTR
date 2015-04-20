@@ -152,6 +152,11 @@ class EMStutterGenotyper {
     stutter_model_ = new StutterModel(inframe_geom,  inframe_up,  inframe_down, outframe_geom, outframe_up, outframe_down, motif_len_);
   }
 
+  void set_stutter_model(StutterModel& stutter_model){
+    delete stutter_model_;
+    stutter_model_ = stutter_model.copy();
+  }
+
   void genotype(bool use_pop_freqs);
   
   bool train(int max_iter, double min_LL_abs_change, double min_LL_frac_change);
