@@ -25,6 +25,18 @@ public:
   uint32_t  stop() const { return stop_; }
   int     period() const { return period_; }
   Region*   copy() const { return new Region(chrom_, start_, stop_, period_); }
+
+
+  bool operator<(const Region &r)  const {
+    if (chrom_.compare(r.chrom()) != 0)
+      return chrom_.compare(r.chrom());
+    if (start_ != r.start())
+      return start_ < r.start();
+    if (stop_ != r.stop())
+      return stop_ < r.stop();
+    return false;
+  }
+
 };
 
 void readRegions(std::string& input_file, std::vector<Region>& regions, int32_t max_regions);
