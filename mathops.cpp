@@ -46,3 +46,11 @@ double log_sum_exp(std::vector<double>& log_vals){
     total += exp(*iter - max_val);
   return max_val + log(total);
 }
+
+double expected_value(double* log_likelihoods, std::vector<int>& vals){
+  double total_LL = log_sum_exp(log_likelihoods, log_likelihoods+vals.size());
+  double total = 0.0;
+  for (unsigned int i = 0; i < vals.size(); i++)
+    total += exp(log_likelihoods[i]-total_LL)*vals[i];
+  return total;
+}
