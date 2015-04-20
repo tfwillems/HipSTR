@@ -1,14 +1,18 @@
-#ifndef LENGTH_EM_BAM_PROCESSOR_H_
-#define LENGTH_EM_BAM_PROCESSOR_H_
+#ifndef GENOTYPER_BAM_PROCESSOR_H_
+#define GENOTYPER_BAM_PROCESSOR_H_
 
 #include <fstream>
 #include <string>
 #include <vector>
 
 #include "bamtools/include/api/BamAlignment.h"
+
+#include "em_stutter_genotyper.h"
+#include "region.h"
+#include "seq_stutter_genotyper.h"
 #include "snp_bam_processor.h"
 
-class LengthEMBamProcessor : public SNPBamProcessor {
+class GenotyperBamProcessor : public SNPBamProcessor {
 private:  
   // Counters for EM convergence
   int num_em_converge_, num_em_fail_;
@@ -18,9 +22,13 @@ private:
   std::ofstream str_vcf_;
   std::vector<std::string> samples_to_genotype_;
 
+  // Flag for type of genotyper to use
+  bool use_seq_aligner_;
+
 public:
- LengthEMBamProcessor(bool use_lobstr_rg, bool check_mate_chroms):SNPBamProcessor(use_lobstr_rg, check_mate_chroms){
-    output_str_gts_ = false;
+ GenotyperBamProcessor(bool use_lobstr_rg, bool check_mate_chroms, bool use_seq_aligner):SNPBamProcessor(use_lobstr_rg, check_mate_chroms){
+    output_str_gts_  = false;
+    use_seq_aligner_ = use_seq_aligner;
   }
 
   void set_output_str_vcf(std::string& vcf_file, std::set<std::string>& samples_to_output){
@@ -38,7 +46,10 @@ public:
     std::sort(samples_to_genotype_.begin(), samples_to_genotype_.end());
     
     // Write VCF header
-    EMStutterGenotyper::write_vcf_header(samples_to_genotype_, str_vcf_);
+    if (use_seq_aligner_)
+      SeqStutterGenotyper::write_vcf_header(samples_to_genotype_, str_vcf_);
+    else
+      EMStutterGenotyper::write_vcf_header(samples_to_genotype_, str_vcf_);
   }
 
   void analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
@@ -51,6 +62,7 @@ public:
       str_vcf_.close();  
   }
 
+  // EM parameters for length-based stutter learning
   int MAX_EM_ITER         = 100;
   double ABS_LL_CONVERGE  = 0.01;  // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
   double FRAC_LL_CONVERGE = 0.001; // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE

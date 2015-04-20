@@ -1,27 +1,14 @@
 #include <iostream>
 
-#include "em_stutter_genotyper.h"
 #include "extract_indels.h"
-#include "length_em_bam_processor.h"
+#include "genotyper_bam_processor.h"
 
-#include "seq_stutter_genotyper.h"
 
-void LengthEMBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
-						     std::vector< std::vector<double> >& log_p1s,
-						     std::vector< std::vector<double> >& log_p2s,
-						     std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq){
-  
-  // Exploratory
-  
-  StutterModel stutter_model(0.9, 0.05, 0.05, 0.7, 0.005, 0.005, region.period());
-  SeqStutterGenotyper seq_genotyper(region, alignments, log_p1s, log_p2s, rg_names, chrom_seq, stutter_model);
-  seq_genotyper.genotype();
-  seq_genotyper.write_vcf_record(samples_to_genotype_, str_vcf_);
-  return;
-  
-  // End of exploratory section
-  
-
+void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
+						      std::vector< std::vector<double> >& log_p1s,
+						      std::vector< std::vector<double> >& log_p2s,
+						      std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq){
+  // Learn stutter model using length-based EM algorithm
   std::vector< std::vector<int> > str_bp_lengths(alignments.size());
   std::vector< std::vector<double> > str_log_p1s(alignments.size()), str_log_p2s(alignments.size());
   int inf_reads = 0;
@@ -55,11 +42,21 @@ void LengthEMBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<Ba
   if (trained){
     num_em_converge_++;
     std::cerr << "Learned stutter model: " << *(stutter_genotyper.get_stutter_model()) << std::endl;
-    bool use_pop_freqs = false;
-    stutter_genotyper.genotype(use_pop_freqs);
-    
-    if (output_str_gts_)
-      stutter_genotyper.write_vcf_record(ref_allele, samples_to_genotype_, str_vcf_);
+
+    if (use_seq_aligner_){
+      // Use sequence-based genotyper
+      SeqStutterGenotyper seq_genotyper(region, alignments, log_p1s, log_p2s, rg_names, chrom_seq, (*stutter_genotyper.get_stutter_model()));
+      seq_genotyper.genotype();
+      if (output_str_gts_)
+	seq_genotyper.write_vcf_record(samples_to_genotype_, str_vcf_);
+    }
+    else {
+      // Use length-based genotyper
+      bool use_pop_freqs = false;
+      stutter_genotyper.genotype(use_pop_freqs);
+      if (output_str_gts_)
+	stutter_genotyper.write_vcf_record(ref_allele, samples_to_genotype_, str_vcf_);
+    }
   }
   else {
     num_em_fail_++;
