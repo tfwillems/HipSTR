@@ -12,54 +12,67 @@
 const double MIN_FRAC_READS   = 0.01;
 const double MIN_FRAC_SAMPLES = 0.01;
 
-void trim_from_left(int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
+void trim(int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   int min_len = INT_MAX;
   for (unsigned int i = 0; i < sequences.size(); i++)
     min_len = std::min(min_len, (int)sequences[i].size());
- 
-  int left_trim = 0;
-  while (left_trim < min_len-ideal_min_length){
+  if (min_len <= ideal_min_length)
+    return;
+
+  int max_left_trim = 0, max_right_trim = 0;
+  while (max_left_trim < min_len-ideal_min_length){
     unsigned int j = 1;
     while (j < sequences.size()){
-      if (sequences[j][left_trim] != sequences[j-1][left_trim])
+      if (sequences[j][max_left_trim] != sequences[j-1][max_left_trim])
 	break;
       j++;
     }
     if (j != sequences.size()) 
       break;
-    left_trim++;
+    max_left_trim++;
   }
-
-  // Adjust sequences and position
-  for (unsigned int i = 0; i < sequences.size(); i++)
-    sequences[i] = sequences[i].substr(left_trim);
-  rep_region_start += left_trim;
-}
-
-
-void trim_from_right(int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
-  int min_len = INT_MAX;
-  for (unsigned int i = 0; i < sequences.size(); i++)
-    min_len = std::min(min_len, (int)sequences[i].size());
-
-  int right_trim = 0;
-  while (right_trim < min_len-ideal_min_length){
-    char c = sequences[0][sequences[0].size()-1-right_trim];
+  while (max_right_trim < min_len-ideal_min_length){
+    char c = sequences[0][sequences[0].size()-1-max_right_trim];
     unsigned int j = 1;
     while (j < sequences.size()){
-      if (sequences[j][sequences[j].size()-1-right_trim] != c)
+      if (sequences[j][sequences[j].size()-1-max_right_trim] != c)
 	break;
       j++;
     }
     if (j != sequences.size())
       break;
-    right_trim++;
+    max_right_trim++;
   }
-  for (unsigned int i = 0; i < sequences.size(); i++)
-    sequences[i] = sequences[i].substr(0, sequences[i].size()-right_trim);
-  rep_region_end -= right_trim;
-}
 
+  // Determine the left and right trims that clip as much as possible
+  // but are as equal in size as possible
+  int left_trim, right_trim;
+  if (min_len - 2*std::min(max_left_trim, max_right_trim) <= ideal_min_length){
+    left_trim = right_trim = std::min(max_left_trim, max_right_trim);
+    while (min_len - left_trim - right_trim < ideal_min_length){
+      if (left_trim > right_trim)
+	left_trim--;
+      else
+	right_trim--;
+    }
+  }
+  else {
+    if (max_left_trim > max_right_trim){
+      right_trim = max_right_trim;
+      left_trim  = std::min(max_left_trim, min_len-ideal_min_length-max_right_trim);
+    }
+    else {
+      left_trim  = max_left_trim;
+      right_trim = std::min(max_right_trim, min_len-ideal_min_length-max_left_trim);
+    }
+  }
+
+  // Adjust sequences and position
+  for (unsigned int i = 0; i < sequences.size(); i++)
+    sequences[i] = sequences[i].substr(left_trim, sequences[i].size()-left_trim-right_trim);
+  rep_region_start += left_trim;
+  rep_region_end   -= right_trim;
+}
 
 bool extract_sequence(Alignment& aln, int32_t start, int32_t end, std::string& seq){    
   if (aln.get_start() >= start) return false;
@@ -183,9 +196,8 @@ void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
   // Sort regions by length (apart from reference sequence)
   std::sort(sequences.begin()+1, sequences.end(), stringLengthLT);
 
-  // Trim to remove identical sequences
-  trim_from_left(ideal_min_length, rep_region_start, rep_region_end, sequences);
-  trim_from_right(ideal_min_length, rep_region_start, rep_region_end, sequences);
+  // Clip identical regions
+  trim(ideal_min_length, rep_region_start, rep_region_end, sequences);
 }
 
 Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
