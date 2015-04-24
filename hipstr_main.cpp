@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #include "bamtools/include/api/BamAlignment.h"
+#include "vcflib/src/Variant.h"
 
 #include "error.h"
 #include "genotyper_bam_processor.h"
@@ -16,9 +17,10 @@
 
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string, std::string& bamindex_string, std::string& rg_string,
-			     std::string& fasta_dir, std::string& region_file,  std::string& vcf_file, std::string& chrom, 
+			     std::string& fasta_dir, std::string& region_file,  std::string& snp_vcf_file, std::string& chrom, 
 			     std::string& bam_out_file, std::string& str_vcf_out_file, 
 			     std::string& stutter_in_file, std::string& stutter_out_file, int& use_hap_aligner,
+			     std::string& ref_vcf_file, 
 			     BamProcessor& bam_processor){
   int def_mdist = bam_processor.MAX_MATE_DIST;
   if (argc == 1){
@@ -31,8 +33,10 @@ void parse_command_line_args(int argc, char** argv,
 	      << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                                 << "\n" << "\n"
 	    
 	      << "Optional input parameters:" << "\n"
-	      << "\t" << "--snp-vcf       <phased_snp_gts.vcf>  "  << "\t" << "Input VCF file containing phased SNP genotypes"                                      << "\n"
-	      << "\t" << "--stutter-in    <stutter_models.txt>  "  << "\t" << "Input file containing stutter models for each locus. By default, an EM algorithm "   << "\n"
+	      << "\t" << "--ref-vcf    <str_snp_ref_gts.vcf.gz> "  << "\t" << "Bgzipped input VCF file containing STR and SNP genotypes for a reference panel"      << "\n" 
+	      << "\t" << "--snp-vcf    <phased_snp_gts.vcf.gz>  "  << "\t" << "Bgzipped input VCF file containing phased SNP genotypes for the samples"             << "\n" 
+	      << "\t" << "                                      "  << "\t" << " that are going to be genotyped"                                                     << "\n"
+	      << "\t" << "--stutter-in <stutter_models.txt>     "  << "\t" << "Input file containing stutter models for each locus. By default, an EM algorithm "   << "\n"
       	      << "\t" << "                                      "  << "\t" << "  will be used to learn locus-specific models"                                       << "\n" << "\n"
 
       	      << "Optional output parameters:" << "\n"
@@ -61,6 +65,7 @@ void parse_command_line_args(int argc, char** argv,
     {"max-mate-dist",   required_argument, 0, 'd'},
     {"fasta",           required_argument, 0, 'f'},
     {"rgs",             required_argument, 0, 'g'},
+    {"ref-vcf",         required_argument, 0, 'h'},
     {"indexes",         required_argument, 0, 'i'},
     {"str-vcf",         required_argument, 0, 'o'},
     {"regions",         required_argument, 0, 'r'},
@@ -76,7 +81,7 @@ void parse_command_line_args(int argc, char** argv,
   int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "b:c:d:f:g:i:o:r:v:m:s:w:", long_options, &option_index);
+    c = getopt_long(argc, argv, "b:c:d:f:g:h:i:o:r:v:m:s:w:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -98,6 +103,9 @@ void parse_command_line_args(int argc, char** argv,
     case 'g':
       rg_string = std::string(optarg);
       break;
+    case 'h':
+      ref_vcf_file = std::string(optarg);
+      break;
     case 'i':
       bamindex_string = std::string(optarg);
       break;
@@ -114,7 +122,7 @@ void parse_command_line_args(int argc, char** argv,
       stutter_out_file = std::string(optarg);
       break;
     case 'v':
-      vcf_file = std::string(optarg);
+      snp_vcf_file = std::string(optarg);
       break;
     case 'w':
       bam_out_file = std::string(optarg);
@@ -134,10 +142,11 @@ int main(int argc, char** argv){
   GenotyperBamProcessor bam_processor(false, check_mate_chroms, false);
   
   int use_hap_aligner = 0;
-  std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", vcf_file="";
+  std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_out_file="", str_vcf_out_file="", stutter_in_file, stutter_out_file;
-  parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, vcf_file, chrom, 
-			  bam_out_file, str_vcf_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, bam_processor);
+  std::string ref_vcf_file="";
+  parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, snp_vcf_file, chrom, 
+			  bam_out_file, str_vcf_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, ref_vcf_file, bam_processor);
   if (use_hap_aligner)
     bam_processor.use_seq_aligner();
 
@@ -210,8 +219,16 @@ int main(int argc, char** argv){
     if (!file_open) printErrorAndDie("Failed to open output BAM file");
   }
 
-  if (!vcf_file.empty())
-    bam_processor.set_input_snp_vcf(vcf_file);
+  if (!ref_vcf_file.empty()){
+    if (!string_ends_with(ref_vcf_file, ".gz"))
+      printErrorAndDie("Ref VCF file must be bgzipped (and end in .gz)");
+    bam_processor.set_ref_vcf(ref_vcf_file);
+  }
+  if (!snp_vcf_file.empty()){
+    if (!string_ends_with(snp_vcf_file, ".gz"))
+      printErrorAndDie("SNP VCF file must be bgzipped (and end in .gz)");
+    bam_processor.set_input_snp_vcf(snp_vcf_file);
+  }
   if(!str_vcf_out_file.empty())
     bam_processor.set_output_str_vcf(str_vcf_out_file, rg_samples);
   if (!stutter_in_file.empty())
