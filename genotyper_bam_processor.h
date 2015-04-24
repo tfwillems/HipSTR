@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "bamtools/include/api/BamAlignment.h"
+#include "vcflib/src/Variant.h"
 
 #include "em_stutter_genotyper.h"
 #include "region.h"
@@ -35,11 +36,16 @@ private:
   // Flag for type of genotyper to use
   bool use_seq_aligner_;
 
+  // VCF containg SNP and STR genotypes for a reference panef
+  bool have_ref_vcf_;
+  vcf::VariantCallFile ref_vcf_;
+
 public:
  GenotyperBamProcessor(bool use_lobstr_rg, bool check_mate_chroms, bool use_seq_aligner):SNPBamProcessor(use_lobstr_rg, check_mate_chroms){
     output_stutter_models_ = false;
     output_str_gts_        = false;
     read_stutter_models_   = false;
+    have_ref_vcf_          = false;
     use_seq_aligner_       = use_seq_aligner;
   }
 
@@ -51,6 +57,12 @@ public:
 
   void use_seq_aligner(){
     use_seq_aligner_ = true;
+  }
+
+  void set_ref_vcf(std::string& ref_vcf_file){
+    if(!ref_vcf_.open(ref_vcf_file))
+      printErrorAndDie("Failed to open VCF file for reference panel");
+    have_ref_vcf_ = true;
   }
 
   void set_input_stutter(std::string& model_file){

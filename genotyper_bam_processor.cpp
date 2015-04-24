@@ -74,7 +74,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   if (stutter_model != NULL) {
     if (use_seq_aligner_){
       // Use sequence-based genotyper
-      SeqStutterGenotyper seq_genotyper(region, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model);
+      SeqStutterGenotyper seq_genotyper(region, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, (have_ref_vcf_ ? &ref_vcf_ : NULL));
       seq_genotyper.genotype();
       if (output_str_gts_)
 	seq_genotyper.write_vcf_record(samples_to_genotype_, str_vcf_);
