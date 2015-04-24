@@ -15,8 +15,6 @@
 #include "SeqAlignment/HapAligner.h"
 #include "SeqAlignment/RepeatStutterInfo.h"
 
-const double TOLERANCE = 1e-10;
-
 void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> >& alignments, 
 			       std::vector< std::vector<double> >& log_p1, 
 			       std::vector< std::vector<double> >& log_p2,
@@ -44,7 +42,6 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     }
   }
   
-  // Locally realign each read
   std::cerr << "Left aligning reads..." << std::endl;
   int read_index = 0;
   for (unsigned int i = 0; i < alignments.size(); ++i){
@@ -207,6 +204,15 @@ void SeqStutterGenotyper::set_allele_priors(vcf::VariantCallFile& variant_file){
 }
 */
  
+double SeqStutterGenotyper::debug_sample(int sample_index){
+  double* sample_LL_ptr = log_sample_posteriors_ + sample_index;
+  for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
+    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
+      std::cerr << index_1 << " " << index_2 << " " << *sample_LL_ptr << std::endl;
+      sample_LL_ptr += num_samples_;
+    }
+}
+
 
 double SeqStutterGenotyper::calc_log_sample_posteriors(){
   std::vector<double> sample_max_LLs(num_samples_, -DBL_MAX);
@@ -242,7 +248,7 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
       for (int sample_index = 0; sample_index < num_samples_; ++sample_index, ++sample_LL_ptr)
 	sample_total_LLs[sample_index] += exp(*sample_LL_ptr - sample_max_LLs[sample_index]);
   for (int sample_index = 0; sample_index < num_samples_; ++sample_index){
-    sample_total_LLs[sample_index] = sample_max_LLs[sample_index] + log(sample_total_LLs[sample_index]);    
+    sample_total_LLs[sample_index] = sample_max_LLs[sample_index] + log(sample_total_LLs[sample_index]);
     assert(sample_total_LLs[sample_index] <= TOLERANCE);
   }
   // Compute the total log-likelihood given the current parameters

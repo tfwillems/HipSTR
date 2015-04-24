@@ -72,6 +72,8 @@ class SeqStutterGenotyper{
   // Extract the sequences for each allele
   void get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles);
 
+  double debug_sample(int sample_index);
+
  public:
   SeqStutterGenotyper(Region& region,
 		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,
