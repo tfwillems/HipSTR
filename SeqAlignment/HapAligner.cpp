@@ -281,9 +281,13 @@ double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base,
   int rflank_len = base_seq_len-seed_base-1;
   int hapsize    = haplotype_->cur_size();
 
-  // TO DO: Set this based on number of viable positions
-  double SEED_LOG_MATCH_PRIOR = 0.0;
-
+  // Compute number of viable seed positions and the corresponding uniform prior
+  int num_seeds = 0;
+  for (int block_index = 0; block_index < haplotype_->num_blocks(); block_index++)
+    if (haplotype_->get_block(block_index)->get_repeat_info() != NULL)
+      num_seeds += haplotype_->get_seq(block_index).size();
+  double SEED_LOG_MATCH_PRIOR = -log(num_seeds);
+  
   std::vector<double> log_probs; 
   // Left flank entirely outside of haplotype window, seed aligned with 0   
   log_probs.push_back(SEED_LOG_MATCH_PRIOR + (seed_char == haplotype_->get_first_char() ? log_seed_correct: log_seed_wrong)
@@ -337,6 +341,7 @@ double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base,
     }
   }
   double total_LL = fast_log_sum_exp(log_probs);
+  assert(total_LL < TOLERANCE);
   return total_LL;
 }
 
