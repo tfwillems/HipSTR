@@ -7,6 +7,8 @@
 #include <vector>
 
 extern const double LOG_ONE_HALF;
+extern const double TOLERANCE;
+
 
 double sum(double* begin, double* end);
 
