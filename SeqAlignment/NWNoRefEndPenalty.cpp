@@ -10,7 +10,7 @@
 class IndelTracker {
 private:
   const static unsigned int MAX_BITS = 64;
-  const static unsigned int BITS_PER_INDEL = 8;
+  const static unsigned int BITS_PER_INDEL = 9;
   uint64_t val_;
   unsigned int al_length_;
   unsigned int num_indels_;
@@ -51,8 +51,10 @@ public:
 	val_ -= 1;
       }
     }
-    if (static_cast<unsigned int>((1 << BITS_PER_INDEL)-1) < loc)
+    if (static_cast<unsigned int>((1 << BITS_PER_INDEL)-1) < loc){
+      std::cerr << loc << std::endl;
       printErrorAndDie("Location is too large for IndelTracker");
+    }
     return IndelTracker((val_ << BITS_PER_INDEL) | loc, num_indels_+1, al_length_+1);
   }
 
