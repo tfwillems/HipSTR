@@ -15,6 +15,35 @@
 #include "SeqAlignment/HapAligner.h"
 #include "SeqAlignment/RepeatStutterInfo.h"
 
+void SeqStutterGenotyper::read_ref_vcf_alleles(std::vector<std::string>& alleles){
+    assert(alleles.size() == 0);
+    assert(ref_vcf_ != NULL);
+    if (!ref_vcf_->setRegion(region_->chrom(), region_->start(), region_->stop())){
+      // Retry setting region if chr is in chromosome name
+      if (region_->chrom().size() <= 3 || region_->chrom().substr(0, 3).compare("chr") != 0 
+	  || !ref_vcf_->setRegion(region_->chrom().substr(3), region_->start(), region_->stop()))
+	printErrorAndDie("Failed to set VCF region when reading candidate STR alleles");
+    }                                                                                                                                                                                  
+    // Extract STR and ensure the coordinates match
+    vcf::Variant variant(*ref_vcf_);
+    while (ref_vcf_->getNextVariant(variant)){
+      if (variant.position < region_->start())
+	continue;
+      else if (variant.position == region_->start()){
+	int32_t end = (int32_t)variant.getInfoValueFloat(END_KEY);
+	if (end == region_->stop()) {
+	  for (auto iter = variant.alleles.begin(); iter != variant.alleles.end(); iter++)
+	    alleles.push_back(*iter);
+	  return;
+	}
+      }
+      else 
+	break;
+    }
+    printErrorAndDie("Failed to extract matching VCF entry when reading candidate STR alleles");
+}
+
+
 void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> >& alignments, 
 			       std::vector< std::vector<double> >& log_p1, 
 			       std::vector< std::vector<double> >& log_p2,
@@ -54,6 +83,19 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
       sample_label_[read_index] = i; 
     }
   }
+
+  if (ref_vcf_ != NULL){
+    std::cerr << "Reading STR alleles from reference VCF" << std::endl;
+    std::vector<std::string> alleles;
+    read_ref_vcf_alleles(alleles);
+    for (unsigned int i = 0; i < alleles.size(); i++)
+      std::cerr << alleles[i] << std::endl;
+
+    // TO DO:
+    // 1. Check that VCF reference allele matches expected reference allele
+    // 2. Extend haplotype generator to take list of alleles as an argument (including ref allele)
+  }
+
 
   // Generate putative haplotypes and determine the number of alleles
   std::cerr << "Generating putative haplotypes..." << std::endl;

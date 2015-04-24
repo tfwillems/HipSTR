@@ -22,6 +22,8 @@
 
 class SeqStutterGenotyper{
  private:
+  std::string END_KEY = "END";
+
   // Locus information
   Region* region_ = NULL;
 
@@ -56,6 +58,9 @@ class SeqStutterGenotyper{
   // Iterates through allele_1, allele_2 and then samples by their indices
   // Only used if per-allele priors have been specified for each sample
   double* log_allele_priors_ = NULL;
+
+  // VCF containing STR and SNP genotypes for a reference panel
+  vcf::VariantCallFile* ref_vcf_ = NULL;
   
   /* Compute the alignment probabilites between each read and each haplotype */
   double calc_align_probs();
@@ -73,13 +78,16 @@ class SeqStutterGenotyper{
   void get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles);
 
   double debug_sample(int sample_index);
+  
+  void read_ref_vcf_alleles(std::vector<std::string>& alleles);
+  
 
  public:
   SeqStutterGenotyper(Region& region,
 		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 		      std::vector< std::vector<double> >& log_p1, 
 		      std::vector< std::vector<double> >& log_p2, 
-		      std::vector<std::string>& sample_names, std::string& chrom_seq, StutterModel& stutter_model){
+		      std::vector<std::string>& sample_names, std::string& chrom_seq, StutterModel& stutter_model, vcf::VariantCallFile* ref_vcf){
     assert(alignments.size() == log_p1.size() && alignments.size() == log_p2.size() && alignments.size() == sample_names.size());
     region_       = region.copy();
     num_samples_  = alignments.size();
@@ -89,6 +97,7 @@ class SeqStutterGenotyper{
       reads_per_sample_.push_back(alignments[i].size());
     }
     stutter_model_ = stutter_model.copy();
+    ref_vcf_       = ref_vcf;
     init(alignments, log_p1, log_p2, sample_names, chrom_seq);
   }
 
@@ -108,7 +117,7 @@ class SeqStutterGenotyper{
   }
   
   static void write_vcf_header(std::vector<std::string>& sample_names, std::ostream& out);
-
+  
   /*
   void set_allele_priors(vcf::VariantCallFile& variant_file);
   */
