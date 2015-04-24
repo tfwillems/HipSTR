@@ -6,8 +6,6 @@
 #include "error.h"
 #include "mathops.h"
 
-const double TOLERANCE = 1e-10;
-
 void EMStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names, std::ostream& out){
   out << "##fileformat=VCFv4.1" << "\n";
 
