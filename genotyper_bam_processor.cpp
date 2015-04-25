@@ -8,7 +8,8 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 						      std::vector< std::vector<double> >& log_p1s,
 						      std::vector< std::vector<double> >& log_p2s,
 						      std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq){ 
-  
+  std::cerr << alignments.size() << " " << log_p1s.size() << " " << log_p2s.size() << " " << rg_names.size() << std::endl;
+  assert(alignments.size() == log_p1s.size() && alignments.size() == log_p2s.size() && alignments.size() == rg_names.size());
   std::vector< std::vector<int> > str_bp_lengths(alignments.size());
   std::vector< std::vector<double> > str_log_p1s(alignments.size()), str_log_p2s(alignments.size());
   int inf_reads = 0;
@@ -56,6 +57,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     std::cerr << "Building EM stutter genotyper" << std::endl;
     length_genotyper = new EMStutterGenotyper(region.chrom(), region.start(), region.stop(), str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
     std::cerr << "Training EM stutter genotyper" << std::endl;
+    std::cerr << FRAC_LL_CONVERGE << std::endl;
     trained = length_genotyper->train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
     if (trained){
       if (output_stutter_models_)
@@ -75,9 +77,13 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     if (use_seq_aligner_){
       // Use sequence-based genotyper
       SeqStutterGenotyper seq_genotyper(region, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, (have_ref_vcf_ ? &ref_vcf_ : NULL));
-      seq_genotyper.genotype();
-      if (output_str_gts_)
-	seq_genotyper.write_vcf_record(samples_to_genotype_, str_vcf_);
+      if (seq_genotyper.genotype()) {
+	num_genotype_success_++;
+	if (output_str_gts_)
+	  seq_genotyper.write_vcf_record(samples_to_genotype_, str_vcf_);
+      }
+      else
+	num_genotype_fail_++;
     }
     else {
       // Use length-based genotyper
@@ -86,9 +92,13 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	length_genotyper->set_stutter_model(*stutter_model);
       }
       bool use_pop_freqs = false;
-      length_genotyper->genotype(use_pop_freqs);
-      if (output_str_gts_)
-	length_genotyper->write_vcf_record(ref_allele, samples_to_genotype_, str_vcf_);
+      if (length_genotyper->genotype(use_pop_freqs)){
+	num_genotype_success_++;
+	if (output_str_gts_)
+	  length_genotyper->write_vcf_record(ref_allele, samples_to_genotype_, str_vcf_);
+      }
+      else
+	num_genotype_fail_++;
     }
   }
   delete stutter_model;

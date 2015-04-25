@@ -36,6 +36,9 @@ private:
   // Flag for type of genotyper to use
   bool use_seq_aligner_;
 
+  // Counters for genotyping success;
+  int num_genotype_success_, num_genotype_fail_;
+
   // VCF containg SNP and STR genotypes for a reference panef
   bool have_ref_vcf_;
   vcf::VariantCallFile ref_vcf_;
@@ -47,6 +50,10 @@ public:
     read_stutter_models_   = false;
     have_ref_vcf_          = false;
     use_seq_aligner_       = use_seq_aligner;
+    num_em_converge_       = 0;
+    num_em_fail_           = 0;
+    num_genotype_success_  = 0;
+    num_genotype_fail_     = 0;
   }
 
   ~GenotyperBamProcessor(){
@@ -114,6 +121,9 @@ public:
       str_vcf_.close();
     if (output_stutter_models_)
       stutter_model_out_.close();
+
+    std::cerr << "Stutter model training succeeded for " << num_em_converge_ << " out of " << num_em_converge_+num_em_fail_ << " loci" << std::endl;
+    std::cerr << "Genotyping succeeded for " << num_genotype_success_ << " out of " << num_genotype_success_+num_genotype_fail_ << " loci" << std::endl;
   }
 
   // EM parameters for length-based stutter learning
