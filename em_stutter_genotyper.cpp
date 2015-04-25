@@ -296,6 +296,7 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
     
     double abs_change  = new_LL - LL;
     double frac_change = -(new_LL - LL)/LL;
+    std::cerr << abs_change << " " << min_LL_abs_change << " " << frac_change << " " << min_LL_frac_change << std::endl;
     if (abs_change < min_LL_abs_change && frac_change < min_LL_frac_change){
       converged = true;
       return true;
@@ -307,11 +308,12 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
   return false;
 }
 
-void EMStutterGenotyper::genotype(bool use_pop_freqs){
+bool EMStutterGenotyper::genotype(bool use_pop_freqs){
   if (stutter_model_ == NULL)
     printErrorAndDie("Must specify stutter model before running genotype()");
   recalc_log_sample_posteriors(use_pop_freqs);
   recalc_log_read_phase_posteriors();
+  return true;
 }
 
 std::string EMStutterGenotyper::get_allele(std::string& ref_allele, int bp_diff){

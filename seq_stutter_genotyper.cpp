@@ -84,22 +84,15 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     }
   }
 
+  std::vector<std::string> vcf_alleles;
   if (ref_vcf_ != NULL){
     std::cerr << "Reading STR alleles from reference VCF" << std::endl;
-    std::vector<std::string> alleles;
-    read_ref_vcf_alleles(alleles);
-    for (unsigned int i = 0; i < alleles.size(); i++)
-      std::cerr << alleles[i] << std::endl;
-
-    // TO DO:
-    // 1. Check that VCF reference allele matches expected reference allele
-    // 2. Extend haplotype generator to take list of alleles as an argument (including ref allele)
+    read_ref_vcf_alleles(vcf_alleles);
   }
-
 
   // Generate putative haplotypes and determine the number of alleles
   std::cerr << "Generating putative haplotypes..." << std::endl;
-  haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, alns_, stutter_model_, hap_blocks_);
+  haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, alns_, vcf_alleles, stutter_model_, hap_blocks_);
   num_alleles_ = haplotype_->num_combs();
 
   // Print information about the haplotype and the stutter model 
@@ -121,7 +114,12 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   get_alleles(chrom_seq, alleles_);
 }
 
-void SeqStutterGenotyper::genotype(){
+bool SeqStutterGenotyper::genotype(){
+  if (haplotype_->get_block(1)->start() < region_->start() || haplotype_->get_block(1)->end() > region_->stop()){
+    std::cerr << "WARNING: Skipping locus because trimming failed" << std::endl;
+    return false;
+  }
+
   // Align each read against each candidate haplotype
   std::cerr << "Aligning reads to each candidate haplotype..." << std::endl;
   init_alignment_model();
@@ -136,6 +134,7 @@ void SeqStutterGenotyper::genotype(){
   if (stutter_model_ == NULL)
     printErrorAndDie("Must specify stutter model before running genotype()");
   calc_log_sample_posteriors();
+  return true;
 }
 
 void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names, std::ostream& out){

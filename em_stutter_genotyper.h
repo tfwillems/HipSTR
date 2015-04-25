@@ -157,7 +157,7 @@ class EMStutterGenotyper {
     stutter_model_ = stutter_model.copy();
   }
 
-  void genotype(bool use_pop_freqs);
+  bool genotype(bool use_pop_freqs);
   
   bool train(int max_iter, double min_LL_abs_change, double min_LL_frac_change);
 

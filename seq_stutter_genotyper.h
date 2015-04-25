@@ -124,7 +124,7 @@ class SeqStutterGenotyper{
   void write_vcf_record(std::vector<std::string>& sample_names, std::ostream& out);
   
 
-  void genotype();  
+  bool genotype();  
   
 };
 
