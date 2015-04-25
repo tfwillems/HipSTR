@@ -115,6 +115,8 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 }
 
 bool SeqStutterGenotyper::genotype(){
+  // For now, abort if we couldn't trim the STR block back to the repetitive regions
+  // This occurs when the extracted alleles differ in the neigboring flanks
   if (haplotype_->get_block(1)->start() < region_->start() || haplotype_->get_block(1)->end() > region_->stop()){
     std::cerr << "WARNING: Skipping locus because trimming failed" << std::endl;
     return false;
