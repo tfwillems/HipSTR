@@ -8,7 +8,7 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
 				    std::vector<std::string>& rg_names, Region& region, 
 				    std::string& ref_allele, std::string& chrom_seq, std::ostream& out){
   assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
-  if(paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
+  if (paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
     return;
   
   std::vector<  std::vector<BamTools::BamAlignment> > alignments(paired_strs_by_rg.size());
@@ -48,7 +48,7 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
     destroy_snp_trees(snp_trees);      
   }
   else {
-    for (unsigned int i = 0; i < paired_strs_by_rg[i].size(); i++){
+    for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
       // Copy alignments                                                                                                                                             
       alignments[i].insert(alignments[i].end(), paired_strs_by_rg[i].begin(),   paired_strs_by_rg[i].end());
       alignments[i].insert(alignments[i].end(), unpaired_strs_by_rg[i].begin(), unpaired_strs_by_rg[i].end());
