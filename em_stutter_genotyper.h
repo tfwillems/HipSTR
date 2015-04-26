@@ -25,28 +25,28 @@ class EMStutterGenotyper {
   int num_alleles_; // Total number of valid alleles
   int motif_len_;   // # bp in STR motif
   
-  int* allele_index_ = NULL;                  // Index of each read's STR size
-  double* log_p1_    = NULL, *log_p2_ = NULL; // Log of SNP phasing likelihoods for each read
-  int* sample_label_ = NULL;                  // Sample index for each read
+  int* allele_index_;        // Index of each read's STR size
+  double* log_p1_, *log_p2_; // Log of SNP phasing likelihoods for each read
+  int* sample_label_;        // Sample index for each read
 
-  StutterModel* stutter_model_ = NULL;
+  StutterModel* stutter_model_;
 
   std::vector<std::string> sample_names_;     // List of sample names
   std::map<std::string, int> sample_indices_; // Mapping from sample name to index
 
   std::vector<int> bps_per_allele_;   // Size of each STR allele in bps
   std::vector<int> reads_per_sample_; // Number of reads for each sample
-  double* log_gt_priors_ = NULL;
+  double* log_gt_priors_;
 
   // Iterates through allele_1, allele_2 and then samples by their indices
-  double* log_sample_posteriors_ = NULL; 
+  double* log_sample_posteriors_; 
   
   // Iterates through allele_1, allele_2, and then reads and phases 1 or 2 by their indices
-  double* log_read_phase_posteriors_ = NULL; 
+  double* log_read_phase_posteriors_; 
 
   // Iterates through allele_1, allele 2 and then samples by their indices
   // Only used if per-allele priors have been specified for each sample
-  double* log_allele_priors_ = NULL;
+  double* log_allele_priors_;
   
   // Initialization functions for the EM algorithm
   void init_log_gt_priors();
@@ -126,6 +126,8 @@ class EMStutterGenotyper {
       }
     }
     assert(read_index == num_reads_);
+    stutter_model_     = NULL;
+    log_allele_priors_ = NULL;
   }
 
   ~EMStutterGenotyper(){
