@@ -162,11 +162,6 @@ int main(int argc, char** argv){
 
   if (fasta_dir.back() != '/')
     fasta_dir += "/";
-  std::cerr << "--bams         " << bamfile_string   << "\n"
-	    << "--indexes      " << bamindex_string  << "\n"
-	    << "--rgs          " << rg_string        << "\n"
-	    << "--fasta        " << fasta_dir        << "\n"
-	    << "--regions      " << region_file      << "\n" << std::endl;
 
   std::vector<std::string> bam_files;
   split_by_delim(bamfile_string, ',', bam_files);
