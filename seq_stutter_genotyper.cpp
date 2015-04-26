@@ -92,7 +92,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 
   // Generate putative haplotypes and determine the number of alleles
   std::cerr << "Generating putative haplotypes..." << std::endl;
-  haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, alns_, vcf_alleles, stutter_model_, hap_blocks_);
+  haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, alns_, vcf_alleles, stutter_model_, alleles_from_bams_, hap_blocks_);
   num_alleles_ = haplotype_->num_combs();
 
   // Print information about the haplotype and the stutter model 
