@@ -196,10 +196,9 @@ double EMStutterGenotyper::recalc_log_sample_posteriors(bool use_pop_freqs){
 
   if (use_pop_freqs){
     // If per-allele priors have been set for each sample, use them
+    // Otherwise we'll set them in the for loop below on a per-allele basis
     if (log_allele_priors_ != NULL)
       memcpy(log_sample_posteriors_, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
-
-    // Otherwise we'll set them in the for loop below on a per-allele basis
   }
   else
     std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), -2*log(num_alleles_));
@@ -286,11 +285,14 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
     std::cerr << std::endl;
     
     assert(new_LL <= TOLERANCE);
-    if (new_LL < LL+TOLERANCE)
-      return false;
+    if (new_LL < LL+TOLERANCE){
+      // Occasionally the LL isn't monotonically increasing b/c of the pseudocounts in
+      // recalc_stutter_model(). As a result, let's return true anyways
+      return true;
+    }
 
     // M-step
-    if (log_allele_priors_ == NULL) 
+    if (log_allele_priors_ == NULL)
       recalc_log_gt_priors();
     recalc_stutter_model();
     
