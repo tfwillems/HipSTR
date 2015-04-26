@@ -54,6 +54,10 @@ public:
     num_em_fail_           = 0;
     num_genotype_success_  = 0;
     num_genotype_fail_     = 0;
+    MAX_EM_ITER            = 100;
+    ABS_LL_CONVERGE        = 0.01;
+    FRAC_LL_CONVERGE       = 0.001;
+    MIN_TOTAL_READS        = 100;
   }
 
   ~GenotyperBamProcessor(){
@@ -127,9 +131,10 @@ public:
   }
 
   // EM parameters for length-based stutter learning
-  int MAX_EM_ITER         = 100;
-  double ABS_LL_CONVERGE  = 0.01;  // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
-  double FRAC_LL_CONVERGE = 0.001; // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
+  int MAX_EM_ITER;
+  double ABS_LL_CONVERGE;  // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
+  double FRAC_LL_CONVERGE; // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
+  int MIN_TOTAL_READS;     // Minimum total reads required to genotype locus
 };
 
 

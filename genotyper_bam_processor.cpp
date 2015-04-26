@@ -8,6 +8,14 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 						      std::vector< std::vector<double> >& log_p1s,
 						      std::vector< std::vector<double> >& log_p2s,
 						      std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq){ 
+  int total_reads = 0;
+  for (unsigned int i = 0; i < alignments.size(); i++)
+    total_reads += alignments[i].size();
+  if (total_reads < MIN_TOTAL_READS){
+    std::cerr << "Skipping locus with too few reads: TOTAL=" << total_reads << ", MIN=" << MIN_TOTAL_READS << std::endl;
+    return;
+  }
+
   std::cerr << alignments.size() << " " << log_p1s.size() << " " << log_p2s.size() << " " << rg_names.size() << std::endl;
   assert(alignments.size() == log_p1s.size() && alignments.size() == log_p2s.size() && alignments.size() == rg_names.size());
   std::vector< std::vector<int> > str_bp_lengths(alignments.size());
