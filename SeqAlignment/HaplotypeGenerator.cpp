@@ -156,34 +156,36 @@ bool stringLengthLT(const std::string& s1, const std::string& s2){
 }
 
 void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
-				 std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles,
+				 std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles, bool search_bams_for_alleles,
 				 int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   assert(sequences.size() == 0);
+
   std::map<std::string, double> sample_counts;
   std::map<std::string, int>    read_counts;
   std::map<std::string, int>    must_inc;
-
-  // Determine the number of reads and number of samples supporting each allele
   int tot_reads = 0;
-  for (unsigned int i = 0; i < alignments.size(); i++){
-    int num_reads = alignments[i].size();
-    std::map<std::string, int> counts;
-    for (unsigned int j = 0; j < alignments[i].size(); j++){
-      std::string subseq;
-      if (extract_sequence(alignments[i][j], rep_region_start, rep_region_end, subseq)){
-	sample_counts[subseq] += 1.0/num_reads;
-	read_counts[subseq]   += 1;
-	counts[subseq]        += 1;
-	tot_reads++;
+  if (search_bams_for_alleles){
+    // Determine the number of reads and number of samples supporting each allele
+    for (unsigned int i = 0; i < alignments.size(); i++){
+      int num_reads = alignments[i].size();
+      std::map<std::string, int> counts;
+      for (unsigned int j = 0; j < alignments[i].size(); j++){
+	std::string subseq;
+	if (extract_sequence(alignments[i][j], rep_region_start, rep_region_end, subseq)){
+	  sample_counts[subseq] += 1.0/num_reads;
+	  read_counts[subseq]   += 1;
+	  counts[subseq]        += 1;
+	  tot_reads++;
+	}
+      } 
+      
+      // Identify alleles strongly supported by sample
+      for (auto iter = counts.begin(); iter != counts.end(); iter++){
+	if (iter->second > MIN_READS_STRONG_SAMPLE && iter->second > MIN_FRAC_STRONG_SAMPLE*num_reads)
+	  must_inc[iter->first] += 1;
       }
     } 
-
-    // Identify alleles strongly supported by sample
-    for (auto iter = counts.begin(); iter != counts.end(); iter++){
-      if (iter->second > MIN_READS_STRONG_SAMPLE && iter->second > MIN_FRAC_STRONG_SAMPLE*num_reads)
-	must_inc[iter->first] += 1;
-    }
-  } 
+  }
 
   // Add VCF alleles to list (apart from reference sequence) and remove from other sets
   int ref_index = -1;
@@ -201,29 +203,31 @@ void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
       ref_index = i;
   }
   
-  // Add alleles with strong support from a subset of samples
-  for (auto iter = must_inc.begin(); iter != must_inc.end(); iter++){
-    if (iter->second >= MIN_STRONG_SAMPLES){
-      auto iter_1 = sample_counts.find(iter->first);
-      auto iter_2 = read_counts.find(iter->first);
-      std::cerr << "Strong: " << iter->first << " " << iter->second << " " << iter_1->second/alignments.size() << " " << iter_2->second*1.0/tot_reads << std::endl;
-      sample_counts.erase(iter_1);
-      read_counts.erase(iter_2);
-      sequences.push_back(iter->first);
-      if (iter->first.compare(ref_seq) == 0)
-	ref_index = sequences.size()-1;
-    }
+  if (search_bams_for_alleles) {
+    // Add alleles with strong support from a subset of samples
+    for (auto iter = must_inc.begin(); iter != must_inc.end(); iter++){
+      if (iter->second >= MIN_STRONG_SAMPLES){
+	auto iter_1 = sample_counts.find(iter->first);
+	auto iter_2 = read_counts.find(iter->first);
+	std::cerr << "Strong: " << iter->first << " " << iter->second << " " << iter_1->second/alignments.size() << " " << iter_2->second*1.0/tot_reads << std::endl;
+	sample_counts.erase(iter_1);
+	read_counts.erase(iter_2);
+	sequences.push_back(iter->first);
+	if (iter->first.compare(ref_seq) == 0)
+	  ref_index = sequences.size()-1;
+      }
   }
   
-  // Identify additional alleles satisfying thresholds
-  int num_samples = alignments.size();
-  for (auto iter = sample_counts.begin(); iter != sample_counts.end(); iter++){
-    if (iter->second > MIN_FRAC_SAMPLES*num_samples && read_counts[iter->first] > MIN_FRAC_READS*tot_reads){
-      std::cerr << "Sequence stats: " << iter->first << " " << iter->first.size() << " " 
-      	<< iter->second*1.0/num_samples << " " << read_counts[iter->first]*1.0/tot_reads << std::endl;
-      sequences.push_back(iter->first);
-      if (ref_index == -1 && (iter->first.compare(ref_seq) == 0))
-	ref_index = sequences.size()-1;
+    // Identify additional alleles satisfying thresholds
+    int num_samples = alignments.size();
+    for (auto iter = sample_counts.begin(); iter != sample_counts.end(); iter++){
+      if (iter->second > MIN_FRAC_SAMPLES*num_samples && read_counts[iter->first] > MIN_FRAC_READS*tot_reads){
+	std::cerr << "Sequence stats: " << iter->first << " " << iter->first.size() << " " 
+		  << iter->second*1.0/num_samples << " " << read_counts[iter->first]*1.0/tot_reads << std::endl;
+	sequences.push_back(iter->first);
+	if (ref_index == -1 && (iter->first.compare(ref_seq) == 0))
+	  ref_index = sequences.size()-1;
+      }
     }
   }
   
@@ -244,7 +248,7 @@ void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
 
 Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
 			      std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles,
-			      StutterModel* stutter_model,
+			      StutterModel* stutter_model, bool search_bams_for_alleles,
 			      std::vector<HapBlock*>& blocks){
   // Determine the minimum and maximum alignment boundaries
   int32_t min_start = INT_MAX, max_stop = INT_MIN;
@@ -279,7 +283,7 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
     std::cerr << ext_vcf_alleles[0] << std::endl << ref_seq << std::endl;
     assert(ext_vcf_alleles[0].compare(ref_seq) == 0);
   }
-  generate_candidate_str_seqs(ref_seq, ideal_min_length, alignments, ext_vcf_alleles, rep_region_start, rep_region_end, str_seqs);
+  generate_candidate_str_seqs(ref_seq, ideal_min_length, alignments, ext_vcf_alleles, search_bams_for_alleles, rep_region_start, rep_region_end, str_seqs);
   
   // Create a set of haplotype regions, consisting of STR sequence block flanked by two reference sequence stretches
   assert(rep_region_start > min_start && rep_region_end < max_stop);
