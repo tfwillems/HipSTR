@@ -16,7 +16,7 @@ const double MIN_FRAC_STRONG_SAMPLE  = 0.3;
 const double MIN_READS_STRONG_SAMPLE = 3;
 const double MIN_STRONG_SAMPLES      = 2;
 
-void trim(int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
+void trim(int32_t padding, int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   int min_len = INT_MAX;
   for (unsigned int i = 0; i < sequences.size(); i++)
     min_len = std::min(min_len, (int)sequences[i].size());
@@ -47,6 +47,10 @@ void trim(int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_e
       break;
     max_right_trim++;
   }
+
+  // Don't trim past the padding flanks
+  max_left_trim  = std::max(0, std::min(min_len-padding, max_left_trim));
+  max_right_trim = std::max(0, std::min(min_len-padding, max_right_trim));
 
   // Determine the left and right trims that clip as much as possible
   // but are as equal in size as possible
@@ -155,7 +159,7 @@ bool stringLengthLT(const std::string& s1, const std::string& s2){
   return s1.size() < s2.size();
 }
 
-void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
+void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, int32_t padding, int ideal_min_length,
 				 std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles, bool search_bams_for_alleles,
 				 int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   assert(sequences.size() == 0);
@@ -163,27 +167,32 @@ void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
   std::map<std::string, double> sample_counts;
   std::map<std::string, int>    read_counts;
   std::map<std::string, int>    must_inc;
-  int tot_reads = 0;
+  int tot_reads   = 0;
+  int tot_samples = 0;
   if (search_bams_for_alleles){
     // Determine the number of reads and number of samples supporting each allele
     for (unsigned int i = 0; i < alignments.size(); i++){
-      int num_reads = alignments[i].size();
+      int samp_reads = 0;
       std::map<std::string, int> counts;
       for (unsigned int j = 0; j < alignments[i].size(); j++){
 	std::string subseq;
 	if (extract_sequence(alignments[i][j], rep_region_start, rep_region_end, subseq)){
-	  sample_counts[subseq] += 1.0/num_reads;
 	  read_counts[subseq]   += 1;
 	  counts[subseq]        += 1;
 	  tot_reads++;
+	  samp_reads++;
 	}
       } 
       
       // Identify alleles strongly supported by sample
       for (auto iter = counts.begin(); iter != counts.end(); iter++){
-	if (iter->second > MIN_READS_STRONG_SAMPLE && iter->second > MIN_FRAC_STRONG_SAMPLE*num_reads)
+	if (iter->second > MIN_READS_STRONG_SAMPLE && iter->second > MIN_FRAC_STRONG_SAMPLE*samp_reads)
 	  must_inc[iter->first] += 1;
+	sample_counts[iter->first] += iter->second*1.0/samp_reads;
       }
+      
+      if (samp_reads > 0)
+	tot_samples++;
     } 
   }
 
@@ -209,7 +218,8 @@ void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
       if (iter->second >= MIN_STRONG_SAMPLES){
 	auto iter_1 = sample_counts.find(iter->first);
 	auto iter_2 = read_counts.find(iter->first);
-	std::cerr << "Strong: " << iter->first << " " << iter->second << " " << iter_1->second/alignments.size() << " " << iter_2->second*1.0/tot_reads << std::endl;
+	std::cerr << "Strong   stats: " << iter->first << " " << iter->second << " " << iter_1->second/alignments.size()
+		  << " " << iter_2->second << " " << iter_2->second*1.0/tot_reads << std::endl;
 	sample_counts.erase(iter_1);
 	read_counts.erase(iter_2);
 	sequences.push_back(iter->first);
@@ -219,11 +229,10 @@ void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
   }
   
     // Identify additional alleles satisfying thresholds
-    int num_samples = alignments.size();
     for (auto iter = sample_counts.begin(); iter != sample_counts.end(); iter++){
-      if (iter->second > MIN_FRAC_SAMPLES*num_samples && read_counts[iter->first] > MIN_FRAC_READS*tot_reads){
+      if (iter->second > MIN_FRAC_SAMPLES*tot_samples && read_counts[iter->first] > MIN_FRAC_READS*tot_reads){
 	std::cerr << "Sequence stats: " << iter->first << " " << iter->first.size() << " " 
-		  << iter->second*1.0/num_samples << " " << read_counts[iter->first]*1.0/tot_reads << std::endl;
+		  << iter->second*1.0/tot_samples << " " << read_counts[iter->first] << " " << read_counts[iter->first]*1.0/tot_reads << std::endl;
 	sequences.push_back(iter->first);
 	if (ref_index == -1 && (iter->first.compare(ref_seq) == 0))
 	  ref_index = sequences.size()-1;
@@ -243,7 +252,7 @@ void generate_candidate_str_seqs(std::string& ref_seq, int ideal_min_length,
   std::sort(sequences.begin()+1, sequences.end(), stringLengthLT);
 
   // Clip identical regions
-  trim(ideal_min_length, rep_region_start, rep_region_end, sequences);
+  trim(padding, ideal_min_length, rep_region_start, rep_region_end, sequences);
 }
 
 Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
@@ -266,8 +275,9 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
 			 
   // Extract candidate STR sequences (use some padding to ensure indels near STR ends are included)
   std::vector<std::string> str_seqs;
-  int32_t rep_region_start = str_region.start() < 5 ? 0 : str_region.start()-5;
-  int32_t rep_region_end   = str_region.stop() + 5;
+  int32_t padding = 15;
+  int32_t rep_region_start = str_region.start() < padding ? 0 : str_region.start()-padding;
+  int32_t rep_region_end   = str_region.stop() + padding;
   std::string ref_seq      = uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start));
   int ideal_min_length     = 3*str_region.period(); // Would ideally have at least 3 repeat units in each allele after trimming
 
@@ -283,7 +293,7 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
     std::cerr << ext_vcf_alleles[0] << std::endl << ref_seq << std::endl;
     assert(ext_vcf_alleles[0].compare(ref_seq) == 0);
   }
-  generate_candidate_str_seqs(ref_seq, ideal_min_length, alignments, ext_vcf_alleles, search_bams_for_alleles, rep_region_start, rep_region_end, str_seqs);
+  generate_candidate_str_seqs(ref_seq, chrom_seq, padding, ideal_min_length, alignments, ext_vcf_alleles, search_bams_for_alleles, rep_region_start, rep_region_end, str_seqs);
   
   // Create a set of haplotype regions, consisting of STR sequence block flanked by two reference sequence stretches
   assert(rep_region_start > min_start && rep_region_end < max_stop);
