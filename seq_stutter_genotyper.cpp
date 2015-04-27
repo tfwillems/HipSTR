@@ -115,12 +115,14 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 }
 
 bool SeqStutterGenotyper::genotype(){
+  /*
   // For now, abort if we couldn't trim the STR block back to the repetitive regions
   // This occurs when the extracted alleles differ in the neigboring flanks
   if (haplotype_->get_block(1)->start() < region_->start() || haplotype_->get_block(1)->end() > region_->stop()){
     std::cerr << "WARNING: Skipping locus because trimming failed" << std::endl;
     return false;
   }
+  */
 
   // Align each read against each candidate haplotype
   std::cerr << "Aligning reads to each candidate haplotype..." << std::endl;
@@ -136,6 +138,7 @@ bool SeqStutterGenotyper::genotype(){
   if (stutter_model_ == NULL)
     printErrorAndDie("Must specify stutter model before running genotype()");
   calc_log_sample_posteriors();
+
   return true;
 }
 
@@ -199,7 +202,10 @@ void SeqStutterGenotyper::get_alleles(std::string& chrom_seq, std::vector<std::s
 
   for (unsigned int i = 0; i < block->num_options(); i++){
     const std::string& seq = block->get_seq(i);
-    assert(((int)seq.size()) - left_trim - right_trim >= 0);
+    if ((int)seq.size() - left_trim - right_trim < 0){
+      std::cerr << seq << " " << left_trim << " " << right_trim << std::endl;
+      assert(((int)seq.size()) - left_trim - right_trim >= 0);
+    }
     std::stringstream ss; 
     ss << left_flank << seq.substr(left_trim, seq.size()-left_trim-right_trim) << right_flank;
     alleles.push_back(ss.str());
@@ -337,6 +343,12 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     allele_counts[gt_iter->first]++;
     allele_counts[gt_iter->second]++;
   }
+
+  std::cerr << "Allele counts" << std::endl;
+  for (unsigned int i = 0; i < alleles_.size(); i++)
+    std::cerr << alleles_[i] << " " << allele_counts[i] << std::endl;
+  std::cerr << std::endl;
+
 
   // Extract the phasing probability conditioned on the determined sample genotypes
   for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++){
