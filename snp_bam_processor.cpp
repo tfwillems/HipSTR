@@ -71,7 +71,7 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
   }
 
   std::cout << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads" 
-	    << " and " << phased_samples << " samples" << std::endl;
+	    << " and " << phased_samples << " out of " << rg_names.size() <<  " samples" << std::endl;
 
   // Run any additional analyses using phasing probabilities
   analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region, ref_allele, chrom_seq);
