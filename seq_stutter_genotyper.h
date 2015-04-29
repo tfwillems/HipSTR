@@ -65,6 +65,9 @@ class SeqStutterGenotyper{
   // VCF containing STR and SNP genotypes for a reference panel
   vcf::VariantCallFile* ref_vcf_;
   
+  // True iff allele sequences were extracted for each allele
+  bool got_alleles_;
+
   /* Compute the alignment probabilites between each read and each haplotype */
   double calc_align_probs();
 
@@ -78,7 +81,7 @@ class SeqStutterGenotyper{
 	    std::vector<std::string>& sample_names, std::string& chrom_seq);
 
   // Extract the sequences for each allele
-  void get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles);
+  bool get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles);
 
   double debug_sample(int sample_index);
   
@@ -102,6 +105,7 @@ class SeqStutterGenotyper{
     haplotype_             = NULL;
     MAX_REF_FLANK_LEN      = 30;
     END_KEY                = "END";
+    got_alleles_           = false;
     
     region_       = region.copy();
     num_samples_  = alignments.size();

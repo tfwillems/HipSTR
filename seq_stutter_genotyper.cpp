@@ -111,10 +111,14 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 
   // Extract full STR sequence for each allele using annotated repeat region
   // and the haplotype above
-  get_alleles(chrom_seq, alleles_);
+  got_alleles_ = get_alleles(chrom_seq, alleles_);
 }
 
 bool SeqStutterGenotyper::genotype(){
+  // Failed to extract alleles (likely due to large deletion extending past STR)
+  if (!got_alleles_)
+    return false;
+
   /*
   // For now, abort if we couldn't trim the STR block back to the repetitive regions
   // This occurs when the extracted alleles differ in the neigboring flanks
@@ -175,7 +179,7 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
 }
 
 
-void SeqStutterGenotyper::get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles){
+bool SeqStutterGenotyper::get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles){
   assert(hap_blocks_.size() == 3 && alleles.size() == 0);
   HapBlock* block = hap_blocks_[1];
   int32_t start = block->start(), end = block->end();
@@ -203,13 +207,15 @@ void SeqStutterGenotyper::get_alleles(std::string& chrom_seq, std::vector<std::s
   for (unsigned int i = 0; i < block->num_options(); i++){
     const std::string& seq = block->get_seq(i);
     if ((int)seq.size() - left_trim - right_trim < 0){
-      std::cerr << seq << " " << left_trim << " " << right_trim << std::endl;
-      assert(((int)seq.size()) - left_trim - right_trim >= 0);
+      // Probably a large deletion in the region, so the STR and flanks 
+      // are largely deleted
+      return false;
     }
     std::stringstream ss; 
     ss << left_flank << seq.substr(left_trim, seq.size()-left_trim-right_trim) << right_flank;
     alleles.push_back(ss.str());
   }
+  return true;
 }
 
 
