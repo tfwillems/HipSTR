@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "../error.h"
+
 class CigarElement {
  private:
   char type_;
@@ -93,6 +95,26 @@ class Alignment {
   inline const std::string& get_sequence()                 const { return sequence_;       }
   inline const std::string& get_alignment()                const { return alignment_;      }
   inline const std::vector<CigarElement>& get_cigar_list() const { return cigar_list_;     }
+
+  void get_deletion_boundaries(std::vector<int32_t>& starts, std::vector<int32_t>& stops) const {
+    int32_t pos = start_;
+    for (auto iter = cigar_list_.begin(); iter != cigar_list_.end(); iter++){
+      switch(iter->get_type()){
+      case 'M': case 'X': case '=':
+	pos += iter->get_num();
+	break;
+      case 'I': case 'S':
+	break;
+      case 'D':
+	starts.push_back(pos);
+	stops.push_back(pos+iter->get_num()-1);
+	pos += iter->get_num();
+	break;
+      default:
+	printErrorAndDie("Invalid CIGAR char detected in get_deletion_boundaries");
+      }
+    }
+  }
   
   std::string getCigarString(){
     std::stringstream cigar_str;

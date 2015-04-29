@@ -15,4 +15,3 @@ bool compareAl(const Alignment& alignment_1, const Alignment& alignment_2){
 void sortAlignments(std::vector<Alignment>& alignments){
   std::sort(alignments.begin(), alignments.end(), compareAl);
 }
-
