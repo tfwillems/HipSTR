@@ -66,7 +66,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     length_genotyper = new EMStutterGenotyper(region.chrom(), region.start(), region.stop(), str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
     std::cerr << "Training EM stutter genotyper" << std::endl;
     std::cerr << FRAC_LL_CONVERGE << std::endl;
-    trained = length_genotyper->train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
+    trained = length_genotyper->train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false);
     if (trained){
       if (output_stutter_models_)
 	length_genotyper->get_stutter_model()->write_model(region.chrom(), region.start(), region.stop(), stutter_model_out_);
