@@ -371,13 +371,14 @@ int HapAligner::calc_seed_base(Alignment& aln){
 
       if (min_region <= max_region){
 	// Choose larger of valid two regions
-	if (min_region < repeat_start && max_region >= repeat_stop)
+	if (min_region < repeat_start && max_region >= repeat_stop){
 	  if (repeat_start-1-min_region > max_region-repeat_stop){
 	    min_region = min_region; max_region = repeat_start-1;
 	  }
 	  else {
 	    min_region = repeat_stop; max_region = max_region;
-	  }       
+	  }
+	}
 	
 	int dist = 1 + (max_region-min_region)/2;
 	if (dist >= max_dist){
@@ -433,7 +434,7 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
       double base_log_wrong[alignments[i].get_sequence().size()];   // log10(Prob(error))
       double base_log_correct[alignments[i].get_sequence().size()]; // log10(Prob(correct))
       const std::string& qual_string = alignments[i].get_base_qualities();
-      for (int j = 0; j < qual_string.size(); j++){
+      for (unsigned int j = 0; j < qual_string.size(); j++){
 	base_log_wrong[j]   = base_quality_->log_prob_error(qual_string[j]);
 	base_log_correct[j] = base_quality_->log_prob_correct(qual_string[j]);
       }                                                                         
@@ -442,15 +443,12 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
       int base_seq_len     = (int)alignments[i].get_sequence().size();
       int offset           = base_seq_len-1;
 
-      // Allocate scoring matrices based on maximum haplotype size      
+      // Allocate scoring matrices based on the maximum haplotype size      
       int max_hap_size        = haplotype_->max_size();
       double* l_match_matrix  = new double [seed_base*max_hap_size];
       double* l_insert_matrix = new double [seed_base*max_hap_size];
       double* r_match_matrix  = new double [(base_seq_len-seed_base-1)*max_hap_size];
       double* r_insert_matrix = new double [(base_seq_len-seed_base-1)*max_hap_size];
-
-      //std::cerr << "Aligning read " << i+init_read_index << " " << alignments[i].get_sequence() << std::endl;
-      //		<<  alignments[i].get_sequence().substr(0, seed_base) << " " <<  alignments[i].get_sequence().substr(seed_base) << std::endl;
 
       do {
 	// Perform alignment to current haplotype
@@ -461,11 +459,8 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
 					l_match_matrix, l_insert_matrix, l_prob, r_match_matrix, r_insert_matrix, r_prob);
 	*prob_ptr = LL;
 	prob_ptr++;
-	//std::cerr << "\t" << LL << "\t";
-	//haplotype_->print(std::cerr);
       } while (haplotype_->next());
       haplotype_->reset();
-      //std::cerr << std::endl;
 
       // Deallocate scoring matrices
       delete [] l_match_matrix;

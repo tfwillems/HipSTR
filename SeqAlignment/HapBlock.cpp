@@ -4,14 +4,14 @@
 #include "HapBlock.h"
 
 void HapBlock::calc_homopolymer_lengths(){
-  for (int i = 0; i <= alt_seqs_.size(); ++i){
+  for (unsigned int i = 0; i <= alt_seqs_.size(); ++i){
     std::string& seq = (i == 0? ref_seq_ : alt_seqs_[i-1]);
     int* llens = new int[seq.size()];
     int* rlens = new int[seq.size()]; 
 
     llens[0] = 0;
     int count = 0;
-    for (int j = 1; j < seq.size(); j++){
+    for (unsigned int j = 1; j < seq.size(); j++){
       count    = (seq[j-1] == seq[j] ? count + 1 : 0);
       llens[j] = count;
     }

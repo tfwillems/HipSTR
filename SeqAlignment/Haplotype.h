@@ -29,7 +29,7 @@ class Haplotype {
   Haplotype(std::vector<HapBlock*>& blocks) {
     int32_t ref_coord = blocks[0]->start();
     max_size_ = 0;
-    for (int i = 0; i < blocks.size(); i++) {
+    for (unsigned int i = 0; i < blocks.size(); i++) {
       if (blocks[i]->get_repeat_info() != NULL) {
 	repeat_starts_.push_back(ref_coord);
 	repeat_stops_.push_back(ref_coord + blocks[i]->get_seq(0).size());
@@ -48,13 +48,13 @@ class Haplotype {
   }
 
   void print_nchanges(std::ostream& out) {
-    for (int i = 0; i < blocks_.size(); i++)
+    for (unsigned int i = 0; i < blocks_.size(); i++)
       out << nchanges_[i] << " ";
     out << std::endl;
   }
   
   void print_counter_state(std::ostream& out) {
-    for (int i = 0; i < blocks_.size(); i++)
+    for (unsigned int i = 0; i < blocks_.size(); i++)
       out << counts_[i] << " ";
     out << std::endl;
   }

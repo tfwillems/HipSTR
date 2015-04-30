@@ -35,9 +35,9 @@ class HapBlock {
   }
 
   ~HapBlock() {
-    for (int i = 0; i < l_homopolymer_lens.size(); i++)
+    for (unsigned int i = 0; i < l_homopolymer_lens.size(); i++)
       delete [] l_homopolymer_lens[i];
-    for (int i = 0; i < r_homopolymer_lens.size(); i++)
+    for (unsigned int i = 0; i < r_homopolymer_lens.size(); i++)
       delete [] r_homopolymer_lens[i];
     l_homopolymer_lens.clear();
     r_homopolymer_lens.clear();
@@ -70,7 +70,7 @@ class HapBlock {
       throw std::out_of_range("Index out of bounds in HapBlock::size()");
   }
 
-  const std::string& get_seq(int index) {
+  const std::string& get_seq(unsigned int index) {
     if (index == 0)
       return ref_seq_;
     else if (index-1 < alt_seqs_.size())
@@ -79,12 +79,12 @@ class HapBlock {
       throw std::out_of_range("Index out of bounds in HapBlock::get_seq()");
   }
 
-  inline int left_homopolymer_len(int seq_index, int base_index) {
+  inline int left_homopolymer_len(unsigned int seq_index, int base_index) {
     assert(seq_index < l_homopolymer_lens.size());
     return l_homopolymer_lens[seq_index][base_index];
   }
 
-  inline int right_homopolymer_len(int seq_index, int base_index) {
+  inline int right_homopolymer_len(unsigned int seq_index, int base_index) {
     assert(seq_index < r_homopolymer_lens.size());
     return r_homopolymer_lens[seq_index][base_index];
   }
