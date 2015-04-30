@@ -65,7 +65,7 @@ double align_pcr_insertion(int block_len,                const std::string& bloc
   }
 
   // Convert to raw probabilities, add, take the log while avoiding underflow
-  return log_sum_exp(log_probs);
+  return fast_log_sum_exp(log_probs);
 }
 
 double align_pcr_deletion(int block_len,                const std::string& block_seq,
@@ -94,7 +94,7 @@ double align_pcr_deletion(int block_len,                const std::string& block
     log_probs.push_back(log(block_len+D-base_seq_len)+log_prob);
 
   // Convert to raw probabilities, add, take the log while avoiding underflow
-  return log_sum_exp(log_probs);
+  return fast_log_sum_exp(log_probs);
 }
 
 
