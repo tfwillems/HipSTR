@@ -50,7 +50,8 @@ class SeqStutterGenotyper{
 
   bool alleles_from_bams_; // Flag that determines if we examine BAMs for candidate alleles
 
-  std::vector<std::string> alleles_;          // Vector of indexed alleles
+  std::vector<std::string> alleles_; // Vector of indexed alleles
+  int32_t pos_;                      // Position of reported alleles in VCF     
 
   // Iterates through reads and then alleles by their indices
   double* log_aln_probs_;
@@ -64,9 +65,6 @@ class SeqStutterGenotyper{
 
   // VCF containing STR and SNP genotypes for a reference panel
   vcf::VariantCallFile* ref_vcf_;
-  
-  // True iff allele sequences were extracted for each allele
-  bool got_alleles_;
 
   /* Compute the alignment probabilites between each read and each haplotype */
   double calc_align_probs();
@@ -80,10 +78,10 @@ class SeqStutterGenotyper{
 	    std::vector< std::vector<double> >& log_p2,
 	    std::vector<std::string>& sample_names, std::string& chrom_seq);
 
-  // Extract the sequences for each allele
-  bool get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles);
+  // Extract the sequences for each allele and the VCF start position
+  void get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles);
 
-  double debug_sample(int sample_index);
+  void debug_sample(int sample_index);
   
   void read_ref_vcf_alleles(std::vector<std::string>& alleles);
   
@@ -93,9 +91,9 @@ class SeqStutterGenotyper{
 		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 		      std::vector< std::vector<double> >& log_p1, 
 		      std::vector< std::vector<double> >& log_p2, 
-		      std::vector<std::string>& sample_names, std::string& chrom_seq, StutterModel& stutter_model, vcf::VariantCallFile* ref_vcf){
+		      std::vector<std::string>& sample_names, std::string& chrom_seq, 
+		      StutterModel& stutter_model, vcf::VariantCallFile* ref_vcf){
     assert(alignments.size() == log_p1.size() && alignments.size() == log_p2.size() && alignments.size() == sample_names.size());
-
     log_p1_                = NULL;
     log_p2_                = NULL;
     log_aln_probs_         = NULL;
@@ -105,7 +103,7 @@ class SeqStutterGenotyper{
     haplotype_             = NULL;
     MAX_REF_FLANK_LEN      = 30;
     END_KEY                = "END";
-    got_alleles_           = false;
+    pos_                   = -1;
     
     region_       = region.copy();
     num_samples_  = alignments.size();
@@ -118,8 +116,20 @@ class SeqStutterGenotyper{
     ref_vcf_            = ref_vcf;
     alleles_from_bams_  = true;
     init(alignments, log_p1, log_p2, sample_names, chrom_seq);
+  }
+
+  /*
+  SeqStutterGenotyper(Region& region,
+		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,
+		      std::vector< std::vector<double> >& log_p1, 
+		      std::vector< std::vector<double> >& log_p2, 
+		      std::vector<std::string>& sample_names, std::string& chrom_seq, 
+		      StutterModel& stutter_model, vcf::VariantCallFile& beagle_imp_vcf){
 
   }
+  */
+
+
 
   ~SeqStutterGenotyper(){
     delete region_;
@@ -138,9 +148,6 @@ class SeqStutterGenotyper{
   
   static void write_vcf_header(std::vector<std::string>& sample_names, std::ostream& out);
   
-  /*
-  void set_allele_priors(vcf::VariantCallFile& variant_file);
-  */
   void write_vcf_record(std::vector<std::string>& sample_names, std::ostream& out);
   
 
