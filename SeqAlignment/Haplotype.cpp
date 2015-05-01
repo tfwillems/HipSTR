@@ -75,12 +75,12 @@ void Haplotype::print_block_structure(int max_ref_len,
   }
 }
 
-int Haplotype::left_homopolymer_len(char c, int block_index){
-  int total = 0;
+unsigned int Haplotype::left_homopolymer_len(char c, int block_index){
+  unsigned int total = 0;
   while (block_index >= 0){
     const std::string& seq = get_seq(block_index);
     if (*seq.rbegin() == c){
-      int llen = blocks_[block_index]->left_homopolymer_len(counts_[block_index], seq.size()-1);
+      unsigned int llen = blocks_[block_index]->left_homopolymer_len(counts_[block_index], seq.size()-1);
       total += (1 + llen);
       if (llen != seq.size())
 	break;
@@ -92,12 +92,12 @@ int Haplotype::left_homopolymer_len(char c, int block_index){
   return total;
 }
  
-int Haplotype::right_homopolymer_len(char c, int block_index){
-  int total = 0;
+unsigned int Haplotype::right_homopolymer_len(char c, int block_index){
+  unsigned int total = 0;
   while (block_index < blocks_.size()){
     const std::string& seq = get_seq(block_index);
     if (seq[0] == c){
-      int rlen = blocks_[block_index]->right_homopolymer_len(counts_[block_index], 0);
+      unsigned int rlen = blocks_[block_index]->right_homopolymer_len(counts_[block_index], 0);
       total   += (1 + rlen); 
       if (rlen != seq.size())
 	break;
@@ -110,11 +110,11 @@ int Haplotype::right_homopolymer_len(char c, int block_index){
 }
 
 
-int Haplotype::homopolymer_length(int block_index, int base_index){
+unsigned int Haplotype::homopolymer_length(int block_index, int base_index){
   HapBlock* block        = blocks_[block_index];
   const std::string& seq = block->get_seq(counts_[block_index]);
-  int llen = block->left_homopolymer_len(counts_[block_index],  base_index);
-  int rlen = block->right_homopolymer_len(counts_[block_index], base_index);
+  unsigned int llen = block->left_homopolymer_len(counts_[block_index],  base_index);
+  unsigned int rlen = block->right_homopolymer_len(counts_[block_index], base_index);
   if (base_index-llen == 0)
     llen += left_homopolymer_len(seq[base_index], block_index-1);
   if (base_index+rlen == seq.size()-1)

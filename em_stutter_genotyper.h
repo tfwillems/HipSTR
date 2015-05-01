@@ -20,7 +20,7 @@ class EMStutterGenotyper {
   std::string chrom_;
   uint32_t start_, end_;
 
-  int num_reads_;   // Total number of reads across all samples
+  unsigned int num_reads_;   // Total number of reads across all samples
   int num_samples_; // Total number of samples
   int num_alleles_; // Total number of valid alleles
   int motif_len_;   // # bp in STR motif

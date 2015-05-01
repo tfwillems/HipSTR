@@ -135,7 +135,7 @@ void realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
     NWNoRefEndPenalty::LeftAlign(ref_seq, read_seq, ref_al, read_al, &score, cigar_list);
     
     // Calculate number of leading spaces in read's alignment and start position
-    int num_lead = 0;
+    unsigned int num_lead = 0;
     while (num_lead < read_al.size() && read_al[num_lead] == '-')
         num_lead++;
     int32_t start_position = start + num_lead;
@@ -184,7 +184,6 @@ void realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
         printErrorAndDie("Lengths of sequence and quality strings don't match");
     std::string base_qualities = alignment.Qualities.substr(num_head_sclips, ref_al.size()-num_head_sclips-num_back_sclips);
     std::string sequence       = uppercase(read_seq.substr(num_head_sclips, ref_al.size()-num_head_sclips-num_back_sclips));
-    //std::string alignment_seq  = uppercase(read_al.substr(num_head_sclips+num_lead, read_al.size()-num_trail-num_back_sclips));
     std::string alignment_seq  = uppercase(read_al.substr(num_head_sclips+num_lead, read_al.size()-num_head_sclips-num_lead-num_trail-num_back_sclips));
     double mapping_quality     = 1.0; // TO DO: Replace with actual value
     new_alignment = Alignment(start_position, end_position, sample, base_qualities, sequence, alignment_seq, mapping_quality);

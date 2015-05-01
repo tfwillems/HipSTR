@@ -35,14 +35,13 @@ void filter_bam_paired_mode(BamTools::BamReader& reader,
   std::vector< IntervalTree<bool> > interval_trees;
   interval_trees.push_back(IntervalTree<bool>()); // Empty interval tree for RefID=-1 (unmapped)
   std::cerr << "Constructing interval trees" << std::endl;
-  for (int i = 0; i < ref_vector.size(); i++){
+  for (unsigned int i = 0; i < ref_vector.size(); i++){
     std::vector< Interval<bool> > region_intervals;
-
     if (chrom_order.find(ref_vector[i].RefName) == chrom_order.end())
       interval_trees.push_back(IntervalTree<bool>(region_intervals));
     else {
       std::vector<Region>& chrom_regions = regions[chrom_order.find(ref_vector[i].RefName)->second];
-      for (int j = 0; j < chrom_regions.size(); j++)
+      for (unsigned int j = 0; j < chrom_regions.size(); j++)
 	region_intervals.push_back(Interval<bool>(chrom_regions[j].start(), chrom_regions[j].stop(), true));
       interval_trees.push_back(IntervalTree<bool>(region_intervals));
     }

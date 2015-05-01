@@ -79,12 +79,12 @@ class HapBlock {
       throw std::out_of_range("Index out of bounds in HapBlock::get_seq()");
   }
 
-  inline int left_homopolymer_len(unsigned int seq_index, int base_index) {
+  inline unsigned int left_homopolymer_len(unsigned int seq_index, int base_index) {
     assert(seq_index < l_homopolymer_lens.size());
     return l_homopolymer_lens[seq_index][base_index];
   }
 
-  inline int right_homopolymer_len(unsigned int seq_index, int base_index) {
+  inline unsigned int right_homopolymer_len(unsigned int seq_index, int base_index) {
     assert(seq_index < r_homopolymer_lens.size());
     return r_homopolymer_lens[seq_index][base_index];
   }

@@ -9,12 +9,12 @@
 #include "RepeatBlock.h"
 #include "../stringops.h"
 
-const double MIN_FRAC_READS   = 0.01;
-const double MIN_FRAC_SAMPLES = 0.01;
+const double MIN_FRAC_READS   = 0.05;
+const double MIN_FRAC_SAMPLES = 0.05;
 
-const double MIN_FRAC_STRONG_SAMPLE  = 0.3;
-const double MIN_READS_STRONG_SAMPLE = 3;
-const double MIN_STRONG_SAMPLES      = 2;
+const double MIN_FRAC_STRONG_SAMPLE  = 0.2;
+const double MIN_READS_STRONG_SAMPLE = 2;
+const double MIN_STRONG_SAMPLES      = 1;
 
 void trim(int32_t padding, int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   int min_len = INT_MAX;
@@ -47,6 +47,10 @@ void trim(int32_t padding, int ideal_min_length, int32_t& rep_region_start, int3
       break;
     max_right_trim++;
   }
+
+  // Don't trim past the flanks
+  max_left_trim  = std::min(padding, max_left_trim);
+  max_right_trim = std::min(padding, max_right_trim); 
 
   // Don't trim past the padding flanks
   max_left_trim  = std::max(0, std::min(min_len-padding, max_left_trim));
@@ -152,6 +156,8 @@ bool extract_sequence(Alignment& aln, int32_t start, int32_t end, std::string& s
       char_index   += num_bases;
     }
   }
+  printErrorAndDie("Logical error in extract_sequence");
+  return false;
 }
 
 
@@ -230,7 +236,7 @@ void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, i
   
     // Identify additional alleles satisfying thresholds
     for (auto iter = sample_counts.begin(); iter != sample_counts.end(); iter++){
-      if (iter->second > MIN_FRAC_SAMPLES*tot_samples && read_counts[iter->first] > MIN_FRAC_READS*tot_reads){
+      if (iter->second > MIN_FRAC_SAMPLES*tot_samples || read_counts[iter->first] > MIN_FRAC_READS*tot_reads){
 	std::cerr << "Sequence stats: " << iter->first << " " << iter->first.size() << " " 
 		  << iter->second*1.0/tot_samples << " " << read_counts[iter->first] << " " << read_counts[iter->first]*1.0/tot_reads << std::endl;
 	sequences.push_back(iter->first);
@@ -252,8 +258,40 @@ void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, i
   std::sort(sequences.begin()+1, sequences.end(), stringLengthLT);
 
   // Clip identical regions
-  trim(padding, ideal_min_length, rep_region_start, rep_region_end, sequences);
+  trim(padding, ideal_min_length, rep_region_start, rep_region_end, sequences); 
 }
+
+
+bool check_deletions(std::vector< std::vector<Alignment> >& alignments, int32_t start, int32_t end){
+  // Extract deletion coordinates
+  std::vector<int32_t> del_starts, del_ends;
+  for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++)
+    for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++)
+      aln_iter->get_deletion_boundaries(del_starts, del_ends);
+
+  // Check that they all are contained within the region or outside the region
+  assert(del_starts.size() == del_ends.size());
+  int fail_count = 0, success_count = 0;
+  for (unsigned i = 0; i < del_starts.size(); i++){
+    bool fail;
+    if (del_starts[i] <= start)
+      fail = (del_ends[i] >= start);
+    else if (del_starts[i] <= end)
+      fail = (del_ends[i] >= end);
+    else
+      fail = false;
+
+    if (fail)
+      fail_count++;
+    else
+      success_count++;
+  }
+  std::cerr << "Indel Bound Counts: " << success_count << " " << fail_count << std::endl;
+  return fail_count == 0;
+}
+
+
+
 
 Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
 			      std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles,
@@ -275,11 +313,19 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
 			 
   // Extract candidate STR sequences (use some padding to ensure indels near STR ends are included)
   std::vector<std::string> str_seqs;
-  int32_t padding = 15;
+  int32_t padding = 5;
   int32_t rep_region_start = str_region.start() < padding ? 0 : str_region.start()-padding;
   int32_t rep_region_end   = str_region.stop() + padding;
   std::string ref_seq      = uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start));
   int ideal_min_length     = 3*str_region.period(); // Would ideally have at least 3 repeat units in each allele after trimming
+
+
+
+  // TO DO: Use frequency of deletions not contained within window to 
+  //   i) Identify problematic regions
+  //  ii) Retry with increased window padding?
+  // check_deletions(alignments, rep_region_start, rep_region_end);
+
 
   // Extend each VCF allele by padding size
   std::vector<std::string> ext_vcf_alleles;
@@ -316,3 +362,9 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
   return haplotype;
 }
 
+
+Haplotype* generate_haplotype(std::vector<std::string>& vcf_alleles, StutterModel* stutter_model, std::vector<HapBlock*>& blocks){
+  // TO DO: Implement function designed for cases in which we're reading alleles and their priors from a VCF
+  printErrorAndDie("Variant of generate_haplotype not implemented");
+  return NULL;
+}

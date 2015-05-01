@@ -46,7 +46,6 @@ void HapBlock::print(std::ostream& out){
   out << "}" << std::endl;
 }
 
-
 void HapBlock::initialize(){
   calc_homopolymer_lengths();
 }

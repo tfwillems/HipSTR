@@ -80,7 +80,7 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vc
 }
 
 void destroy_snp_trees(std::vector<SNPTree*>& snp_trees){
-  for (int i = 0; i < snp_trees.size(); i++)
+  for (unsigned int i = 0; i < snp_trees.size(); i++)
     delete snp_trees[i];
   snp_trees.clear();
 }

@@ -22,8 +22,8 @@ class Haplotype {
  
   void init();
   
-  int left_homopolymer_len(char c, int block_index);
-  int right_homopolymer_len(char c, int block_index);
+  unsigned int left_homopolymer_len(char c, int block_index);
+  unsigned int right_homopolymer_len(char c, int block_index);
 
  public:
   Haplotype(std::vector<HapBlock*>& blocks) {
@@ -101,7 +101,7 @@ class Haplotype {
 
   bool next();
 
-  int homopolymer_length(int block_index, int base_index);
+  unsigned int homopolymer_length(int block_index, int base_index);
 };
 
 #endif

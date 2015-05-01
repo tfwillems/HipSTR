@@ -178,7 +178,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       }
       
       // Add STR start and stop tags
-      bool success;
       if (read_iter->HasTag("XS"))
 	read_iter->RemoveTag("XS");
       if(!read_iter->AddTag("XS",  "I", region_iter->start()))
@@ -243,7 +242,6 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
   
   std::string ref_seq;
   BamTools::RefVector ref_vector = reader.GetReferenceData();
-  int32_t str_start, str_stop;
   int cur_chrom_id = -1; std::string chrom_seq;
   for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
     std::cerr << "Processing region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << std::endl;

@@ -65,7 +65,7 @@ void EMStutterGenotyper::set_allele_priors(vcf::VariantCallFile& variant_file){
       }
     }
     
-    // TO DO: Parse BEAGLE format fields to set priors
+    // TO DO: Parse BEAGLE format fields to set priors and valid alleles
     printErrorAndDie("set_allele_priors() function not fully implemented");
   }
 
@@ -267,7 +267,8 @@ void EMStutterGenotyper::recalc_log_read_phase_posteriors(){
 
 bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double min_LL_frac_change, bool disp_stats){
   // Initialization
-  init_log_gt_priors();
+  if (log_allele_priors_ == NULL)
+    init_log_gt_priors();
   init_stutter_model();
 
   int num_iter   = 1;
@@ -289,7 +290,7 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
     assert(new_LL <= TOLERANCE);
     if (new_LL < LL+TOLERANCE){
       // Occasionally the LL isn't monotonically increasing b/c of the pseudocounts in
-      // recalc_stutter_model(). As a result, let's return true anyways
+      // recalc_stutter_model(). Let's return true anyways
       return true;
     }
 

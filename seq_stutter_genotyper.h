@@ -27,7 +27,7 @@ class SeqStutterGenotyper{
   // Locus information
   Region* region_;
 
-  int num_reads_;   // Total number of reads across all samples
+  unsigned int num_reads_;   // Total number of reads across all samples
   int num_samples_; // Total number of samples
   int motif_len_;   // # bp in STR motif
   int num_alleles_; // Number of valid alleles
@@ -140,7 +140,7 @@ class SeqStutterGenotyper{
     delete [] log_aln_probs_;
     delete [] log_sample_posteriors_;
     delete [] log_allele_priors_;
-    for (int i = 0; i < hap_blocks_.size(); i++)
+    for (unsigned int i = 0; i < hap_blocks_.size(); i++)
       delete hap_blocks_[i];
     hap_blocks_.clear();
     delete haplotype_;

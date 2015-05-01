@@ -23,7 +23,7 @@ void init_alignment_model(){
   for (int j = 0; j <= MAX_SEQ_DEL; j++)
     LOG_DEL_N[0][j] = 0.0;
 
-  for (int i = 1; i <= MAX_HOMOP_LEN; i++){
+  for (unsigned int i = 1; i <= MAX_HOMOP_LEN; i++){
     LOG_MATCH_TO_INS[i] = (i <= 10 ? log(dindel_probs[i-1]) : log(dindel_probs[9]+(4.3e-4)*(i-10)));
     double ins_prob = exp(LOG_MATCH_TO_INS[i]);
     LOG_DEL_N[i][0] = 0.0;
@@ -42,13 +42,13 @@ void init_alignment_model(){
 void print_alignment_model(){
   std::cout << "Match->Insertion transition probabilities:\n" 
 	    << " homopolymer_len: log_P \n";
-  for (int i = 0; i <= MAX_HOMOP_LEN; i++)
+  for (unsigned int i = 0; i <= MAX_HOMOP_LEN; i++)
     std::cout <<  " " << i << ":" << LOG_MATCH_TO_INS[i] << "\n";
   std::cout << "\n";
 
   std::cout << "Deletion transition probabilities:\n"
 	    << " homopolymer_len deletion_size: log_P\n";
-  for (int i = 0; i <= MAX_HOMOP_LEN; i++){
+  for (unsigned int i = 0; i <= MAX_HOMOP_LEN; i++){
     for (int j = 0; j <= MAX_SEQ_DEL; j++){
       std::cout << " " << i << " " << j << ": " << std::setw(5) << LOG_DEL_N[i][j] << "\n";
     }

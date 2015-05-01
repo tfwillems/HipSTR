@@ -150,7 +150,6 @@ int main(int argc, char** argv){
   if (use_hap_aligner)
     bam_processor.use_seq_aligner();
 
-  int num_flank = 0;
   if (bamfile_string.empty())
     printErrorAndDie("--bams option required");
   else if (bamindex_string.empty())
@@ -170,14 +169,20 @@ int main(int argc, char** argv){
   std::vector<std::string> read_groups;
   if (!rg_string.empty())
     split_by_delim(rg_string, ',', read_groups);
-  std::cerr << "Detected " << bam_files.size() << " BAM files" << std::endl;
+  std::cerr << "Detected " << bam_files.size() << " BAM files and " << bam_indexes.size() << " BAI files" << std::endl;
   if (bam_files.size() != bam_indexes.size())
     printErrorAndDie("Number of .bam and .bai files must match");
 
   // Open all .bam and .bai files
   BamTools::BamMultiReader reader;
-  if (!reader.Open(bam_files)) printErrorAndDie("Failed to open one or more BAM files");
-  if (!reader.OpenIndexes(bam_indexes)) printErrorAndDie("Failed to open one or more BAM index files");
+  if (!reader.Open(bam_files)) {
+    std::cerr << reader.GetErrorString() << std::endl;
+    printErrorAndDie("Failed to open one or more BAM files");
+  }
+  if (!reader.OpenIndexes(bam_indexes)) {
+    std::cerr << reader.GetErrorString() << std::endl;
+    printErrorAndDie("Failed to open one or more BAM index files");
+  }
 
   // Construct filename->read group map (if one has been specified) 
   // and determine the list of samples of interest based on either
@@ -187,7 +192,7 @@ int main(int argc, char** argv){
   if (!rg_string.empty()){
     if(bam_files.size() != read_groups.size())
       printErrorAndDie("Number of .bam and RGs must match");
-    for (int i = 0; i < bam_files.size(); i++){
+    for (unsigned int i = 0; i < bam_files.size(); i++){
       file_read_groups[bam_files[i]] = read_groups[i];
       rg_samples.insert(read_groups[i]);
     }
@@ -232,7 +237,7 @@ int main(int argc, char** argv){
     bam_processor.set_output_stutter(stutter_out_file);
 
   // Run analysis
-  bam_processor.process_regions(reader, region_file, fasta_dir, file_read_groups, bam_writer, std::cout, 1000);
+  bam_processor.process_regions(reader, region_file, fasta_dir, file_read_groups, bam_writer, std::cout, 1000000);
 
   bam_processor.finish();
 

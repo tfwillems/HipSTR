@@ -79,7 +79,7 @@ void parse_command_line_args(int argc, char** argv,    std::string& input_file, 
 
 int main(int argc, char** argv){
   std::string input_file="", output_file="", region_file="", insert_stats_file="";
-  int calc_insert_size_stats = 0, max_insert_size = 2000, paired_mode = 0;
+  int max_insert_size = 2000, paired_mode = 0;
   parse_command_line_args(argc, argv, input_file, output_file, region_file, insert_stats_file, max_insert_size, paired_mode);
  
   if (input_file.empty())

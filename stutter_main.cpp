@@ -148,7 +148,7 @@ int main(int argc, char** argv){
   std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", stutter_out_file="", fasta_dir="", bam_out_file="";
   parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, 
 			  region_file, stutter_out_file, bam_out_file, bam_processor);
-  int num_flank = 0;
+
   if (bamfile_string.empty())
     printErrorAndDie("--bams option required");
   else if (bamindex_string.empty())
@@ -192,7 +192,7 @@ int main(int argc, char** argv){
 
   // Construct filename->read group map
   std::map<std::string, std::string> file_read_groups;
-  for (int i = 0; i < bam_files.size(); i++)
+  for (unsigned int i = 0; i < bam_files.size(); i++)
     file_read_groups[bam_files[i]] = read_groups[i];
 
   BamTools::BamWriter bam_writer;

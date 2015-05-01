@@ -1,7 +1,7 @@
 #ifndef ALIGNMENT_MODEL_H_
 #define ALIGNMENT_MODEL_H_
   
-const int MAX_HOMOP_LEN       = 15;
+const unsigned int MAX_HOMOP_LEN = 15;
 const int MAX_SEQ_DEL         = 5;
 const double LOG_INS_TO_INS   = -1.0; // log(e^-1)
 const double LOG_INS_TO_MATCH = -0.4586751453870818910216436; // log(1-e^-1)
