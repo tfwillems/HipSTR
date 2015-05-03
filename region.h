@@ -12,17 +12,17 @@
 class Region{
 private:
   std::string chrom_;
-  uint32_t start_, stop_;
+  int32_t start_, stop_;
   std::set<std::string> sample_set_;
   std::map<std::string, std::string> sample_annots_;
   int period_;
 public:
-  Region(std::string chrom, uint32_t start, uint32_t stop, int period){
+  Region(std::string chrom, int32_t start, int32_t stop, int period){
     chrom_ = chrom; start_ = start; stop_ = stop; period_ = period;
   }
   const std::string& chrom() const { return chrom_;}
-  uint32_t start() const { return start_;}
-  uint32_t  stop() const { return stop_; }
+  int32_t start() const { return start_;}
+  int32_t  stop() const { return stop_; }
   int     period() const { return period_; }
   Region*   copy() const { return new Region(chrom_, start_, stop_, period_); }
 

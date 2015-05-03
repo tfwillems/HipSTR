@@ -60,11 +60,11 @@ class BamProcessor {
   }
 
 
-  int MAX_MATE_DIST;
-  int MIN_BP_BEFORE_INDEL;
-  int MIN_FLANK;
-  int MIN_READ_END_MATCH;
-  int MAXIMAL_END_MATCH_WINDOW;
+  int32_t MAX_MATE_DIST;
+  int32_t MIN_BP_BEFORE_INDEL;
+  int32_t MIN_FLANK;
+  int32_t MIN_READ_END_MATCH;
+  int32_t MAXIMAL_END_MATCH_WINDOW;
   int REMOVE_MULTIMAPPERS;
 };
 

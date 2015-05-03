@@ -262,36 +262,35 @@ void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, i
 }
 
 
-bool check_deletions(std::vector< std::vector<Alignment> >& alignments, int32_t start, int32_t end){
+int check_deletion_bounds(std::vector< std::vector<Alignment> >& alignments, int32_t start, int32_t end){
+  int sample_fail_count = 0; // Number of samples with 1 or more non-enclosed deletions
+
   // Extract deletion coordinates
   std::vector<int32_t> del_starts, del_ends;
-  for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++)
+  for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++){
     for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++)
       aln_iter->get_deletion_boundaries(del_starts, del_ends);
 
-  // Check that they all are contained within the region or outside the region
-  assert(del_starts.size() == del_ends.size());
-  int fail_count = 0, success_count = 0;
-  for (unsigned i = 0; i < del_starts.size(); i++){
-    bool fail;
-    if (del_starts[i] <= start)
-      fail = (del_ends[i] >= start);
-    else if (del_starts[i] <= end)
-      fail = (del_ends[i] >= end);
-    else
-      fail = false;
+    // Check that they all are contained within the region or outside the region
+    assert(del_starts.size() == del_ends.size());
+    bool sample_fail = false;
+    for (unsigned i = 0; i < del_starts.size(); i++){
+      bool fail = false;
+      if (del_starts[i] <= start)
+	fail = (del_ends[i] >= start);
+      else if (del_starts[i] <= end)
+	fail = (del_ends[i] >= end);
 
-    if (fail)
-      fail_count++;
-    else
-      success_count++;
+      if (fail){
+	std::cerr << start << "\t" << end << "\t" << del_starts[i] << "\t" << del_ends[i] << std::endl;
+      }
+      sample_fail |= fail;
+    }
+    sample_fail_count += sample_fail;
+    del_starts.clear(); del_ends.clear();
   }
-  std::cerr << "Indel Bound Counts: " << success_count << " " << fail_count << std::endl;
-  return fail_count == 0;
+  return sample_fail_count;
 }
-
-
-
 
 Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
 			      std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles,
@@ -324,7 +323,8 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
   // TO DO: Use frequency of deletions not contained within window to 
   //   i) Identify problematic regions
   //  ii) Retry with increased window padding?
-  // check_deletions(alignments, rep_region_start, rep_region_end);
+  int sample_fail_count = check_deletion_bounds(alignments, rep_region_start, rep_region_end);
+  std::cerr << "SAMPLE DEL FAIL COUNT: " << sample_fail_count << std::endl;
 
 
   // Extend each VCF allele by padding size

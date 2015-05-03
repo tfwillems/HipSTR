@@ -22,7 +22,7 @@ void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t
   while (std::getline(input, line) && regions.size() < max_regions){
     std::istringstream iss(line);
     std::string chrom;
-    uint32_t start, stop;
+    int32_t start, stop;
     int period;
     if (!(iss >> chrom >> start >> stop >> period)) 
       printErrorAndDie("Improperly formatted region file");
