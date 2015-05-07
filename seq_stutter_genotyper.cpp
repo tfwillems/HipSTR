@@ -69,14 +69,23 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 	bp_diffs_.push_back(-999);
     }
   }
-  
+
   std::cerr << "Left aligning reads..." << std::endl;
+  std::map<std::string, Alignment*> seq_to_alns;
   int read_index = 0;
+  // TO DO: Test memoized vs. non-memoized speed
   for (unsigned int i = 0; i < alignments.size(); ++i){
     alns_.push_back(std::vector<Alignment>());
     for (unsigned int j = 0; j < alignments[i].size(); ++j, ++read_index){
-      alns_.back().push_back(Alignment());
-      realign(alignments[i][j], chrom_seq, alns_.back().back());
+      auto iter = seq_to_alns.find(alignments[i][j].QueryBases);
+      if (iter == seq_to_alns.end()){
+	alns_.back().push_back(Alignment());
+	realign(alignments[i][j], chrom_seq, alns_.back().back());
+      }
+      else {
+	alns_.back().push_back(*(iter->second));
+	seq_to_alns[alignments[i][j].QueryBases] = &(alns_.back().back());
+      }
       log_p1_[read_index]       = log_p1[i][j];
       log_p2_[read_index]       = log_p2[i][j];
       sample_label_[read_index] = i; 
@@ -91,8 +100,9 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 
   // Generate putative haplotypes and determine the number of alleles
   std::cerr << "Generating putative haplotypes..." << std::endl;
-  haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, alns_, vcf_alleles, stutter_model_, alleles_from_bams_, hap_blocks_);
+  haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, alns_, vcf_alleles, stutter_model_, alleles_from_bams_, hap_blocks_, call_sample_);
   num_alleles_ = haplotype_->num_combs();
+  assert(call_sample_.size() == num_samples_);
 
   // Print information about the haplotype and the stutter model 
   std::cerr << "Max block sizes: ";
@@ -107,6 +117,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   // Allocate the remaining data structures
   log_sample_posteriors_ = new double[num_alleles_*num_alleles_*num_samples_];
   log_aln_probs_         = new double[num_reads_*num_alleles_];
+  seed_positions_        = new int[num_reads_];
 
   // Extract full STR sequence for each allele using annotated repeat region
   // and the haplotype above
@@ -121,10 +132,14 @@ bool SeqStutterGenotyper::genotype(){
   // Align each read against each candidate haplotype
   std::cerr << "Aligning reads to each candidate haplotype..." << std::endl;
   init_alignment_model();
-  HapAligner hap_aligner(haplotype_, *region_, MAX_REF_FLANK_LEN, &base_quality_, num_reads_);
+  HapAligner hap_aligner(haplotype_, MAX_REF_FLANK_LEN, &base_quality_, num_reads_);
   int read_index = 0;
   for (unsigned int i = 0; i < alns_.size(); i++){
-    hap_aligner.process_reads(alns_[i], read_index, log_aln_probs_); 
+    // TO DO: Add check to see if sequence already encountered
+    // If so, reuse alignment probs(even though qual scores may differ)
+    // Should result in 5-7x speedup
+
+    hap_aligner.process_reads(alns_[i], read_index, log_aln_probs_, seed_positions_); 
     read_index += alns_[i].size();
   }  
 
@@ -132,6 +147,9 @@ bool SeqStutterGenotyper::genotype(){
   if (stutter_model_ == NULL)
     printErrorAndDie("Must specify stutter model before running genotype()");
   calc_log_sample_posteriors();
+
+
+  debug_sample(sample_indices_["LP6005441-DNA_C05"]);
 
   return true;
 }
@@ -149,7 +167,8 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##INFO=<ID=" << "BPDIFFS,"        << "Number=A,Type=Integer,Description=\"" << "Base pair difference of each alternate allele from the reference allele"      << "\">\n"
       << "##INFO=<ID=" << "START,"          << "Number=1,Type=Integer,Description=\"" << "Inclusive start coodinate for the repetitive potrion of the reference allele" << "\">\n"
       << "##INFO=<ID=" << "END,"            << "Number=1,Type=Integer,Description=\"" << "Inclusive end coordinate for the repetitive portion of the reference allele"  << "\">\n"
-      << "##INFO=<ID=" << "AC,"             << "Number=A,Type=Integer,Description=\"" << "Alternate allele counts"                                                      << "\">\n";
+      << "##INFO=<ID=" << "AC,"             << "Number=A,Type=Integer,Description=\"" << "Alternate allele counts"                                                      << "\">\n"
+      << "##INFO=<ID=" << "DELSKIP,"        << "Number=1,Type=Integer,Description=\"" << "Number of samples not genotyped due to problematic deletion boundaries"       << "\">\n";
 
   // Format field descriptors
   out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""  << "Genotype" << "\">" << "\n"
@@ -252,12 +271,32 @@ void SeqStutterGenotyper::set_allele_priors(vcf::VariantCallFile& variant_file){
 */
  
 void SeqStutterGenotyper::debug_sample(int sample_index){
+  std::cerr << "DEBUGGING SAMPLE..." << std::endl;
+  std::cerr << "READ LL's:" << std::endl;
+  double* read_LL_ptr = log_aln_probs_;
+  int read_index = 0;
+  for (unsigned int i = 0; i < num_reads_; ++i){
+    if(sample_label_[i] == sample_index){
+      std::cerr << "\t" << "READ #" << read_index << ", SEED BASE=" << seed_positions_[i] << " " 
+		<< alns_[sample_index][read_index].get_sequence().substr(0, seed_positions_[i]) 
+		<< " " << alns_[sample_index][read_index].get_sequence().substr(seed_positions_[i]+1) << std::endl;
+      for (unsigned int j = 0; j < num_alleles_; ++j, ++read_LL_ptr)
+	std::cerr << "\t\t" << j << " " << *read_LL_ptr << std::endl;
+      read_index++;
+    }
+    else
+      read_LL_ptr += num_alleles_;
+  }
+
+  std::cerr << std::endl << "SAMPLE LL's:" << std::endl;
   double* sample_LL_ptr = log_sample_posteriors_ + sample_index;
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
       std::cerr << index_1 << " " << index_2 << " " << *sample_LL_ptr << std::endl;
       sample_LL_ptr += num_samples_;
     }
+  
+  std::cerr << "END OF SAMPLE DEBUGGING..." << std::endl;
 }
 
 
@@ -333,11 +372,20 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	}
       }
   
-  // Compute allele counts
+  // Compute allele counts for samples of interest
+  std::set<std::string> samples_of_interest(sample_names.begin(), sample_names.end());
   std::vector<int> allele_counts(num_alleles_);
-  for (auto gt_iter = gts.begin(); gt_iter != gts.end(); gt_iter++){
-    allele_counts[gt_iter->first]++;
-    allele_counts[gt_iter->second]++;
+  int sample_index   = 0;
+  int del_skip_count = 0;
+  for (auto gt_iter = gts.begin(); gt_iter != gts.end(); ++gt_iter, ++sample_index){
+    if (samples_of_interest.find(sample_names_[sample_index]) == samples_of_interest.end())
+      continue;
+    if (call_sample_[sample_index]) {
+      allele_counts[gt_iter->first]++;
+      allele_counts[gt_iter->second]++;
+    }
+    else
+      del_skip_count++;
   }
 
   std::cerr << "Allele counts" << std::endl;
@@ -387,7 +435,12 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   assert(haplotype_->num_blocks() == 3);
 
   //VCF line format = CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE_1 SAMPLE_2 ... SAMPLE_N
-  out << region_->chrom() << "\t" << pos_ << "\t" << ".";
+  out << region_->chrom() << "\t" << pos_ << "\t";
+  
+  if (region_->name().empty())
+    out << ".";
+  else
+    out << region_->name();
 
   // Compute the base pair differences from the reference
   std::vector<int> bp_diffs;
@@ -423,7 +476,8 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       << "OUTFRAME_UP="     << stutter_model_->get_parameter(false, 'U') << ";" 
       << "OUTFRAME_DOWN="   << stutter_model_->get_parameter(false, 'D') << ";"
       << "START="           << region_->start() << ";"
-      << "END="             << region_->stop()  << ";";
+      << "END="             << region_->stop()  << ";"
+      << "DELSKIP="         << del_skip_count   << ";";
   if (num_alleles_ > 1){
     out << "BPDIFFS=" << bp_diffs[1];
     for (unsigned int i = 2; i < num_alleles_; i++)
@@ -449,6 +503,13 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       continue;
     }
     
+    // Don't report information for a sample if flag has been set to false
+    // Likely due to problematic deletion boundaries
+    if (!call_sample_[sample_iter->second]){
+      out << ".";
+      continue;
+    }
+
     int sample_index    = sample_iter->second;
     int total_reads     = reads_per_sample_[sample_index];
     double phase1_reads = exp(log_sum_exp(log_read_phases[sample_index]));

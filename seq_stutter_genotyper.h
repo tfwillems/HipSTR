@@ -47,11 +47,16 @@ class SeqStutterGenotyper{
   std::vector<int> reads_per_sample_;          // Number of reads for each sample
   std::vector<HapBlock*> hap_blocks_;          // Haplotype blocks
   Haplotype* haplotype_;                       // Potential STR haplotypes
+  std::vector<bool> call_sample_;              // True iff we should try to genotype the sample with the associated index
+                                               // Based on the deletion boundaries in the sample's reads 
 
   bool alleles_from_bams_; // Flag that determines if we examine BAMs for candidate alleles
 
   std::vector<std::string> alleles_; // Vector of indexed alleles
   int32_t pos_;                      // Position of reported alleles in VCF     
+
+  // 0-based seed index for each read
+  int* seed_positions_;
 
   // Iterates through reads and then alleles by their indices
   double* log_aln_probs_;
@@ -96,6 +101,7 @@ class SeqStutterGenotyper{
     assert(alignments.size() == log_p1.size() && alignments.size() == log_p2.size() && alignments.size() == sample_names.size());
     log_p1_                = NULL;
     log_p2_                = NULL;
+    seed_positions_        = NULL;
     log_aln_probs_         = NULL;
     log_sample_posteriors_ = NULL;
     log_allele_priors_     = NULL;
@@ -137,6 +143,7 @@ class SeqStutterGenotyper{
     delete [] log_p1_;
     delete [] log_p2_;
     delete [] sample_label_;
+    delete [] seed_positions_;
     delete [] log_aln_probs_;
     delete [] log_sample_posteriors_;
     delete [] log_allele_priors_;
