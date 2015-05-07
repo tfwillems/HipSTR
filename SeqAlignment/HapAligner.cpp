@@ -349,10 +349,11 @@ double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base,
  * Identify the base with the largest minimum distance from an insertion, a deletion and a stutter block
  * as defined by its alignment to the reference genome
  */
-int HapAligner::calc_seed_base(Alignment& aln){  
+int HapAligner::calc_seed_base(Alignment& aln){
+  assert(haplotype_->num_blocks() == 3);
   int32_t pos          = aln.get_start();
-  int32_t repeat_start = region_->start() > 5 ? region_->start() - 5 : 0;
-  int32_t repeat_stop  = region_->stop() + 5;
+  int32_t repeat_start = haplotype_->get_block(1)->start();
+  int32_t repeat_stop  = haplotype_->get_block(1)->end();
   int best_seed = -1, cur_base = 0, max_dist = MIN_SEED_DIST;
   for (auto cigar_iter = aln.get_cigar_list().begin(); cigar_iter != aln.get_cigar_list().end(); cigar_iter++){
     switch(cigar_iter->get_type()){
@@ -365,9 +366,8 @@ int HapAligner::calc_seed_base(Alignment& aln){
 
       // Clip region so that the seed doesn't extend beyond the maximal sequence flanking the repeats
       // Only this region will be used to construct putative haplotypes
-      if (region_->start() > max_ref_flank_len_)
-	min_region = std::max(min_region, (int32_t)region_->start() - max_ref_flank_len_);
-      max_region = std::min(max_region, (int32_t)region_->stop() + max_ref_flank_len_);
+      min_region = std::max(min_region, haplotype_->get_block(0)->start());
+      max_region = std::min(max_region, haplotype_->get_block(2)->end());
 
       if (min_region <= max_region){
 	// Choose larger of valid two regions
@@ -418,10 +418,11 @@ int HapAligner::calc_seed_base(Alignment& aln){
   return best_seed;
 }
 
-void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read_index, double* aln_probs){
+void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read_index, double* aln_probs, int* seed_positions){
   double* prob_ptr = aln_probs + (init_read_index*haplotype_->num_combs());
   for (unsigned int i = 0; i < alignments.size(); i++){
     int seed_base = calc_seed_base(alignments[i]);
+    seed_positions[init_read_index+i] = seed_base;
     if (seed_base == -1){
       // Assign all haplotypes the same LL
       for (unsigned int i = 0; i < haplotype_->num_combs(); ++i, ++prob_ptr)

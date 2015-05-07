@@ -6,14 +6,12 @@
 
 #include "AlignmentData.h"
 #include "../base_quality.h"
-#include "../region.h"
 #include "Haplotype.h"
 
 class HapAligner {
  private:
   Haplotype* haplotype_;
   int total_reads_;
-  Region* region_;
   int32_t max_ref_flank_len_; // Maximum length of reference sequences flanking the repetitive region
   BaseQuality* base_quality_;
   double* log_align_probs_;   // Iterates over haplotype and then read
@@ -44,17 +42,15 @@ class HapAligner {
 			     double* r_match_matrix, double* r_insert_matrix, double r_prob);
 
  public:
-  HapAligner(Haplotype* haplotype, Region region, int32_t max_ref_flank_len, BaseQuality* base_quality, int total_reads){
+  HapAligner(Haplotype* haplotype, int32_t max_ref_flank_len, BaseQuality* base_quality, int total_reads){
     haplotype_         = haplotype;
     total_reads_       = total_reads;
-    region_            = new Region(region.chrom(), region.start(), region.stop(), region.period());
     max_ref_flank_len_ = max_ref_flank_len;
     base_quality_      = base_quality;
     log_align_probs_   = new double[haplotype_->num_combs()*total_reads_];
   }
 
   ~HapAligner(){
-    delete region_;
     delete [] log_align_probs_;
   }
 
@@ -65,7 +61,7 @@ class HapAligner {
   int calc_seed_base(Alignment& alignment);
 
 
-  void process_reads(std::vector<Alignment>& alignments, int init_read_index, double* aln_probs);
+  void process_reads(std::vector<Alignment>& alignments, int init_read_index, double* aln_probs, int* seed_positions);
 };
 
 #endif
