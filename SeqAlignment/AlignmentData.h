@@ -115,6 +115,28 @@ class Alignment {
       }
     }
   }
+
+  void get_insertion_positions(std::vector<int32_t>& positions, std::vector<int32_t>& sizes) const {
+    int32_t pos = start_;
+    for (auto iter = cigar_list_.begin(); iter != cigar_list_.end(); iter++){
+      switch(iter->get_type()){
+      case 'M': case 'X': case '=':
+	pos += iter->get_num();
+	break;
+      case 'S':
+	break;
+      case 'I':
+	positions.push_back(pos);
+	sizes.push_back(iter->get_num());
+	break;
+      case 'D':
+	pos += iter->get_num();
+	break;
+      default:
+	printErrorAndDie("Invalid CIGAR char detected in get_deletion_boundaries");
+      }
+    }
+  }
   
   std::string getCigarString(){
     std::stringstream cigar_str;
