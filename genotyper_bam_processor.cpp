@@ -82,14 +82,25 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   if (stutter_model != NULL) {
     if (use_seq_aligner_){
       // Use sequence-based genotyper
-      SeqStutterGenotyper seq_genotyper(region, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, (have_ref_vcf_ ? &ref_vcf_ : NULL));
-      if (seq_genotyper.genotype()) {
-	num_genotype_success_++;
-	if (output_str_gts_)
-	  seq_genotyper.write_vcf_record(samples_to_genotype_, str_vcf_);
+      vcf::VariantCallFile* reference_panel_vcf = NULL;
+      if (have_ref_vcf_)
+	reference_panel_vcf = &ref_vcf_;
+
+      SeqStutterGenotyper seq_genotyper(region, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, reference_panel_vcf);
+      if (output_alleles_){
+	std::vector<std::string> no_samples;
+	seq_genotyper.write_vcf_record(no_samples, allele_vcf_);
       }
-      else
-	num_genotype_fail_++;
+
+      if (output_str_gts_){
+	if (seq_genotyper.genotype()) {
+	  num_genotype_success_++;
+	  if (output_str_gts_)
+	    seq_genotyper.write_vcf_record(samples_to_genotype_, str_vcf_);
+	}
+	else
+	  num_genotype_fail_++;
+      }
     }
     else {
       // Use length-based genotyper
@@ -97,14 +108,17 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	length_genotyper = new EMStutterGenotyper(region.chrom(), region.start(), region.stop(), str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
 	length_genotyper->set_stutter_model(*stutter_model);
       }
-      bool use_pop_freqs = false;
-      if (length_genotyper->genotype(use_pop_freqs)){
-	num_genotype_success_++;
-	if (output_str_gts_)
-	  length_genotyper->write_vcf_record(ref_allele, samples_to_genotype_, str_vcf_);
+      
+      if (output_str_gts_){
+	bool use_pop_freqs = false;
+	if (length_genotyper->genotype(use_pop_freqs)){
+	  num_genotype_success_++;
+	  if (output_str_gts_)
+	    length_genotyper->write_vcf_record(ref_allele, samples_to_genotype_, str_vcf_);
+	}
+	else
+	  num_genotype_fail_++;
       }
-      else
-	num_genotype_fail_++;
     }
   }
   delete stutter_model;

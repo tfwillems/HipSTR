@@ -18,7 +18,7 @@
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string, std::string& bamindex_string, std::string& rg_string,
 			     std::string& fasta_dir, std::string& region_file,  std::string& snp_vcf_file, std::string& chrom, 
-			     std::string& bam_out_file, std::string& str_vcf_out_file, 
+			     std::string& bam_out_file, std::string& str_vcf_out_file,  std::string& allele_vcf_out_file,
 			     std::string& stutter_in_file, std::string& stutter_out_file, int& use_hap_aligner,
 			     std::string& ref_vcf_file, 
 			     BamProcessor& bam_processor){
@@ -42,6 +42,7 @@ void parse_command_line_args(int argc, char** argv,
       	      << "Optional output parameters:" << "\n"
 	      << "\t" << "--bam-out       <spanning_reads.bam   "  << "\t" << "Output a BAM file containing the reads spanning each region to the provided file"    << "\n"
 	      << "\t" << "--str-vcf       <str_gts.vcf>         "  << "\t" << "Output a VCF file containing phased STR genotypes"                                   << "\n"
+	      << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a VCF file containing alleles with strong evidence in the BAMs."              << "\n"
 	      << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n" << "\n"
 	      
 	      << "Other optional parameters:" << "\n"
@@ -60,6 +61,7 @@ void parse_command_line_args(int argc, char** argv,
   }
  
   static struct option long_options[] = {
+    {"allele-vcf",      required_argument, 0, 'a'},
     {"bams",            required_argument, 0, 'b'},
     {"chrom",           required_argument, 0, 'c'},
     {"max-mate-dist",   required_argument, 0, 'd'},
@@ -81,12 +83,15 @@ void parse_command_line_args(int argc, char** argv,
   int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "b:c:d:f:g:h:i:o:r:v:m:s:w:", long_options, &option_index);
+    c = getopt_long(argc, argv, "a:b:c:d:f:g:h:i:o:r:v:m:s:w:", long_options, &option_index);
     if (c == -1)
       break;
 
     switch(c){
     case 0:
+      break;
+    case 'a':
+      allele_vcf_out_file = std::string(optarg);
       break;
     case 'b':
       bamfile_string = std::string(optarg);
@@ -143,10 +148,10 @@ int main(int argc, char** argv){
   
   int use_hap_aligner = 0;
   std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
-  std::string bam_out_file="", str_vcf_out_file="", stutter_in_file, stutter_out_file;
+  std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", stutter_in_file="", stutter_out_file="";
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, snp_vcf_file, chrom, 
-			  bam_out_file, str_vcf_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, ref_vcf_file, bam_processor);
+			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, ref_vcf_file, bam_processor);
   if (use_hap_aligner)
     bam_processor.use_seq_aligner();
 
@@ -229,6 +234,10 @@ int main(int argc, char** argv){
       printErrorAndDie("SNP VCF file must be bgzipped (and end in .gz)");
     bam_processor.set_input_snp_vcf(snp_vcf_file);
   }
+
+  std::cerr << allele_vcf_out_file << std::endl;
+  if(!allele_vcf_out_file.empty())
+    bam_processor.set_output_allele_vcf(allele_vcf_out_file);
   if(!str_vcf_out_file.empty())
     bam_processor.set_output_str_vcf(str_vcf_out_file, rg_samples);
   if (!stutter_in_file.empty())

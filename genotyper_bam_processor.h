@@ -28,6 +28,10 @@ private:
   bool output_stutter_models_;
   std::ofstream stutter_model_out_;
 
+  // Outupt file for STR alleles (w/o genotypes)
+  bool output_alleles_;
+  std::ofstream allele_vcf_;
+
   // Output file for STR genotypes
   bool output_str_gts_;
   std::ofstream str_vcf_;
@@ -39,13 +43,14 @@ private:
   // Counters for genotyping success;
   int num_genotype_success_, num_genotype_fail_;
 
-  // VCF containg SNP and STR genotypes for a reference panef
+  // VCF containg SNP and STR genotypes for a reference panel
   bool have_ref_vcf_;
   vcf::VariantCallFile ref_vcf_;
 
 public:
  GenotyperBamProcessor(bool use_lobstr_rg, bool check_mate_chroms, bool use_seq_aligner):SNPBamProcessor(use_lobstr_rg, check_mate_chroms){
     output_stutter_models_ = false;
+    output_alleles_        = false;
     output_str_gts_        = false;
     read_stutter_models_   = false;
     have_ref_vcf_          = false;
@@ -94,6 +99,19 @@ public:
       printErrorAndDie("Failed to open output file for stutter models");
   }
 
+  void set_output_allele_vcf(std::string& vcf_file){
+    output_alleles_ = true;
+    allele_vcf_.open(vcf_file, std::ofstream::out);
+    if (!allele_vcf_.is_open())
+      printErrorAndDie("Failed to open VCF file for STR alleles");
+    
+    std::vector<std::string> no_samples;
+    if (use_seq_aligner_)
+      SeqStutterGenotyper::write_vcf_header(no_samples, allele_vcf_);
+    else
+      printErrorAndDie("Cannot output STR allele VCF if --seq-genotyper option has not been specified");
+  }
+
   void set_output_str_vcf(std::string& vcf_file, std::set<std::string>& samples_to_output){
     output_str_gts_ = true;
     str_vcf_.open(vcf_file, std::ofstream::out);
@@ -121,6 +139,8 @@ public:
 				 std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq);
   void finish(){
     SNPBamProcessor::finish();
+    if (output_alleles_)
+      allele_vcf_.close();
     if (output_str_gts_)
       str_vcf_.close();
     if (output_stutter_models_)
