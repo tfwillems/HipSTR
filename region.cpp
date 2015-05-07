@@ -21,12 +21,16 @@ void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t
   std::string line;
   while (std::getline(input, line) && regions.size() < max_regions){
     std::istringstream iss(line);
-    std::string chrom;
+    std::string chrom, name;
     int32_t start, stop;
     int period;
-    if (!(iss >> chrom >> start >> stop >> period)) 
+    double ref_copy;
+    if (!(iss >> chrom >> start >> stop >> period >> ref_copy))
       printErrorAndDie("Improperly formatted region file");
-    regions.push_back(Region(chrom, start, stop, period));
+    if (iss >> name)
+      regions.push_back(Region(chrom, start, stop, period, name));
+    else
+      regions.push_back(Region(chrom, start, stop, period));
   }
   input.close();
   std::cerr << "Region file contains " << regions.size() << " regions" << std::endl;
