@@ -12,11 +12,18 @@
 const double MIN_FRAC_READS   = 0.05;
 const double MIN_FRAC_SAMPLES = 0.05;
 
-const double MIN_FRAC_STRONG_SAMPLE  = 0.2;
+// Minimum fraction and minimum number of a sample's reads an allele 
+// must be present in for the allele to be strongly supported by the sample
+const double MIN_FRAC_STRONG_SAMPLE  = 0.2; 
 const double MIN_READS_STRONG_SAMPLE = 2;
 const double MIN_STRONG_SAMPLES      = 1;
 
-void trim(int32_t padding, int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
+// Maximum fraction of samples for which a deletion can extend into the STR block
+// If more samples have one such deletion, we'll retry to rebuild the STR region
+// using a large padding window
+const double MAX_FRAC_SAMPLE_DEL_FAIL = 0.01; 
+
+void trim(int32_t left_padding, int32_t right_padding, int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   int min_len = INT_MAX;
   for (unsigned int i = 0; i < sequences.size(); i++)
     min_len = std::min(min_len, (int)sequences[i].size());
@@ -49,12 +56,12 @@ void trim(int32_t padding, int ideal_min_length, int32_t& rep_region_start, int3
   }
 
   // Don't trim past the flanks
-  max_left_trim  = std::min(padding, max_left_trim);
-  max_right_trim = std::min(padding, max_right_trim); 
+  max_left_trim  = std::min(left_padding,  max_left_trim);
+  max_right_trim = std::min(right_padding, max_right_trim); 
 
   // Don't trim past the padding flanks
-  max_left_trim  = std::max(0, std::min(min_len-padding, max_left_trim));
-  max_right_trim = std::max(0, std::min(min_len-padding, max_right_trim));
+  max_left_trim  = std::max(0, std::min(min_len-right_padding, max_left_trim));
+  max_right_trim = std::max(0, std::min(min_len-left_padding,  max_right_trim));
 
   // Determine the left and right trims that clip as much as possible
   // but are as equal in size as possible
@@ -160,12 +167,11 @@ bool extract_sequence(Alignment& aln, int32_t start, int32_t end, std::string& s
   return false;
 }
 
-
 bool stringLengthLT(const std::string& s1, const std::string& s2){
   return s1.size() < s2.size();
 }
 
-void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, int32_t padding, int ideal_min_length,
+void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, int32_t left_padding, int32_t right_padding, int ideal_min_length,
 				 std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles, bool search_bams_for_alleles,
 				 int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   assert(sequences.size() == 0);
@@ -258,36 +264,45 @@ void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, i
   std::sort(sequences.begin()+1, sequences.end(), stringLengthLT);
 
   // Clip identical regions
-  trim(padding, ideal_min_length, rep_region_start, rep_region_end, sequences); 
+  trim(left_padding, right_padding, ideal_min_length, rep_region_start, rep_region_end, sequences); 
 }
 
 
-int check_deletion_bounds(std::vector< std::vector<Alignment> >& alignments, int32_t start, int32_t end){
+int check_deletion_bounds(std::vector< std::vector<Alignment> >& alignments, int32_t start, int32_t end,
+			  int32_t& min_del_start, int32_t& max_del_stop, std::vector<bool>& call_sample){
+  assert(call_sample.size() == 0);
   int sample_fail_count = 0; // Number of samples with 1 or more non-enclosed deletions
+  min_del_start = (start+end)/2;
+  max_del_stop  = (start+end)/2;
 
   // Extract deletion coordinates
   std::vector<int32_t> del_starts, del_ends;
   for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++){
+    bool sample_fail = false;
     for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++)
       aln_iter->get_deletion_boundaries(del_starts, del_ends);
 
     // Check that they all are contained within the region or outside the region
     assert(del_starts.size() == del_ends.size());
-    bool sample_fail = false;
     for (unsigned i = 0; i < del_starts.size(); i++){
       bool fail = false;
-      if (del_starts[i] <= start)
-	fail = (del_ends[i] >= start);
-      else if (del_starts[i] <= end)
-	fail = (del_ends[i] >= end);
-
-      if (fail){
-	std::cerr << start << "\t" << end << "\t" << del_starts[i] << "\t" << del_ends[i] << std::endl;
+      if (del_starts[i] <= start && del_ends[i] >= start){
+	fail = true;
+	min_del_start = std::min(min_del_start, del_starts[i]);
       }
+      if (del_starts[i] <= end && del_ends[i] >= end){
+	fail = true;
+	max_del_stop = std::max(max_del_stop, del_ends[i]);
+      }      
       sample_fail |= fail;
     }
-    sample_fail_count += sample_fail;
-    del_starts.clear(); del_ends.clear();
+    del_starts.clear(); del_ends.clear();	
+    if (sample_fail){
+      sample_fail_count++;
+      call_sample.push_back(false);
+    }
+    else
+      call_sample.push_back(true);
   }
   return sample_fail_count;
 }
@@ -295,37 +310,70 @@ int check_deletion_bounds(std::vector< std::vector<Alignment> >& alignments, int
 Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
 			      std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles,
 			      StutterModel* stutter_model, bool search_bams_for_alleles,
-			      std::vector<HapBlock*>& blocks){
+			      std::vector<HapBlock*>& blocks, std::vector<bool>& call_sample){
+  assert(blocks.size() == 0);
+  assert(call_sample.size() == 0);
+
+  std::map<std::string, int> seqs;
+
   // Determine the minimum and maximum alignment boundaries
   int32_t min_start = INT_MAX, max_stop = INT_MIN;
   for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++){
     for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++){
       min_start = std::min(min_start, aln_iter->get_start());
       max_stop  = std::max(max_stop,  aln_iter->get_stop());
+      seqs[aln_iter->get_sequence()]++;
     }
   }
   
-  // Trim boundaries so that the reference flanks aren't too long
-  if (str_region.start() > max_ref_flank_len)
-    min_start = std::max((int32_t)str_region.start()-max_ref_flank_len, min_start);
-  max_stop = std::min((int32_t)str_region.stop()+max_ref_flank_len, max_stop);
+  std::cerr << "# Seqs = " << seqs.size() << std::endl;
 			 
   // Extract candidate STR sequences (use some padding to ensure indels near STR ends are included)
   std::vector<std::string> str_seqs;
-  int32_t padding = 5;
-  int32_t rep_region_start = str_region.start() < padding ? 0 : str_region.start()-padding;
-  int32_t rep_region_end   = str_region.stop() + padding;
+  int32_t left_padding = 5, right_padding = 5;
+  int32_t rep_region_start = str_region.start() < left_padding ? 0 : str_region.start()-left_padding;
+  int32_t rep_region_end   = str_region.stop() + right_padding;
   std::string ref_seq      = uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start));
   int ideal_min_length     = 3*str_region.period(); // Would ideally have at least 3 repeat units in each allele after trimming
-
-
 
   // TO DO: Use frequency of deletions not contained within window to 
   //   i) Identify problematic regions
   //  ii) Retry with increased window padding?
-  int sample_fail_count = check_deletion_bounds(alignments, rep_region_start, rep_region_end);
-  std::cerr << "SAMPLE DEL FAIL COUNT: " << sample_fail_count << std::endl;
+  int32_t min_del_start, max_del_stop;
+  int sample_fail_count = check_deletion_bounds(alignments, rep_region_start, rep_region_end, min_del_start, max_del_stop, call_sample);
+  
+  // Recheck deletions after expanding the STR window
+  if(1.0*sample_fail_count/alignments.size() <= MAX_FRAC_SAMPLE_DEL_FAIL){
+    std::cerr << "PASS SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count 
+	      << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
+  }
+  else {
+    std::cerr << "FAIL SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count 
+	      << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
 
+    //if ((rep_region_start-min_del_start <= 10) && (max_del_stop-rep_region_end <= 10)){
+      call_sample.clear();
+      rep_region_start  = std::min(rep_region_start, min_del_start-5);
+      rep_region_end    = std::max(rep_region_end,   max_del_stop+5);
+      left_padding      = str_region.start() - rep_region_start;
+      right_padding     = rep_region_end     - str_region.stop();
+      ref_seq           = uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start));
+      sample_fail_count = check_deletion_bounds(alignments, rep_region_start, rep_region_end, min_del_start, max_del_stop, call_sample);
+      if(1.0*sample_fail_count/alignments.size() <= MAX_FRAC_SAMPLE_DEL_FAIL){
+	std::cerr << "REDONE_PASS SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count
+		  << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
+      }
+      else {
+	std::cerr << "REDONE_FAIL SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count
+		  << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
+      }
+      //}
+  }
+  
+  // Trim boundaries so that the reference flanks aren't too long
+  if (rep_region_start > max_ref_flank_len)
+    min_start = std::max(rep_region_start-max_ref_flank_len, min_start);
+  max_stop = std::min(rep_region_end+max_ref_flank_len, max_stop);
 
   // Extend each VCF allele by padding size
   std::vector<std::string> ext_vcf_alleles;
@@ -339,11 +387,17 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
     std::cerr << ext_vcf_alleles[0] << std::endl << ref_seq << std::endl;
     assert(ext_vcf_alleles[0].compare(ref_seq) == 0);
   }
-  generate_candidate_str_seqs(ref_seq, chrom_seq, padding, ideal_min_length, alignments, ext_vcf_alleles, search_bams_for_alleles, rep_region_start, rep_region_end, str_seqs);
+  generate_candidate_str_seqs(ref_seq, chrom_seq, left_padding, right_padding, ideal_min_length, alignments, 
+			      ext_vcf_alleles, search_bams_for_alleles, rep_region_start, rep_region_end, str_seqs);
   
   // Create a set of haplotype regions, consisting of STR sequence block flanked by two reference sequence stretches
   assert(rep_region_start > min_start && rep_region_end < max_stop);
-  assert(str_seqs[0].compare(uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))) == 0);
+
+  if(str_seqs[0].compare(uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))) != 0){
+    std::cerr << str_seqs[0] << std::endl
+	      << uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start)) << std::endl;
+    assert(str_seqs[0].compare(uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))) == 0);
+  }
   blocks.clear();
   blocks.push_back(new HapBlock(min_start, rep_region_start, uppercase(chrom_seq.substr(min_start, rep_region_start-min_start))));    // Ref sequence preceding STRS
   blocks.push_back(new RepeatBlock(rep_region_start, rep_region_end, 
