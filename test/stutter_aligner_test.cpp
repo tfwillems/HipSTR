@@ -18,24 +18,24 @@ int main(){
   fill_qual_scores(base_log_right, base_seq.size(), log(1-1e-5));
 
   double prob_a, prob_b, prob_c;
-  prob_a = align_no_artifact(  block_seq.size(),   block_seq, base_seq.size(),   base_seq.c_str(), base_log_wrong, base_log_right);
-  prob_b = align_pcr_insertion(block_seq.size()-4, block_seq, base_seq.size(),   base_seq.c_str(), base_log_wrong, base_log_right, 4);
-  prob_c = align_pcr_deletion( block_seq.size(),   block_seq, base_seq.size()-4, base_seq.c_str(), base_log_wrong, base_log_right, -4);
+  prob_a = align_no_artifact_forward(  block_seq.size(),   block_seq.c_str(), base_seq.size(),   base_seq.c_str(), base_log_wrong, base_log_right);
+  prob_b = align_pcr_insertion_forward(block_seq.size()-4, block_seq.c_str(), base_seq.size(),   base_seq.c_str(), base_log_wrong, base_log_right, 4);
+  prob_c = align_pcr_deletion_forward( block_seq.size(),   block_seq.c_str(), base_seq.size()-4, base_seq.c_str(), base_log_wrong, base_log_right, -4);
   std::cerr << prob_a << " " << prob_b << " " << prob_c << std::endl;
 
-  prob_a = align_no_artifact(  block_seq.size(),   block_seq, base_seq.size()-3, base_seq.c_str(), base_log_wrong, base_log_right);
-  prob_b = align_pcr_insertion(block_seq.size()-4, block_seq, base_seq.size()-3, base_seq.c_str(), base_log_wrong, base_log_right, 4);
-  prob_c = align_pcr_deletion( block_seq.size(),   block_seq, base_seq.size()-7, base_seq.c_str(), base_log_wrong, base_log_right, -4);
+  prob_a = align_no_artifact_forward(  block_seq.size(),   block_seq.c_str(), base_seq.size()-3, base_seq.c_str(), base_log_wrong, base_log_right);
+  prob_b = align_pcr_insertion_forward(block_seq.size()-4, block_seq.c_str(), base_seq.size()-3, base_seq.c_str(), base_log_wrong, base_log_right, 4);
+  prob_c = align_pcr_deletion_forward( block_seq.size(),   block_seq.c_str(), base_seq.size()-7, base_seq.c_str(), base_log_wrong, base_log_right, -4);
   std::cerr << prob_a << " " << prob_b << " " << prob_c << std::endl;
 
   block_seq = "ATATATATAC";
-  prob_a = align_no_artifact(  block_seq.size(),   block_seq, base_seq.size(),   base_seq.c_str(), base_log_wrong, base_log_right);
-  prob_b = align_pcr_insertion(block_seq.size()-4, block_seq, base_seq.size(),   base_seq.c_str(), base_log_wrong, base_log_right, 4);
-  prob_c = align_pcr_deletion( block_seq.size(),   block_seq, base_seq.size()-4, base_seq.c_str(), base_log_wrong, base_log_right, -4);
+  prob_a = align_no_artifact_forward(  block_seq.size(),   block_seq.c_str(), base_seq.size(),   base_seq.c_str(), base_log_wrong, base_log_right);
+  prob_b = align_pcr_insertion_forward(block_seq.size()-4, block_seq.c_str(), base_seq.size(),   base_seq.c_str(), base_log_wrong, base_log_right, 4);
+  prob_c = align_pcr_deletion_forward( block_seq.size(),   block_seq.c_str(), base_seq.size()-4, base_seq.c_str(), base_log_wrong, base_log_right, -4);
   std::cerr << prob_a << " " << prob_b << " " << prob_c << std::endl;
 
-  prob_a = align_no_artifact(  block_seq.size(),   block_seq, base_seq.size()-3, base_seq.c_str(), base_log_wrong, base_log_right);
-  prob_b = align_pcr_insertion(block_seq.size()-4, block_seq, base_seq.size()-3, base_seq.c_str(), base_log_wrong, base_log_right, 4);
-  prob_c = align_pcr_deletion( block_seq.size(),   block_seq, base_seq.size()-7, base_seq.c_str(), base_log_wrong, base_log_right, -4);
+  prob_a = align_no_artifact_forward(  block_seq.size(),   block_seq.c_str(), base_seq.size()-3, base_seq.c_str(), base_log_wrong, base_log_right);
+  prob_b = align_pcr_insertion_forward(block_seq.size()-4, block_seq.c_str(), base_seq.size()-3, base_seq.c_str(), base_log_wrong, base_log_right, 4);
+  prob_c = align_pcr_deletion_forward( block_seq.size(),   block_seq.c_str(), base_seq.size()-7, base_seq.c_str(), base_log_wrong, base_log_right, -4);
   std::cerr << prob_a << " " << prob_b << " " << prob_c << std::endl;  
 }

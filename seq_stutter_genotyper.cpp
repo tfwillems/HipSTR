@@ -149,7 +149,7 @@ bool SeqStutterGenotyper::genotype(){
   calc_log_sample_posteriors();
 
 
-  debug_sample(sample_indices_["LP6005441-DNA_C05"]);
+  debug_sample(sample_indices_["LP6005441-DNA_E08"]);
 
   return true;
 }

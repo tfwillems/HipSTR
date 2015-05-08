@@ -51,26 +51,23 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
     }
 
     if (stutter_block){
-      // NOTE: Stutter block emission probability is invariant to direction of alignment, so we can align
-      // left->right instead right->left as would be typically required
-
-      RepeatStutterInfo* rep_info = haplotype_->get_block(block_index)->get_repeat_info();
-      int period                  = rep_info->get_period();
-      int block_option            = haplotype_->cur_index(block_index);
-      int block_len               = block_seq.size();
-      int prev_row_index          = seq_len*(haplotype_index-1);            // Index into matrix for haplotype character preceding stutter block (column = 0) 
-      matrix_index                = seq_len*(haplotype_index+block_len-1);  // Index into matrix for rightmost character in stutter block (column = 0)
-      int num_stutter_artifacts   = (rep_info->max_insertion()-rep_info->max_deletion())/period + 1;
+      RepeatStutterInfo* rep_info   = haplotype_->get_block(block_index)->get_repeat_info();
+      int period                    = rep_info->get_period();
+      int block_option              = haplotype_->cur_index(block_index);
+      int block_len                 = block_seq.size();
+      int prev_row_index            = seq_len*(haplotype_index-1);            // Index into matrix for haplotype character preceding stutter block (column = 0) 
+      matrix_index                  = seq_len*(haplotype_index+block_len-1);  // Index into matrix for rightmost character in stutter block (column = 0)
+      int num_stutter_artifacts     = (rep_info->max_insertion()-rep_info->max_deletion())/period + 1;
+      const char* end_block_seq_arr = block_seq.c_str() + (block_seq.size()-1);
 
       std::vector<double> block_probs(num_stutter_artifacts); // Reuse in each iteration to avoid reallocation penalty
       for (int j = 0; j < seq_len; ++j, ++matrix_index){
 	// Consider valid range of insertions and deletions, including no stutter artifact
 	int art_idx = 0;
 	for (int artifact_size = rep_info->max_deletion(); artifact_size <= rep_info->max_insertion(); artifact_size += period){
-	  int base_len    = std::min(block_len+artifact_size, j+1);
-	  int ptr_offset  = j - base_len + 1;
-	  double prob     = align_stutter_region(block_len, block_seq, base_len, seq_0+ptr_offset, base_log_wrong+ptr_offset, base_log_correct+ptr_offset, artifact_size);
-	  double pre_prob = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
+	  int base_len     = std::min(block_len+artifact_size, j+1);
+	  double prob      = align_stutter_region_reverse(block_len, end_block_seq_arr, base_len, seq_0+j, base_log_wrong+j, base_log_correct+j, artifact_size);
+	  double pre_prob  = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
 	  block_probs[art_idx++] = rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob;
 	}
 	match_matrix[matrix_index] = fast_log_sum_exp(block_probs);
@@ -189,6 +186,7 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
       int prev_row_index          = seq_len*(haplotype_index-1);            // Index into matrix for haplotype character preceding stutter block (column = 0) 
       matrix_index                = seq_len*(haplotype_index+block_len-1);  // Index into matrix for rightmost character in stutter block (column = 0)
       int num_stutter_artifacts   = (rep_info->max_insertion()-rep_info->max_deletion())/period + 1;
+      const char* block_seq_arr   = block_seq.c_str();
 
       std::vector<double> block_probs(num_stutter_artifacts); // Reuse in each iteration to avoid reallocation penalty
       for (int j = 0; j < seq_len; ++j, ++matrix_index){
@@ -196,7 +194,7 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
 	int art_idx = 0;
 	for (int artifact_size = rep_info->max_deletion(); artifact_size <= rep_info->max_insertion(); artifact_size += period){
 	  int base_len    = std::min(block_len+artifact_size, j+1);
-	  double prob     = align_stutter_region(block_len, block_seq, base_len, seq_n-j, base_log_wrong-j, base_log_correct-j, artifact_size);
+	  double prob     = align_stutter_region_forward(block_len, block_seq_arr, base_len, seq_n-j, base_log_wrong-j, base_log_correct-j, artifact_size);
 	  double pre_prob = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
 	  block_probs[art_idx++] = rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob;
 	}

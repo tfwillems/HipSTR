@@ -307,6 +307,12 @@ int check_deletion_bounds(std::vector< std::vector<Alignment> >& alignments, int
   return sample_fail_count;
 }
 
+// Major remaining sources of error
+// Insertion in flank
+// Deletion in flank
+// Candidate allele not identified. Should we consider adding repeat copies +2-3 units?
+
+
 Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
 			      std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles,
 			      StutterModel* stutter_model, bool search_bams_for_alleles,
