@@ -39,33 +39,43 @@ class BamProcessor {
    MIN_READ_END_MATCH       = 10;
    MAXIMAL_END_MATCH_WINDOW = 15;
    REMOVE_MULTIMAPPERS      = 0;
+   REQUIRE_SPANNING         = true;
  }
 
-  void process_regions(BamTools::BamMultiReader& reader, 
-		       std::string& region_file, std::string& fasta_dir,
-		       std::map<std::string, std::string>& file_read_groups,
-		       BamTools::BamWriter& bam_writer, std::ostream& out, int32_t max_regions);
+ void remove_all_filters(){
+   MIN_BP_BEFORE_INDEL      = 0;
+   MIN_FLANK                = 0;
+   MIN_READ_END_MATCH       = 0;
+   MAXIMAL_END_MATCH_WINDOW = 0;
+   REMOVE_MULTIMAPPERS      = 0;
+   REQUIRE_SPANNING         = false;
+ }
 
+ void process_regions(BamTools::BamMultiReader& reader,
+		      std::string& region_file, std::string& fasta_dir,
+		      std::map<std::string, std::string>& file_read_groups,
+		      BamTools::BamWriter& bam_writer, std::ostream& out, int32_t max_regions); 
   
-  virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
-			     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
-			     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
-			     std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq,
-			     std::ostream& out){
-    std::cerr << "Doing nothing with reads" << std::endl;
-  }
-
-  void set_lobstr_rg_usage(bool use_lobstr_rg){
-    use_lobstr_rg_ = use_lobstr_rg;
-  }
+ virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
+			    std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
+			    std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
+			    std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq,
+			    std::ostream& out){
+   std::cerr << "Doing nothing with reads" << std::endl;
+ }
 
 
-  int32_t MAX_MATE_DIST;
-  int32_t MIN_BP_BEFORE_INDEL;
-  int32_t MIN_FLANK;
-  int32_t MIN_READ_END_MATCH;
-  int32_t MAXIMAL_END_MATCH_WINDOW;
-  int REMOVE_MULTIMAPPERS;
+ void set_lobstr_rg_usage(bool use_lobstr_rg){
+   use_lobstr_rg_ = use_lobstr_rg;
+ }
+
+ int32_t MAX_MATE_DIST;
+ int32_t MIN_BP_BEFORE_INDEL;
+ int32_t MIN_FLANK;
+ int32_t MIN_READ_END_MATCH;
+ int32_t MAXIMAL_END_MATCH_WINDOW;
+ int REMOVE_MULTIMAPPERS;
+ bool REQUIRE_SPANNING;
 };
 
 

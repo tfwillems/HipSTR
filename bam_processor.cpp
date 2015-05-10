@@ -90,7 +90,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       pass = false;
     }
     // Ignore read if it does not span the STR
-    if (pass && (alignment.Position > region_iter->start() || alignment.GetEndPosition() < region_iter->stop())){
+    if (pass && REQUIRE_SPANNING && (alignment.Position > region_iter->start() || alignment.GetEndPosition() < region_iter->stop())){
       not_spanning++;
       pass = false;
     }
