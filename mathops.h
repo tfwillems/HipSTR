@@ -14,6 +14,8 @@ double sum(double* begin, double* end);
 
 double sum(std::vector<double>& vals);
 
+int sum (std::vector<bool>& vals);
+
 double log_sum_exp(double* begin, double* end);
 
 double log_sum_exp(double log_v1, double log_v2);

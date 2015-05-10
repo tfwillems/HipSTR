@@ -20,6 +20,13 @@ double sum(std::vector<double>& vals){
   return total;
 }
 
+int sum(std::vector<bool>& vals){
+  int total = 0;
+  for (auto iter = vals.begin(); iter != vals.end(); iter++)
+    total += *iter;
+  return total;
+}
+
 double log_sum_exp(double* begin, double* end){
   double max_val = *std::max_element(begin, end);
   double total   = 0.0;
