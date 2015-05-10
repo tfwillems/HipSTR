@@ -19,8 +19,8 @@ void parse_command_line_args(int argc, char** argv,
 			     std::string& bamfile_string, std::string& bamindex_string, std::string& rg_string,
 			     std::string& fasta_dir, std::string& region_file,  std::string& snp_vcf_file, std::string& chrom, 
 			     std::string& bam_out_file, std::string& str_vcf_out_file,  std::string& allele_vcf_out_file,
-			     std::string& stutter_in_file, std::string& stutter_out_file, int& use_hap_aligner,
-			     std::string& ref_vcf_file, 
+			     std::string& stutter_in_file, std::string& stutter_out_file, int& use_hap_aligner, int& remove_all_filters,
+			     std::string& ref_vcf_file,
 			     BamProcessor& bam_processor){
   int def_mdist = bam_processor.MAX_MATE_DIST;
   if (argc == 1){
@@ -46,7 +46,8 @@ void parse_command_line_args(int argc, char** argv,
 	      << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n" << "\n"
 	      
 	      << "Other optional parameters:" << "\n"
-      	      << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"	    
+      	      << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
+	      << "\t" << "--no-filters                          "  << "\t" << "Don't filter any putative STR reads"                                                 << "\n" 
 	      << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
       	      << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
 	      << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as .bam files. "                   << "\n"
@@ -69,6 +70,7 @@ void parse_command_line_args(int argc, char** argv,
     {"rgs",             required_argument, 0, 'g'},
     {"ref-vcf",         required_argument, 0, 'h'},
     {"indexes",         required_argument, 0, 'i'},
+    {"no-filters",      no_argument, &remove_all_filters, 1},
     {"str-vcf",         required_argument, 0, 'o'},
     {"regions",         required_argument, 0, 'r'},
     {"snp-vcf",         required_argument, 0, 'v'},
@@ -146,12 +148,13 @@ int main(int argc, char** argv){
   bool check_mate_chroms = false;
   GenotyperBamProcessor bam_processor(false, check_mate_chroms, false);
   
-  int use_hap_aligner = 0;
+  int use_hap_aligner = 0, remove_all_filters = 0;
   std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", stutter_in_file="", stutter_out_file="";
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, snp_vcf_file, chrom, 
-			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, ref_vcf_file, bam_processor);
+			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, remove_all_filters, 
+			  ref_vcf_file, bam_processor);
   if (use_hap_aligner)
     bam_processor.use_seq_aligner();
 
@@ -244,6 +247,9 @@ int main(int argc, char** argv){
     bam_processor.set_input_stutter(stutter_in_file);
   if (!stutter_out_file.empty())
     bam_processor.set_output_stutter(stutter_out_file);
+
+  if (remove_all_filters)
+    bam_processor.remove_all_filters();
 
   // Run analysis
   bam_processor.process_regions(reader, region_file, fasta_dir, file_read_groups, bam_writer, std::cout, 1000000);
