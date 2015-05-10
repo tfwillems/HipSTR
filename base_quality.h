@@ -8,11 +8,13 @@
 #include "math.h"
 
 class BaseQuality {
- private:
+ public:
   // Based on the Illumina 1.8 Phred+33 system
   const static char MIN_BASE_QUALITY = '!';
   const static char MAX_BASE_QUALITY = 'J';
-  const static int  MAX_QUAL_INDEX   = MAX_BASE_QUALITY - MIN_BASE_QUALITY;
+
+ private:
+  const static int MAX_QUAL_INDEX = MAX_BASE_QUALITY - MIN_BASE_QUALITY;
 
   // Log likelihoods for quality scores
   double log_correct_[256];
