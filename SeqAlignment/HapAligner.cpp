@@ -66,7 +66,7 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
 	int art_idx = 0;
 	for (int artifact_size = rep_info->max_deletion(); artifact_size <= rep_info->max_insertion(); artifact_size += period){
 	  int base_len     = std::min(block_len+artifact_size, j+1);
-	  double prob      = align_stutter_region_reverse(block_len, end_block_seq_arr, base_len, seq_0+j, base_log_wrong+j, base_log_correct+j, artifact_size);
+	  double prob      = align_stutter_region_reverse(block_len, end_block_seq_arr, base_len, seq_0+j, base_log_wrong+j, base_log_correct+j, artifact_size, period);
 	  double pre_prob  = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
 	  block_probs[art_idx++] = rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob;
 	}
@@ -194,7 +194,7 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
 	int art_idx = 0;
 	for (int artifact_size = rep_info->max_deletion(); artifact_size <= rep_info->max_insertion(); artifact_size += period){
 	  int base_len    = std::min(block_len+artifact_size, j+1);
-	  double prob     = align_stutter_region_forward(block_len, block_seq_arr, base_len, seq_n-j, base_log_wrong-j, base_log_correct-j, artifact_size);
+	  double prob     = align_stutter_region_forward(block_len, block_seq_arr, base_len, seq_n-j, base_log_wrong-j, base_log_correct-j, artifact_size, period);
 	  double pre_prob = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
 	  block_probs[art_idx++] = rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob;
 	}
