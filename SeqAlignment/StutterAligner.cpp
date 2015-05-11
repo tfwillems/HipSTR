@@ -31,7 +31,7 @@ double align_no_artifact_forward(int block_len,                const char*   blo
 double align_pcr_insertion_reverse(int block_len,                const char*   block_seq,
 				   int base_seq_len,             const char*   base_seq,
 				   const double* base_log_wrong, const double* base_log_correct,
-				   int D){
+				   int D, int period){
   assert(D > 0 && base_seq_len <= block_len+D);
   std::vector<double> log_probs; log_probs.reserve(block_len+1);
   double log_prior = log(1.0/(block_len+1));
@@ -80,7 +80,7 @@ double align_pcr_insertion_reverse(int block_len,                const char*   b
 double align_pcr_insertion_forward(int block_len,                const char*   block_seq,
 				   int base_seq_len,             const char*   base_seq,
 				   const double* base_log_wrong, const double* base_log_correct,
-				   int D){
+				   int D, int period){
   assert(D > 0 && base_seq_len <= block_len+D);
   std::vector<double> log_probs; log_probs.reserve(block_len+1);
   double log_prior = log(1.0/(block_len+1));
@@ -189,11 +189,11 @@ double align_pcr_deletion_forward(int block_len,                const char*   bl
 double align_stutter_region_reverse(int block_len,                const char*   block_seq,
 				    int base_seq_len,             const char*   base_seq,
 				    const double* base_log_wrong, const double* base_log_correct,
-				    int D){
+				    int D, int period){
   if (D == 0)
     return align_no_artifact_reverse(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct);
   else if (D > 0)
-    return align_pcr_insertion_reverse(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct, D);
+    return align_pcr_insertion_reverse(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct, D, period);
   else
     return align_pcr_deletion_reverse(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct, D);
 }
@@ -201,11 +201,11 @@ double align_stutter_region_reverse(int block_len,                const char*   
 double align_stutter_region_forward(int block_len,                const char*   block_seq,
 				    int base_seq_len,             const char*   base_seq,
 				    const double* base_log_wrong, const double* base_log_correct,
-				    int D){
+				    int D, int period){
   if (D == 0)
     return align_no_artifact_forward(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct);
   else if (D > 0)
-    return align_pcr_insertion_forward(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct, D);
+    return align_pcr_insertion_forward(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct, D, period);
   else
     return align_pcr_deletion_forward(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct, D);
 }

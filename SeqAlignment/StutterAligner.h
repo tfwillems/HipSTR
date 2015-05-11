@@ -15,12 +15,12 @@ double align_no_artifact_forward(int block_len,                const char*   blo
 double align_pcr_insertion_reverse(int block_len,                const char*   block_seq,
                                    int base_seq_len,             const char*   base_seq,
                                    const double* base_log_wrong, const double* base_log_correct,
-                                   int D);
+                                   int D, int period);
 
 double align_pcr_insertion_forward(int block_len,                const char*   block_seq,
                                    int base_seq_len,             const char*   base_seq,
                                    const double* base_log_wrong, const double* base_log_correct,
-                                   int D);
+                                   int D, int period);
 
 double align_pcr_deletion_reverse(int block_len,                const char*   block_seq,
                                   int base_seq_len,             const char*   base_seq,
@@ -41,7 +41,7 @@ double align_pcr_deletion_forward(int block_len,                const char*   bl
 double align_stutter_region_reverse(int block_len,                const char*   block_seq,
 				    int base_seq_len,             const char*   base_seq,
 				    const double* base_log_wrong, const double* base_log_correct,
-				    int D);
+				    int D, int period);
 
 
 /* Returns the total log-likelihood of the base sequence given the block sequence and the associated quality scores.
@@ -52,7 +52,7 @@ double align_stutter_region_reverse(int block_len,                const char*   
 double align_stutter_region_forward(int block_len,                const char*   block_seq,
 				    int base_seq_len,             const char*   base_seq,
 				    const double* base_log_wrong, const double* base_log_correct,
-				    int D);
+				    int D, int period);
 
 #endif
 
