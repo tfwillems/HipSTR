@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "error.h"
 #include "math.h"
@@ -67,7 +68,10 @@ class BaseQuality {
     }
     else
       return log_correct_[qual_index];
-  }  
+  }
+
+
+  double average_base_qualities(std::vector<std::string*> base_qualities, double* log_perror, double* log_pcorrect);
 };
 
 #endif
