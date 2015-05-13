@@ -35,22 +35,20 @@ class Alignment {
   std::string base_qualities_;
   std::string sequence_;
   std::string alignment_;
-  double mapq_;
 
  public:
   Alignment(int32_t start, int32_t stop,
-	    std::string sample,
-	    std::string base_qualities,
-	    std::string sequence,
-	    std::string alignment,
-	    double mapq){
+	    const std::string& sample,
+	    const std::string& base_qualities,
+	    const std::string& sequence,
+	    const std::string& alignment){
     start_          = start; 
     stop_           = stop;
     sample_         = sample; 
     base_qualities_ = base_qualities;
     sequence_       = sequence;
     alignment_      = alignment;
-    mapq_           = mapq;
+    cigar_list_     = std::vector<CigarElement>();
   }
 
   Alignment(){
@@ -60,24 +58,31 @@ class Alignment {
     base_qualities_ = "";
     sequence_       = "";
     alignment_      = "";
-    mapq_           = 0.0;
-  }
-
-  void copy_alignment_data(Alignment& other){
-    assert(other.sequence_.compare(sequence_) == 0);
-    start_     = other.start_;
-    stop_      = other.stop_;
-    alignment_ = other.alignment_;
+    cigar_list_     = std::vector<CigarElement>();
   }
 
   inline int32_t get_start()             const { return start_;  }
   inline int32_t get_stop()              const { return stop_;   }
   inline std::string get_sample()        const { return sample_; }
-  inline double get_mapping_quality()    const { return mapq_;   }
 
   inline void set_start(int32_t start)       { start_ = start;   }
   inline void set_stop(int32_t stop)         { stop_  = stop;    }
   inline void set_sample(std::string sample) { sample_ = sample; }
+
+  void check_CIGAR_string(std::string& name){
+    int num = 0;
+    for (std::vector<CigarElement>::const_iterator iter = cigar_list_.begin(); iter != cigar_list_.end(); iter++)
+      if (iter->get_type() != 'D' && iter->get_type() != 'H')
+	num += iter->get_num();
+    if (num != sequence_.size()){
+      std::cerr << "CIGAR check failed for read " << name << ": "
+		<< num << " " << sequence_.size() << std::endl
+		<< sequence_  << std::endl
+		<< alignment_ << std::endl
+		<< getCigarString() << std::endl;
+      assert(num == sequence_.size());
+    }
+  }
   
   double sum_log_prob_correct(BaseQuality& base_quality) const {
     double total = 0.0;
@@ -109,10 +114,15 @@ class Alignment {
     return num;
   }
 
-  inline void set_base_qualities(std::string& base_qualities){ base_qualities_.assign(base_qualities); }
-  inline void set_sequence(std::string& sequence)            { sequence_.assign(sequence);             }
-  inline void set_alignment(std::string& alignment)          { alignment_.assign(alignment);           }
-  inline void add_cigar_element(CigarElement e)              { cigar_list_.push_back(e);               }
+  inline void set_base_qualities(const std::string& base_qualities)       { base_qualities_.assign(base_qualities); }
+  inline void set_sequence(const std::string& sequence)                   { sequence_.assign(sequence);             }
+  inline void set_alignment(const std::string& alignment)                 { alignment_.assign(alignment);           }
+  inline void add_cigar_element(CigarElement e)                           { cigar_list_.push_back(e);               }
+  inline void set_cigar_list(const std::vector<CigarElement>& cigar_list) {
+    cigar_list_.clear();
+    for (unsigned int i = 0; i < cigar_list.size(); i++)
+      cigar_list_.push_back(cigar_list[i]);
+  }
 
   inline const std::string& get_base_qualities()           const { return base_qualities_; }
   inline const std::string& get_sequence()                 const { return sequence_;       }

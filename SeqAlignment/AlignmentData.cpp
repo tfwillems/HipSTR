@@ -32,7 +32,7 @@ void Alignment::get_deletion_boundaries(std::vector<int32_t>& starts, std::vecto
       pos += iter->get_num();
       break;
     default:
-      printErrorAndDie("Invalid CIGAR char detected in get_deletion_boundaries");
+      printErrorAndDie("Invalid CIGAR char detected in get_deletion_boundaries for alignment with CIGAR " + getCigarString() + "and alignment " + alignment_);
     }
   }
 }
@@ -54,7 +54,7 @@ void Alignment::get_insertion_positions(std::vector<int32_t>& positions, std::ve
       pos += iter->get_num();
       break;
     default:
-      printErrorAndDie("Invalid CIGAR char detected in get_deletion_boundaries");
+      printErrorAndDie("Invalid CIGAR char detected in get_insertion_positions");
     }
   }
 }
