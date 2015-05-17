@@ -26,12 +26,6 @@ const double MAX_FRAC_SAMPLE_DEL_FAIL = 0.01;
 const int MAX_INSERTION_MERGE_DISTANCE = 10;
 const int MAX_DELETION_MERGE_DISTANCE  = 10;
 
-
-// TO DO: Create an additional function that idenitifies putative STR alleles that match 
-// strong alleles apart from a single or multi-unit insertion
-// Needed to recover longer alleles
-
-
 void trim(int32_t left_padding, int32_t right_padding, int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   int min_len = INT_MAX;
   for (unsigned int i = 0; i < sequences.size(); i++)
