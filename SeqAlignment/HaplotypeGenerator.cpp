@@ -23,6 +23,15 @@ const double MIN_STRONG_SAMPLES      = 1;
 // using a large padding window
 const double MAX_FRAC_SAMPLE_DEL_FAIL = 0.01; 
 
+const int MAX_INSERTION_MERGE_DISTANCE = 10;
+const int MAX_DELETION_MERGE_DISTANCE  = 10;
+
+
+// TO DO: Create an additional function that idenitifies putative STR alleles that match 
+// strong alleles apart from a single or multi-unit insertion
+// Needed to recover longer alleles
+
+
 void trim(int32_t left_padding, int32_t right_padding, int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   int min_len = INT_MAX;
   for (unsigned int i = 0; i < sequences.size(); i++)
@@ -167,10 +176,6 @@ bool extract_sequence(Alignment& aln, int32_t start, int32_t end, std::string& s
   return false;
 }
 
-bool stringLengthLT(const std::string& s1, const std::string& s2){
-  return s1.size() < s2.size();
-}
-
 void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, int32_t left_padding, int32_t right_padding, int ideal_min_length,
 				 std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles, bool search_bams_for_alleles,
 				 int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
@@ -268,6 +273,69 @@ void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, i
 }
 
 
+int check_flanking_insertions(std::vector< std::vector<Alignment> >& alignments, int32_t start, int32_t end,
+			      int32_t& min_ins_pos, int32_t& max_ins_pos, std::vector<bool>& call_sample){
+  assert(call_sample.size() == 0);
+  int sample_fail_count = 0;
+  min_ins_pos = (start+end)/2;
+  max_ins_pos = (start+end)/2;
+  std::vector<int> ins_positions, ins_sizes;
+  for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++){
+    bool sample_fail = false;
+    for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++)
+      aln_iter->get_insertion_positions(ins_positions, ins_sizes);
+    for (unsigned int i = 0; i < ins_positions.size(); i++){
+      if (ins_positions[i] < start){
+	sample_fail = true;
+	min_ins_pos = std::min(min_ins_pos, ins_positions[i]);
+      }
+      if (ins_positions[i] > end){
+	sample_fail = true;
+	max_ins_pos = std::max(max_ins_pos, ins_positions[i]);
+      }
+    }
+    ins_positions.clear(); ins_sizes.clear();
+    sample_fail_count += sample_fail;
+    call_sample.push_back(!sample_fail);
+  }
+  return sample_fail_count;
+}
+
+int check_flanking_deletions(std::vector< std::vector<Alignment> >& alignments, int32_t start, int32_t end,
+			     int32_t& min_del_start, int32_t& max_del_stop, std::vector<bool>& call_sample){
+  assert(call_sample.size() == 0);
+  int sample_fail_count = 0; // Number of samples with 1 or more non-enclosed deletions 
+  min_del_start = (start+end)/2;
+  max_del_stop  = (start+end)/2;
+
+  // Extract deletion coordinates
+  std::vector<int32_t> del_starts, del_ends;
+  for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++){
+    bool sample_fail = false;
+    for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++)
+      aln_iter->get_deletion_boundaries(del_starts, del_ends);
+    assert(del_starts.size() == del_ends.size());
+    for (unsigned i = 0; i < del_starts.size(); i++){
+      bool fail = false;
+      if (del_starts[i] <= start){
+        fail = true;
+        min_del_start = std::min(min_del_start, del_starts[i]);
+      }
+      if (del_ends[i] >= end){
+        fail = true;
+        max_del_stop = std::max(max_del_stop, del_ends[i]);
+      }
+      sample_fail |= fail;
+    }
+    del_starts.clear(); del_ends.clear();
+    sample_fail_count += sample_fail;
+    call_sample.push_back(!sample_fail);
+  }
+  return sample_fail_count;
+}
+
+
+
 int check_deletion_bounds(std::vector< std::vector<Alignment> >& alignments, int32_t start, int32_t end,
 			  int32_t& min_del_start, int32_t& max_del_stop, std::vector<bool>& call_sample){
   assert(call_sample.size() == 0);
@@ -345,26 +413,38 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
   // TO DO: Use frequency of deletions not contained within window to 
   //   i) Identify problematic regions
   //  ii) Retry with increased window padding?
-  int32_t min_del_start, max_del_stop;
-  int sample_fail_count = check_deletion_bounds(alignments, rep_region_start, rep_region_end, min_del_start, max_del_stop, call_sample);
-  
+  int32_t min_del_start, max_del_stop, flank_del_start, flank_del_stop, min_ins_pos, max_ins_pos;
+  std::vector<bool> flank_del_call_sample, flank_ins_call_sample;
+  int num_ext_del   = check_deletion_bounds(alignments,     rep_region_start, rep_region_end, min_del_start,   max_del_stop,   call_sample);
+  int num_flank_del = check_flanking_deletions(alignments,  rep_region_start, rep_region_end, flank_del_start, flank_del_stop, flank_del_call_sample);
+  int num_flank_ins = check_flanking_insertions(alignments, rep_region_start, rep_region_end, min_ins_pos,     max_ins_pos,    flank_ins_call_sample);
+  int nfail         = std::max(num_ext_del, std::max(num_flank_del, num_flank_ins));
+
   // Recheck deletions after expanding the STR window
-  if(1.0*sample_fail_count/alignments.size() <= MAX_FRAC_SAMPLE_DEL_FAIL){
-    std::cerr << "PASS SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count 
+  if(1.0*nfail/alignments.size() <= MAX_FRAC_SAMPLE_DEL_FAIL){
+    std::cerr << "PASS SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << num_ext_del
 	      << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
   }
   else {
-    std::cerr << "FAIL SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count 
+    std::cerr << "FAIL SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << num_ext_del
 	      << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
 
-    //if ((rep_region_start-min_del_start <= 10) && (max_del_stop-rep_region_end <= 10)){
-      call_sample.clear();
-      rep_region_start  = std::min(rep_region_start, min_del_start-5);
-      rep_region_end    = std::max(rep_region_end,   max_del_stop+5);
-      left_padding      = str_region.start() - rep_region_start;
-      right_padding     = rep_region_end     - str_region.stop();
-      ref_seq           = uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start));
-      sample_fail_count = check_deletion_bounds(alignments, rep_region_start, rep_region_end, min_del_start, max_del_stop, call_sample);
+    int32_t min_s = std::min(min_del_start, std::min(flank_del_start, min_ins_pos));
+    int32_t max_e = std::max(max_del_stop,  std::max(flank_del_stop,  max_ins_pos));
+
+    call_sample.clear();
+    flank_del_call_sample.clear();
+    flank_ins_call_sample.clear();
+    rep_region_start  = std::min(rep_region_start, std::max(rep_region_start-10, min_s-5));
+    rep_region_end    = std::max(rep_region_end,   std::min(rep_region_end+10,   max_e+5));
+    left_padding      = str_region.start() - rep_region_start;
+    right_padding     = rep_region_end     - str_region.stop();
+    ref_seq           = uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start));
+    num_ext_del       = check_deletion_bounds(alignments,    rep_region_start,  rep_region_end, min_del_start, max_del_stop, call_sample);
+    num_flank_del     = check_flanking_deletions(alignments,  rep_region_start, rep_region_end, flank_del_start, flank_del_stop, flank_del_call_sample);
+    num_flank_ins     = check_flanking_insertions(alignments, rep_region_start, rep_region_end, min_ins_pos, max_ins_pos, flank_ins_call_sample);
+    
+      /*
       if(1.0*sample_fail_count/alignments.size() <= MAX_FRAC_SAMPLE_DEL_FAIL){
 	std::cerr << "REDONE_PASS SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count
 		  << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
@@ -373,9 +453,15 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
 	std::cerr << "REDONE_FAIL SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count
 		  << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
       }
-      //}
+      */
   }
-  
+
+  /*
+  std::cerr << "# Flank deletions = " << num_flank_del << ", # Flank insertions = " << num_flank_ins << std::endl;
+  for (unsigned int i = 0; i < call_sample.size(); i++)
+    call_sample[i] = call_sample[i] && flank_del_call_sample[i] && flank_ins_call_sample[i];
+  */
+
   // Trim boundaries so that the reference flanks aren't too long
   if (rep_region_start > max_ref_flank_len)
     min_start = std::max(rep_region_start-max_ref_flank_len, min_start);
@@ -398,12 +484,7 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
   
   // Create a set of haplotype regions, consisting of STR sequence block flanked by two reference sequence stretches
   assert(rep_region_start > min_start && rep_region_end < max_stop);
-
-  if(str_seqs[0].compare(uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))) != 0){
-    std::cerr << str_seqs[0] << std::endl
-	      << uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start)) << std::endl;
-    assert(str_seqs[0].compare(uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))) == 0);
-  }
+  assert(str_seqs[0].compare(uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))) == 0);
   blocks.clear();
   blocks.push_back(new HapBlock(min_start, rep_region_start, uppercase(chrom_seq.substr(min_start, rep_region_start-min_start))));    // Ref sequence preceding STRS
   blocks.push_back(new RepeatBlock(rep_region_start, rep_region_end, 
