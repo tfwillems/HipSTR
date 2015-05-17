@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include "error.h"
 #include "snp_tree.h"
 
 std::ostream& operator<<(std::ostream& out, SNP& snp) {
@@ -19,7 +20,6 @@ bool is_biallelic_snp(vcf::Variant& variant){
 bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vcf::VariantCallFile& variant_file,
                       std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees){
   std::cerr << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
-
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
   assert(variant_file.is_open());
 
@@ -63,9 +63,12 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vc
           snps_by_sample[sample_indices[*sample_iter]].push_back(SNP(variant.position-1, a1, a2)); 
         }
       }
+      else {
+	printErrorAndDie("SNP panel VCF must contain phased genotypes and therefore utilize the | genotype separator");
+      }
     }
   }
-  std::cout << std::endl;
+  std::cerr << "Region contained a total of " << locus_count << " valid SNPs" << std::endl;
   
   // Create SNP trees
   for(unsigned int i = 0; i < snps_by_sample.size(); i++){
