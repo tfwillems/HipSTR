@@ -13,11 +13,13 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
   
   std::vector<  std::vector<BamTools::BamAlignment> > alignments(paired_strs_by_rg.size());
   std::vector< std::vector<double> > log_p1s, log_p2s;
+  bool got_snp_info = false;
   if (have_snp_vcf){
     std::vector<SNPTree*> snp_trees;
     std::map<std::string, unsigned int> sample_indices;      
     if(create_snp_trees(region.chrom(), (region.start() > MAX_MATE_DIST ? region.start()-MAX_MATE_DIST : 1), 
 			region.stop()+MAX_MATE_DIST, phased_snp_vcf, sample_indices, snp_trees)){
+      got_snp_info = true;
       std::set<std::string> bad_samples, good_samples;
       for (unsigned int i = 0; i < paired_strs_by_rg.size(); ++i){
 	if (sample_indices.find(rg_names[i]) != sample_indices.end()){
@@ -47,7 +49,7 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
       std::cerr << "Warning: Failed to construct SNP trees for " << region.chrom() << ":" << region.start() << "-" << region.stop() << std::endl; 
     destroy_snp_trees(snp_trees);      
   }
-  else {
+  if (!got_snp_info){
     for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
       // Copy alignments                                                                                                                                             
       alignments[i].insert(alignments[i].end(), paired_strs_by_rg[i].begin(),   paired_strs_by_rg[i].end());
