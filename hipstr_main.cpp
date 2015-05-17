@@ -42,7 +42,7 @@ void parse_command_line_args(int argc, char** argv,
       	      << "Optional output parameters:" << "\n"
 	      << "\t" << "--bam-out       <spanning_reads.bam   "  << "\t" << "Output a BAM file containing the reads spanning each region to the provided file"    << "\n"
 	      << "\t" << "--str-vcf       <str_gts.vcf>         "  << "\t" << "Output a VCF file containing phased STR genotypes"                                   << "\n"
-	      << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a VCF file containing alleles with strong evidence in the BAMs."              << "\n"
+	      << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a VCF file containing alleles with strong evidence in the BAMs"               << "\n"
 	      << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n" << "\n"
 	      
 	      << "Other optional parameters:" << "\n"
