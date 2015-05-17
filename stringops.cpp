@@ -25,3 +25,7 @@ bool string_ends_with(std::string& s, std::string suffix){
     return false;
   return s.substr(s.size()-suffix.size(), suffix.size()).compare(suffix) == 0;
 }
+
+bool stringLengthLT(const std::string& s1, const std::string& s2){
+  return s1.size() < s2.size();
+}
