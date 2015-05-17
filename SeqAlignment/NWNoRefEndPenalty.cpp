@@ -311,10 +311,12 @@ namespace NWNoRefEndPenalty {
 	num += 1;
     }
     cigar_list.push_back(BamTools::CigarOp(cigar_char, num));
+    /*
     if (cigar_list.front().Type == 'I')
       cigar_list.front().Type = 'S';
     if (cigar_list.back().Type == 'I')
       cigar_list.back().Type = 'S';
+    */
   }
 
  
