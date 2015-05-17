@@ -27,24 +27,23 @@ class SeqStutterGenotyper{
   // Locus information
   Region* region_;
 
-  unsigned int num_reads_;   // Total number of reads across all samples
-  int num_samples_; // Total number of samples
-  int motif_len_;   // # bp in STR motif
-  int num_alleles_; // Number of valid alleles
-
+  unsigned int num_reads_; // Total number of reads across all samples
+  int num_samples_;        // Total number of samples
+  int motif_len_;          // # bp in STR motif
+  int num_alleles_;        // Number of valid alleles
   int MAX_REF_FLANK_LEN;
-
   double* log_p1_;                 // Log of SNP phasing likelihoods for each read
   double* log_p2_;
   int* sample_label_;              // Sample index for each read
   StutterModel* stutter_model_;
+  int* seq_index_;                // For each read, contains the index of its associated sequence
+                                  // Reads with the same index have the exact same bases
   BaseQuality base_quality_;
 
   std::vector<int> bp_diffs_;                  // Base pair difference of each read from reference
   std::vector< std::vector<Alignment> > alns_; // Vector of left-aligned alignments  
   std::vector<std::string> sample_names_;      // List of sample names
   std::map<std::string, int> sample_indices_;  // Mapping from sample name to index
-  std::vector<int> reads_per_sample_;          // Number of reads for each sample
   std::vector<HapBlock*> hap_blocks_;          // Haplotype blocks
   Haplotype* haplotype_;                       // Potential STR haplotypes
   std::vector<bool> call_sample_;              // True iff we should try to genotype the sample with the associated index
@@ -71,6 +70,11 @@ class SeqStutterGenotyper{
   // VCF containing STR and SNP genotypes for a reference panel
   vcf::VariantCallFile* ref_vcf_;
 
+  // If this flag is set, reads with identical sequences are pooled and their base emission error
+  // probabilities averaged. Each unique sequence is then only aligned once using these
+  // probabilities. Should result in significant speedup but may introduce genotyping errors
+  bool pool_identical_seqs_;
+
   /* Compute the alignment probabilites between each read and each haplotype */
   double calc_align_probs();
 
@@ -89,7 +93,13 @@ class SeqStutterGenotyper{
   void debug_sample(int sample_index);
   
   void read_ref_vcf_alleles(std::vector<std::string>& alleles);
-  
+
+  // Attempt to identify additional haplotypes given all alignments and the current
+  // haplotype structure. Modifies the underlying haplotype and haplotype blocks accordingly
+  void expand_haplotype();
+
+  std::set<std::string> expanded_alleles_;
+
 
  public:
   SeqStutterGenotyper(Region& region,
@@ -106,18 +116,18 @@ class SeqStutterGenotyper{
     log_sample_posteriors_ = NULL;
     log_allele_priors_     = NULL;
     sample_label_          = NULL;
+    seq_index_             = NULL;
     haplotype_             = NULL;
     MAX_REF_FLANK_LEN      = 30;
     END_KEY                = "END";
     pos_                   = -1;
+    pool_identical_seqs_   = false;
     
     region_       = region.copy();
     num_samples_  = alignments.size();
     sample_names_ = sample_names;
-    for (unsigned int i = 0; i < sample_names.size(); i++){
+    for (unsigned int i = 0; i < sample_names.size(); i++)
       sample_indices_.insert(std::pair<std::string,int>(sample_names[i], i));
-      reads_per_sample_.push_back(alignments[i].size());
-    }
     stutter_model_      = stutter_model.copy();
     ref_vcf_            = ref_vcf;
     alleles_from_bams_  = true;
@@ -143,6 +153,7 @@ class SeqStutterGenotyper{
     delete [] log_p1_;
     delete [] log_p2_;
     delete [] sample_label_;
+    delete [] seq_index_;
     delete [] seed_positions_;
     delete [] log_aln_probs_;
     delete [] log_sample_posteriors_;
@@ -154,12 +165,20 @@ class SeqStutterGenotyper{
   }
   
   static void write_vcf_header(std::vector<std::string>& sample_names, std::ostream& out);
-  
-  void write_vcf_record(std::vector<std::string>& sample_names, std::ostream& out);
-  
 
-  bool genotype();  
+  /*
+   *  When aligning to each haplotype, align each unique sequence instead of each read.
+   *  As quality scores, the genotype utilizes the average of the base quality scores (raw probabilities) for
+   *  reads with identical sequences. Should result in significant speedup if many reads have the same sequence.
+   *  By default, each read is aligned using its own quality scores.
+   */
+  void pool_identical_sequences(){
+    pool_identical_seqs_ = true;
+  }
+
+  void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::ostream& out);
   
+  bool genotype();
 };
 
 #endif
