@@ -1,19 +1,18 @@
 ##
-## Makefile for StutterTrainer
+## Makefile for all executables
 ##
 
 ## Default compilation flags.
 ## Override with:
 ##   make CXXFLAGS=XXXXX
 CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX
-#CXXFLAGS= -O0 -g -D_FILE_OFFSET_BITS=64 -std=c++0x
 
 ## Source code files, add new files to this list
-SRC_COMMON  = error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp extract_indels.cpp mathops.cpp
+SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp extract_indels.cpp mathops.cpp
 SRC_STUTTER = stutter_main.cpp
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
 SRC_HIPSTR  = hipstr_main.cpp factor_builder.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp
-SRC_SEQALN  = SeqAlignment/AlignmentData.cpp SeqAlignment/HapAligner.cpp SeqAlignment/RepeatStutterInfo.cpp SeqAlignment/AlignmentModel.cpp SeqAlignment/AlignmentOps.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NWNoRefEndPenalty.cpp SeqAlignment/Haplotype.cpp SeqAlignment/RepeatBlock.cpp SeqAlignment/StutterAligner.cpp SeqAlignment/HaplotypeGenerator.cpp
+SRC_SEQALN  = SeqAlignment/AlignmentData.cpp SeqAlignment/HapAligner.cpp SeqAlignment/RepeatStutterInfo.cpp SeqAlignment/AlignmentModel.cpp SeqAlignment/AlignmentOps.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NWNoRefEndPenalty.cpp SeqAlignment/Haplotype.cpp SeqAlignment/RepeatBlock.cpp SeqAlignment/StutterAligner.cpp SeqAlignment/HaplotypeGenerator.cpp SeqAlignment/STRAlleleExpansion.cpp
 
 # For each CPP file, generate an object file
 OBJ_COMMON  := $(SRC_COMMON:.cpp=.o)
@@ -34,7 +33,7 @@ LIBDAI_LIB = $(LIBDAI_ROOT)/lib/libdai.a
 VCFLIB_LIB = vcflib/libvcflib.a
 
 .PHONY: all
-all: BamSieve HipSTR Phaser StutterTrainer test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test
+all: BamSieve HipSTR Phaser StutterTrainer test/allele_expansion_test test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test
 
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
@@ -67,13 +66,16 @@ HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(LIBDAI_LIB) 
 Phaser: phase_main.cpp error.cpp $(LIBDAI_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/snp_tree_test: snp_tree.cpp test/snp_tree_test.cpp $(VCFLIB_LIB)
+test/allele_expansion_test: test/allele_expansion_test.cpp SeqAlignment/STRAlleleExpansion.cpp zalgorithm.cpp error.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp snp_tree.cpp $(VCFLIB_LIB)
+test/snp_tree_test: snp_tree.cpp error.cpp test/snp_tree_test.cpp $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/hap_aligner_test: test/hap_aligner_test.cpp SeqAlignment/AlignmentData.cpp
+test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp error.cpp snp_tree.cpp $(VCFLIB_LIB)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+test/hap_aligner_test: test/hap_aligner_test.cpp error.cpp SeqAlignment/AlignmentData.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/stutter_aligner_test: test/stutter_aligner_test.cpp SeqAlignment/StutterAligner.cpp mathops.cpp error.cpp
@@ -96,7 +98,7 @@ $(BAMTOOLS_LIB):
 	git submodule update --recursive bamtools
 	( cd bamtools && mkdir build && cd build && cmake .. && $(MAKE) )
 
-# Rebuild VCFLIB if needed                                                                                                                                                                         
+# Rebuild VCFLIB if needed               
 $(VCFLIB_LIB):
 	git submodule update --init --recursive vcflib
 	git submodule update --recursive vcflib
