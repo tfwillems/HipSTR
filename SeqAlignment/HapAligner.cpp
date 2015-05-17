@@ -422,7 +422,7 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
     int seed_base = calc_seed_base(alignments[i]);
     seed_positions[init_read_index+i] = seed_base;
     if (seed_base == -1){
-      // Assign all haplotypes the same LL
+      // Assign all haplotypes the same zero LL
       for (unsigned int i = 0; i < haplotype_->num_combs(); ++i, ++prob_ptr)
 	*prob_ptr = 0;
     }
