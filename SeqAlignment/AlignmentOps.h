@@ -32,6 +32,6 @@ bool GetIntBamTag(const BamTools::BamAlignment& aln, const std::string& tag_name
 
 bool GetStringBamTag(const BamTools::BamAlignment& alignment, const std::string& tag_name, std::string& value);
 
-void realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment);
+bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment);
 
 #endif

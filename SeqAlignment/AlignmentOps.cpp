@@ -8,7 +8,7 @@ extern const std::string STOP_TAG   = "XE";
 extern const std::string RG_TAG     = "RG";
 extern const std::string SAMPLE_TAG = "SN";
 extern const std::string MOTIF_TAG  = "XR";
-extern const int ALIGN_WINDOW_WIDTH = 50;
+extern const int ALIGN_WINDOW_WIDTH = 75;
 
 
 bool compareAlignments(const BamTools::BamAlignment& alignment_1, const BamTools::BamAlignment& alignment_2){
@@ -121,7 +121,7 @@ bool GetStringBamTag(const BamTools::BamAlignment& alignment, const std::string&
  Realign read to reference region using left alignment variant. Store the new alignment information using
  the provided Alignment reference. Converts the bases to their upper case variants
  */
-void realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment){
+bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment){
     int32_t start        = std::max(alignment.Position-ALIGN_WINDOW_WIDTH-1, 0);
     int32_t stop         = std::min(alignment.GetEndPosition()+ALIGN_WINDOW_WIDTH-1, (int32_t)(ref_sequence.size()-1));
     int32_t length       = stop-start+1;
@@ -132,7 +132,7 @@ void realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
     std::string ref_al, read_al;
     float score;
     std::vector<BamTools::CigarOp> cigar_list;
-    NWNoRefEndPenalty::LeftAlign(ref_seq, read_seq, ref_al, read_al, &score, cigar_list);
+    bool left_aligned = NWNoRefEndPenalty::LeftAlign(ref_seq, read_seq, ref_al, read_al, &score, cigar_list);
     
     // Calculate number of leading spaces in read's alignment and start position
     unsigned int num_lead = 0;
@@ -182,20 +182,30 @@ void realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
     
     if (alignment.QueryBases.size() != alignment.Qualities.size())
         printErrorAndDie("Lengths of sequence and quality strings don't match");
-    std::string base_qualities = alignment.Qualities.substr(num_head_sclips, ref_al.size()-num_head_sclips-num_back_sclips);
-    std::string sequence       = uppercase(read_seq.substr(num_head_sclips, ref_al.size()-num_head_sclips-num_back_sclips));
+    //std::string base_qualities = alignment.Qualities.substr(num_head_sclips, ref_al.size()-num_head_sclips-num_back_sclips);
+    //std::string sequence       = uppercase(read_seq.substr(num_head_sclips,  ref_al.size()-num_head_sclips-num_back_sclips));
+    std::string base_qualities = alignment.Qualities.substr(num_head_sclips, read_seq.size()-num_head_sclips-num_back_sclips);
+    std::string sequence       = uppercase(read_seq.substr(num_head_sclips, read_seq.size()-num_head_sclips-num_back_sclips));
     std::string alignment_seq  = uppercase(read_al.substr(num_head_sclips+num_lead, read_al.size()-num_head_sclips-num_lead-num_trail-num_back_sclips));
-    double mapping_quality     = 1.0; // TO DO: Replace with actual value
-    new_alignment = Alignment(start_position, end_position, sample, base_qualities, sequence, alignment_seq, mapping_quality);
-
+    new_alignment = Alignment(start_position, end_position, sample, base_qualities, sequence, alignment_seq);
     for (std::vector<BamTools::CigarOp>::iterator cigar_iter = cigar_list.begin(); cigar_iter != cigar_list.end(); cigar_iter++){
         if (cigar_iter->Type != 'S')
 	  new_alignment.add_cigar_element(CigarElement(cigar_iter->Type, cigar_iter->Length));
     }
+
+
+    if (alignment.Name.compare("HS2000-1270_199:8:1102:6686:83339") == 0){
+      std::cerr << "DEBUG INFO:" << std::endl
+		<< alignment.QueryBases << std::endl
+		<< num_head_sclips << " " << num_back_sclips << " " << num_lead << " " << num_trail << std::endl
+		<< read_seq << std::endl
+		<< read_al << std::endl
+		<< ref_al  << std::endl
+		<< start_position << " " << end_position << std::endl
+		<< left_aligned << std::endl;
+      for (std::vector<BamTools::CigarOp>::iterator cigar_iter = cigar_list.begin(); cigar_iter != cigar_list.end(); cigar_iter++)
+	std::cerr <<  cigar_iter->Length <<cigar_iter->Type; 
+      std::cerr << std::endl;
+    }
+    return left_aligned;
 }
-
-
-
-
-
-
