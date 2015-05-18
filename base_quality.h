@@ -1,6 +1,7 @@
 #ifndef BASE_QUALITY_H_
 #define BASE_QUALITY_H_
 
+#include <assert.h>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -13,6 +14,8 @@ class BaseQuality {
   // Based on the Illumina 1.8 Phred+33 system
   const static char MIN_BASE_QUALITY = '!';
   const static char MAX_BASE_QUALITY = 'J';
+  constexpr static double LOG_10     = log(10);
+  constexpr static double LOG_3      = log(3);
 
  private:
   const static int MAX_QUAL_INDEX = MAX_BASE_QUALITY - MIN_BASE_QUALITY;
@@ -25,7 +28,7 @@ class BaseQuality {
   BaseQuality(){
     // Precalculate log likelihoods
     log_correct_[0] = -100000;
-    log_error_[0]   = 0;
+    log_error_[0]   = -LOG_3;
 
     for (int i = 1; i <= MAX_QUAL_INDEX; ++i){
       log_correct_[i] = log(1.0 - pow(10.0, i/(-10.0)));
@@ -70,8 +73,13 @@ class BaseQuality {
       return log_correct_[qual_index];
   }
 
+  char closest_char(double log_prob_e){
+    int index = (int)floor(-10*(log_prob_e+LOG_3)/LOG_10);
+    assert(index >= 0 && index <= MAX_QUAL_INDEX);
+    return index + MIN_BASE_QUALITY;
+  }
 
-  double average_base_qualities(std::vector<std::string*> base_qualities, double* log_perror, double* log_pcorrect);
+  std::string average_base_qualities(std::vector<std::string*> base_qualities);
 };
 
 #endif
