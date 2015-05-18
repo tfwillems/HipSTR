@@ -79,7 +79,7 @@ class BaseQuality {
     return index + MIN_BASE_QUALITY;
   }
 
-  std::string average_base_qualities(std::vector<std::string*> base_qualities);
+  std::string average_base_qualities(std::vector<const std::string*> base_qualities);
 };
 
 #endif

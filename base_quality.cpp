@@ -4,7 +4,7 @@
 #include "error.h"
 #include "mathops.h"
 
-std::string BaseQuality::average_base_qualities(std::vector<std::string*> qualities){
+std::string BaseQuality::average_base_qualities(std::vector<const std::string*> qualities){
   assert(qualities.size() > 0);
 
   // Check that all base quality strings are of the same length
