@@ -36,8 +36,6 @@ class SeqStutterGenotyper{
   double* log_p2_;
   int* sample_label_;              // Sample index for each read
   StutterModel* stutter_model_;
-  int* seq_index_;                // For each read, contains the index of its associated sequence
-                                  // Reads with the same index have the exact same bases
   BaseQuality base_quality_;
 
   std::vector<int> bp_diffs_;                  // Base pair difference of each read from reference
@@ -74,6 +72,9 @@ class SeqStutterGenotyper{
   // probabilities averaged. Each unique sequence is then only aligned once using these
   // probabilities. Should result in significant speedup but may introduce genotyping errors
   bool pool_identical_seqs_;
+
+  /* Combine reads with identical base sequences into a single representative alignment */
+  void combine_reads(std::vector<Alignment>& alignments, Alignment& pooled_aln);
 
   /* Compute the alignment probabilites between each read and each haplotype */
   double calc_align_probs();
@@ -116,7 +117,6 @@ class SeqStutterGenotyper{
     log_sample_posteriors_ = NULL;
     log_allele_priors_     = NULL;
     sample_label_          = NULL;
-    seq_index_             = NULL;
     haplotype_             = NULL;
     MAX_REF_FLANK_LEN      = 30;
     END_KEY                = "END";
@@ -153,7 +153,6 @@ class SeqStutterGenotyper{
     delete [] log_p1_;
     delete [] log_p2_;
     delete [] sample_label_;
-    delete [] seq_index_;
     delete [] seed_positions_;
     delete [] log_aln_probs_;
     delete [] log_sample_posteriors_;

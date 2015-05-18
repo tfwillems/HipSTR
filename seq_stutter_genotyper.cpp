@@ -26,6 +26,25 @@ int max_index(double* vals, unsigned int num_vals){
   return best_index;
 }
 
+void SeqStutterGenotyper::combine_reads(std::vector<Alignment>& alignments, Alignment& pooled_aln){
+  assert(alignments.size() > 0);
+  pooled_aln.set_start(alignments[0].get_start());
+  pooled_aln.set_stop(alignments[0].get_stop());
+  pooled_aln.set_sample("");
+  pooled_aln.set_sequence(alignments[0].get_sequence());
+  pooled_aln.set_alignment(alignments[0].get_alignment());
+  pooled_aln.set_cigar_list(alignments[0].get_cigar_list());
+
+  // Utilize mean base quality scores for pooled alignment
+  std::vector<const std::string*> qual_ptrs;
+  for (unsigned int i = 0; i < alignments.size(); i++)
+    qual_ptrs.push_back(&(alignments[i].get_base_qualities()));
+  std::string mean_base_quals = base_quality_.average_base_qualities(qual_ptrs);
+  assert(mean_base_quals.size() == alignments[0].get_sequence().size());
+  pooled_aln.set_base_qualities(mean_base_quals);
+}
+
+
 void SeqStutterGenotyper::expand_haplotype(){
   assert(haplotype_->num_blocks() == 3);
   std::vector< std::vector<std::string> > read_seqs(alns_.size());
@@ -116,7 +135,6 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   log_p1_       = new double[num_reads_];
   log_p2_       = new double[num_reads_];
   sample_label_ = new int[num_reads_];
-  seq_index_    = new int[num_reads_];
 
   std::cerr << "Left aligning reads..." << std::endl;
   std::map<std::string, std::pair<int,int> > seq_to_alns;
@@ -138,7 +156,6 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 	  seq_to_alns[alignments[i][j].QueryBases] = std::pair<int,int>(i, j);
 	  alns_.back().back().check_CIGAR_string(alignments[i][j].Name);
 	  seq_to_index[alignments[i][j].QueryBases] = uniq_seq_count;
-	  seq_index_[read_index] = uniq_seq_count++;
 	  bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region_->start()-region_->period(), region_->stop()+region_->period(), bp_diff);
 	  bp_diffs_.push_back(got_size ? bp_diff : -999);
 	}
@@ -162,7 +179,6 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 	new_aln.set_cigar_list(alns_[iter->second.first][iter->second.second].get_cigar_list());
 	new_aln.check_CIGAR_string(alignments[i][j].Name);
 	alns_.back().push_back(new_aln);
-	seq_index_[read_index] = seq_to_index[alignments[i][j].QueryBases];
 	bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region_->start()-region_->period(), region_->stop()+region_->period(), bp_diff);
 	bp_diffs_.push_back(got_size ? bp_diff : -999);
       }
@@ -171,7 +187,8 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
       sample_label_[read_index] = i; 
     }
   }
-  std::cerr << "Failed to left align " << align_fail_count << " out of " << num_reads_ << " reads" << std::endl;
+  if (align_fail_count != 0)
+    std::cerr << "Failed to left align " << align_fail_count << " out of " << num_reads_ << " reads" << std::endl;
 
   // Replace base quality scores for 'N' bases with minimum quality score
   for (unsigned int i = 0; i < alns_.size(); ++i)
@@ -225,16 +242,20 @@ bool SeqStutterGenotyper::genotype(){
   std::cerr << "Aligning reads to each candidate haplotype..." << std::endl;
   init_alignment_model();
   HapAligner hap_aligner(haplotype_, MAX_REF_FLANK_LEN, &base_quality_, num_reads_);
-  int read_index = 0;
-  for (unsigned int i = 0; i < alns_.size(); i++){
+  if (pool_identical_seqs_){
     // TO DO: Add check to see if sequence already encountered
     // If so, reuse alignment probs(even though qual scores may differ)
     // Should result in 5-7x speedup
     // May want to consider averaging quality scores across reads with identical sequences
-
-    hap_aligner.process_reads(alns_[i], read_index, log_aln_probs_, seed_positions_); 
-    read_index += alns_[i].size();
-  }  
+    printErrorAndDie("Identical sequence pooling option not yet implemented");
+  }
+  else {
+    int read_index = 0;
+    for (unsigned int i = 0; i < alns_.size(); i++){
+      hap_aligner.process_reads(alns_[i], read_index, log_aln_probs_, seed_positions_); 
+      read_index += alns_[i].size();
+    }  
+  }
 
   std::cerr << "Genotyping samples..." << std::endl;
   if (stutter_model_ == NULL)
