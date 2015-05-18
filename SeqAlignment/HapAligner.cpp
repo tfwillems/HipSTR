@@ -18,7 +18,7 @@ const double IMPOSSIBLE = -1000000000;
 
 void HapAligner::align_left_flank(const char* seq_0, int seq_len, 
 				  const double* base_log_wrong, const double* base_log_correct,
-				  double* match_matrix, double* insert_matrix, double& left_prob){
+				  double* match_matrix, double* insert_matrix, double* deletion_matrix, double& left_prob){
   // NOTE: Input matrix structure: Row = Haplotype position, Column = Read index
   double L_log_probs[seq_len];
  
@@ -146,7 +146,7 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
 
 void HapAligner::align_right_flank(const char* seq_n, int seq_len, 
 				   const double* base_log_wrong, const double* base_log_correct,
-				   double* match_matrix, double* insert_matrix, double& right_prob){
+				   double* match_matrix, double* insert_matrix, double* deletion_matrix, double& right_prob){
   // Note: Input matrix structure: Row = Haplotype position, Column = Read index
   double R_log_probs[seq_len];
  
@@ -273,8 +273,8 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
 
 double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base, 
 				       char seed_char, double log_seed_wrong, double log_seed_correct,
-				       double* l_match_matrix, double* l_insert_matrix, double l_prob,
-				       double* r_match_matrix, double* r_insert_matrix, double r_prob){
+				       double* l_match_matrix, double* l_insert_matrix, double* l_deletion_matrix, double l_prob,
+				       double* r_match_matrix, double* r_insert_matrix, double* r_deletion_matrix, double r_prob){
   int lflank_len = seed_base;
   int rflank_len = base_seq_len-seed_base-1;
   int hapsize    = haplotype_->cur_size();
@@ -443,19 +443,21 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
       int offset           = base_seq_len-1;
 
       // Allocate scoring matrices based on the maximum haplotype size      
-      int max_hap_size        = haplotype_->max_size();
-      double* l_match_matrix  = new double [seed_base*max_hap_size];
-      double* l_insert_matrix = new double [seed_base*max_hap_size];
-      double* r_match_matrix  = new double [(base_seq_len-seed_base-1)*max_hap_size];
-      double* r_insert_matrix = new double [(base_seq_len-seed_base-1)*max_hap_size];
+      int max_hap_size          = haplotype_->max_size();
+      double* l_match_matrix    = new double [seed_base*max_hap_size];
+      double* l_insert_matrix   = new double [seed_base*max_hap_size];
+      double* l_deletion_matrix = new double [seed_base*max_hap_size];
+      double* r_match_matrix    = new double [(base_seq_len-seed_base-1)*max_hap_size];
+      double* r_insert_matrix   = new double [(base_seq_len-seed_base-1)*max_hap_size];
+      double* r_deletion_matrix = new double [(base_seq_len-seed_base-1)*max_hap_size];
 
       do {
 	// Perform alignment to current haplotype
 	double l_prob, r_prob;
-	align_left_flank(base_seq, seed_base, base_log_wrong, base_log_correct, l_match_matrix, l_insert_matrix, l_prob);
-	align_right_flank(base_seq+offset, base_seq_len-1-seed_base, base_log_wrong+offset, base_log_correct+offset, r_match_matrix, r_insert_matrix, r_prob);
+	align_left_flank(base_seq, seed_base, base_log_wrong, base_log_correct, l_match_matrix, l_insert_matrix, l_deletion_matrix, l_prob);
+	align_right_flank(base_seq+offset, base_seq_len-1-seed_base, base_log_wrong+offset, base_log_correct+offset, r_match_matrix, r_insert_matrix, r_deletion_matrix, r_prob);
 	double LL = compute_aln_logprob(base_seq_len, seed_base, base_seq[seed_base], base_log_wrong[seed_base], base_log_correct[seed_base],
-					l_match_matrix, l_insert_matrix, l_prob, r_match_matrix, r_insert_matrix, r_prob);
+					l_match_matrix, l_insert_matrix, l_deletion_matrix, l_prob, r_match_matrix, r_insert_matrix, r_deletion_matrix, r_prob);
 	*prob_ptr = LL;
 	prob_ptr++;
       } while (haplotype_->next());
@@ -464,8 +466,10 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
       // Deallocate scoring matrices
       delete [] l_match_matrix;
       delete [] l_insert_matrix;
+      delete [] l_deletion_matrix;
       delete [] r_match_matrix;
-      delete [] r_insert_matrix; 
+      delete [] r_insert_matrix;
+      delete [] r_deletion_matrix;
     }
   }
 }

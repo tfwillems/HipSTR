@@ -22,7 +22,7 @@ class HapAligner {
    **/
   void align_left_flank(const char* seq_0, int seq_len,
 			const double* base_log_wrong, const double* base_log_correct,
-			double* match_matrix, double* insert_matrix, double& left_prob);
+			double* match_matrix, double* insert_matrix, double* deletion_matrix, double& left_prob);
 
   /**                                                                                                                                                                         
    * Align the sequence contained in SEQ_N -> SEQ_END using the recursion
@@ -30,7 +30,7 @@ class HapAligner {
    **/
   void align_right_flank(const char* seq_n, int seq_len,
 			 const double* base_log_wrong, const double* base_log_correct,
-                         double* match_matrix, double* insert_matrix, double& right_prob);
+                         double* match_matrix, double* insert_matrix, double* deletion_matrix, double& right_prob);
 
   /**
    * Compute the log-probability of the alignment given the 
@@ -38,8 +38,8 @@ class HapAligner {
    **/
   double compute_aln_logprob(int base_seq_len, int seed_base,
 			     char seed_char, double log_seed_wrong, double log_seed_correct,
-			     double* l_match_matrix, double* l_insert_matrix, double l_prob,
-			     double* r_match_matrix, double* r_insert_matrix, double r_prob);
+			     double* l_match_matrix, double* l_insert_matrix, double* l_deletion_matrix, double l_prob,
+			     double* r_match_matrix, double* r_insert_matrix, double* r_deletion_matrix, double r_prob);
 
  public:
   HapAligner(Haplotype* haplotype, int32_t max_ref_flank_len, BaseQuality* base_quality, int total_reads){
