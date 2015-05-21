@@ -14,6 +14,7 @@
 #include "seq_stutter_genotyper.h"
 #include "snp_bam_processor.h"
 #include "stutter_model.h"
+#include "SeqAlignment/HTMLCreator.h"
 
 class GenotyperBamProcessor : public SNPBamProcessor {
 private:  
@@ -47,6 +48,9 @@ private:
   bool have_ref_vcf_;
   vcf::VariantCallFile ref_vcf_;
 
+  bool output_viz_;
+  std::ofstream viz_out_;
+
 public:
  GenotyperBamProcessor(bool use_lobstr_rg, bool check_mate_chroms, bool use_seq_aligner):SNPBamProcessor(use_lobstr_rg, check_mate_chroms){
     output_stutter_models_ = false;
@@ -63,6 +67,11 @@ public:
     ABS_LL_CONVERGE        = 0.01;
     FRAC_LL_CONVERGE       = 0.001;
     MIN_TOTAL_READS        = 100;
+    
+    // Exploratory
+    output_viz_ = true;
+    viz_out_.open("boo.html", std::ofstream::out);
+    writeHeader(viz_out_);
   }
 
   ~GenotyperBamProcessor(){
@@ -145,6 +154,8 @@ public:
       str_vcf_.close();
     if (output_stutter_models_)
       stutter_model_out_.close();
+    if (output_viz_)
+      viz_out_.close();
 
     std::cerr << "Stutter model training succeeded for " << num_em_converge_ << " out of " << num_em_converge_+num_em_fail_ << " loci" << std::endl;
     std::cerr << "Genotyping succeeded for " << num_genotype_success_ << " out of " << num_genotype_success_+num_genotype_fail_ << " loci" << std::endl;
