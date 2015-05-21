@@ -22,8 +22,6 @@
 
 class SeqStutterGenotyper{
  private:
-  std::string END_KEY;
-
   // Locus information
   Region* region_;
 
@@ -93,14 +91,11 @@ class SeqStutterGenotyper{
 
   void debug_sample(int sample_index);
   
-  void read_ref_vcf_alleles(std::vector<std::string>& alleles);
-
   // Attempt to identify additional haplotypes given all alignments and the current
   // haplotype structure. Modifies the underlying haplotype and haplotype blocks accordingly
   void expand_haplotype();
 
   std::set<std::string> expanded_alleles_;
-
 
  public:
   SeqStutterGenotyper(Region& region,
@@ -119,7 +114,6 @@ class SeqStutterGenotyper{
     sample_label_          = NULL;
     haplotype_             = NULL;
     MAX_REF_FLANK_LEN      = 30;
-    END_KEY                = "END";
     pos_                   = -1;
     pool_identical_seqs_   = false;
     
@@ -133,19 +127,6 @@ class SeqStutterGenotyper{
     alleles_from_bams_  = true;
     init(alignments, log_p1, log_p2, sample_names, chrom_seq);
   }
-
-  /*
-  SeqStutterGenotyper(Region& region,
-		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,
-		      std::vector< std::vector<double> >& log_p1, 
-		      std::vector< std::vector<double> >& log_p2, 
-		      std::vector<std::string>& sample_names, std::string& chrom_seq, 
-		      StutterModel& stutter_model, vcf::VariantCallFile& beagle_imp_vcf){
-
-  }
-  */
-
-
 
   ~SeqStutterGenotyper(){
     delete region_;
@@ -175,7 +156,8 @@ class SeqStutterGenotyper{
     pool_identical_seqs_ = true;
   }
 
-  void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::ostream& out);
+  void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq, 
+			bool output_viz, std::ostream& html_output, std::ostream& out);
   
   bool genotype();
 };

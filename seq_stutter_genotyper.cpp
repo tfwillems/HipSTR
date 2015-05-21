@@ -18,6 +18,10 @@
 #include "SeqAlignment/RepeatBlock.h"
 #include "SeqAlignment/STRAlleleExpansion.h"
 
+// Exploratory
+#include "SeqAlignment/AlignmentViz.h"
+#include "vcf_input.h"
+
 int max_index(double* vals, unsigned int num_vals){
   int best_index = 0;
   for (unsigned int i = 1; i < num_vals; i++)
@@ -91,34 +95,6 @@ void SeqStutterGenotyper::expand_haplotype(){
   num_alleles_   = haplotype_->num_combs();
   std::cerr << "Haplotype after additional allele identification:" << std::endl;
   haplotype_->print_block_structure(30, 100, std::cerr);
-}
-
-void SeqStutterGenotyper::read_ref_vcf_alleles(std::vector<std::string>& alleles){
-    assert(alleles.size() == 0);
-    assert(ref_vcf_ != NULL);
-    if (!ref_vcf_->setRegion(region_->chrom(), region_->start(), region_->stop())){
-      // Retry setting region if chr is in chromosome name
-      if (region_->chrom().size() <= 3 || region_->chrom().substr(0, 3).compare("chr") != 0 
-	  || !ref_vcf_->setRegion(region_->chrom().substr(3), region_->start(), region_->stop()))
-	printErrorAndDie("Failed to set VCF region when reading candidate STR alleles");
-    }                                                                                                                                                                                  
-    // Extract STR and ensure the coordinates match
-    vcf::Variant variant(*ref_vcf_);
-    while (ref_vcf_->getNextVariant(variant)){
-      if (variant.position < region_->start())
-	continue;
-      else if (variant.position == region_->start()){
-	int32_t end = (int32_t)variant.getInfoValueFloat(END_KEY);
-	if (end == region_->stop()) {
-	  for (auto iter = variant.alleles.begin(); iter != variant.alleles.end(); iter++)
-	    alleles.push_back(*iter);
-	  return;
-	}
-      }
-      else 
-	break;
-    }
-    printErrorAndDie("Failed to extract matching VCF entry when reading candidate STR alleles");
 }
 
 void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> >& alignments, 
@@ -197,21 +173,26 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 
   std::vector<std::string> vcf_alleles;
   if (ref_vcf_ != NULL){
-    std::cerr << "Reading STR alleles from reference VCF" << std::endl;
-    read_ref_vcf_alleles(vcf_alleles);
+    std::cerr << "Reading STR alleles and priors from VCF" << std::endl;    
+    //extract_vcf_alleles_and_priors(vcf::VariantCallFile& variant_file);
+    printErrorAndDie("VCF imputation option next yet implemented...");
   }
+  else {
+    // Generate putative haplotypes and determine the number of alleles
+    std::cerr << "Generating putative haplotypes..." << std::endl;
+    haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, alns_, vcf_alleles, stutter_model_, alleles_from_bams_, hap_blocks_, call_sample_);
+    num_alleles_ = haplotype_->num_combs();
+    assert(call_sample_.size() == num_samples_);
 
-  // Generate putative haplotypes and determine the number of alleles
-  std::cerr << "Generating putative haplotypes..." << std::endl;
-  haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, alns_, vcf_alleles, stutter_model_, alleles_from_bams_, hap_blocks_, call_sample_);
-  num_alleles_ = haplotype_->num_combs();
-  assert(call_sample_.size() == num_samples_);
+    // Reconstruct haplotype after looking for additional alleles
+    expand_haplotype();
+
+    // Extract full STR sequence for each allele using annotated repeat region and the haplotype above
+    get_alleles(chrom_seq, alleles_);
+  }
 
   // TO DO: Ignore/remove reads with a very low overall base quality score
 
-
-  // Reconstruct haplotype after looking for additional alleles
-  expand_haplotype();
 
   // Print information about the haplotype and the stutter model 
   std::cerr << "Max block sizes: ";
@@ -228,9 +209,6 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   log_aln_probs_         = new double[num_reads_*num_alleles_];
   seed_positions_        = new int[num_reads_];
 
-  // Extract full STR sequence for each allele using annotated repeat region
-  // and the haplotype above
-  get_alleles(chrom_seq, alleles_);
 }
 
 bool SeqStutterGenotyper::genotype(){
@@ -334,54 +312,8 @@ void SeqStutterGenotyper::get_alleles(std::string& chrom_seq, std::vector<std::s
     alleles.push_back(ss.str());
   }
 
-  pos_ += 1; // First off-by-1 VCF error
+  pos_ += 1; // Fix off-by-1 VCF error
 }
-
-
-
-/*
-void SeqStutterGenotyper::set_allele_priors(vcf::VariantCallFile& variant_file){
-  delete [] log_allele_priors_;
-  log_allele_priors_  = new double[num_alleles_*num_alleles_*num_samples_];
-  std::string PGP_KEY = "PGP";
-  
-  if (!variant_file.setRegion(chrom_, start_, end_)){
-    // Retry setting region if chr is in chromosome name
-    if (chrom_.size() <= 3 || chrom_.substr(0, 3).compare("chr") != 0 || !variant_file.setRegion(chrom_.substr(3), start_, end_))
-      printErrorAndDie("Failed to set VCF region when obtaining allele priors");
-  }
-  vcf::Variant variant(variant_file);
-  if (!variant_file.getNextVariant(variant))
-    printErrorAndDie("Failed to extract VCF entry when obtaining allele priors");
-  if (variant_file.formatTypes.find(GP_KEY) == variant_file.formatTypes.end())
-    printErrorAndDie("VCF doesn't contain the PGP format field required for setting allele priors");
-
-  int sample_count = 0;
-  for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
-    if (sample_indices_.find(*sample_iter) == sample_indices_.end())
-      continue;
-    int sample_index = sample_indices_.find(*sample_iter)->second;
-    sample_count++;
-
-    int gp_index = 0;
-    for (unsigned int i = 0; i < num_alleles_; ++i){
-      for (unsigned int j = 0; j < num_alleles_; ++j, ++gp_index){
-	  double prob = variant.getSampleValueFloat(PGP_KEY, *sample_iter, gp_index);
-	  
-	  
-	}
-      }
-    }
-    
-    // TO DO: Parse BEAGLE format fields to set priors
-    printErrorAndDie("set_allele_priors() function not fully implemented");
-  }
-
-  // Ensure that the VCF contained priors for all samples
-  if (sample_count != num_samples_)
-    printErrorAndDie("VCF only contained allele priors for a subset of samples");
-}
-*/
  
 void SeqStutterGenotyper::debug_sample(int sample_index){
   std::cerr << "DEBUGGING SAMPLE..." << std::endl;
@@ -465,7 +397,8 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
   return total_LL;
 }
 
-void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::ostream& out){
+void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
+					   bool output_viz, std::ostream& html_output, std::ostream& out){
   assert(haplotype_->num_blocks() == 3);
 
   // TO DO: Modify VCF to only report alleles with at least 1 call
@@ -614,7 +547,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
   // Add FORMAT field
   out << "\tGT:GB:Q:PQ:DP:DSNP:PDP:ALLREADS:PALLREADS";
-
+  std::map<std::string, std::string> sample_results;
   for (unsigned int i = 0; i < sample_names.size(); i++){
     out << "\t";
     auto sample_iter = sample_indices_.find(sample_names[i]);
@@ -637,6 +570,10 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     int sample_index    = sample_iter->second;
     double phase1_reads = exp(log_sum_exp(log_read_phases[sample_index]));
     double phase2_reads = num_aligned_reads[sample_index] - phase1_reads;
+
+    std::stringstream samp_info;
+    samp_info << allele_bp_diffs[gts[sample_index].first] << "|" << allele_bp_diffs[gts[sample_index].second];
+    sample_results[sample_names[i]] = samp_info.str();
 
     out << gts[sample_index].first << "|" << gts[sample_index].second                            // Genotype
 	<< ":" << allele_bp_diffs[gts[sample_index].first] 
@@ -668,4 +605,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       out << ":" << ".";
   }
   out << "\n";
+
+
+  if (output_viz){
+    visualizeAlignments(alns_, sample_names_, sample_results, hap_blocks_, chrom_seq, region_->name(), true, html_output);
+  }
 }
