@@ -279,6 +279,7 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##INFO=<ID=" << "BPDIFFS,"        << "Number=A,Type=Integer,Description=\"" << "Base pair difference of each alternate allele from the reference allele"      << "\">\n"
       << "##INFO=<ID=" << "START,"          << "Number=1,Type=Integer,Description=\"" << "Inclusive start coodinate for the repetitive potrion of the reference allele" << "\">\n"
       << "##INFO=<ID=" << "END,"            << "Number=1,Type=Integer,Description=\"" << "Inclusive end coordinate for the repetitive portion of the reference allele"  << "\">\n"
+      << "##INFO=<ID=" << "PERIOD,"         << "Number=1,Type=Integer,Description=\"" << "Length of STR motif"                                                          << "\">\n"
       << "##INFO=<ID=" << "AC,"             << "Number=A,Type=Integer,Description=\"" << "Alternate allele counts"                                                      << "\">\n"
       << "##INFO=<ID=" << "DELSKIP,"        << "Number=1,Type=Integer,Description=\"" << "Number of samples not genotyped due to problematic deletion boundaries"       << "\">\n";
 
@@ -593,9 +594,10 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       << "OUTFRAME_PGEOM="  << stutter_model_->get_parameter(false, 'P') << ";" 
       << "OUTFRAME_UP="     << stutter_model_->get_parameter(false, 'U') << ";" 
       << "OUTFRAME_DOWN="   << stutter_model_->get_parameter(false, 'D') << ";"
-      << "START="           << region_->start() << ";"
-      << "END="             << region_->stop()  << ";"
-      << "DELSKIP="         << del_skip_count   << ";";
+      << "START="           << region_->start()  << ";"
+      << "END="             << region_->stop()   << ";"
+      << "PERIOD="          << region_->period() << ";"
+      << "DELSKIP="         << del_skip_count    << ";";
   if (num_alleles_ > 1){
     out << "BPDIFFS=" << allele_bp_diffs[1];
     for (unsigned int i = 2; i < num_alleles_; i++)
