@@ -8,8 +8,11 @@ std::string PGP_KEY           = "PGP";
 std::string START_INFO_TAG    = "START";
 std::string STOP_INFO_TAG     = "END";
 const double MIN_ALLELE_PRIOR = 0.001;
-const int32_t pad             = 50;
 
+// Because HipSTR extends putative STR regions if there are nearby indels, the STR coordinates in the VCF may
+// not exactly match the original reference region coordinates. As a result, when looking for a particular STR region,
+// we look for entries a window around the locus. The size of this window is controlled by this parameter
+const int32_t pad = 50;
 
 void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector<std::string>& alleles){
     assert(alleles.size() == 0 && ref_vcf != NULL);
@@ -23,8 +26,11 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
     // Extract STR and ensure the coordinates match
     vcf::Variant variant(*ref_vcf);
     while (ref_vcf->getNextVariant(variant)){
-      // TO DO: Skip SNPs
-
+      // Skip variants without the appropriate INFO fields (as they're not STRs)
+      if (ref_vcf->infoTypes.find(START_INFO_TAG) == ref_vcf->infoTypes.end())
+	continue;
+      if (ref_vcf->infoTypes.find(STOP_INFO_TAG) == ref_vcf->infoTypes.end())
+	continue;
 
       int32_t str_start = (int32_t)variant.getInfoValueFloat(START_INFO_TAG);
       int32_t str_stop  = (int32_t)variant.getInfoValueFloat(STOP_INFO_TAG);
@@ -40,12 +46,11 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
 }
 
 
-
 /*
  * Searchs for an entry in the provided VCF that matches the region. If found, stores the alleles in the provided vector
  * and returns an array of size NUM_ALLELES*NUM_ALLELES*NUM_SAMPLES containing the log prior for each sample's diploid genotype.
  * The array iterates over allele_1, allele_2 and then each sample.
- * Method exits with an error if no VCF entry is found, if the VCF doesn't containg PGP allele priors or if it only contains a subset of the samples.
+ * Method exits with an error if no VCF entry is found, if the VCF doesn't containg PGP allele priors in the FORMAT field or if it only contains a subset of the samples.
  * The user is responsible for freeing the returned array when it is no longer needed.
  */
 double* extract_vcf_alleles_and_priors(vcf::VariantCallFile* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
@@ -62,8 +67,12 @@ double* extract_vcf_alleles_and_priors(vcf::VariantCallFile* ref_vcf, Region* re
   vcf::Variant variant(*ref_vcf);
   bool matches_region = false;
   while(!ref_vcf->getNextVariant(variant)){
-    // TO DO: Skip non-STR variants as they won't have the INFO tags
-
+    // Skip variants without the appropriate INFO fields (as they're not STRs)
+    if (ref_vcf->infoTypes.find(START_INFO_TAG) == ref_vcf->infoTypes.end())
+      continue;
+    if (ref_vcf->infoTypes.find(STOP_INFO_TAG) == ref_vcf->infoTypes.end())
+      continue;
+    
     int32_t str_start = (int32_t)variant.getInfoValueFloat(START_INFO_TAG);
     int32_t str_stop  = (int32_t)variant.getInfoValueFloat(STOP_INFO_TAG);
     if (str_start == region->start() && str_stop == region->stop()){
