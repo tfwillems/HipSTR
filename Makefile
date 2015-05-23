@@ -31,14 +31,15 @@ ARGWEAVER_LIB = argweaver/lib/libargweaver.a
 BAMTOOLS_LIB = $(BAMTOOLS_ROOT)/lib/libbamtools.a
 LIBDAI_LIB = $(LIBDAI_ROOT)/lib/libdai.a
 VCFLIB_LIB = vcflib/libvcflib.a
+PHASED_BEAGLE_JAR=PhasedBEAGLE/PhasedBEAGLE.jar
 
 .PHONY: all
-all: BamSieve HipSTR Phaser StutterTrainer test/allele_expansion_test test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test test/base_qual_test
+all: BamSieve HipSTR Phaser StutterTrainer test/allele_expansion_test test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test test/base_qual_test $(PHASED_BEAGLE_JAR)
 
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
 clean:
-	rm -f *.o *.d BamSieve HipSTR Phaser StutterTrainer test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test SeqAlignment/*.o
+	rm -f *.o *.d BamSieve HipSTR Phaser StutterTrainer test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test SeqAlignment/*.o ${PHASED_BEAGLE_JAR}
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -106,5 +107,11 @@ $(VCFLIB_LIB):
 	git submodule update --init --recursive vcflib
 	git submodule update --recursive vcflib
 	cd vcflib && $(MAKE)
+
+# Rebuild PhasedBEAGLE if needed
+$(PHASED_BEAGLE_JAR):
+	git submodule update --init --recursive PhasedBEAGLE
+	git submodule update --recursive PhasedBEAGLE
+	cd PhasedBEAGLE && $(MAKE)
 
 # TO DO: Rebuild libDAI if needed
