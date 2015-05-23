@@ -498,8 +498,32 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
 }
 
 
-Haplotype* generate_haplotype(std::vector<std::string>& vcf_alleles, StutterModel* stutter_model, std::vector<HapBlock*>& blocks){
-  // TO DO: Implement function designed for cases in which we're reading alleles and their priors from a VCF
-  printErrorAndDie("Variant of generate_haplotype not implemented");
-  return NULL;
+Haplotype* generate_haplotype(int32_t pos, Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
+			      std::vector<std::string>& vcf_alleles, StutterModel* stutter_model,
+			      std::vector<HapBlock*>& blocks){
+  assert(blocks.size() == 0);
+  assert(vcf_alleles.size() >= 1);
+
+  int32_t rep_region_start   = pos;
+  int32_t rep_region_end     = rep_region_start + vcf_alleles[0].size();
+  int32_t min_start          = (rep_region_start < max_ref_flank_len ? 1 : rep_region_start-max_ref_flank_len);
+  int32_t max_stop           = rep_region_end + max_ref_flank_len;
+  assert(uppercase(vcf_alleles[0]).compare(uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start))) == 0);
+
+  // Create a set of haplotype regions, consisting of STR sequence block flanked by two reference sequence stretches
+  blocks.push_back(new HapBlock(min_start, rep_region_start, uppercase(chrom_seq.substr(min_start, rep_region_start-min_start))));   // Ref sequence preceding STRS
+  blocks.push_back(new RepeatBlock(rep_region_start, rep_region_end,
+                                   uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start)), str_region.period(), stutter_model));
+  blocks.push_back(new HapBlock(rep_region_end, max_stop, uppercase(chrom_seq.substr(rep_region_end, max_stop-rep_region_end))));    // Ref sequence following STRs
+  for (unsigned int j = 1; j < vcf_alleles.size(); j++)
+    blocks[1]->add_alternate(vcf_alleles[j]);
+
+  // Initialize each block's data structures, namely the homopolymer length information
+  for (unsigned int i = 0; i < blocks.size(); i++)
+    blocks[i]->initialize();
+
+  std::cerr << "Constructing haplotype" << std::endl;
+  Haplotype* haplotype = new Haplotype(blocks);
+  haplotype->print_block_structure(30, 100, std::cerr);
+  return haplotype;
 }

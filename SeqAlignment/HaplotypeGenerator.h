@@ -15,4 +15,8 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
 			      StutterModel* stutter_model, bool search_bams_for_alleles,
 			      std::vector<HapBlock*>& blocks, std::vector<bool>& call_sample);
 
+Haplotype* generate_haplotype(int32_t pos, Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
+                              std::vector<std::string>& vcf_alleles, StutterModel* stutter_model,
+                              std::vector<HapBlock*>& blocks);
+
 #endif
