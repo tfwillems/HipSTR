@@ -184,7 +184,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	printErrorAndDie("Failed to modify XS tag");
       if (read_iter->HasTag("XE"))
 	read_iter->RemoveTag("XE");
-      if(!read_iter->EditTag("XE", "I", region_iter->stop()))
+      if(!read_iter->AddTag("XE", "I", region_iter->stop()))
 	printErrorAndDie("Failed to modify XE tag");
       if (!bam_writer.SaveAlignment(*read_iter))  
 	printErrorAndDie("Failed to save alignment for STR-spanning read");

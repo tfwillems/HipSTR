@@ -129,5 +129,3 @@ double* extract_vcf_alleles_and_priors(vcf::VariantCallFile* ref_vcf, Region* re
 
   return log_allele_priors;
 }
-
- 
