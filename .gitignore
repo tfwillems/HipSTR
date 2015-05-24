@@ -2,6 +2,7 @@ BamSieve
 HipSTR
 Phaser
 StutterTrainer
+gzstream/libgzstream.a
 test/allele_expansion_test
 test/base_qual_test
 test/snp_tree_test
