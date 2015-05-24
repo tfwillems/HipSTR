@@ -25,13 +25,14 @@ BAMTOOLS_ROOT=bamtools
 LIBDAI_ROOT=/san2/twillems/imputation/str-imputer/libDAI
 VCFLIB_ROOT=vcflib
 
-LIBS = -L./ -lz -lm -lgmp -lgmpxx -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/
-INCLUDE = -I$(BAMTOOLS_ROOT)/src -I$(LIBDAI_ROOT)/include/ -I$(VCFLIB_ROOT)/ -I/usr/local/opt/boost149/include
-ARGWEAVER_LIB = argweaver/lib/libargweaver.a
-BAMTOOLS_LIB = $(BAMTOOLS_ROOT)/lib/libbamtools.a
-LIBDAI_LIB = $(LIBDAI_ROOT)/lib/libdai.a
-VCFLIB_LIB = vcflib/libvcflib.a
-PHASED_BEAGLE_JAR=PhasedBEAGLE/PhasedBEAGLE.jar
+LIBS              = -L./ -lz -lm -lgmp -lgmpxx -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/ -Lgzstream/
+INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I$(LIBDAI_ROOT)/include/ -I$(VCFLIB_ROOT)/ -I/usr/local/opt/boost149/include -Igzstream/
+ARGWEAVER_LIB     = argweaver/lib/libargweaver.a
+BAMTOOLS_LIB      = $(BAMTOOLS_ROOT)/lib/libbamtools.a
+LIBDAI_LIB        = $(LIBDAI_ROOT)/lib/libdai.a
+VCFLIB_LIB        = vcflib/libvcflib.a
+GZSTREAM_LIB      = gzstream/libgzstream.a
+PHASED_BEAGLE_JAR = PhasedBEAGLE/PhasedBEAGLE.jar
 
 .PHONY: all
 all: BamSieve HipSTR Phaser StutterTrainer test/allele_expansion_test test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test test/base_qual_test $(PHASED_BEAGLE_JAR)
@@ -61,7 +62,7 @@ StutterTrainer: $(OBJ_COMMON) $(OBJ_STUTTER) $(BAMTOOLS_LIB)
 BamSieve: $(OBJ_COMMON) $(OBJ_SIEVE) $(BAMTOOLS_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(LIBDAI_LIB) $(OBJ_SEQALN)
+HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(LIBDAI_LIB) $(OBJ_SEQALN) $(GZSTREAM_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 Phaser: phase_main.cpp error.cpp $(LIBDAI_LIB)
@@ -113,5 +114,9 @@ $(PHASED_BEAGLE_JAR):
 	git submodule update --init --recursive PhasedBEAGLE
 	git submodule update --recursive PhasedBEAGLE
 	cd PhasedBEAGLE && $(MAKE)
+
+# Rebuild gzstream library if needed
+$(GZSTREAM_LIB):
+	cd gzstream && $(MAKE)
 
 # TO DO: Rebuild libDAI if needed

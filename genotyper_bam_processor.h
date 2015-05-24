@@ -8,6 +8,7 @@
 
 #include "bamtools/include/api/BamAlignment.h"
 #include "vcflib/src/Variant.h"
+#include "gzstream/gzstream.h"
 
 #include "em_stutter_genotyper.h"
 #include "region.h"
@@ -35,7 +36,7 @@ private:
 
   // Output file for STR genotypes
   bool output_str_gts_;
-  std::ofstream str_vcf_;
+  ogzstream str_vcf_;
   std::vector<std::string> samples_to_genotype_;
 
   // Flag for type of genotyper to use
@@ -123,10 +124,10 @@ public:
 
   void set_output_str_vcf(std::string& vcf_file, std::set<std::string>& samples_to_output){
     output_str_gts_ = true;
-    str_vcf_.open(vcf_file, std::ofstream::out);
-    if (!str_vcf_.is_open())
+    str_vcf_.open(vcf_file.c_str());
+    if (!str_vcf_.rdbuf()->is_open())
       printErrorAndDie("Failed to open VCF file for STR genotypes");
-    
+
     // Print floats with exactly 3 decimal places
     str_vcf_.precision(3);
     str_vcf_.setf(std::ios::fixed, std::ios::floatfield);
