@@ -188,13 +188,31 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
     std::string sequence       = uppercase(read_seq.substr(num_head_sclips, read_seq.size()-num_head_sclips-num_back_sclips));
     std::string alignment_seq  = uppercase(read_al.substr(num_head_sclips+num_lead, read_al.size()-num_head_sclips-num_lead-num_trail-num_back_sclips));
     new_alignment = Alignment(start_position, end_position, sample, base_qualities, sequence, alignment_seq);
-    for (std::vector<BamTools::CigarOp>::iterator cigar_iter = cigar_list.begin(); cigar_iter != cigar_list.end(); cigar_iter++){
-        if (cigar_iter->Type != 'S')
-	  new_alignment.add_cigar_element(CigarElement(cigar_iter->Type, cigar_iter->Length));
+
+    // Add CIGAR data while approriately trimming for clipped bases
+    int head = num_head_sclips, tail = num_back_sclips;
+    std::vector<BamTools::CigarOp>::iterator end_iter = cigar_list.end()-1;
+    while (tail > end_iter->Length && end_iter != cigar_list.begin()){
+      tail -= end_iter->Length;
+      end_iter--;
     }
+    for (std::vector<BamTools::CigarOp>::iterator cigar_iter = cigar_list.begin(); cigar_iter != end_iter; cigar_iter++){
+      if (head >= cigar_iter->Length)
+	head -= cigar_iter->Length;
+      else if (head > 0){
+	new_alignment.add_cigar_element(CigarElement(cigar_iter->Type, cigar_iter->Length-head));
+	head = 0;
+      }
+      else
+	new_alignment.add_cigar_element(CigarElement(cigar_iter->Type, cigar_iter->Length));
+    }
+    if (head+tail > end_iter->Length)
+      printErrorAndDie("Can't trim CIGAR character as the trim amount exceeds the CIGAR's length");
+    if (head+tail < end_iter->Length)
+      new_alignment.add_cigar_element(CigarElement(end_iter->Type, end_iter->Length-head-tail));
+    
 
-
-    if (alignment.Name.compare("HS2000-1270_199:8:1102:6686:83339") == 0){
+    if (alignment.Name.compare("HS2000-1266_147:5:2102:3686:41029") == 0){
       std::cerr << "DEBUG INFO:" << std::endl
 		<< alignment.QueryBases << std::endl
 		<< num_head_sclips << " " << num_back_sclips << " " << num_lead << " " << num_trail << std::endl
