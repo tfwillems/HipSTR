@@ -30,6 +30,90 @@ int max_index(double* vals, unsigned int num_vals){
   return best_index;
 }
 
+void SeqStutterGenotyper::get_uncalled_alleles(std::vector<int>& allele_indices){
+  assert(allele_indices.size() == 0);
+ 
+  // Determine which samples have >= 1 aligned read
+  std::vector<bool> aligned_read(num_samples_, false);
+  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
+    if (seed_positions_[read_index] != -1)
+      aligned_read[sample_label_[read_index]] = true;
+  }
+
+  // Extract each sample's MAP genotype and the associated phased genotype posterior
+  std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
+  std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX);
+  double* log_post_ptr = log_sample_posteriors_;
+  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
+    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
+      for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index, ++log_post_ptr){
+        if (*log_post_ptr > log_phased_posteriors[sample_index]){
+          log_phased_posteriors[sample_index] = *log_post_ptr;
+          gts[sample_index] = std::pair<int,int>(index_1, index_2);
+        }
+      }
+    }
+  }
+
+  // Mark all alleles with a call by a valid sample
+  std::vector<bool> called(num_alleles_, false);
+  for (unsigned int i = 0; i < gts.size(); i++){
+    if (aligned_read[i] && call_sample_[i]){
+      called[gts[i].first]  = true;
+      called[gts[i].second] = true;
+    }
+  }
+
+  // Unmarked alleles are uncalled (apart from reference allele which must always be kept)
+  for (unsigned int i = 1; i < called.size(); i++)
+    if (!called[i])
+      allele_indices.push_back(i);
+}
+
+void SeqStutterGenotyper::remove_alleles(std::vector<int>& allele_indices){
+  assert(log_allele_priors_ == NULL);           // Can't use this option if priors have been set
+  assert(allele_indices.size() < num_alleles_); // Make sure we'll have at least 1 allele
+
+  std::vector<bool> keep_allele(num_alleles_, true);
+  for (auto iter = allele_indices.begin(); iter != allele_indices.end(); iter++){
+    assert(*iter < keep_allele.size() && *iter >= 0);
+    assert(keep_allele[*iter] == true);
+    keep_allele[*iter] = false;
+  }
+
+  int fixed_num_alleles = num_alleles_ - allele_indices.size();
+  std::vector<std::string> fixed_alleles;
+  for (unsigned int i = 0; i < alleles_.size(); i++)
+    if (keep_allele[i])
+      fixed_alleles.push_back(alleles_[i]);
+  
+  // Fix read alignment probability array
+  double* fixed_log_aln_probs = new double[fixed_num_alleles*num_reads_];
+  double* old_log_aln_ptr     = log_aln_probs_;
+  double* new_log_aln_ptr     = fixed_log_aln_probs;;
+  for (unsigned int i = 0; i < num_reads_; ++i){
+    for (unsigned int j = 0; j < num_alleles_; ++j, ++old_log_aln_ptr){
+      if (keep_allele[j]){
+	*new_log_aln_ptr = *old_log_aln_ptr;
+	new_log_aln_ptr++;
+      }
+    }
+  }
+  delete [] log_aln_probs_;
+  log_aln_probs_ = fixed_log_aln_probs;
+
+  // Replace other variables
+  num_alleles_ = fixed_num_alleles;
+  alleles_     = fixed_alleles;
+
+  // TO DO: Consider reshrinking allele bounds as in the get_alleles function
+
+  // Resize and recalculate genotype posterior array
+  delete [] log_sample_posteriors_;
+  log_sample_posteriors_ = new double[fixed_num_alleles*fixed_num_alleles*num_samples_];
+  calc_log_sample_posteriors();
+}
+
 void SeqStutterGenotyper::combine_reads(std::vector<Alignment>& alignments, Alignment& pooled_aln){
   assert(alignments.size() > 0);
   pooled_aln.set_start(alignments[0].get_start());
@@ -247,6 +331,17 @@ bool SeqStutterGenotyper::genotype(){
     printErrorAndDie("Must specify stutter model before running genotype()");
   calc_log_sample_posteriors();
 
+  // Remove alleles with no MAP genotype calls and recompute the posteriors
+  if (log_allele_priors_ == NULL){
+    std::vector<int> uncalled_indices;
+    get_uncalled_alleles(uncalled_indices);
+    if (uncalled_indices.size() != 0){
+      std::cerr << "Recomputing sample posteriors after removing " << uncalled_indices.size() << " uncalled alleles" << std::endl;
+      remove_alleles(uncalled_indices);
+    }
+  }
+  
+
   //debug_sample(sample_indices_["LP6005441-DNA_F02"]);
   return true;
 }
@@ -412,7 +507,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   
   // TO DO: Consider selecting GT based on genotype with maximum UNPHASED posterior instead of maximum PHASED posterior
   // Are we then double-counting het GTs vs hom GTs?
-  // TO DO: How do we pool STRs with identical lengths?
 
   // Compute the base pair differences from the reference
   std::vector<int> allele_bp_diffs;
@@ -488,7 +582,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   // Compute allele counts for samples of interest
   std::set<std::string> samples_of_interest(sample_names.begin(), sample_names.end());
   std::vector<int> allele_counts(num_alleles_);
-  int sample_index   = 0, del_skip_count = 0;
+  int sample_index = 0, del_skip_count = 0;
   for (auto gt_iter = gts.begin(); gt_iter != gts.end(); ++gt_iter, ++sample_index){
     if (samples_of_interest.find(sample_names_[sample_index]) == samples_of_interest.end())
       continue;
@@ -593,7 +687,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     // Add bp diffs from regular left-alignment
     if (bps_per_sample[sample_index].size() != 0){
-      //std::sort(bps_per_sample[sample_index].begin(), bps_per_sample[sample_index].end());
       out << ":" << bps_per_sample[sample_index][0];
       for (unsigned int j = 1; j < bps_per_sample[sample_index].size(); j++)
 	out << "," << bps_per_sample[sample_index][j];
@@ -603,7 +696,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     // Expected base pair differences from alignment probabilities
     if (posterior_bps_per_sample[sample_index].size() != 0){
-      //std::sort(posterior_bps_per_sample[sample_index].begin(), posterior_bps_per_sample[sample_index].end());
       out << ":" << posterior_bps_per_sample[sample_index][0];
       for (unsigned int j = 1; j < posterior_bps_per_sample[sample_index].size(); j++)
         out << "," << posterior_bps_per_sample[sample_index][j];

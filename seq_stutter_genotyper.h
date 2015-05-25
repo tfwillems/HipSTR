@@ -95,6 +95,16 @@ class SeqStutterGenotyper{
   // haplotype structure. Modifies the underlying haplotype and haplotype blocks accordingly
   void expand_haplotype();
 
+
+  // Identify a list of alleles that aren't the MAP genotype for any sample
+  // Doesn't include the reference allele (index = 0)
+  void get_uncalled_alleles(std::vector<int>& allele_indices);
+
+  // Modify the internal structures to remove the alleles at the associated indices
+  // Designed to remove alleles who aren't the MAP genotype of any samples
+  // However, it does not modify any of the haplotype-related data structures
+  void remove_alleles(std::vector<int>& allele_indices);
+
   std::set<std::string> expanded_alleles_;
 
  public:
