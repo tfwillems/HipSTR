@@ -14,13 +14,17 @@ const double MIN_ALLELE_PRIOR = 0.001;
 // we look for entries a window around the locus. The size of this window is controlled by this parameter
 const int32_t pad = 50;
 
-void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector<std::string>& alleles, int32_t& pos){
+void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector<std::string>& alleles, int32_t& pos, bool& success){
     assert(alleles.size() == 0 && ref_vcf != NULL);
     if (!ref_vcf->setRegion(region->chrom(), region->start()-pad, region->stop()+pad)){
       // Retry setting region if chr is in chromosome name
       if (region->chrom().size() <= 3 || region->chrom().substr(0, 3).compare("chr") != 0 
-	  || !ref_vcf->setRegion(region->chrom().substr(3), region->start()-pad, region->stop()+pad))
-	printErrorAndDie("Failed to set VCF region when reading candidate STR alleles for region " + region->str());
+	  || !ref_vcf->setRegion(region->chrom().substr(3), region->start()-pad, region->stop()+pad)){
+	success = false;
+	pos     = -1;
+	return;
+	//printErrorAndDie("Failed to set VCF region when reading candidate STR alleles for region " + region->str());
+      }
     }
    
     // Extract STR and ensure the coordinates match
@@ -35,14 +39,17 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
       int32_t str_start = (int32_t)variant.getInfoValueFloat(START_INFO_TAG);
       int32_t str_stop  = (int32_t)variant.getInfoValueFloat(STOP_INFO_TAG);
       if (str_start == region->start() && str_stop == region->stop()){
-	pos = variant.position;
+	success = true;
+	pos     = variant.position;
 	alleles.insert(alleles.end(), variant.alleles.begin(), variant.alleles.end());
 	return;
       }
       if (variant.position > region->start()+pad)
 	break;
     }
-    printErrorAndDie("Failed to extract matching VCF entry when reading candidate STR alleles for region " + region->str());
+
+    success = false;
+    pos     = -1;
 }
 
 
@@ -54,15 +61,19 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
  * The user is responsible for freeing the returned array when it is no longer needed.
  */
 double* extract_vcf_alleles_and_log_priors(vcf::VariantCallFile* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
-					   std::vector<std::string>& alleles, int32_t& pos){
+					   std::vector<std::string>& alleles, int32_t& pos, bool& success){
   assert(alleles.size() == 0);
   if (ref_vcf->formatTypes.find(PGP_KEY) == ref_vcf->formatTypes.end())
     printErrorAndDie("VCF doesn't contain the PGP format field required for setting allele priors");
   if (!ref_vcf->setRegion(region->chrom(), region->start()-pad, region->stop()+pad)){
     // Retry setting region if chr is in chromosome name
     if (region->chrom().size() <= 3 || region->chrom().substr(0, 3).compare("chr") != 0 
-	|| !ref_vcf->setRegion(region->chrom().substr(3), region->start()-pad, region->stop()+pad))
-      printErrorAndDie("Failed to set VCF region when obtaining allele priors for region " + region->str());
+	|| !ref_vcf->setRegion(region->chrom().substr(3), region->start()-pad, region->stop()+pad)){
+      success = false;
+      pos     = -1;
+      return NULL;
+      //printErrorAndDie("Failed to set VCF region when obtaining allele priors for region " + region->str());
+    }
   }
   vcf::Variant variant(*ref_vcf);
   bool matches_region = false;
@@ -80,11 +91,15 @@ double* extract_vcf_alleles_and_log_priors(vcf::VariantCallFile* ref_vcf, Region
       break;
     }
   }
-  if (!matches_region)
-    printErrorAndDie("Failed to extract VCF entry when obtaining allele priors for region " + region->str());
+  if (!matches_region){
+    success = false;
+    pos     = -1;
+    return NULL;
+  }
 
   // Extract and store the number of alleles and each of their sequences
-  pos = variant.position;
+  success = true;
+  pos     = variant.position;
   alleles.insert(alleles.end(), variant.alleles.begin(), variant.alleles.end());
   
   // Allocate allele prior storage
