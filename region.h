@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <map>
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <stdlib.h>
@@ -34,6 +35,12 @@ public:
   int32_t  stop()            const { return stop_;   }
   int     period()           const { return period_; }
   Region*   copy()           const { return new Region(chrom_, start_, stop_, period_, name_); }
+
+  std::string str(){
+    std::stringstream ss;
+    ss << chrom_ << ":" << start_ << "-" << stop_;
+    return ss.str();
+  }
 
   bool operator<(const Region &r)  const {
     if (chrom_.compare(r.chrom()) != 0)
