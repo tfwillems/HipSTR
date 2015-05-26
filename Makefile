@@ -35,12 +35,12 @@ GZSTREAM_LIB      = gzstream/libgzstream.a
 PHASED_BEAGLE_JAR = PhasedBEAGLE/PhasedBEAGLE.jar
 
 .PHONY: all
-all: BamSieve HipSTR Phaser StutterTrainer test/allele_expansion_test test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test test/base_qual_test $(PHASED_BEAGLE_JAR)
+all: BamSieve HipSTR Phaser StutterTrainer test/allele_expansion_test test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test test/base_qual_test test/read_vcf_alleles_test test/read_vcf_priors_test $(PHASED_BEAGLE_JAR)
 
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
 clean:
-	rm -f *.o *.d BamSieve HipSTR Phaser StutterTrainer test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test SeqAlignment/*.o ${PHASED_BEAGLE_JAR}
+	rm -f *.o *.d BamSieve HipSTR Phaser StutterTrainer test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/read_vcf_priors_test test/read_vcf_alleles_test SeqAlignment/*.o ${PHASED_BEAGLE_JAR}
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -72,6 +72,12 @@ test/base_qual_test: test/base_quality_test.cpp base_quality.cpp error.cpp matho
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/allele_expansion_test: test/allele_expansion_test.cpp SeqAlignment/STRAlleleExpansion.cpp zalgorithm.cpp error.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+test/read_vcf_alleles_test: test/read_vcf_alleles_test.cpp error.cpp region.cpp vcf_input.cpp $(VCFLIB_LIB)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+test/read_vcf_priors_test: test/read_vcf_priors_test.cpp error.cpp region.cpp vcf_input.cpp $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/snp_tree_test: snp_tree.cpp error.cpp test/snp_tree_test.cpp $(VCFLIB_LIB)
