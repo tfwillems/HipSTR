@@ -14,13 +14,13 @@ const double MIN_ALLELE_PRIOR = 0.001;
 // we look for entries a window around the locus. The size of this window is controlled by this parameter
 const int32_t pad = 50;
 
-void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector<std::string>& alleles){
+void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector<std::string>& alleles, int32_t& pos){
     assert(alleles.size() == 0 && ref_vcf != NULL);
     if (!ref_vcf->setRegion(region->chrom(), region->start()-pad, region->stop()+pad)){
       // Retry setting region if chr is in chromosome name
       if (region->chrom().size() <= 3 || region->chrom().substr(0, 3).compare("chr") != 0 
 	  || !ref_vcf->setRegion(region->chrom().substr(3), region->start()-pad, region->stop()+pad))
-	printErrorAndDie("Failed to set VCF region when reading candidate STR alleles");
+	printErrorAndDie("Failed to set VCF region when reading candidate STR alleles for region " + region->str());
     }
    
     // Extract STR and ensure the coordinates match
@@ -35,14 +35,14 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
       int32_t str_start = (int32_t)variant.getInfoValueFloat(START_INFO_TAG);
       int32_t str_stop  = (int32_t)variant.getInfoValueFloat(STOP_INFO_TAG);
       if (str_start == region->start() && str_stop == region->stop()){
-	for (auto iter = variant.alleles.begin(); iter != variant.alleles.end(); iter++)
-	  alleles.push_back(*iter);
+	pos = variant.position;
+	alleles.insert(alleles.end(), variant.alleles.begin(), variant.alleles.end());
 	return;
       }
       if (variant.position > region->start()+pad)
 	break;
     }
-    printErrorAndDie("Failed to extract matching VCF entry when reading candidate STR alleles");
+    printErrorAndDie("Failed to extract matching VCF entry when reading candidate STR alleles for region " + region->str());
 }
 
 
@@ -53,8 +53,8 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
  * Method exits with an error if no VCF entry is found, if the VCF doesn't containg PGP allele priors in the FORMAT field or if it only contains a subset of the samples.
  * The user is responsible for freeing the returned array when it is no longer needed.
  */
-double* extract_vcf_alleles_and_priors(vcf::VariantCallFile* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
-                                       std::vector<std::string>& alleles, int32_t& pos){
+double* extract_vcf_alleles_and_log_priors(vcf::VariantCallFile* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
+					   std::vector<std::string>& alleles, int32_t& pos){
   assert(alleles.size() == 0);
   if (ref_vcf->formatTypes.find(PGP_KEY) == ref_vcf->formatTypes.end())
     printErrorAndDie("VCF doesn't contain the PGP format field required for setting allele priors");
@@ -62,11 +62,11 @@ double* extract_vcf_alleles_and_priors(vcf::VariantCallFile* ref_vcf, Region* re
     // Retry setting region if chr is in chromosome name
     if (region->chrom().size() <= 3 || region->chrom().substr(0, 3).compare("chr") != 0 
 	|| !ref_vcf->setRegion(region->chrom().substr(3), region->start()-pad, region->stop()+pad))
-      printErrorAndDie("Failed to set VCF region when obtaining allele priors");
+      printErrorAndDie("Failed to set VCF region when obtaining allele priors for region " + region->str());
   }
   vcf::Variant variant(*ref_vcf);
   bool matches_region = false;
-  while(!ref_vcf->getNextVariant(variant)){
+  while(ref_vcf->getNextVariant(variant)){
     // Skip variants without the appropriate INFO fields (as they're not STRs)
     if (ref_vcf->infoTypes.find(START_INFO_TAG) == ref_vcf->infoTypes.end())
       continue;
@@ -81,7 +81,7 @@ double* extract_vcf_alleles_and_priors(vcf::VariantCallFile* ref_vcf, Region* re
     }
   }
   if (!matches_region)
-    printErrorAndDie("Failed to extract VCF entry when obtaining allele priors");
+    printErrorAndDie("Failed to extract VCF entry when obtaining allele priors for region " + region->str());
 
   // Extract and store the number of alleles and each of their sequences
   pos = variant.position;
