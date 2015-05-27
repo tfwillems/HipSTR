@@ -1,4 +1,6 @@
 #include <iostream>
+#include <map>
+#include <vector>
 
 #include "../vcflib/src/Variant.h"
 
@@ -26,10 +28,11 @@ int main(int argc, char* argv[]){
     sample_indices[ref_vcf.sampleNames[i]] = i;
 
   std::vector<std::string> alleles;
+  std::vector<bool> got_priors;
   int32_t pos;
   for (unsigned int i = 0; i < regions.size(); i++){
     bool success;
-    double* priors = extract_vcf_alleles_and_log_priors(&ref_vcf, &(regions[i]), sample_indices, alleles, pos, success);
+    double* priors = extract_vcf_alleles_and_log_priors(&ref_vcf, &(regions[i]), sample_indices, alleles, got_priors, pos, success);
 
     if (success){
       std::cerr << "Position=" << pos << std::endl;
@@ -42,6 +45,7 @@ int main(int argc, char* argv[]){
     }
       
     alleles.clear();
+    got_priors.clear();
     delete [] priors;
   }
 

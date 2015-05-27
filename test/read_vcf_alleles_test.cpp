@@ -1,3 +1,6 @@
+#include <string>
+#include <vector>
+
 #include "../vcflib/src/Variant.h"
 
 #include "../error.h"
