@@ -43,7 +43,10 @@ class SeqStutterGenotyper{
   std::vector<HapBlock*> hap_blocks_;          // Haplotype blocks
   Haplotype* haplotype_;                       // Potential STR haplotypes
   std::vector<bool> call_sample_;              // True iff we should try to genotype the sample with the associated index
-                                               // Based on the deletion boundaries in the sample's reads 
+                                               // Based on the deletion boundaries in the sample's reads
+  std::vector<bool> got_priors_;               // True iff we obtained the priors for the sample with the associated index
+                                               // from the VCF. If false, the sample will not be genotyped. This data structure
+                                               // isn't used if priors aren't read from a VCF
 
   bool alleles_from_bams_; // Flag that determines if we examine BAMs for candidate alleles
 
@@ -107,6 +110,10 @@ class SeqStutterGenotyper{
 
   std::set<std::string> expanded_alleles_;
 
+  // True iff we only report genotypes for samples with >= 1 read
+  // In an imputation-only setting, this should be set to false
+  bool require_one_read_;
+
  public:
   SeqStutterGenotyper(Region& region,
 		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,
@@ -126,6 +133,9 @@ class SeqStutterGenotyper{
     MAX_REF_FLANK_LEN      = 30;
     pos_                   = -1;
     pool_identical_seqs_   = false;
+
+    // True iff no allele priors are available (for imputation)
+    require_one_read_ = (ref_vcf == NULL);
     
     region_       = region.copy();
     num_samples_  = alignments.size();
