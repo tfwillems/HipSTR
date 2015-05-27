@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <assert.h>
 
 #include "error.h"
@@ -7,7 +8,7 @@
 std::string PGP_KEY           = "PGP";
 std::string START_INFO_TAG    = "START";
 std::string STOP_INFO_TAG     = "END";
-const double MIN_ALLELE_PRIOR = 0.001;
+const double MIN_ALLELE_PRIOR = 0.0001;
 
 // Because HipSTR extends putative STR regions if there are nearby indels, the STR coordinates in the VCF may
 // not exactly match the original reference region coordinates. As a result, when looking for a particular STR region,
@@ -23,7 +24,6 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
 	success = false;
 	pos     = -1;
 	return;
-	//printErrorAndDie("Failed to set VCF region when reading candidate STR alleles for region " + region->str());
       }
     }
    
@@ -40,7 +40,7 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
       int32_t str_stop  = (int32_t)variant.getInfoValueFloat(STOP_INFO_TAG);
       if (str_start == region->start() && str_stop == region->stop()){
 	success = true;
-	pos     = variant.position;
+	pos     = variant.position-1;
 	alleles.insert(alleles.end(), variant.alleles.begin(), variant.alleles.end());
 	return;
       }
@@ -52,7 +52,6 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
     pos     = -1;
 }
 
-
 /*
  * Searchs for an entry in the provided VCF that matches the region. If found, stores the alleles in the provided vector
  * and returns an array of size NUM_ALLELES*NUM_ALLELES*NUM_SAMPLES containing the log prior for each sample's diploid genotype.
@@ -61,8 +60,10 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
  * The user is responsible for freeing the returned array when it is no longer needed.
  */
 double* extract_vcf_alleles_and_log_priors(vcf::VariantCallFile* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
-					   std::vector<std::string>& alleles, int32_t& pos, bool& success){
-  assert(alleles.size() == 0);
+					   std::vector<std::string>& alleles, std::vector<bool>& got_priors, int32_t& pos, bool& success){
+  assert(alleles.size() == 0 && got_priors.size() == 0);
+  got_priors.resize(sample_indices.size(), false);
+
   if (ref_vcf->formatTypes.find(PGP_KEY) == ref_vcf->formatTypes.end())
     printErrorAndDie("VCF doesn't contain the PGP format field required for setting allele priors");
   if (!ref_vcf->setRegion(region->chrom(), region->start()-pad, region->stop()+pad)){
@@ -72,7 +73,6 @@ double* extract_vcf_alleles_and_log_priors(vcf::VariantCallFile* ref_vcf, Region
       success = false;
       pos     = -1;
       return NULL;
-      //printErrorAndDie("Failed to set VCF region when obtaining allele priors for region " + region->str());
     }
   }
   vcf::Variant variant(*ref_vcf);
@@ -99,13 +99,17 @@ double* extract_vcf_alleles_and_log_priors(vcf::VariantCallFile* ref_vcf, Region
 
   // Extract and store the number of alleles and each of their sequences
   success = true;
-  pos     = variant.position;
+  pos     = variant.position-1;
   alleles.insert(alleles.end(), variant.alleles.begin(), variant.alleles.end());
   
   // Allocate allele prior storage
   int num_samples = sample_indices.size();
   int num_alleles = variant.alleles.size();
   double* log_allele_priors = new double[num_alleles*num_alleles*num_samples];
+
+  // Initialize array with what is equivalent to log of uniform prior
+  // Results in valid prior for samples without VCF priors
+  std::fill(log_allele_priors, log_allele_priors+(num_alleles*num_alleles*num_samples), -2*log(num_alleles));
 
   // Extract priors for each sample
   int sample_count = 0;
@@ -114,13 +118,17 @@ double* extract_vcf_alleles_and_log_priors(vcf::VariantCallFile* ref_vcf, Region
     if (sample_indices.find(*sample_iter) == sample_indices.end())
       continue;
     int sample_index = sample_indices.find(*sample_iter)->second;
+    got_priors[sample_index] = true;
     int gp_index     = 0;
     double total     = 0.0;
+
     for (unsigned int i = 0; i < num_alleles; ++i){
       for (unsigned int j = 0; j < num_alleles; ++j, ++gp_index){
-	  double prob = variant.getSampleValueFloat(PGP_KEY, *sample_iter, gp_index);
-	  gp_probs.push_back(std::max(prob, MIN_ALLELE_PRIOR));
-	  total += gp_probs.back();
+	// NOTE: We'd like to use the getSampleValueFloat method from vcflib, but it doesn't work if the number of 
+	// fields isn't equal to the number of alleles.Instead, have to use this ugly internal hack
+	double prob = std::stod(variant.samples[*sample_iter][PGP_KEY].at(gp_index));
+	gp_probs.push_back(std::max(prob, MIN_ALLELE_PRIOR));
+	total += gp_probs.back();
       }
     }
 
@@ -138,9 +146,11 @@ double* extract_vcf_alleles_and_log_priors(vcf::VariantCallFile* ref_vcf, Region
     sample_count++;
   }
     
-  // Ensure that the VCF contained priors for all samples
-  if (sample_count != num_samples)
-    printErrorAndDie("VCF only contained allele priors for a subset of samples");
+  // Warn if the VCF did not contain priors for all samples
+  if (sample_count != num_samples){
+    std::stringstream ss; ss << "VCF only contained allele priors for " << sample_count << " out of " << num_samples << " samples";
+    std::cerr << "WARNING: " << ss.str() << std::endl;
+  }
 
   return log_allele_priors;
 }

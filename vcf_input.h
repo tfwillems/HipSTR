@@ -19,7 +19,6 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
 
 
 double* extract_vcf_alleles_and_log_priors(vcf::VariantCallFile* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
-					   std::vector<std::string>& alleles, int32_t& pos, bool& success);
+					   std::vector<std::string>& alleles, std::vector<bool>& got_priors, int32_t& pos, bool& success);
  
-
 #endif
