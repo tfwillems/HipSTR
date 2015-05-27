@@ -2,7 +2,7 @@
 #include <vector>
 
 #include "AlignmentData.h"
-#include "error.h"
+#include "../error.h"
 
 bool compareAl(const Alignment& alignment_1, const Alignment& alignment_2){
   int sample_comp = alignment_1.get_sample().compare(alignment_2.get_sample());
