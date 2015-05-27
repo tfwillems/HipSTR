@@ -689,7 +689,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     }
     
     int sample_index    = sample_iter->second;
-    double phase1_reads = exp(log_sum_exp(log_read_phases[sample_index]));
+    double phase1_reads = (num_aligned_reads[sample_index] == 0 ? 0 : exp(log_sum_exp(log_read_phases[sample_index])));
     double phase2_reads = num_aligned_reads[sample_index] - phase1_reads;
 
     std::stringstream samp_info;
