@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <assert.h>
 #include <math.h>
 
 #include "mathops.h"
@@ -57,7 +58,16 @@ double log_sum_exp(std::vector<double>& log_vals){
 
 double expected_value(double* log_likelihoods, std::vector<int>& vals){
   double total_LL = log_sum_exp(log_likelihoods, log_likelihoods+vals.size());
-  double total = 0.0;
+  double total    = 0.0;
+  for (unsigned int i = 0; i < vals.size(); i++)
+    total += exp(log_likelihoods[i]-total_LL)*vals[i];
+  return total;
+}
+
+double expected_value(std::vector<double>& log_likelihoods, std::vector<int>& vals){
+  assert(log_likelihoods.size() == vals.size());
+  double total_LL = log_sum_exp(log_likelihoods);
+  double total    = 0.0;
   for (unsigned int i = 0; i < vals.size(); i++)
     total += exp(log_likelihoods[i]-total_LL)*vals[i];
   return total;

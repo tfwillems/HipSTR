@@ -266,7 +266,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     if (success){
       assert(num_alleles_ > 0);
 
-      // Construct the haplotype using the set of alleles
+      // Construct the haplotype using the set of VCF alleles
       haplotype_ = generate_haplotype(pos_, *region_, MAX_REF_FLANK_LEN, chrom_seq, alleles_, stutter_model_, hap_blocks_);
       
       // TO DO: Set vector based on proximity of indels to haplotype
@@ -389,6 +389,7 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\"" << "Read depth"                                                    << "\">" << "\n"
       << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\"" << "Number of reads with SNP phasing information"                  << "\">" << "\n"
       << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""  << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
+      << "##FORMAT=<ID=" << "BPDOSE"      << ",Number=1,Type=Float,Description=\""   << "Posterior mean base pair difference from reference"            << "\">" << "\n"
       << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\"" << "Base pair difference observed in each read"                    << "\">" << "\n"
       << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probabilities"<< "\">" << "\n";
 
@@ -531,20 +532,27 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   for (unsigned int i = 0; i < alleles_.size(); i++)
     allele_bp_diffs.push_back((int)alleles_[i].size() - (int)alleles_[0].size());
   
-  // Extract each sample's MAP genotype and the associated phased genotype posterior
+  // Extract each sample's posterior base pair dosage, 
+  // MAP genotype and the associated phased genotype posterior and the
   std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
-  std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX);
+  std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX), bp_dosages;
+  std::vector<int> dip_bpdiffs;
+  std::vector< std::vector<double> > log_post_probs(num_samples_);
   double* log_post_ptr = log_sample_posteriors_;
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
+      dip_bpdiffs.push_back(allele_bp_diffs[index_1]+allele_bp_diffs[index_2]);
       for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index, ++log_post_ptr){
 	if (*log_post_ptr > log_phased_posteriors[sample_index]){
 	  log_phased_posteriors[sample_index] = *log_post_ptr;
 	  gts[sample_index] = std::pair<int,int>(index_1, index_2);
 	}
+	log_post_probs[sample_index].push_back(*log_post_ptr);
       }
     }
   }
+  for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++)
+    bp_dosages.push_back(expected_value(log_post_probs[sample_index], dip_bpdiffs));
 
   // Extract the genotype phasing probability conditioned on the determined sample genotypes
   std::vector<double> log_unphased_posteriors, phase_probs;
@@ -596,7 +604,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     read_LL_ptr += num_alleles_;
   }
-
+ 
   // Compute allele counts for samples of interest
   std::set<std::string> samples_of_interest(sample_names.begin(), sample_names.end());
   std::vector<int> allele_counts(num_alleles_);
@@ -665,7 +673,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   }
 
   // Add FORMAT field
-  out << "\tGT:GB:Q:PQ:DP:DSNP:PDP:ALLREADS:PALLREADS";
+  out << "\tGT:GB:Q:PQ:DP:DSNP:PDP:BPDOSE:ALLREADS:PALLREADS";
   std::map<std::string, std::string> sample_results;
   for (unsigned int i = 0; i < sample_names.size(); i++){
     out << "\t";
@@ -705,6 +713,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	<< ":" << num_reads_with_snps[sample_index]                                              // Total reads with SNP information
 	<< ":" << phase1_reads << "|" << phase2_reads;                                           // Reads per allele
 
+    // Posterior STR dosage (in base pairs)
+    out << ":" << bp_dosages[sample_index];
+
     // Add bp diffs from regular left-alignment
     if (bps_per_sample[sample_index].size() != 0){
       out << ":" << bps_per_sample[sample_index][0];
@@ -722,9 +733,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     }
     else
       out << ":" << ".";
-
-    // TO DO: Add FORMAT field for posterior STR dosage (in base pairs)
-
   }
   out << "\n";
 
