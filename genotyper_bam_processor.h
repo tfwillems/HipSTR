@@ -57,6 +57,7 @@ public:
     output_stutter_models_ = false;
     output_alleles_        = false;
     output_str_gts_        = false;
+    output_viz_            = false;
     read_stutter_models_   = false;
     have_ref_vcf_          = false;
     use_seq_aligner_       = use_seq_aligner;
@@ -68,11 +69,6 @@ public:
     ABS_LL_CONVERGE        = 0.01;
     FRAC_LL_CONVERGE       = 0.001;
     MIN_TOTAL_READS        = 100;
-    
-    // Exploratory
-    output_viz_ = true;
-    viz_out_.open("boo.html", std::ofstream::out);
-    writeHeader(viz_out_);
   }
 
   ~GenotyperBamProcessor(){
@@ -83,6 +79,14 @@ public:
 
   void use_seq_aligner(){
     use_seq_aligner_ = true;
+  }
+
+  void set_output_viz(std::string& viz_file){
+    output_viz_ = true;
+    viz_out_.open(viz_file, std::ofstream::out);
+    if (!viz_out_.is_open())
+      printErrorAndDie("Failed to open output file for alignment visualization");
+    writeHeader(viz_out_);
   }
 
   void set_ref_vcf(std::string& ref_vcf_file){

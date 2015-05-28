@@ -18,7 +18,7 @@
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string, std::string& bamindex_string, std::string& rg_string,
 			     std::string& fasta_dir, std::string& region_file,  std::string& snp_vcf_file, std::string& chrom, 
-			     std::string& bam_out_file, std::string& str_vcf_out_file,  std::string& allele_vcf_out_file,
+			     std::string& bam_out_file, std::string& str_vcf_out_file,  std::string& allele_vcf_out_file, std::string& viz_out_file,
 			     std::string& stutter_in_file, std::string& stutter_out_file, int& use_hap_aligner, int& remove_all_filters,
 			     std::string& ref_vcf_file,
 			     BamProcessor& bam_processor){
@@ -43,7 +43,8 @@ void parse_command_line_args(int argc, char** argv,
 	      << "\t" << "--bam-out       <spanning_reads.bam   "  << "\t" << "Output a BAM file containing the reads spanning each region to the provided file"    << "\n"
 	      << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Output a gzipped VCF file containing phased STR genotypes"                           << "\n"
 	      << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a VCF file containing alleles with strong evidence in the BAMs"               << "\n"
-	      << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n" << "\n"
+	      << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n"
+	      << "\t" << "--viz-out       <aln_viz.html>        "  << "\t" << "Output an HTML file containing Needleman-Wunsch alignments for each genotyped locus" << "\n" << "\n"
 	      
 	      << "Other optional parameters:" << "\n"
       	      << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
@@ -78,6 +79,7 @@ void parse_command_line_args(int argc, char** argv,
     {"stutter-in",      required_argument, 0, 'm'},
     {"stutter-out",     required_argument, 0, 's'},
     {"bam-out",         required_argument, 0, 'w'},
+    {"viz-out",         required_argument, 0, 'z'},
     {"rem-multimaps",   no_argument, &(bam_processor.REMOVE_MULTIMAPPERS), 1},
     {0, 0, 0, 0}
   };
@@ -134,6 +136,9 @@ void parse_command_line_args(int argc, char** argv,
     case 'w':
       bam_out_file = std::string(optarg);
       break;
+    case 'z':
+      viz_out_file = std::string(optarg);
+      break;
     case '?':
       printErrorAndDie("Unrecognized command line option");
       break;
@@ -150,10 +155,10 @@ int main(int argc, char** argv){
   
   int use_hap_aligner = 0, remove_all_filters = 0;
   std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
-  std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", stutter_in_file="", stutter_out_file="";
+  std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", stutter_in_file="", stutter_out_file="", viz_out_file="";
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, snp_vcf_file, chrom, 
-			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, remove_all_filters, 
+			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, viz_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, remove_all_filters, 
 			  ref_vcf_file, bam_processor);
   if (use_hap_aligner)
     bam_processor.use_seq_aligner();
@@ -249,7 +254,9 @@ int main(int argc, char** argv){
     bam_processor.set_input_stutter(stutter_in_file);
   if (!stutter_out_file.empty())
     bam_processor.set_output_stutter(stutter_out_file);
-
+  if(!viz_out_file.empty())
+    bam_processor.set_output_viz(viz_out_file);
+  
   if (remove_all_filters)
     bam_processor.remove_all_filters();
 
