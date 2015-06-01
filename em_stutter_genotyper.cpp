@@ -326,15 +326,28 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
   // Are we then double-counting het GTs vs hom GTs?
 
   // Extract each sample's MAP genotype and the associated posterior
+  std::vector< std::vector<double> > gls(num_samples_);
+  std::vector< std::vector<int> > pls(num_samples_);
   double* log_post_ptr = log_sample_posteriors_;
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2)
+  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
+    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
       for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index, ++log_post_ptr){
 	if (*log_post_ptr > log_phased_posteriors[sample_index]){
 	  log_phased_posteriors[sample_index] = *log_post_ptr;
 	  gts[sample_index] = std::pair<int,int>(index_1, index_2);
 	}
+	if (index_2 <= index_1){
+          double gl_base_e = LOG_ONE_HALF + log_sum_exp(*log_post_ptr, log_sample_posteriors_[index_2*num_alleles_*num_samples_ + index_1*num_samples_ + sample_index]);
+          gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
+        }
       }
+    }
+  }
+  for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++){
+    double max_gl = *(std::max_element(gls[sample_index].begin(), gls[sample_index].end()));
+    for (unsigned int j = 0; j < gls[sample_index].size(); j++)
+      pls[sample_index].push_back((int)(gls[sample_index][j]-max_gl));
+  }
 
   // Extract the phasing probability conditioned on the determined sample genotypes
   for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++){
@@ -403,6 +416,8 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
 
   // Add FORMAT field
   out << "\tGT:GB:Q:DP:DSNP:PDP:ALLREADS";
+  if (output_gls) out << ":GL";
+  if (output_pls) out << ":PL";
 
   for (unsigned int i = 0; i < sample_names.size(); i++){
     out << "\t";
@@ -426,7 +441,18 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
 	<< ":" << phase1_reads << "|" << phase2_reads                     // Reads per allele
 	<< ":" << bps_per_sample[sample_index][0];
     for (unsigned int j = 1; j < bps_per_sample[sample_index].size(); j++)
-      out << "," << bps_per_sample[sample_index][j]; 
+      out << "," << bps_per_sample[sample_index][j];
+
+    if (output_gls){
+      out << gls[sample_index][0];
+      for (unsigned int j = 1; j < gls[sample_index].size(); j++)
+	out << "," << gls[sample_index][j];
+    }
+    if (output_pls){
+      out << pls[sample_index][0];
+      for (unsigned int j = 1; j < pls[sample_index].size(); j++)
+	out << "," << pls[sample_index][j];
+    }
   }
 
   out << "\n";
