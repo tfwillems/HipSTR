@@ -89,14 +89,14 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
       SeqStutterGenotyper seq_genotyper(region, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, reference_panel_vcf);
       if (output_alleles_){
 	std::vector<std::string> no_samples;
-	seq_genotyper.write_vcf_record(no_samples, false, chrom_seq, false, viz_out_, allele_vcf_);
+	seq_genotyper.write_vcf_record(no_samples, false, chrom_seq, false, false, false, viz_out_, allele_vcf_);
       }
 
       if (output_str_gts_){
 	if (seq_genotyper.genotype()) {
 	  num_genotype_success_++;
 	  if (output_str_gts_)
-	    seq_genotyper.write_vcf_record(samples_to_genotype_, true, chrom_seq, output_viz_, viz_out_, str_vcf_);
+	    seq_genotyper.write_vcf_record(samples_to_genotype_, true, chrom_seq, output_gls_, output_pls_, output_viz_, viz_out_, str_vcf_);
 	}
 	else
 	  num_genotype_fail_++;
@@ -114,7 +114,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	if (length_genotyper->genotype(use_pop_freqs)){
 	  num_genotype_success_++;
 	  if (output_str_gts_)
-	    length_genotyper->write_vcf_record(ref_allele, samples_to_genotype_, str_vcf_);
+	    length_genotyper->write_vcf_record(ref_allele, samples_to_genotype_, output_gls_, output_pls_, str_vcf_);
 	}
 	else
 	  num_genotype_fail_++;

@@ -164,7 +164,7 @@ class SeqStutterGenotyper{
     delete haplotype_;
   }
   
-  static void write_vcf_header(std::vector<std::string>& sample_names, std::ostream& out);
+  static void write_vcf_header(std::vector<std::string>& sample_names, bool output_gls, bool output_pls, std::ostream& out);
 
   /*
    *  When aligning to each haplotype, align each unique sequence instead of each read.
@@ -176,7 +176,7 @@ class SeqStutterGenotyper{
     pool_identical_seqs_ = true;
   }
 
-  void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq, 
+  void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq, bool output_gls, bool output_pls,
 			bool output_viz, std::ostream& html_output, std::ostream& out);
   
   bool genotype();

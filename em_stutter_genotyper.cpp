@@ -6,7 +6,7 @@
 #include "error.h"
 #include "mathops.h"
 
-void EMStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names, std::ostream& out){
+void EMStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names, bool output_gls, bool output_pls, std::ostream& out){
   out << "##fileformat=VCFv4.1" << "\n";
 
   // Info field descriptors
@@ -27,6 +27,10 @@ void EMStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names
       << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\""  << "Total observed reads for sample with SNP phasing information"  << "\">" << "\n"
       << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""   << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
       << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\""  << "Base pair difference observed in each read"                    << "\">" << "\n";
+  if (output_gls)
+    out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "Genotype likelihoods" << "\">" << "\n";
+  if (output_pls)
+    out << "##FORMAT=<ID=" << "PL" << ",Number=G,Type=Float,Description=\"" << "Genotype likelihoods" << "\">" << "\n";
 
   // Sample names
   out << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
@@ -350,7 +354,8 @@ std::string EMStutterGenotyper::get_allele(std::string& ref_allele, int bp_diff)
   }
 }
 
-void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<std::string>& sample_names, std::ostream& out){
+void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<std::string>& sample_names,
+					  bool output_gls, bool output_pls, std::ostream& out){
   std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
   std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX);
   std::vector< std::vector<double> > log_read_phases(num_samples_);

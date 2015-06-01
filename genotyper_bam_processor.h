@@ -52,6 +52,9 @@ private:
   bool output_viz_;
   std::ofstream viz_out_;
 
+  bool output_gls_; // Output the GL FORMAT field to the VCF
+  bool output_pls_; // Output the PL FORMAT field to the VCF
+
 public:
  GenotyperBamProcessor(bool use_lobstr_rg, bool check_mate_chroms, bool use_seq_aligner):SNPBamProcessor(use_lobstr_rg, check_mate_chroms){
     output_stutter_models_ = false;
@@ -69,6 +72,8 @@ public:
     ABS_LL_CONVERGE        = 0.01;
     FRAC_LL_CONVERGE       = 0.001;
     MIN_TOTAL_READS        = 100;
+    output_gls_            = false;
+    output_pls_            = false;
   }
 
   ~GenotyperBamProcessor(){
@@ -121,7 +126,7 @@ public:
     
     std::vector<std::string> no_samples;
     if (use_seq_aligner_)
-      SeqStutterGenotyper::write_vcf_header(no_samples, allele_vcf_);
+      SeqStutterGenotyper::write_vcf_header(no_samples, output_gls_, output_pls_, allele_vcf_);
     else
       printErrorAndDie("Cannot output STR allele VCF if --seq-genotyper option has not been specified");
   }
@@ -142,9 +147,9 @@ public:
     
     // Write VCF header
     if (use_seq_aligner_)
-      SeqStutterGenotyper::write_vcf_header(samples_to_genotype_, str_vcf_);
+      SeqStutterGenotyper::write_vcf_header(samples_to_genotype_, output_gls_, output_pls_, str_vcf_);
     else
-      EMStutterGenotyper::write_vcf_header(samples_to_genotype_, str_vcf_);
+      EMStutterGenotyper::write_vcf_header(samples_to_genotype_, output_gls_, output_pls_, str_vcf_);
   }
 
   void analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,

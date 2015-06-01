@@ -7,20 +7,17 @@
 #include "extract_indels.h"
 #include "mathops.h"
 #include "stringops.h"
+#include "vcf_input.h"
 
 #include "SeqAlignment/AlignmentOps.h"
 #include "SeqAlignment/AlignmentData.h"
 #include "SeqAlignment/AlignmentModel.h"
+#include "SeqAlignment/AlignmentViz.h"
 #include "SeqAlignment/HaplotypeGenerator.h"
 #include "SeqAlignment/HapAligner.h"
 #include "SeqAlignment/RepeatStutterInfo.h"
-
 #include "SeqAlignment/RepeatBlock.h"
 #include "SeqAlignment/STRAlleleExpansion.h"
-
-// Exploratory
-#include "SeqAlignment/AlignmentViz.h"
-#include "vcf_input.h"
 
 int max_index(double* vals, unsigned int num_vals){
   int best_index = 0;
@@ -359,12 +356,11 @@ bool SeqStutterGenotyper::genotype(){
     }
   }
   
-
   //debug_sample(sample_indices_["LP6005441-DNA_F02"]);
   return true;
 }
 
-void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names, std::ostream& out){
+void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names, bool output_gls, bool output_pls, std::ostream& out){
   out << "##fileformat=VCFv4.1" << "\n";
 
   // Info field descriptors
@@ -391,7 +387,12 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""  << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
       << "##FORMAT=<ID=" << "BPDOSE"      << ",Number=1,Type=Float,Description=\""   << "Posterior mean base pair difference from reference"            << "\">" << "\n"
       << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\"" << "Base pair difference observed in each read"                    << "\">" << "\n"
-      << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probabilities"<< "\">" << "\n";
+      << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probs" << "\">" << "\n";
+
+  if (output_gls)
+    out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "Genotype likelihoods" << "\">" << "\n";
+  if (output_pls)
+    out << "##FORMAT=<ID=" << "PL" << ",Number=G,Type=Float,Description=\"" << "Genotype likelihoods" << "\">" << "\n";
 
   // Sample names
   out << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
@@ -518,12 +519,12 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
   return total_LL;
 }
 
-void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
+void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq, bool output_gls, bool output_pls,
 					   bool output_viz, std::ostream& html_output, std::ostream& out){
   assert(haplotype_->num_blocks() == 3);
+  if(log_allele_priors_ != NULL)
+    assert(!output_gls && !output_pls); // These fields only make sense in the context of MLE estimation, not MAP estimation
 
-  // TO DO: Modify VCF to only report alleles with at least 1 call
-  
   // TO DO: Consider selecting GT based on genotype with maximum UNPHASED posterior instead of maximum PHASED posterior
   // Are we then double-counting het GTs vs hom GTs?
 
@@ -531,9 +532,48 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector<int> allele_bp_diffs;
   for (unsigned int i = 0; i < alleles_.size(); i++)
     allele_bp_diffs.push_back((int)alleles_[i].size() - (int)alleles_[0].size());
+
+
+  /*
+    
+
+  std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
+  std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX), log_unphased_posteriors(num_samples, -DBL_MAX);
+  std::vector<double> bp_dosages, phase_probs;
+  std::vector<int> dip_bpdiffs;
+  std::vector< std::vector<double> > log_post_probs(num_samples_);
+  double* log_post_ptr = log_sample_posteriors_;
+  for (int gt_a = 0; gt_a < num_alleles_; ++gt_a){
+    for (int gt_b = 0; gt_b <= gt_a; ++gt_b){
+      for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index, ++log_post_ptr){
+	if (gt_a == gt_b){
+	  if (*log_post_ptr > log_unphased_posteriors[sample_index]){
+	    gts[sample_index] = std::pair<int,int>(gt_a, gt_b);
+	    log_phased_posteriors[sample_index]   = *log_post_ptr;
+	    log_unphased_posteriors[sample_index] = *log_post_ptr;
+	    phase_probs.push_back(1.0);
+
+	    dip_bpdiffs;
+	    log_post_probs;
+	  }
+
+
+	}
+	else {
+	  double log_p1  = *log_post_ptr;
+	  double log_p2  = log_sample_posteriors_[gt_b*num_alleles_*num_samples_ + gt_a*num_samples_ + sample_index];
+	  double log_tot = log_sum_exp(log_p1, log_p2);
+	  	  
+	}
+	
+      }
+    }
+  }
+  */
+
   
   // Extract each sample's posterior base pair dosage, 
-  // MAP genotype and the associated phased genotype posterior and the
+  // MAP genotype and the associated phased genotype posterior
   std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
   std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX), bp_dosages;
   std::vector<int> dip_bpdiffs;
@@ -570,6 +610,11 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       phase_probs.push_back(exp(log_p1-log_tot));
     }
   }
+
+  // TO DO: Extract the genotype/phred likelihoods
+
+
+
 
   // Extract information about each read and group by sample
   assert(bp_diffs_.size() == num_reads_);
