@@ -39,45 +39,6 @@ void EMStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names
   out << "\n";
 }
 
-void EMStutterGenotyper::set_allele_priors(vcf::VariantCallFile& variant_file){
-  delete [] log_allele_priors_;
-  log_allele_priors_ = new double[num_alleles_*num_alleles_*num_samples_];
-  
-  std::string GP_KEY = "GP";
-  
-
-  if (!variant_file.setRegion(chrom_, start_, end_)){
-    // Retry setting region if chr is in chromosome name
-    if (chrom_.size() <= 3 || chrom_.substr(0, 3).compare("chr") != 0 || !variant_file.setRegion(chrom_.substr(3), start_, end_))
-      printErrorAndDie("Failed to set VCF region when obtaining allele priors");
-  }
-  vcf::Variant variant(variant_file);
-  if (!variant_file.getNextVariant(variant))
-    printErrorAndDie("Failed to extract VCF entry when obtaining allele priors");
-
-  int sample_count = 0;
-  for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
-    if (sample_indices_.find(*sample_iter) == sample_indices_.end())
-      continue;
-    int sample_index = sample_indices_.find(*sample_iter)->second;
-    sample_count++;
-
-    int gp_index = 0;
-    for (unsigned int i = 0; i < num_alleles_; i++){
-      for (unsigned int j = 0; j <= i; ++j, ++gp_index){
-	double prob = variant.getSampleValueFloat(GP_KEY, *sample_iter, gp_index);
-      }
-    }
-    
-    // TO DO: Parse BEAGLE format fields to set priors and valid alleles
-    printErrorAndDie("set_allele_priors() function not fully implemented");
-  }
-
-  // Ensure that the VCF contained priors for all samples
-  if (sample_count != num_samples_)
-    printErrorAndDie("BEAGLE VCF only contained allele priors for a subset of samples");
-}
-
 void EMStutterGenotyper::init_log_gt_priors(){
   std::fill(log_gt_priors_, log_gt_priors_+num_alleles_, 1); // Use 1 sample pseudocount                                                                                  
   for (int i = 0; i < num_reads_; i++)
