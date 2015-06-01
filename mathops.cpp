@@ -4,8 +4,9 @@
 
 #include "mathops.h"
 
-const double LOG_ONE_HALF = log(0.5);
-const double TOLERANCE    = 1e-10;
+const double LOG_ONE_HALF  = log(0.5);
+const double TOLERANCE     = 1e-10;
+const double LOG_E_BASE_10 = 0.4342944819;
 
 double sum(double* begin, double* end){
   double total = 0.0;

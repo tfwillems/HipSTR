@@ -22,15 +22,15 @@ void EMStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names
   // Format field descriptors
   out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""   << "Genotype" << "\">" << "\n"
       << "##FORMAT=<ID=" << "GB"          << ",Number=1,Type=String,Description=\""   << "Base pair differences of genotype from reference" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "POSTERIOR"   << ",Number=1,Type=Float,Description=\""    << "Posterior probability of phased genotype"                      << "\">" << "\n"
+      << "##FORMAT=<ID=" << "Q"           << ",Number=1,Type=Float,Description=\""    << "Posterior probability of phased genotype"                      << "\">" << "\n"
       << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\""  << "Total observed reads for sample"                               << "\">" << "\n"
       << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\""  << "Total observed reads for sample with SNP phasing information"  << "\">" << "\n"
       << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""   << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
       << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\""  << "Base pair difference observed in each read"                    << "\">" << "\n";
   if (output_gls)
-    out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "Genotype likelihoods" << "\">" << "\n";
+    out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "log-10 genotype likelihoods" << "\">" << "\n";
   if (output_pls)
-    out << "##FORMAT=<ID=" << "PL" << ",Number=G,Type=Float,Description=\"" << "Genotype likelihoods" << "\">" << "\n";
+    out << "##FORMAT=<ID=" << "PL" << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
 
   // Sample names
   out << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
@@ -402,7 +402,7 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
   }
 
   // Add FORMAT field
-  out << "\tGT:GB:POSTERIOR:DP:DSNP:PDP:ALLREADS";
+  out << "\tGT:GB:Q:DP:DSNP:PDP:ALLREADS";
 
   for (unsigned int i = 0; i < sample_names.size(); i++){
     out << "\t";

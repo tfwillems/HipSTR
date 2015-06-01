@@ -390,9 +390,9 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probs" << "\">" << "\n";
 
   if (output_gls)
-    out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "Genotype likelihoods" << "\">" << "\n";
+    out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\""   << "log-10 genotype likelihoods" << "\">" << "\n";
   if (output_pls)
-    out << "##FORMAT=<ID=" << "PL" << ",Number=G,Type=Float,Description=\"" << "Genotype likelihoods" << "\">" << "\n";
+    out << "##FORMAT=<ID=" << "PL" << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
 
   // Sample names
   out << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
@@ -532,52 +532,14 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector<int> allele_bp_diffs;
   for (unsigned int i = 0; i < alleles_.size(); i++)
     allele_bp_diffs.push_back((int)alleles_[i].size() - (int)alleles_[0].size());
-
-
-  /*
-    
-
-  std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
-  std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX), log_unphased_posteriors(num_samples, -DBL_MAX);
-  std::vector<double> bp_dosages, phase_probs;
-  std::vector<int> dip_bpdiffs;
-  std::vector< std::vector<double> > log_post_probs(num_samples_);
-  double* log_post_ptr = log_sample_posteriors_;
-  for (int gt_a = 0; gt_a < num_alleles_; ++gt_a){
-    for (int gt_b = 0; gt_b <= gt_a; ++gt_b){
-      for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index, ++log_post_ptr){
-	if (gt_a == gt_b){
-	  if (*log_post_ptr > log_unphased_posteriors[sample_index]){
-	    gts[sample_index] = std::pair<int,int>(gt_a, gt_b);
-	    log_phased_posteriors[sample_index]   = *log_post_ptr;
-	    log_unphased_posteriors[sample_index] = *log_post_ptr;
-	    phase_probs.push_back(1.0);
-
-	    dip_bpdiffs;
-	    log_post_probs;
-	  }
-
-
-	}
-	else {
-	  double log_p1  = *log_post_ptr;
-	  double log_p2  = log_sample_posteriors_[gt_b*num_alleles_*num_samples_ + gt_a*num_samples_ + sample_index];
-	  double log_tot = log_sum_exp(log_p1, log_p2);
-	  	  
-	}
-	
-      }
-    }
-  }
-  */
-
   
-  // Extract each sample's posterior base pair dosage, 
-  // MAP genotype and the associated phased genotype posterior
+  // Extract each sample's posterior base pair dosage, MAP genotype, the associated phased genotype posterior
+  // and the genotype likelihoods
   std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
   std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX), bp_dosages;
   std::vector<int> dip_bpdiffs;
-  std::vector< std::vector<double> > log_post_probs(num_samples_);
+  std::vector< std::vector<double> > log_post_probs(num_samples_), gls(num_samples_);
+  std::vector< std::vector<int> > pls(num_samples_);
   double* log_post_ptr = log_sample_posteriors_;
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
@@ -588,11 +550,19 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	  gts[sample_index] = std::pair<int,int>(index_1, index_2);
 	}
 	log_post_probs[sample_index].push_back(*log_post_ptr);
+	if (index_2 <= index_1){
+	  double gl_base_e = LOG_ONE_HALF + log_sum_exp(*log_post_ptr, log_sample_posteriors_[index_2*num_alleles_*num_samples_ + index_1*num_samples_ + sample_index]);
+	  gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
+	}
       }
     }
   }
-  for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++)
+  for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++){
     bp_dosages.push_back(expected_value(log_post_probs[sample_index], dip_bpdiffs));
+    double max_gl = *(std::max_element(gls[sample_index].begin(), gls[sample_index].end()));
+    for (unsigned int j = 0; j < gls[sample_index].size(); j++)
+      pls[sample_index].push_back((int)(gls[sample_index][j]-max_gl));
+  }
 
   // Extract the genotype phasing probability conditioned on the determined sample genotypes
   std::vector<double> log_unphased_posteriors, phase_probs;
@@ -610,11 +580,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       phase_probs.push_back(exp(log_p1-log_tot));
     }
   }
-
-  // TO DO: Extract the genotype/phred likelihoods
-
-
-
 
   // Extract information about each read and group by sample
   assert(bp_diffs_.size() == num_reads_);
@@ -719,6 +684,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
   // Add FORMAT field
   out << "\tGT:GB:Q:PQ:DP:DSNP:PDP:BPDOSE:ALLREADS:PALLREADS";
+  if (output_gls) out << ":GL";
+  if (output_pls) out << ":PL";
+
   std::map<std::string, std::string> sample_results;
   for (unsigned int i = 0; i < sample_names.size(); i++){
     out << "\t";
@@ -778,6 +746,18 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     }
     else
       out << ":" << ".";
+
+    // Genotype and phred-scaled likelihoods
+    if (output_gls){
+      out << gls[sample_index][0];
+      for (unsigned int j = 1; j < gls[sample_index].size(); j++)
+	out << "," << gls[sample_index][j];
+    }
+    if (output_pls){
+      out << pls[sample_index][0];
+      for (unsigned int j = 1; j < pls[sample_index].size(); j++)
+	out << "," << pls[sample_index][j];
+    }
   }
   out << "\n";
 

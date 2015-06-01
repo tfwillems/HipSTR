@@ -8,6 +8,7 @@
 
 extern const double LOG_ONE_HALF;
 extern const double TOLERANCE;
+extern const double LOG_E_BASE_10;
 
 
 double sum(double* begin, double* end);
