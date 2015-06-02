@@ -41,10 +41,11 @@ void parse_command_line_args(int argc, char** argv,
 
       	      << "Optional output parameters:" << "\n"
 	      << "\t" << "--bam-out       <spanning_reads.bam   "  << "\t" << "Output a BAM file containing the reads spanning each region to the provided file"    << "\n"
-	      << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Output a gzipped VCF file containing phased STR genotypes"                           << "\n"
-	      << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a VCF file containing alleles with strong evidence in the BAMs"               << "\n"
+	      << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Output a bgzipped VCF file containing phased STR genotypes"                          << "\n"
+	      << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a bgzipped VCF file containing alleles with strong evidence in the BAMs"      << "\n"
 	      << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n"
-	      << "\t" << "--viz-out       <aln_viz.html>        "  << "\t" << "Output an HTML file containing Needleman-Wunsch alignments for each genotyped locus" << "\n"
+	      << "\t" << "--viz-out       <aln_viz.html.gz>     "  << "\t" << "Output a bgzipped file containing Needleman-Wunsch alignments for each locus"        << "\n"
+	      << "\t" << "                                      "  << "\t" << " The resulting file can be readily visualized with VizAln"                           << "\n"
 	      << "\t" << "                                      "  << "\t" << " Option only available when the --seq-genotyper flag has been specified"             << "\n"
 	      
 	      << "Other optional parameters:" << "\n"
@@ -248,15 +249,18 @@ int main(int argc, char** argv){
     bam_processor.set_output_allele_vcf(allele_vcf_out_file);
   if(!str_vcf_out_file.empty()){
     if (!string_ends_with(str_vcf_out_file, ".gz"))
-      printErrorAndDie("Path for STR VCF output file must end in .gz as it will be gzipped");
+      printErrorAndDie("Path for STR VCF output file must end in .gz as it will be bgzipped");
     bam_processor.set_output_str_vcf(str_vcf_out_file, rg_samples);
   }
   if (!stutter_in_file.empty())
     bam_processor.set_input_stutter(stutter_in_file);
   if (!stutter_out_file.empty())
     bam_processor.set_output_stutter(stutter_out_file);
-  if(!viz_out_file.empty())
+  if(!viz_out_file.empty()){
+    if (!string_ends_with(viz_out_file, ".gz"))
+      printErrorAndDie("Path for alignment visualization file must end in .gz as it will be bgzipped");
     bam_processor.set_output_viz(viz_out_file);
+  }
   
   if (remove_all_filters)
     bam_processor.remove_all_filters();

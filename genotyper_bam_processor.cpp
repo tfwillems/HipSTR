@@ -3,7 +3,6 @@
 #include "extract_indels.h"
 #include "genotyper_bam_processor.h"
 
-
 void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 						      std::vector< std::vector<double> >& log_p1s,
 						      std::vector< std::vector<double> >& log_p2s,

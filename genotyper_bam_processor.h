@@ -8,7 +8,7 @@
 
 #include "bamtools/include/api/BamAlignment.h"
 #include "vcflib/src/Variant.h"
-#include "gzstream/gzstream.h"
+#include "bgzf_ostream.h"
 
 #include "em_stutter_genotyper.h"
 #include "region.h"
@@ -16,6 +16,7 @@
 #include "snp_bam_processor.h"
 #include "stutter_model.h"
 #include "SeqAlignment/HTMLCreator.h"
+
 
 class GenotyperBamProcessor : public SNPBamProcessor {
 private:  
@@ -32,11 +33,11 @@ private:
 
   // Outupt file for STR alleles (w/o genotypes)
   bool output_alleles_;
-  std::ofstream allele_vcf_;
+  bgzfostream allele_vcf_;
 
   // Output file for STR genotypes
   bool output_str_gts_;
-  ogzstream str_vcf_;
+  bgzfostream str_vcf_;
   std::vector<std::string> samples_to_genotype_;
 
   // Flag for type of genotyper to use
@@ -50,7 +51,7 @@ private:
   vcflib::VariantCallFile ref_vcf_;
 
   bool output_viz_;
-  std::ofstream viz_out_;
+  bgzfostream viz_out_;
 
   bool output_gls_; // Output the GL FORMAT field to the VCF
   bool output_pls_; // Output the PL FORMAT field to the VCF
@@ -88,9 +89,7 @@ public:
 
   void set_output_viz(std::string& viz_file){
     output_viz_ = true;
-    viz_out_.open(viz_file, std::ofstream::out);
-    if (!viz_out_.is_open())
-      printErrorAndDie("Failed to open output file for alignment visualization");
+    viz_out_.open(viz_file.c_str());
     writeHeader(viz_out_);
   }
 
@@ -120,10 +119,12 @@ public:
 
   void set_output_allele_vcf(std::string& vcf_file){
     output_alleles_ = true;
+    allele_vcf_.open(vcf_file.c_str());
+    /*
     allele_vcf_.open(vcf_file, std::ofstream::out);
     if (!allele_vcf_.is_open())
       printErrorAndDie("Failed to open VCF file for STR alleles");
-    
+    */
     std::vector<std::string> no_samples;
     if (use_seq_aligner_)
       SeqStutterGenotyper::write_vcf_header(no_samples, output_gls_, output_pls_, allele_vcf_);
@@ -134,8 +135,10 @@ public:
   void set_output_str_vcf(std::string& vcf_file, std::set<std::string>& samples_to_output){
     output_str_gts_ = true;
     str_vcf_.open(vcf_file.c_str());
+    /*
     if (!str_vcf_.rdbuf()->is_open())
       printErrorAndDie("Failed to open VCF file for STR genotypes");
+    */
 
     // Print floats with exactly 3 decimal places
     str_vcf_.precision(3);

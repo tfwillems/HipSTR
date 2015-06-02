@@ -24,12 +24,11 @@ OBJ_SEQALN  := $(SRC_SEQALN:.cpp=.o)
 BAMTOOLS_ROOT=bamtools
 VCFLIB_ROOT=vcflib
 
-LIBS              = -L./ -lz -lm -lgmp -lgmpxx -lhts -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/ -Lgzstream/ -Lvcflib/tabixpp/htslib/ -lz
-INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I$(VCFLIB_ROOT)/ -I/usr/local/opt/boost149/include -Igzstream/  -I$(VCFLIB_ROOT)/tabixpp/htslib/
+LIBS              = -L./ -lz -lm -lgmp -lgmpxx -lhts -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/ -Lvcflib/tabixpp/htslib/ -lz
+INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I$(VCFLIB_ROOT)/ -I/usr/local/opt/boost149/include  -I$(VCFLIB_ROOT)/tabixpp/htslib/
 ARGWEAVER_LIB     = argweaver/lib/libargweaver.a
 BAMTOOLS_LIB      = $(BAMTOOLS_ROOT)/lib/libbamtools.a
 VCFLIB_LIB        = vcflib/libvcflib.a
-GZSTREAM_LIB      = gzstream/libgzstream.a
 PHASED_BEAGLE_JAR = PhasedBEAGLE/PhasedBEAGLE.jar
 
 .PHONY: all
@@ -113,7 +112,3 @@ $(PHASED_BEAGLE_JAR):
 	git submodule update --init --recursive PhasedBEAGLE
 	git submodule update --recursive PhasedBEAGLE
 	cd PhasedBEAGLE && $(MAKE)
-
-# Rebuild gzstream library if needed
-$(GZSTREAM_LIB):
-	cd gzstream && $(MAKE)
