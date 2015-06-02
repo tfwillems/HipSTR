@@ -17,7 +17,7 @@ int main(int argc, char* argv[]){
   std::vector<Region> regions;  
   readRegions(region_file, regions, 1000);
 
-  vcf::VariantCallFile ref_vcf;
+  vcflib::VariantCallFile ref_vcf;
   if(!ref_vcf.open(vcf_file))
     printErrorAndDie("Failed to open VCF");
 

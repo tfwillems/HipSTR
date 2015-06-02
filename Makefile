@@ -5,7 +5,7 @@
 ## Default compilation flags.
 ## Override with:
 ##   make CXXFLAGS=XXXXX
-CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX
+CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX -pthread
 
 ## Source code files, add new files to this list
 SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp extract_indels.cpp mathops.cpp
@@ -24,8 +24,8 @@ OBJ_SEQALN  := $(SRC_SEQALN:.cpp=.o)
 BAMTOOLS_ROOT=bamtools
 VCFLIB_ROOT=vcflib
 
-LIBS              = -L./ -lz -lm -lgmp -lgmpxx -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/ -Lgzstream/
-INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I$(VCFLIB_ROOT)/ -I/usr/local/opt/boost149/include -Igzstream/
+LIBS              = -L./ -lz -lm -lgmp -lgmpxx -lhts -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/ -Lgzstream/ -Lvcflib/tabixpp/htslib/ -lz
+INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I$(VCFLIB_ROOT)/ -I/usr/local/opt/boost149/include -Igzstream/  -I$(VCFLIB_ROOT)/tabixpp/htslib/
 ARGWEAVER_LIB     = argweaver/lib/libargweaver.a
 BAMTOOLS_LIB      = $(BAMTOOLS_ROOT)/lib/libbamtools.a
 VCFLIB_LIB        = vcflib/libvcflib.a

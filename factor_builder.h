@@ -14,12 +14,12 @@
 
 inline double log_sum_exp(double v1, double v2);
 
-void add_GT_factors(vcf::Variant& variant, std::map<std::string, int>& sample_indices,
+void add_GT_factors(vcflib::Variant& variant, std::map<std::string, int>& sample_indices,
 		    int min_bp_length, int max_bp_length, bool ignore_phase,
 		    std::vector<dai::Var>& node_1s, std::vector<dai::Var>& node_2s,
 		    std::vector<dai::Factor>& factors, std::vector< std::pair<dai::Var,int> >& clamps);
 
-void add_GL_factors(vcf::Variant& variant, std::map<std::string, int>& sample_indices,
+void add_GL_factors(vcflib::Variant& variant, std::map<std::string, int>& sample_indices,
 		    int min_allele, int max_allele, std::vector<dai::Var>& node_1s, std::vector<dai::Var>& node_2s,
 		    std::vector<dai::Factor>& factors);
 

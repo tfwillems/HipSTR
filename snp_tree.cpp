@@ -8,7 +8,7 @@ std::ostream& operator<<(std::ostream& out, SNP& snp) {
   return out;
 }
 
-bool is_biallelic_snp(vcf::Variant& variant){
+bool is_biallelic_snp(vcflib::Variant& variant){
   if (variant.alleles.size() != 2)
     return false;
   for (auto iter = variant.alleles.begin(); iter != variant.alleles.end(); ++iter)
@@ -17,7 +17,7 @@ bool is_biallelic_snp(vcf::Variant& variant){
   return true;
 }
 
-bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vcf::VariantCallFile& variant_file,
+bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vcflib::VariantCallFile& variant_file,
                       std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees){
   std::cerr << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
@@ -36,7 +36,7 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vc
 
   // Iterate through all VCF entries
   std::vector< std::vector<SNP> > snps_by_sample(variant_file.sampleNames.size());
-  vcf::Variant variant(variant_file);
+  vcflib::Variant variant(variant_file);
   uint32_t locus_count = 0, skip_count = 0;
   while(variant_file.getNextVariant(variant)){
     ++locus_count;

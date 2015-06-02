@@ -16,7 +16,7 @@
 class SNPBamProcessor : public BamProcessor {
 private:
   bool have_snp_vcf;
-  vcf::VariantCallFile phased_snp_vcf;
+  vcflib::VariantCallFile phased_snp_vcf;
   BaseQuality base_qualities;
   int32_t match_count_, mismatch_count_;
 

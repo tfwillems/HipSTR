@@ -5,8 +5,7 @@
 #include "../snp_tree.h"
 
 int main(int argc, char** argv) {
-  //std::cin.sync_with_stdio(false);
-  vcf::VariantCallFile variant_file;
+  vcflib::VariantCallFile variant_file;
   if (argc > 1){
     std::string filename = argv[1];
     variant_file.open(filename);

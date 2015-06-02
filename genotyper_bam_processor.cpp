@@ -82,7 +82,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   if (stutter_model != NULL) {
     if (use_seq_aligner_){
       // Use sequence-based genotyper
-      vcf::VariantCallFile* reference_panel_vcf = NULL;
+      vcflib::VariantCallFile* reference_panel_vcf = NULL;
       if (have_ref_vcf_)
 	reference_panel_vcf = &ref_vcf_;
 

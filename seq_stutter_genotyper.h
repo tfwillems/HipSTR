@@ -67,7 +67,7 @@ class SeqStutterGenotyper{
   double* log_allele_priors_;
 
   // VCF containing STR and SNP genotypes for a reference panel
-  vcf::VariantCallFile* ref_vcf_;
+  vcflib::VariantCallFile* ref_vcf_;
 
   // If this flag is set, reads with identical sequences are pooled and their base emission error
   // probabilities averaged. Each unique sequence is then only aligned once using these
@@ -120,7 +120,7 @@ class SeqStutterGenotyper{
 		      std::vector< std::vector<double> >& log_p1, 
 		      std::vector< std::vector<double> >& log_p2, 
 		      std::vector<std::string>& sample_names, std::string& chrom_seq, 
-		      StutterModel& stutter_model, vcf::VariantCallFile* ref_vcf){
+		      StutterModel& stutter_model, vcflib::VariantCallFile* ref_vcf){
     assert(alignments.size() == log_p1.size() && alignments.size() == log_p2.size() && alignments.size() == sample_names.size());
     log_p1_                = NULL;
     log_p2_                = NULL;

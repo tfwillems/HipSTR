@@ -16,7 +16,7 @@ const double MIN_ALLELE_PRIOR = 0.0001;
 // we look for entries a window around the locus. The size of this window is controlled by this parameter
 const int32_t pad = 50;
 
-void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector<std::string>& alleles, int32_t& pos, bool& success){
+void read_vcf_alleles(vcflib::VariantCallFile* ref_vcf, Region* region, std::vector<std::string>& alleles, int32_t& pos, bool& success){
     assert(alleles.size() == 0 && ref_vcf != NULL);
     if (!ref_vcf->setRegion(region->chrom(), region->start()-pad, region->stop()+pad)){
       // Retry setting region if chr is in chromosome name
@@ -29,7 +29,7 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
     }
    
     // Extract STR and ensure the coordinates match
-    vcf::Variant variant(*ref_vcf);
+    vcflib::Variant variant(*ref_vcf);
     while (ref_vcf->getNextVariant(variant)){
       // Skip variants without the appropriate INFO fields (as they're not STRs)
       if (ref_vcf->infoTypes.find(START_INFO_TAG) == ref_vcf->infoTypes.end())
@@ -60,7 +60,7 @@ void read_vcf_alleles(vcf::VariantCallFile* ref_vcf, Region* region, std::vector
  * Method exits with an error if no VCF entry is found, if the VCF doesn't containg PGP allele priors in the FORMAT field or if it only contains a subset of the samples.
  * The user is responsible for freeing the returned array when it is no longer needed.
  */
-double* extract_vcf_alleles_and_log_priors(vcf::VariantCallFile* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
+double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
 					   std::vector<std::string>& alleles, std::vector<bool>& got_priors, int32_t& pos, bool& success){
   assert(alleles.size() == 0 && got_priors.size() == 0);
   got_priors.resize(sample_indices.size(), false);
@@ -76,7 +76,7 @@ double* extract_vcf_alleles_and_log_priors(vcf::VariantCallFile* ref_vcf, Region
       return NULL;
     }
   }
-  vcf::Variant variant(*ref_vcf);
+  vcflib::Variant variant(*ref_vcf);
   bool matches_region = false;
   while(ref_vcf->getNextVariant(variant)){
     // Skip variants without the appropriate INFO fields (as they're not STRs)

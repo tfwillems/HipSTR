@@ -47,7 +47,7 @@ private:
 
   // VCF containg SNP and STR genotypes for a reference panel
   bool have_ref_vcf_;
-  vcf::VariantCallFile ref_vcf_;
+  vcflib::VariantCallFile ref_vcf_;
 
   bool output_viz_;
   std::ofstream viz_out_;
