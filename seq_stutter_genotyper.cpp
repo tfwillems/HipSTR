@@ -762,6 +762,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   out << "\n";
 
   // Render HTML of Smith-Waterman alignments (not haplotype alignments)
-  if (output_viz)
-    visualizeAlignments(alns_, sample_names_, sample_results, hap_blocks_, chrom_seq, region_->name(), true, html_output);
+  if (output_viz){
+    std::stringstream locus_info;
+    locus_info << region_->chrom() << "\t" << region_->start() << "\t" << region_->stop();
+    visualizeAlignments(alns_, sample_names_, sample_results, hap_blocks_, chrom_seq, locus_info.str(), true, html_output);
+  }
 }

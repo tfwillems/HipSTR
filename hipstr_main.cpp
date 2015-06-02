@@ -44,7 +44,8 @@ void parse_command_line_args(int argc, char** argv,
 	      << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Output a gzipped VCF file containing phased STR genotypes"                           << "\n"
 	      << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a VCF file containing alleles with strong evidence in the BAMs"               << "\n"
 	      << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n"
-	      << "\t" << "--viz-out       <aln_viz.html>        "  << "\t" << "Output an HTML file containing Needleman-Wunsch alignments for each genotyped locus" << "\n" << "\n"
+	      << "\t" << "--viz-out       <aln_viz.html>        "  << "\t" << "Output an HTML file containing Needleman-Wunsch alignments for each genotyped locus" << "\n"
+	      << "\t" << "                                      "  << "\t" << " Option only available when the --seq-genotyper flag has been specified"             << "\n"
 	      
 	      << "Other optional parameters:" << "\n"
       	      << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
