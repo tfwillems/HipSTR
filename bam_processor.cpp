@@ -180,11 +180,11 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       // Add STR start and stop tags
       if (read_iter->HasTag("XS"))
 	read_iter->RemoveTag("XS");
-      if(!read_iter->AddTag("XS",  "I", region_iter->start()))
+      if(!read_iter->AddTag("XS",  "i", region_iter->start()))
 	printErrorAndDie("Failed to modify XS tag");
       if (read_iter->HasTag("XE"))
 	read_iter->RemoveTag("XE");
-      if(!read_iter->AddTag("XE", "I", region_iter->stop()))
+      if(!read_iter->AddTag("XE", "i", region_iter->stop()))
 	printErrorAndDie("Failed to modify XE tag");
       if (!bam_writer.SaveAlignment(*read_iter))  
 	printErrorAndDie("Failed to save alignment for STR-spanning read");

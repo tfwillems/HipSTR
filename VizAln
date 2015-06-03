@@ -1,11 +1,11 @@
 #!/bin/bash
 #
-# Usage: VizAln alns.html.gz chrom start
+# Usage: VizAln alns.html.gz chrom start [sample]
 #           View alignments for an STR in a browser
 #           Requires tabix and a bgzipped 
 #           file with a corresponding .tbi index
 
-if [ "$#" -eq 3 ]; then
+if [ "$#" -eq 3 ] || [ "$#" -eq 4 ]; then
     # Make sure tabix is installed
     hash tabix 2>/dev/null || { echo >&2 "ERROR: VizAln requires tabix. Please check that it's appropriately installed"; exit 1; }
 
@@ -27,7 +27,6 @@ usage
 	exit 1
     fi
 
-    
     # Make sure the tabix index exists
     if [ ! -e $1.tbi ]
 	then
@@ -42,14 +41,19 @@ msg
     start=$3
     stop=`expr $start + 100`
     f="/tmp/vizaln.$RANDOM.html"
-    tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | cut -f 1-3 --complement > $f
+    echo $f
+    if [ "$#" -eq 3 ]
+	then
+	tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | cut -f 1-4 --complement > $f
+    else
+	tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | cut -f 1-4 --complement > $f
+    fi
+
     open $f
 else
     cat <<usage
-Usage: VizAln alns.html.gz chrom start
+Usage: VizAln alns.html.gz chrom start [sample]
            View alignments for an STR in a browser
            Requires tabix and a bgzipped file with a corresponding .tbi index
 usage
 fi
-
-

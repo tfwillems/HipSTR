@@ -28,7 +28,7 @@ std::map<char,std::string> initialize_colors(){
 std::map<char, std::string> base_colors = initialize_colors();
 
 void writeHeader(std::ostream& output){
-  output << "#\t#\t#\t"
+  output << "#\t#\t#\tALL\t"
 	 << "<style type='text/css'> "
 
 	 <<  ".ref {"
@@ -136,7 +136,7 @@ void writeReferenceString(std::string& reference_string,
 			  std::string locus_id, 
 			  std::vector<bool>& within_locus, 
 			  bool draw_locus_id){
-  output << locus_id << "\t"
+  output << locus_id << "\t" << "ALL" << "\t"
 	 << "<div class='reference'>"
 	 << "\t<table class=\"reftable\">";
 
@@ -177,10 +177,10 @@ void writeAlignmentStrings(std::string& reference_string,
 	vcf_ss << info_iter->second;
 
       std::string label = alignment_samples[i] + ": " + vcf_ss.str();
-      output << locus_id << "\t" << "<tr> <td style=\"text-align:left;\" colspan=\"" << label.size() << "\"> <font color=\"red\">" << label <<  "</font> </td> </tr>\n";
+      output << locus_id << "\t" << alignment_samples[i] << "\t" << "<tr> <td style=\"text-align:left;\" colspan=\"" << label.size() << "\"> <font color=\"red\">" << label <<  "</font> </td> </tr>\n";
     }
 
-    output << locus_id << "\t" << "<tr>";
+    output << locus_id << "\t" << alignment_samples[i] << "\t" << "<tr>";
     int j;
     for (j = 0; j < alignment_strings[i].size(); j++){
       if (alignment_strings[i][j] != SPACE_CHAR)

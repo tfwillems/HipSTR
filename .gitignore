@@ -1,8 +1,5 @@
 BamSieve
 HipSTR
-Phaser
-StutterTrainer
-gzstream/libgzstream.a
 test/allele_expansion_test
 test/base_qual_test
 test/read_vcf_alleles_test
@@ -16,4 +13,3 @@ test/fast_ops_test
 *.d
 *~
 *.dSYM
-libDAI
