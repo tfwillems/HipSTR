@@ -475,8 +475,23 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
 
   if (log_allele_priors_ != NULL)
     memcpy(log_sample_posteriors_, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
-  else
-    std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), -2*log(num_alleles_));
+  else {
+    // Each genotype has an equal total prior, but heterozygotes have two possible phasings. Therefore,
+    // i)   Phased heterozygotes have a prior of 1/(n(n+1))
+    // ii)  Homozygotes have a prior of 2/(n(n+1))
+    // iii) Total prior is n*2/(n(n+1)) + n(n-1)*1/(n(n+1)) = 2/(n+1) + (n-1)/(n+1) = 1
+
+    // Set all elements to het prior
+    double log_hetz_prior = -log(num_alleles_) - log(num_alleles_+1);
+    std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), log_hetz_prior);
+
+    // Fix homozygotes
+    double log_homoz_prior = log(2) - log(num_alleles_) - log(num_alleles_+1);
+    for (unsigned int i = 0; i < num_alleles_; i++){
+      double* LL_ptr = log_sample_posteriors_ + i*num_alleles_*num_samples_ + i*num_samples_;
+      std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
+    }
+  }
 
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
