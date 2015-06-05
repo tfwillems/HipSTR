@@ -5,6 +5,18 @@
 #### License: GNU v2
 
 ## Introduction
+Short tandem repeats [(STRs)](http://en.wikipedia.org/wiki/Microsatellite) are highly repetitive genomic sequences comprised of repeated copies of an underlying motif. Prevalent in most organisms' genomes, STRs are of particular interest because they mutate much more rapidly than most other genomic elements. As a result, they're extremely informative for genomic identification, ancestry inference and genealogy.
+
+Despite their utility, STRs are particularly difficult to genotype . The repetitive sequence responsible for their high mutability also results in frequent alignment errors that can complicate and bias downstream analyses. In addition, PCR stutter errors often result in reads that contain additional or fewer repeat copies than the true underlying genotype. 
+
+**HipSTR** was specifically developed to deal with these errors in the hopes of obtaining more robust STR genotypes. In particular, it accomplishes this by:
+
+1. Learning locus-specific PCR stutter models using an [EM algorithm] (http://en.wikipedia.org/wiki/Expectation%E2%80%93maximization_algorithm)
+2. Mining candidate STR alleles from population-scale sequencing data
+2. Utilizing phased SNP haplotypes to genotype, phase and/or impute STRs
+3. Employing a specialized hidden Markov model to align reads to candidate sequences while accounting for stutter
+
+
 
 ## Installation
 HipSTR requires a standard c++ compiler as well as Java version 1.7 or later.
