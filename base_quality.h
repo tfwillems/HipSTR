@@ -75,6 +75,13 @@ class BaseQuality {
       return log_correct_[qual_index];
   }
 
+  double sum_log_prob_correct(std::string& qualities){
+    double sum = 0.0;
+    for (unsigned int i = 0; i < qualities.size(); i++)
+      sum += log_prob_correct(qualities[i]);
+    return sum;
+  }
+
   char closest_char(double log_prob_e){
     int index = (int)floor(-10*(log_prob_e+LOG_3)/LOG_10);
     assert(index >= 0 && index <= MAX_QUAL_INDEX);
