@@ -196,11 +196,24 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   std::cerr << "Left aligning reads..." << std::endl;
   std::map<std::string, std::pair<int,int> > seq_to_alns;
   std::map<std::string, int> seq_to_index;
-  int read_index = 0, uniq_seq_count = 0, align_fail_count = 0;
+  int read_index = 0, uniq_seq_count = 0, align_fail_count = 0, qual_filt_count = 0;
   int bp_diff;
   for (unsigned int i = 0; i < alignments.size(); ++i){
     alns_.push_back(std::vector<Alignment>());
     for (unsigned int j = 0; j < alignments[i].size(); ++j, ++read_index){
+
+      // Ignore/remove reads with a very low overall base quality score
+      // Want to avoid situations in which it's more advantageous to have misalignments
+      // b/c the scores are so low
+      if (base_quality_.sum_log_prob_correct(alignments[i][j].Qualities) < MIN_SUM_QUAL_LOG_PROB){
+	std::cerr << alignments[i][j].QueryBases << std::endl 
+		  << alignments[i][j].Qualities  << std::endl;
+	qual_filt_count++;
+	num_reads_--;
+	read_index--;
+	continue;
+      }
+
       auto iter      = seq_to_alns.find(alignments[i][j].QueryBases);
       bool have_prev = (iter != seq_to_alns.end());
       if (have_prev)
@@ -246,6 +259,9 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   }
   if (align_fail_count != 0)
     std::cerr << "Failed to left align " << align_fail_count << " out of " << num_reads_ << " reads" << std::endl;
+  if (qual_filt_count != 0)
+    std::cerr << "Filtered " << qual_filt_count << " reads due to low overall base qualities." << std::endl
+	      << "If this value is high (>1% of reads), there may be an issue to with the base quality score encoding" << std::endl;
 
   // Replace base quality scores for 'N' bases with minimum quality score
   for (unsigned int i = 0; i < alns_.size(); ++i)
@@ -290,9 +306,6 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     // Extract full STR sequence for each allele using annotated repeat region and the haplotype above
     get_alleles(chrom_seq, alleles_);
   }
-
-  // TO DO: Ignore/remove reads with a very low overall base quality score
-
 
   if (pos_ != -1){
     // Print information about the haplotype and the stutter model
@@ -356,7 +369,7 @@ bool SeqStutterGenotyper::genotype(){
     }
   }
   
-  //debug_sample(sample_indices_["LP6005441-DNA_F02"]);
+  //debug_sample(sample_indices_["QTL192009"]);
   return true;
 }
 
@@ -438,6 +451,14 @@ void SeqStutterGenotyper::get_alleles(std::string& chrom_seq, std::vector<std::s
 }
  
 void SeqStutterGenotyper::debug_sample(int sample_index){
+  for (unsigned int i = 0; i < num_samples_; i++){
+    for (unsigned int j = 0; j < alns_[i].size(); j++)
+      std::cerr << alns_[i][j].sum_log_prob_correct(base_quality_) << " ";
+    std::cerr << std::endl;
+  }
+  std::cerr << std::endl << std::endl;
+
+
   std::cerr << "DEBUGGING SAMPLE..." << std::endl;
   std::cerr << "READ LL's:" << std::endl;
   double* read_LL_ptr = log_aln_probs_;

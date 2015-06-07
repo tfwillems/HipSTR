@@ -114,6 +114,11 @@ class SeqStutterGenotyper{
   // In an imputation-only setting, this should be set to false
   bool require_one_read_;
 
+  // Reads whose sum of log base quality correct probs < threshold will be removed
+  // Required to avoid instances in which it's more advantageous to have mismatches
+  // because the quality is so low
+  double MIN_SUM_QUAL_LOG_PROB;
+
  public:
   SeqStutterGenotyper(Region& region,
 		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,
@@ -133,6 +138,7 @@ class SeqStutterGenotyper{
     MAX_REF_FLANK_LEN      = 30;
     pos_                   = -1;
     pool_identical_seqs_   = false;
+    MIN_SUM_QUAL_LOG_PROB  = -10;
 
     // True iff no allele priors are available (for imputation)
     require_one_read_ = (ref_vcf == NULL);
