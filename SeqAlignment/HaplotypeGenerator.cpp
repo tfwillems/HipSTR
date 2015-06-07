@@ -197,7 +197,7 @@ void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, i
       
       // Identify alleles strongly supported by sample
       for (auto iter = counts.begin(); iter != counts.end(); iter++){
-	if (iter->second > MIN_READS_STRONG_SAMPLE && iter->second > MIN_FRAC_STRONG_SAMPLE*samp_reads)
+	if (iter->second >= MIN_READS_STRONG_SAMPLE && iter->second >= MIN_FRAC_STRONG_SAMPLE*samp_reads)
 	  must_inc[iter->first] += 1;
 	sample_counts[iter->first] += iter->second*1.0/samp_reads;
       }

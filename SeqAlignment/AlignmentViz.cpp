@@ -307,9 +307,6 @@ void visualizeAlignments(std::vector< std::vector<Alignment> >& alns, std::vecto
   */
     
   // Write to HTML
-  output << locus_id << "\t" << "ALL" << "\t" 
-	 << "<div class='alignments'> "
-	 << "\t<table class=\"readtable\">\n";
   //writeAlignmentStrings(ref_alignment, output, locus_id, hap_results,   hap_samples,  sample_info, false);
   writeAlignmentStrings(ref_alignment, output, locus_id, align_results, alignment_samples, sample_info, true);
   output << locus_id << "\t" << "ALL" << "\t"

@@ -39,6 +39,8 @@ void writeHeader(std::ostream& output){
 	 << "td {"
 	 << " text-align:center;"
 	 << " vertical-align:middle;"
+	 << " font-family: Courier;"
+	 << " font-size: 13px;"
 	 << "} "
 
 	 << ".locustd {"
@@ -60,15 +62,10 @@ void writeHeader(std::ostream& output){
 
 	 << ".reftable {"
 	 << " color: white;"
-         << " font-family: Courier;"
-	 << " font-weight: bold;"
-	 << " font-size: 13px;"
 	 << "} "
 
 	 << ".readtable {"
-	 << " font-family: Courier;"
 	 << " font-weight: normal;"
-	 << " font-size: 13px;"
 	 << "} "
 
 	 << "caption {"
@@ -137,12 +134,12 @@ void writeReferenceString(std::string& reference_string,
 			  std::vector<bool>& within_locus, 
 			  bool draw_locus_id){
   output << locus_id << "\t" << "ALL" << "\t"
-	 << "<div class='reference'>"
+	 << "<div>"
 	 << "\t<table class=\"reftable\">";
 
   if (draw_locus_id)
     output << " <caption>" << locus_id << "</caption> ";
-  output << "<tr>";
+  output << "<tr style='font-weight: bold'>";
   for (int i = 0; i < reference_string.size(); i++){
     std::string color = base_colors[reference_string[i]];
     if (within_locus[i]){
@@ -156,9 +153,7 @@ void writeReferenceString(std::string& reference_string,
     }
   }
   output
-    << "</tr>"
-    << "</table>"
-    << "</div>" << std::endl; 
+    << "</tr>" << std::endl;
 }
 
 void writeAlignmentStrings(std::string& reference_string, 
