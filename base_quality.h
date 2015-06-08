@@ -6,9 +6,9 @@
 #include <string>
 #include <vector>
 
+#include "bamtools/include/api/BamMultiReader.h"
 #include "error.h"
 #include "math.h"
-
 
 #define LOG_10 log(10)
 #define LOG_3  log(3)
@@ -89,6 +89,8 @@ class BaseQuality {
   }
 
   std::string average_base_qualities(std::vector<const std::string*> base_qualities);
+
+  void deduce_quality_encodings(BamTools::BamMultiReader& reader);
 };
 
 #endif

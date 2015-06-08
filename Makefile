@@ -60,7 +60,7 @@ BamSieve: $(OBJ_COMMON) $(OBJ_SIEVE) $(BAMTOOLS_LIB)
 HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(OBJ_SEQALN) $(GZSTREAM_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/base_qual_test: test/base_quality_test.cpp base_quality.cpp error.cpp mathops.cpp
+test/base_qual_test: test/base_quality_test.cpp base_quality.cpp error.cpp mathops.cpp $(BAMTOOLS_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/allele_expansion_test: test/allele_expansion_test.cpp SeqAlignment/STRAlleleExpansion.cpp zalgorithm.cpp error.cpp

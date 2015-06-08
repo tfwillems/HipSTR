@@ -31,7 +31,7 @@ private:
   bool output_stutter_models_;
   std::ofstream stutter_model_out_;
 
-  // Outupt file for STR alleles (w/o genotypes)
+  // Output file for STR alleles (w/o genotypes)
   bool output_alleles_;
   bgzfostream allele_vcf_;
 
