@@ -54,7 +54,7 @@ class BamProcessor {
  void process_regions(BamTools::BamMultiReader& reader,
 		      std::string& region_file, std::string& fasta_dir,
 		      std::map<std::string, std::string>& file_read_groups,
-		      BamTools::BamWriter& bam_writer, std::ostream& out, int32_t max_regions); 
+		      BamTools::BamWriter& bam_writer, std::ostream& out, int32_t max_regions, std::string chrom);
   
  virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 			    std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,

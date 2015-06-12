@@ -235,9 +235,9 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 void BamProcessor::process_regions(BamTools::BamMultiReader& reader, 
 				   std::string& region_file, std::string& fasta_dir,
 				   std::map<std::string, std::string>& file_read_groups,
-				   BamTools::BamWriter& bam_writer, std::ostream& out, int32_t max_regions){
+				   BamTools::BamWriter& bam_writer, std::ostream& out, int32_t max_regions, std::string chrom){
   std::vector<Region> regions;
-  readRegions(region_file, regions, max_regions);
+  readRegions(region_file, regions, max_regions, chrom);
   orderRegions(regions);
   
   std::string ref_seq;

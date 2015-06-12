@@ -11,7 +11,7 @@
 #include "error.h"
 #include "region.h"
 
-void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t max_regions){
+void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t max_regions, std::string chrom_limit){
   std::cerr << "Reading region file " << input_file << std::endl;
   std::ifstream input(input_file.c_str());
   if (!input.is_open()) 
@@ -27,6 +27,8 @@ void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t
     double ref_copy;
     if (!(iss >> chrom >> start >> stop >> period >> ref_copy))
       printErrorAndDie("Improperly formatted region file");
+    if (!chrom_limit.empty() && chrom.compare(chrom_limit) != 0)
+      continue;
     if (iss >> name)
       regions.push_back(Region(chrom, start, stop, period, name));
     else
