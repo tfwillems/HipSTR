@@ -369,7 +369,7 @@ bool SeqStutterGenotyper::genotype(){
     }
   }
   
-  //debug_sample(sample_indices_["QTL192009"]);
+  //debug_sample(sample_indices_["ERR194146"]);
   return true;
 }
 
@@ -451,14 +451,6 @@ void SeqStutterGenotyper::get_alleles(std::string& chrom_seq, std::vector<std::s
 }
  
 void SeqStutterGenotyper::debug_sample(int sample_index){
-  for (unsigned int i = 0; i < num_samples_; i++){
-    for (unsigned int j = 0; j < alns_[i].size(); j++)
-      std::cerr << alns_[i][j].sum_log_prob_correct(base_quality_) << " ";
-    std::cerr << std::endl;
-  }
-  std::cerr << std::endl << std::endl;
-
-
   std::cerr << "DEBUGGING SAMPLE..." << std::endl;
   std::cerr << "READ LL's:" << std::endl;
   double* read_LL_ptr = log_aln_probs_;
@@ -482,7 +474,7 @@ void SeqStutterGenotyper::debug_sample(int sample_index){
   double* sample_LL_ptr = log_sample_posteriors_ + sample_index;
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-      std::cerr << index_1 << " " << index_2 << " " << *sample_LL_ptr << std::endl;
+      std::cerr << index_1 << " " << index_2 << " " << *sample_LL_ptr << "(" << exp(*sample_LL_ptr) << ")" << std::endl;
       sample_LL_ptr += num_samples_;
     }
   
@@ -497,20 +489,33 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
   if (log_allele_priors_ != NULL)
     memcpy(log_sample_posteriors_, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
   else {
-    // Each genotype has an equal total prior, but heterozygotes have two possible phasings. Therefore,
-    // i)   Phased heterozygotes have a prior of 1/(n(n+1))
-    // ii)  Homozygotes have a prior of 2/(n(n+1))
-    // iii) Total prior is n*2/(n(n+1)) + n(n-1)*1/(n(n+1)) = 2/(n+1) + (n-1)/(n+1) = 1
+    if (!haploid_){
+      // Each genotype has an equal total prior, but heterozygotes have two possible phasings. Therefore,
+      // i)   Phased heterozygotes have a prior of 1/(n(n+1))
+      // ii)  Homozygotes have a prior of 2/(n(n+1))
+      // iii) Total prior is n*2/(n(n+1)) + n(n-1)*1/(n(n+1)) = 2/(n+1) + (n-1)/(n+1) = 1
 
-    // Set all elements to het prior
-    double log_hetz_prior = -log(num_alleles_) - log(num_alleles_+1);
-    std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), log_hetz_prior);
+      // Set all elements to het prior
+      double log_hetz_prior = -log(num_alleles_) - log(num_alleles_+1);
+      std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), log_hetz_prior);
 
-    // Fix homozygotes
-    double log_homoz_prior = log(2) - log(num_alleles_) - log(num_alleles_+1);
-    for (unsigned int i = 0; i < num_alleles_; i++){
-      double* LL_ptr = log_sample_posteriors_ + i*num_alleles_*num_samples_ + i*num_samples_;
-      std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
+      // Fix homozygotes
+      double log_homoz_prior = log(2) - log(num_alleles_) - log(num_alleles_+1);
+      for (unsigned int i = 0; i < num_alleles_; i++){
+	double* LL_ptr = log_sample_posteriors_ + i*num_alleles_*num_samples_ + i*num_samples_;
+	std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
+      }
+    }
+    else {
+      // Set all elements to impossible
+      std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), -DBL_MAX/2);
+
+      // Fix homozygotes using a uniform prior
+      double log_homoz_prior = -log(num_alleles_);
+      for (unsigned int i = 0; i < num_alleles_; i++){
+	double* LL_ptr = log_sample_posteriors_ + i*num_alleles_*num_samples_ + i*num_samples_;
+	std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
+      }
     }
   }
 
@@ -594,7 +599,11 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     }
   }
   for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++){
-    bp_dosages.push_back(expected_value(log_post_probs[sample_index], dip_bpdiffs));
+    if (!haploid_)
+      bp_dosages.push_back(expected_value(log_post_probs[sample_index], dip_bpdiffs));
+    else
+      bp_dosages.push_back(0.5*expected_value(log_post_probs[sample_index], dip_bpdiffs));
+
     double max_gl = *(std::max_element(gls[sample_index].begin(), gls[sample_index].end()));
     for (unsigned int j = 0; j < gls[sample_index].size(); j++)
       pls[sample_index].push_back((int)(gls[sample_index][j]-max_gl));
@@ -719,7 +728,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   }
 
   // Add FORMAT field
-  out << "\tGT:GB:Q:PQ:DP:DSNP:PDP:BPDOSE:ALLREADS:PALLREADS";
+  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:PDP:BPDOSE:ALLREADS:PALLREADS" : "\tGT:GB:Q:DP:BPDOSE:ALLREADS:PALLREADS");
   if (output_gls) out << ":GL";
   if (output_pls) out << ":PL";
 
@@ -753,14 +762,22 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     samp_info << allele_bp_diffs[gts[sample_index].first] << "|" << allele_bp_diffs[gts[sample_index].second];
     sample_results[sample_names[i]] = samp_info.str();
 
-    out << gts[sample_index].first << "|" << gts[sample_index].second                            // Genotype
-	<< ":" << allele_bp_diffs[gts[sample_index].first] 
-	<< "|" << allele_bp_diffs[gts[sample_index].second]                                      // Base pair differences from reference
-	<< ":" << exp(log_unphased_posteriors[sample_index])                                     // Unphased posterior
-	<< ":" << exp(log_phased_posteriors[sample_index])                                       // Phased posterior
-	<< ":" << num_aligned_reads[sample_index]                                                // Total realigned reads
-	<< ":" << num_reads_with_snps[sample_index]                                              // Total reads with SNP information
-	<< ":" << phase1_reads << "|" << phase2_reads;                                           // Reads per allele
+    if (!haploid_){
+      out << gts[sample_index].first << "|" << gts[sample_index].second                            // Genotype
+	  << ":" << allele_bp_diffs[gts[sample_index].first]
+	  << "|" << allele_bp_diffs[gts[sample_index].second]                                      // Base pair differences from reference
+	  << ":" << exp(log_unphased_posteriors[sample_index])                                     // Unphased posterior
+	  << ":" << exp(log_phased_posteriors[sample_index])                                       // Phased posterior
+	  << ":" << num_aligned_reads[sample_index]                                                // Total realigned reads
+	  << ":" << num_reads_with_snps[sample_index]                                              // Total reads with SNP information
+	  << ":" << phase1_reads << "|" << phase2_reads;                                           // Reads per allele
+    }
+    else {
+      out << gts[sample_index].first                                                               // Genotype
+	  << ":" << allele_bp_diffs[gts[sample_index].first]                                       // Base pair differences from reference
+	  << ":" << exp(log_unphased_posteriors[sample_index])                                     // Unphased posterior
+	  << ":" << num_aligned_reads[sample_index];                                               // Total realigned reads
+    }
 
     // Posterior STR dosage (in base pairs)
     out << ":" << bp_dosages[sample_index];

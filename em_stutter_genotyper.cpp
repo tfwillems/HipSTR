@@ -24,9 +24,9 @@ void EMStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names
       << "##FORMAT=<ID=" << "GB"          << ",Number=1,Type=String,Description=\""   << "Base pair differences of genotype from reference" << "\">" << "\n"
       << "##FORMAT=<ID=" << "Q"           << ",Number=1,Type=Float,Description=\""    << "Posterior probability of phased genotype"                      << "\">" << "\n"
       << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\""  << "Total observed reads for sample"                               << "\">" << "\n"
+      << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\""  << "Base pair difference observed in each read"                    << "\">" << "\n"
       << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\""  << "Total observed reads for sample with SNP phasing information"  << "\">" << "\n"
-      << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""   << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
-      << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\""  << "Base pair difference observed in each read"                    << "\">" << "\n";
+      << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""   << "Fractional reads supporting each haploid genotype"             << "\">" << "\n";
   if (output_gls)
     out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "log-10 genotype likelihoods" << "\">" << "\n";
   if (output_pls)
@@ -166,20 +166,33 @@ double EMStutterGenotyper::recalc_log_sample_posteriors(bool use_pop_freqs){
       memcpy(log_sample_posteriors_, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
   }
   else {
-    // Each genotype has an equal total prior, but heterozygotes have two possible phasings. Therefore,
-    // i)   Phased heterozygotes have a prior of 1/(n(n+1))
-    // ii)  Homozygotes have a prior of 2/(n(n+1))
-    // iii) Total prior is n*2/(n(n+1)) + n(n-1)*1/(n(n+1)) = 2/(n+1) + (n-1)/(n+1) = 1
+    if (!haploid_){
+      // Each genotype has an equal total prior, but heterozygotes have two possible phasings. Therefore,
+      // i)   Phased heterozygotes have a prior of 1/(n(n+1))
+      // ii)  Homozygotes have a prior of 2/(n(n+1))
+      // iii) Total prior is n*2/(n(n+1)) + n(n-1)*1/(n(n+1)) = 2/(n+1) + (n-1)/(n+1) = 1
 
-    // Set all elements to het prior
-    double log_hetz_prior = -log(num_alleles_) - log(num_alleles_+1);
-    std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), log_hetz_prior);
+      // Set all elements to het prior
+      double log_hetz_prior = -log(num_alleles_) - log(num_alleles_+1);
+      std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), log_hetz_prior);
 
-    // Fix homozygotes
-    double log_homoz_prior = log(2) - log(num_alleles_) - log(num_alleles_+1);
-    for (unsigned int i = 0; i < num_alleles_; i++){
-      double* LL_ptr = log_sample_posteriors_ + i*num_alleles_*num_samples_ + i*num_samples_;
-      std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior); 
+      // Fix homozygotes
+      double log_homoz_prior = log(2) - log(num_alleles_) - log(num_alleles_+1);
+      for (unsigned int i = 0; i < num_alleles_; i++){
+	double* LL_ptr = log_sample_posteriors_ + i*num_alleles_*num_samples_ + i*num_samples_;
+	std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
+      }
+    }
+    else {
+      // Set all elements to impossible
+      std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), -DBL_MAX/2);
+
+      // Fix homozygotes using a uniform prior
+      double log_homoz_prior = -log(num_alleles_);
+      for (unsigned int i = 0; i < num_alleles_; i++){
+        double* LL_ptr = log_sample_posteriors_ + i*num_alleles_*num_samples_ + i*num_samples_;
+	std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
+      }
     }
   }
 
@@ -187,8 +200,14 @@ double EMStutterGenotyper::recalc_log_sample_posteriors(bool use_pop_freqs){
     int len_1 = bps_per_allele_[index_1];
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
       int len_2 = bps_per_allele_[index_2];
-      if (use_pop_freqs && log_allele_priors_ == NULL)
-	  std::fill(LL_ptr, LL_ptr+num_samples_, log_gt_priors_[index_1]+log_gt_priors_[index_2]); // Initialize LL's with log genotype priors  
+      if (use_pop_freqs && log_allele_priors_ == NULL) {
+	if (!haploid_)
+	  std::fill(LL_ptr, LL_ptr+num_samples_, log_gt_priors_[index_1]+log_gt_priors_[index_2]); // Initialize LL's with log genotype priors
+	else {
+	  // In haploid mode, homoz prior is just the current allele frequency while hetz genotypes are disallowed
+	  std::fill(LL_ptr, LL_ptr+num_samples_, (index_1 == index_2 ? log_gt_priors_[index_1] : -DBL_MAX/2));
+	}
+      }
 
       for (int read_index = 0; read_index < num_reads_; ++read_index){
 	LL_ptr[sample_label_[read_index]] += log_sum_exp(LOG_ONE_HALF + log_p1_[read_index]+stutter_model_->log_stutter_pmf(len_1, bps_per_allele_[allele_index_[read_index]]), 
@@ -430,7 +449,7 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
   }
 
   // Add FORMAT field
-  out << "\tGT:GB:Q:DP:DSNP:PDP:ALLREADS";
+  out << (!haploid_ ? "\tGT:GB:Q:DP:DSNP:PDP:ALLREADS" : "\tGT:GB:Q:DP:ALLREADS");
   if (output_gls) out << ":GL";
   if (output_pls) out << ":PL";
 
@@ -442,21 +461,36 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
       continue;
     }
 
+    // TO DO: Report unphased posteriors instead of phased posteriors as quality score
+    // See seq_stutter_genotyper for template
+
     int sample_index    = sample_iter->second;
     int total_reads     = reads_per_sample_[sample_index];
-    double phase1_reads = exp(log_sum_exp(log_read_phases[sample_index]));
+    double phase1_reads = (total_reads == 0 ? 0 : exp(log_sum_exp(log_read_phases[sample_index])));
     double phase2_reads = total_reads - phase1_reads;
     std::sort(bps_per_sample[sample_index].begin(), bps_per_sample[sample_index].end());
 
-    out << gts[sample_index].first << "|" << gts[sample_index].second     // Genotype
-	<< ":" << bps_per_allele_[gts[sample_index].first] << "|" << bps_per_allele_[gts[sample_index].second] // Bp diffs from reference
-	<< ":" << exp(log_phased_posteriors[sample_index])                // Posterior
-	<< ":" << total_reads                                             // Total reads
-	<< ":" << num_reads_with_snps[sample_index]                       // Total reads with SNP information
-	<< ":" << phase1_reads << "|" << phase2_reads                     // Reads per allele
-	<< ":" << bps_per_sample[sample_index][0];
-    for (unsigned int j = 1; j < bps_per_sample[sample_index].size(); j++)
-      out << "," << bps_per_sample[sample_index][j];
+    if (!haploid_){
+      out << gts[sample_index].first << "|" << gts[sample_index].second     // Genotype
+	  << ":" << bps_per_allele_[gts[sample_index].first]
+	  << "|" << bps_per_allele_[gts[sample_index].second]               // Bp diffs from reference
+	  << ":" << exp(log_phased_posteriors[sample_index])                // Posterior
+	  << ":" << total_reads                                             // Total reads
+	  << ":" << num_reads_with_snps[sample_index]                       // Total reads with SNP information
+	  << ":" << phase1_reads << "|" << phase2_reads;                    // Reads per allele
+    }
+    else {
+      out << gts[sample_index].first                         // Genotype
+          << ":" << bps_per_allele_[gts[sample_index].first] // Bp diff from reference
+          << ":" << exp(log_phased_posteriors[sample_index]) // Posterior
+          << ":" << total_reads;                             // Total reads
+    }
+
+    if (bps_per_sample[sample_index].size() > 0){
+      out << ":" << bps_per_sample[sample_index][0];
+      for (unsigned int j = 1; j < bps_per_sample[sample_index].size(); j++)
+	out << "," << bps_per_sample[sample_index][j];
+    }
 
     if (output_gls){
       out << gls[sample_index][0];
@@ -472,4 +506,3 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
 
   out << "\n";
 }
-

@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -56,8 +57,11 @@ private:
   bool output_gls_; // Output the GL FORMAT field to the VCF
   bool output_pls_; // Output the PL FORMAT field to the VCF
 
+  std::set<std::string> haploid_chroms_;
+
 public:
- GenotyperBamProcessor(bool use_lobstr_rg, bool check_mate_chroms, bool use_seq_aligner):SNPBamProcessor(use_lobstr_rg, check_mate_chroms){
+ GenotyperBamProcessor(bool use_lobstr_rg, bool check_mate_chroms,
+		       bool use_seq_aligner):SNPBamProcessor(use_lobstr_rg, check_mate_chroms){
     output_stutter_models_ = false;
     output_alleles_        = false;
     output_str_gts_        = false;
@@ -65,6 +69,7 @@ public:
     read_stutter_models_   = false;
     have_ref_vcf_          = false;
     use_seq_aligner_       = use_seq_aligner;
+    haploid_chroms_        = std::set<std::string>();
     num_em_converge_       = 0;
     num_em_fail_           = 0;
     num_genotype_success_  = 0;
@@ -81,6 +86,10 @@ public:
     for (auto iter = stutter_models_.begin(); iter != stutter_models_.end(); iter++)
       delete iter->second;
     stutter_models_.clear();
+  }
+
+  void add_haploid_chrom(std::string chrom){
+    haploid_chroms_.insert(chrom);
   }
 
   void use_seq_aligner(){

@@ -119,8 +119,11 @@ class SeqStutterGenotyper{
   // because the quality is so low
   double MIN_SUM_QUAL_LOG_PROB;
 
+  // True iff the underlying marker is haploid
+  bool haploid_;
+
  public:
-  SeqStutterGenotyper(Region& region,
+  SeqStutterGenotyper(Region& region, bool haploid,
 		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 		      std::vector< std::vector<double> >& log_p1, 
 		      std::vector< std::vector<double> >& log_p2, 
@@ -139,6 +142,7 @@ class SeqStutterGenotyper{
     pos_                   = -1;
     pool_identical_seqs_   = false;
     MIN_SUM_QUAL_LOG_PROB  = -10;
+    haploid_               = haploid;
 
     // True iff no allele priors are available (for imputation)
     require_one_read_ = (ref_vcf == NULL);

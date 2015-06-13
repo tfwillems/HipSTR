@@ -16,10 +16,10 @@
 #include "stringops.h"
 
 void parse_command_line_args(int argc, char** argv, 
-			     std::string& bamfile_string, std::string& bamindex_string, std::string& rg_string,
-			     std::string& fasta_dir, std::string& region_file,  std::string& snp_vcf_file, std::string& chrom, 
-			     std::string& bam_out_file, std::string& str_vcf_out_file,  std::string& allele_vcf_out_file, std::string& viz_out_file,
-			     std::string& stutter_in_file, std::string& stutter_out_file, int& use_hap_aligner, int& remove_all_filters,
+			     std::string& bamfile_string,  std::string& bamindex_string,  std::string& rg_string,           std::string& haploid_chr_string,
+			     std::string& fasta_dir,       std::string& region_file,      std::string& snp_vcf_file,        std::string& chrom,
+			     std::string& bam_out_file,    std::string& str_vcf_out_file, std::string& allele_vcf_out_file, std::string& viz_out_file,
+			     std::string& stutter_in_file, std::string& stutter_out_file, int& use_hap_aligner,             int& remove_all_filters,
 			     std::string& ref_vcf_file,
 			     BamProcessor& bam_processor){
   int def_mdist = bam_processor.MAX_MATE_DIST;
@@ -50,6 +50,8 @@ void parse_command_line_args(int argc, char** argv,
 	      
 	      << "Other optional parameters:" << "\n"
       	      << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
+	      << "\t" << "--haploid-chrs  <list_of_chroms>      "  << "\t" << "Comma separated list of chromosomes to treat as haploid"                             << "\n"
+	      << "\t" << "                                      "  << "\t" << " By default, all chromosomes are treated as diploid"                                 << "\n"
 	      << "\t" << "--no-filters                          "  << "\t" << "Don't filter any putative STR reads"                                                 << "\n" 
 	      << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
       	      << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
@@ -59,7 +61,6 @@ void parse_command_line_args(int argc, char** argv,
       	      << "\t" << "--seq-genotyper                       "  << "\t" << "Use a haplotype-based aligment model to genotype each STR. This option is much "     << "\n"
 	      << "\t" << "                                      "  << "\t" << "  more accurate than the default length-based model but also requires substantially" << "\n"
 	      << "\t" << "                                      "  << "\t" << "  more computation time"                                                             << "\n"
-
 	      << "\n";
     exit(0);
   }
@@ -80,6 +81,7 @@ void parse_command_line_args(int argc, char** argv,
     {"seq-genotyper",   no_argument, &use_hap_aligner, 1},
     {"stutter-in",      required_argument, 0, 'm'},
     {"stutter-out",     required_argument, 0, 's'},
+    {"haploid-chrs",    required_argument, 0, 't'},
     {"bam-out",         required_argument, 0, 'w'},
     {"viz-out",         required_argument, 0, 'z'},
     {"rem-multimaps",   no_argument, &(bam_processor.REMOVE_MULTIMAPPERS), 1},
@@ -132,6 +134,9 @@ void parse_command_line_args(int argc, char** argv,
     case 's':
       stutter_out_file = std::string(optarg);
       break;
+    case 't':
+      haploid_chr_string = std::string(optarg);
+      break;
     case 'v':
       snp_vcf_file = std::string(optarg);
       break;
@@ -156,10 +161,10 @@ int main(int argc, char** argv){
   GenotyperBamProcessor bam_processor(false, check_mate_chroms, false);
   
   int use_hap_aligner = 0, remove_all_filters = 0;
-  std::string bamfile_string= "", bamindex_string="", rg_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
+  std::string bamfile_string= "", bamindex_string="", rg_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", stutter_in_file="", stutter_out_file="", viz_out_file="";
   std::string ref_vcf_file="";
-  parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, fasta_dir, region_file, snp_vcf_file, chrom, 
+  parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
 			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, viz_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, remove_all_filters, 
 			  ref_vcf_file, bam_processor);
   if (use_hap_aligner)
@@ -265,8 +270,15 @@ int main(int argc, char** argv){
   if (remove_all_filters)
     bam_processor.remove_all_filters();
 
+  if (!hap_chr_string.empty()){
+    std::vector<std::string> haploid_chroms;
+    split_by_delim(hap_chr_string, ',', haploid_chroms);
+    for (auto chrom_iter = haploid_chroms.begin(); chrom_iter != haploid_chroms.end(); chrom_iter++)
+      bam_processor.add_haploid_chrom(*chrom_iter);
+  }
+
   // Run analysis
-  bam_processor.process_regions(reader, region_file, fasta_dir, file_read_groups, bam_writer, std::cout, 1000000);
+  bam_processor.process_regions(reader, region_file, fasta_dir, file_read_groups, bam_writer, std::cout, 1000000, chrom);
 
   bam_processor.finish();
 

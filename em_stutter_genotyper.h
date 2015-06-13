@@ -47,6 +47,9 @@ class EMStutterGenotyper {
   // Iterates through allele_1, allele 2 and then samples by their indices
   // Only used if per-allele priors have been specified for each sample
   double* log_allele_priors_;
+
+  // True iff the underlying marker is haploid
+  bool haploid_;
   
   // Initialization functions for the EM algorithm
   void init_log_gt_priors();
@@ -63,7 +66,7 @@ class EMStutterGenotyper {
   std::string get_allele(std::string& ref_allele, int bp_diff);
 
  public:
-  EMStutterGenotyper(const std::string& chrom, uint32_t start, uint32_t end,
+  EMStutterGenotyper(const std::string& chrom, uint32_t start, uint32_t end, bool haploid,
 		     std::vector< std::vector<int> >& num_bps, 
 		     std::vector< std::vector<double> >& log_p1, 
 		     std::vector< std::vector<double> >& log_p2, 
@@ -72,6 +75,7 @@ class EMStutterGenotyper {
     chrom_        = chrom;
     start_        = start;
     end_          = end;
+    haploid_      = haploid;
     num_samples_  = num_bps.size();
     motif_len_    = motif_len;
     sample_names_ = sample_names;

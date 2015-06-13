@@ -45,7 +45,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     }
   }
 
-
+  bool haploid = (haploid_chroms_.find(region.chrom()) != haploid_chroms_.end());
   bool trained = false;
   StutterModel* stutter_model          = NULL;
   EMStutterGenotyper* length_genotyper = NULL;
@@ -61,7 +61,8 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   else {
     // Learn stutter model using length-based EM algorithm
     std::cerr << "Building EM stutter genotyper" << std::endl;
-    length_genotyper = new EMStutterGenotyper(region.chrom(), region.start(), region.stop(), str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
+    length_genotyper = new EMStutterGenotyper(region.chrom(), region.start(), region.stop(), haploid, str_bp_lengths,
+					      str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
     std::cerr << "Training EM stutter genotyper" << std::endl;
     trained = length_genotyper->train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false);
     if (trained){
@@ -85,7 +86,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
       if (have_ref_vcf_)
 	reference_panel_vcf = &ref_vcf_;
 
-      SeqStutterGenotyper seq_genotyper(region, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, reference_panel_vcf);
+      SeqStutterGenotyper seq_genotyper(region, haploid, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, reference_panel_vcf);
       if (output_alleles_){
 	std::vector<std::string> no_samples;
 	seq_genotyper.write_vcf_record(no_samples, false, chrom_seq, false, false, false, viz_out_, allele_vcf_);
@@ -104,7 +105,8 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     else {
       // Use length-based genotyper
       if (length_genotyper == NULL){
-	length_genotyper = new EMStutterGenotyper(region.chrom(), region.start(), region.stop(), str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
+	length_genotyper = new EMStutterGenotyper(region.chrom(), region.start(), region.stop(), haploid,
+						  str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
 	length_genotyper->set_stutter_model(*stutter_model);
       }
       
