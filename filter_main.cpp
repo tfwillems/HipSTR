@@ -18,16 +18,17 @@
 
 
 void parse_command_line_args(int argc, char** argv,    std::string& input_file, std::string& output_file, 
-			     std::string& region_file, std::string& insert_stats_file, int& max_diff, int& paired_mode){
+			     std::string& region_file, std::string& insert_stats_file, int& max_diff, int& paired_mode, int& region_pad){
    if (argc == 1){
-    std::cerr << "Usage: BamSieve --in <in.bam> --out <out.bam> --regions <region_file.bed> [--insert-stats <stat_file.txt>]]"                           << "\n"
-	      << "\t" << "--in            <in.bam>         " << "\t"  << "Input BAM file to filter"                                                      << "\n"
-	      << "\t" << "--out           <out.bam>        " << "\t"  << "Output BAM file containing filtered reads and their mate pairs"                << "\n"
-	      << "\t" << "--regions       <region_file.bed>" << "\t"  << "BED file containing coordinates for regions to filter "                        << "\n"
-	      << "\t" << "--insert-stats  <stat_file.txt>  " << "\t"  << "Compute insert size stats from all reads and write them to the provided file"  << "\n"
-	      << "\t" << "--max-diff      <max_size>       " << "\t"  << "Only compute insert size stats for pairs with distance < MAX_SIZE. Default = " << max_diff << "\n"
-	      << "\t" << "--paired                         " << "\t"  << "Paired end reads are adjacent in the BAM file. By default, it is assumed that" << "\n"
-	      << "\t" << "                                 " << "\t"  << "this is not the case and that the BAM is sorted by position"                   << "\n"
+    std::cerr << "Usage: BamSieve --in <in.bam> --out <out.bam> --regions <region_file.bed> [--insert-stats <stat_file.txt>]]"                            << "\n"
+	      << "\t" << "--in            <in.bam>         " << "\t"  << "Input BAM file to filter"                                                       << "\n"
+	      << "\t" << "--out           <out.bam>        " << "\t"  << "Output BAM file containing filtered reads and their mate pairs"                 << "\n"
+	      << "\t" << "--regions       <region_file.bed>" << "\t"  << "BED file containing coordinates for regions to filter "                         << "\n"
+	      << "\t" << "--insert-stats  <stat_file.txt>  " << "\t"  << "Compute insert size stats from all reads and write them to the provided file"   << "\n"
+	      << "\t" << "--max-diff      <max_size>       " << "\t"  << "Only compute insert size stats for pairs with distance < MAX_SIZE. Default = "  << max_diff << "\n"
+	      << "\t" << "--paired                         " << "\t"  << "Paired end reads are adjacent in the BAM file. By default, it is assumed that"  << "\n"
+	      << "\t" << "                                 " << "\t"  << "this is not the case and that the BAM is sorted by position"                    << "\n"
+	      << "\t" << "--pad           <bp_pad>         " << "\t"  << "Extend each region by BP_PAD base pairs. By default, each region is unmodified" << "\n"
 	      << "\n";
     exit(0);
   }
@@ -36,6 +37,7 @@ void parse_command_line_args(int argc, char** argv,    std::string& input_file, 
     {"max-diff",     required_argument, 0, 'd'},
     {"in",           required_argument, 0, 'i'},
     {"out",          required_argument, 0, 'o'},
+    {"pad",          required_argument, 0, 'p'},
     {"regions",      required_argument, 0, 'r'},
     {"insert-stats", required_argument, 0, 's'},
     {"paired",       no_argument,  &paired_mode, 1},
@@ -61,6 +63,9 @@ void parse_command_line_args(int argc, char** argv,    std::string& input_file, 
     case 'o':
       output_file = std::string(optarg);
       break;
+    case 'p':
+      region_pad = atoi(optarg);
+      break;
     case 'r':
       region_file = std::string(optarg);
       break;
@@ -79,8 +84,8 @@ void parse_command_line_args(int argc, char** argv,    std::string& input_file, 
 
 int main(int argc, char** argv){
   std::string input_file="", output_file="", region_file="", insert_stats_file="";
-  int max_insert_size = 2000, paired_mode = 0;
-  parse_command_line_args(argc, argv, input_file, output_file, region_file, insert_stats_file, max_insert_size, paired_mode);
+  int max_insert_size = 2000, paired_mode = 0, region_pad = 0;
+  parse_command_line_args(argc, argv, input_file, output_file, region_file, insert_stats_file, max_insert_size, paired_mode, region_pad);
  
   if (input_file.empty())
     printErrorAndDie("--in option required");
@@ -91,8 +96,12 @@ int main(int argc, char** argv){
 
   std::cerr << "--in      " << input_file  << "\n"
 	    << "--out     " << output_file << "\n"
-	    << "--regions " << region_file << "\n" 
-	    << std::endl;
+	    << "--regions " << region_file << "\n";
+  if (region_pad != 0)
+    std::cerr << "--pad     " << region_pad << "\n";
+  std::cerr << std::endl;
+  
+
 
   // Open the BAM file
   BamTools::BamReader reader;
@@ -100,9 +109,19 @@ int main(int argc, char** argv){
 
   // Read and arrange regions
   std::vector<Region> regions;
+  readRegions(region_file, regions, -1, "");
+
+  // Extend regions by padding
+  if (region_pad != 0){
+    for (unsigned int i = 0; i < regions.size(); i++){
+      regions[i].set_start(regions[i].start() - region_pad);
+      regions[i].set_stop(regions[i].stop()   + region_pad);
+    }
+  }
+
+  // Sort and arrange regions
   std::vector< std::vector<Region> > ordered_regions;
   std::map<std::string, int> chrom_order;
-  readRegions(region_file, regions, -1, "");
   orderRegions(regions, ordered_regions, chrom_order);
 
   // Filter BAM
