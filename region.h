@@ -15,8 +15,6 @@ class Region{
 private:
   std::string chrom_, name_;
   int32_t start_, stop_;
-  std::set<std::string> sample_set_;
-  std::map<std::string, std::string> sample_annots_;
   int period_;
 public:
   Region(std::string chrom, int32_t start, int32_t stop, int period){
@@ -35,6 +33,9 @@ public:
   int32_t  stop()            const { return stop_;   }
   int     period()           const { return period_; }
   Region*   copy()           const { return new Region(chrom_, start_, stop_, period_, name_); }
+
+  void set_start(int32_t start){ start_ = start; }
+  void set_stop(int32_t stop)  { stop_  = stop;  }
 
   std::string str(){
     std::stringstream ss;
