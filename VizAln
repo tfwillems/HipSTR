@@ -41,12 +41,11 @@ msg
     start=$3
     stop=`expr $start + 100`
     f="/tmp/vizaln.$RANDOM.html"
-    echo $f
     if [ "$#" -eq 3 ]
 	then
-	tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | cut -f 1-4 --complement > $f
+	tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | cut -f 1-4 --complement | ./filter_html_alns.py > $f
     else
-	tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | cut -f 1-4 --complement > $f
+	tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | cut -f 1-4 --complement | ./filter_html_alns.py > $f
     fi
 
     open $f
