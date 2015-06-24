@@ -13,7 +13,7 @@ do
 		    do
 			for stutter_down in 0.01 0.15
 			do
-			    for read_counts in 1,2,3 #3,4,5 10,11,12
+			    for read_counts in 1,2,3 2,3,4 3,4,5 10,11,12
 			    do
 				for iter in $(seq 1 25)
 				do

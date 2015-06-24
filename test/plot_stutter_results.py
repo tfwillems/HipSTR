@@ -116,7 +116,8 @@ def main():
     print("Excluding %d results to due to convergence failure messages"%(exc_count))
 
     pp = PdfPages(output_file)
-    for key,dataset in sorted(datasets.items()):
+
+    for key,dataset in sorted(datasets.items(), key=lambda x: (int(x[0][0].split(",")[0]), x[0][1:])):
         print(key)
 
         title = "Read Counts = " + key[0]
@@ -124,7 +125,7 @@ def main():
             title += ", Haploid"
         else:
             title += ", Diploid"
-            title += ", %% Phased Reads = %f"%(100.0*float(key[2]))
+            title += ", %% Phased Reads = %.1f"%(100.0*float(key[2]))
 
 
         if (key[1] == "True") and key[2] != "0.01":
