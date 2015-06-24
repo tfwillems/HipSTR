@@ -54,7 +54,7 @@ To run HipSTR in its most common mode, run it on **all samples concurrently** us
 * --regions: a [BED](https://genome.ucsc.edu/FAQ/FAQformat.html#format1) file containing the coordinates for each STR region of interest
 * --fasta: the directory containing [FASTA files] (https://en.wikipedia.org/wiki/FASTA_format) for each chromosome in the BED file. In the above usage example, if *str_regions.bed* contains chr1, chr2, and chr10, the corresponding files would be */data/chr1.fa*, */data/chr2.fa* and */data/chr10.fa*
 
-For each region in */data/str_regions.bed*, **HipSTR** will:
+For each region in *str_regions.bed*, **HipSTR** will:
 
 1. Learn locus-specific stutter models and output them to *stutter_models.txt*
 2. Use the stutter model and haplotype-based alignment algorithm to genotype each individual
@@ -69,7 +69,7 @@ In this mode, **HipSTR** will identify candidate STR alleles strongly supported 
 ./HipSTR --bams    sample1.bam,sample2.bam,sample3.bam 
          --indexes sample1.bam.bai,sample2.bam.bai,sample3.bam.bai
          --fasta   /data/hg19_by_chrom/
-         --regions /data/str_regions.bed
+         --regions str_regions.bed
          --seq-genotyper
          --str-vcf str_calls.vcf.gz
 ```
@@ -80,7 +80,7 @@ If you're restricted to analyzing only a handful of low-coverage samples, it
 ./HipSTR --bams    sample1.bam,sample2.bam,sample3.bam 
          --indexes sample1.bam.bai,sample2.bam.bai,sample3.bam.bai
          --fasta   /data/hg19_by_chrom/
-         --regions /data/str_regions.bed
+         --regions str_regions.bed
          --seq-genotyper
          --str-vcf str_calls.vcf.gz
          --ref-vcf ref_strs.vcf.gz
