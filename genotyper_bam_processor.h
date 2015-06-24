@@ -96,6 +96,10 @@ public:
     use_seq_aligner_ = true;
   }
 
+  void use_len_model(){
+    use_seq_aligner_ = false;
+  }
+
   void set_output_viz(std::string& viz_file){
     output_viz_ = true;
     viz_out_.open(viz_file.c_str());

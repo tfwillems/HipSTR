@@ -39,7 +39,6 @@ To run HipSTR in its most broadly applicable mode, run it on **all samples concu
          --rgs           SAMPLE1,SAMPLE2,SAMPLE3,SAMPLE4
          --fasta         /data/
          --regions       str_regions.bed
-         --seq-genotyper
          --stutter-out   stutter_models.txt
          --str-vcf       str_calls.vcf.gz
 ```
@@ -84,7 +83,6 @@ This mode is identical to the one suggested in the **Quick Start** section as it
          --rgs              SAMPLE1,SAMPLE2,SAMPLE3,SAMPLE4
          --fasta            /data/
          --regions          str_regions.bed
-         --seq-genotyper
          --stutter-out      stutter_models.txt
          --str-vcf          str_calls.vcf.gz
 ```
@@ -98,7 +96,6 @@ The sole difference in this mode is that we no longer output stutter models usin
          --fasta            /data/
          --regions          str_regions.bed
          --stutter-in       ext_stutter_models.txt
-         --seq-genotyper
          --str-vcf          str_calls.vcf.gz
 ```
 
@@ -112,7 +109,6 @@ This analysis model is extremely similar to mode #2, except that we provide an a
          --regions          str_regions.bed
          --stutter-in       ext_stutter_models.txt
          --ref-vcf          ref_strs.vcf.gz
-         --seq-genotyper
          --str-vcf          str_calls.vcf.gz
 ```
 

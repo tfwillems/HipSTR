@@ -34,19 +34,20 @@ void parse_command_line_args(int argc, char** argv,
 	    
 	      << "Optional input parameters:" << "\n"
 	      << "\t" << "--ref-vcf    <str_snp_ref_gts.vcf.gz> "  << "\t" << "Bgzipped input VCF file containing STR and SNP genotypes for a reference panel"      << "\n" 
+	      << "\t" << "                                      "  << "\t" << " This option is not available when the --len-genotyper option has been specified"    << "\n"
 	      << "\t" << "--snp-vcf    <phased_snp_gts.vcf.gz>  "  << "\t" << "Bgzipped input VCF file containing phased SNP genotypes for the samples"             << "\n" 
 	      << "\t" << "                                      "  << "\t" << " that are going to be genotyped"                                                     << "\n"
 	      << "\t" << "--stutter-in <stutter_models.txt>     "  << "\t" << "Input file containing stutter models for each locus. By default, an EM algorithm "   << "\n"
       	      << "\t" << "                                      "  << "\t" << "  will be used to learn locus-specific models"                                       << "\n" << "\n"
 
       	      << "Optional output parameters:" << "\n"
-	      << "\t" << "--bam-out       <spanning_reads.bam   "  << "\t" << "Output a BAM file containing the reads spanning each region to the provided file"    << "\n"
+	      << "\t" << "--bam-out       <used_reads.bam>      "  << "\t" << "Output a BAM file containing the reads used to genotype each region"                 << "\n"
 	      << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Output a bgzipped VCF file containing phased STR genotypes"                          << "\n"
 	      << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a bgzipped VCF file containing alleles with strong evidence in the BAMs"      << "\n"
 	      << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n"
 	      << "\t" << "--viz-out       <aln_viz.html.gz>     "  << "\t" << "Output a bgzipped file containing Needleman-Wunsch alignments for each locus"        << "\n"
 	      << "\t" << "                                      "  << "\t" << " The resulting file can be readily visualized with VizAln"                           << "\n"
-	      << "\t" << "                                      "  << "\t" << " Option only available when the --seq-genotyper flag has been specified"             << "\n"
+	      << "\t" << "                                      "  << "\t" << " Option only available when the --len-genotyper flag has not been specified"         << "\n"
 	      
 	      << "Other optional parameters:" << "\n"
       	      << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
@@ -58,9 +59,11 @@ void parse_command_line_args(int argc, char** argv,
 	      << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as .bam files. "                   << "\n"
 	      << "\t" << "                                      "  << "\t" << "  Assign each read the RG tag corresponding to its file. By default, "               << "\n"
 	      << "\t" << "                                      "  << "\t" << "  each read must have an RG flag from lobSTR and this is used instead"               << "\n"
-      	      << "\t" << "--seq-genotyper                       "  << "\t" << "Use a haplotype-based aligment model to genotype each STR. This option is much "     << "\n"
-	      << "\t" << "                                      "  << "\t" << "  more accurate than the default length-based model but also requires substantially" << "\n"
-	      << "\t" << "                                      "  << "\t" << "  more computation time"                                                             << "\n"
+      	      << "\t" << "--len-genotyper                       "  << "\t" << "Use a length-based model to genotype each STR. This option is much"                  << "\n"
+	      << "\t" << "                                      "  << "\t" << "  faster than the default sequence-based model but does not model the underlying"    << "\n"
+	      << "\t" << "                                      "  << "\t" << "  STR sequence. As a result, it cannot detect homoplasy and all STR alleles output"  << "\n"
+	      << "\t" << "                                      "  << "\t" << "  in the VCF assume that indels are perfect copies of the repeat motif"              << "\n"
+	      << "\t" << "                                      "  << "\t" << "  The length-based approach is very similar to lobSTR's allelotype module"           << "\n"
 	      << "\n";
     exit(0);
   }
@@ -74,11 +77,11 @@ void parse_command_line_args(int argc, char** argv,
     {"rgs",             required_argument, 0, 'g'},
     {"ref-vcf",         required_argument, 0, 'h'},
     {"indexes",         required_argument, 0, 'i'},
+    {"len-genotyper",   no_argument, &use_hap_aligner,    0},
     {"no-filters",      no_argument, &remove_all_filters, 1},
     {"str-vcf",         required_argument, 0, 'o'},
     {"regions",         required_argument, 0, 'r'},
     {"snp-vcf",         required_argument, 0, 'v'},
-    {"seq-genotyper",   no_argument, &use_hap_aligner, 1},
     {"stutter-in",      required_argument, 0, 'm'},
     {"stutter-out",     required_argument, 0, 's'},
     {"haploid-chrs",    required_argument, 0, 't'},
@@ -158,18 +161,24 @@ void parse_command_line_args(int argc, char** argv,
 
 int main(int argc, char** argv){
   bool check_mate_chroms = false;
-  GenotyperBamProcessor bam_processor(false, check_mate_chroms, false);
+  GenotyperBamProcessor bam_processor(false, check_mate_chroms, true);
   
-  int use_hap_aligner = 0, remove_all_filters = 0;
+  int use_hap_aligner = 1, remove_all_filters = 0;
   std::string bamfile_string= "", bamindex_string="", rg_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", stutter_in_file="", stutter_out_file="", viz_out_file="";
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, bamindex_string, rg_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
 			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, viz_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, remove_all_filters, 
 			  ref_vcf_file, bam_processor);
-  if (use_hap_aligner)
-    bam_processor.use_seq_aligner();
-
+  if (!use_hap_aligner) {
+    bam_processor.use_len_model();
+    if (!ref_vcf_file.empty())
+      printErrorAndDie("--ref-vcf option is not compatible with the --len-genotyper option");
+    if (!viz_out_file.empty())
+      printErrorAndDie("--viz-out option is not compatible with the --len-genotyper option");
+  }
+    
+  
   if (bamfile_string.empty())
     printErrorAndDie("--bams option required");
   else if (bamindex_string.empty())
