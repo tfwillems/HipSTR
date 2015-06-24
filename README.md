@@ -39,13 +39,22 @@ to
 
 ## Usage
 ### De novo STR calling
-    % ./HipSTR --bams    sample1.bam,sample2.bam,sample3.bam 
-               --indexes sample1.bam.bai,sample2.bam.bai,sample3.bam.bai
-               --fasta   /data/hg19_by_chrom/
-               --regions /data/str_regions.bed
-               --str-vcf str_calls.vcf.gz
+```
+./HipSTR --bams    sample1.bam,sample2.bam,sample3.bam 
+         --indexes sample1.bam.bai,sample2.bam.bai,sample3.bam.bai
+         --fasta   /data/hg19_by_chrom/
+         --regions /data/str_regions.bed
+         --str-vcf str_calls.vcf.gz
+```
 
 ### STR calling using a reference panel of STRs
+```
+./HipSTR --bams    sample1.bam,sample2.bam,sample3.bam 
+         --indexes sample1.bam.bai,sample2.bam.bai,sample3.bam.bai
+         --fasta   /data/hg19_by_chrom/
+         --regions /data/str_regions.bed
+         --str-vcf str_calls.vcf.gz
+```
 
 
 ### STR imputation
