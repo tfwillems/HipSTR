@@ -37,7 +37,7 @@ To run HipSTR in its most common mode, run it on **all samples concurrently** us
 ./HipSTR --bams          sample1.bam,sample2.bam,sample3.bam 
          --indexes       sample1.bam.bai,sample2.bam.bai,sample3.bam.bai
          --rgs           SAMPLE1,SAMPLE2,SAMPLE3
-         --fasta         /data/hg19_by_chrom/
+         --fasta         /data/
          --regions       str_regions.bed
          --seq-genotyper
          --stutter-out   stutter_models.txt
@@ -56,29 +56,62 @@ For each region in *str_regions.bed*, **HipSTR** will:
 3. Output the resulting STR genotypes to *str_calls.vcf.gz*, a [bgzipped] (http://www.htslib.org/doc/tabix.html) [VCF] (http://samtools.github.io/hts-specs/VCFv4.2.pdf) file
 
 
-## In-depth usage 
-### 1. De novo STR calling
-In this mode, **HipSTR** will identify candidate STR alleles strongly supported by any of the samples. This approach works best if the analysis is restricted to high coverage samples or if the analysis involves population-scale (~1000 samples) low-coverage sequencing data.
+## In-depth usage
+**HipSTR** has a variety of usage options designed to accomodate scenarios in which the sequencing data varies in terms of the number of samples and the coverage. Most scenarios will fall into one of the following categories:
 
+1. 200 or more low-coverage (~5x) samples
+    * Sufficient reads for stutter estimation
+    * Sufficient reads to detect candidate STR alleles
+    * **Use de novo stutter estimation + STR calling with de novo allele generation**
+2. 50 or more high-coverage (~30x) samples
+    * Sufficient reads for stutter estimation
+    * Sufficient reads to detect candidate STR alleles
+    * **Use de novo stutter estimation + STR calling with de novo allele generation**
+3. Handful of low-coverage  (~5x) samples
+    * Insufficient reads for stutter estimation
+    * Insufficient reads to detect candidate STR alleles
+    * **Use external stutter models + STR calling with a reference panel**
+4. Handful of high-coverage (~30x) samples
+    * Insufficient samples for stutter estimation
+    * Sufficient reads to detect candidate STR alleles
+    * **Use external stutter models + STR calling using with de novo allele generation**
+    
+#### 1. De novo stutter estimation + STR calling with de novo allele generation
+This mode is identical to the one suggested in the **Quick Start** section as it suits most applications. HipSTR will output the learned stutter models to *stutter_models.txt* and the STR genotypes in bgzipped VCF format to *str_calls.vcf.gz* 
 ```
-./HipSTR --bams    sample1.bam,sample2.bam,sample3.bam 
-         --indexes sample1.bam.bai,sample2.bam.bai,sample3.bam.bai
-         --fasta   /data/hg19_by_chrom/
-         --regions str_regions.bed
+./HipSTR --bams             sample1.bam,sample2.bam,sample3.bam 
+         --indexes          sample1.bam.bai,sample2.bam.bai,sample3.bam.bai
+         --rgs              SAMPLE1,SAMPLE2,SAMPLE3
+         --fasta            /data/
+         --regions          str_regions.bed
          --seq-genotyper
-         --str-vcf str_calls.vcf.gz
+         --stutter-out      stutter_models.txt
+         --str-vcf          str_calls.vcf.gz
 ```
 
-### 2. STR calling using a reference panel of STRs
-If you're restricted to analyzing only a handful of low-coverage samples, it 
+#### 2. External stutter models + STR calling with de novo allele generation
+The sole difference in this mode is that we no longer output stutter models using the **--stutter-out** option and instead input them from a file using the **--stutter-in** file. For more details on the stutter model file format, see below. For humans, we've provided a file containing stutter models for each STR locus under PCR or PCR-free conditions at ...
 ```
-./HipSTR --bams    sample1.bam,sample2.bam,sample3.bam 
-         --indexes sample1.bam.bai,sample2.bam.bai,sample3.bam.bai
-         --fasta   /data/hg19_by_chrom/
-         --regions str_regions.bed
+./HipSTR --bams             sample1.bam,sample2.bam,sample3.bam 
+         --indexes          sample1.bam.bai,sample2.bam.bai,sample3.bam.bai
+         --fasta            /data/
+         --regions          str_regions.bed
+         --stutter-in       ext_stutter_models.txt
          --seq-genotyper
-         --str-vcf str_calls.vcf.gz
-         --ref-vcf ref_strs.vcf.gz
+         --str-vcf          str_calls.vcf.gz
+```
+
+#### 3. External stutter models + STR calling with a reference panel
+This analysis model is extremely similar to mode #2, except that we provide an additional VCF file containing known STR genotypes at each locus using the **--str-vcf** option. **HipSTR** will not identify any additional candidate STR alleles in the BAMs when this option is specified, so it's best to use a VCF that contains STR genotypes for a wide range of populations and individuals. For humans, we've provided such a file based on the [1000 Genomes Project](http://www.1000genomes.org/) at ... 
+```
+./HipSTR --bams             sample1.bam,sample2.bam,sample3.bam 
+         --indexes          sample1.bam.bai,sample2.bam.bai,sample3.bam.bai
+         --fasta            /data/
+         --regions          str_regions.bed
+         --stutter-in       ext_stutter_models.txt
+         --seq-genotyper
+         --str-vcf          str_calls.vcf.gz
+         --ref-vcf          ref_strs.vcf.gz
 ```
 
 
