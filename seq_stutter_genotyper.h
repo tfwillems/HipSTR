@@ -178,9 +178,9 @@ class SeqStutterGenotyper{
 
   /*
    *  When aligning to each haplotype, align each unique sequence instead of each read.
-   *  As quality scores, the genotype utilizes the average of the base quality scores (raw probabilities) for
+   *  As quality scores, the genotyper utilizes the average of the base quality scores (raw probabilities) for
    *  reads with identical sequences. Should result in significant speedup if many reads have the same sequence.
-   *  By default, each read is aligned using its own quality scores.
+   *  By default, each read is aligned individually using its own quality scores.
    */
   void pool_identical_sequences(){
     pool_identical_seqs_ = true;
