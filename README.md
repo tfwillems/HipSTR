@@ -22,7 +22,7 @@ Despite their utility, STRs are particularly difficult to genotype . The repetit
 HipSTR requires a standard c++ compiler as well as Java version 1.7 or later.
 To obtain HipSTR and all of its associated  submodules, use:
 
-    % git clone --recursive https://github.com/ekg/vcflib.git
+    % git clone --recursive https://github.com/tfwillems/HipSTR.git
 
 To build, use Make:
 
