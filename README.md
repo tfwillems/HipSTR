@@ -109,9 +109,9 @@ This analysis model is extremely similar to mode #2, except that we provide an a
          --fasta            /data/
          --regions          str_regions.bed
          --stutter-in       ext_stutter_models.txt
+         --ref-vcf          ref_strs.vcf.gz
          --seq-genotyper
          --str-vcf          str_calls.vcf.gz
-         --ref-vcf          ref_strs.vcf.gz
 ```
 
 
