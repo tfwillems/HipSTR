@@ -19,7 +19,7 @@ Despite their utility, STRs are particularly difficult to genotype . The repetit
 
 
 ## Installation
-HipSTR requires a standard c++ compiler as well as Java version 1.7 or later.
+HipSTR requires a standard c++ compiler, [CMake](http://www.cmake.org/download/) as well as Java version 1.7 or later.
 To obtain HipSTR and all of its associated  submodules, use:
 
     % git clone --recursive https://github.com/tfwillems/HipSTR.git
@@ -29,12 +29,7 @@ To build, use Make:
     % cd HipSTR
     % make
 
-On Mac, before running Make, change the line in *vcflib/smithwaterman/Makefile* from
-
-    % LDFLAGS=-Wl,-s
-to
-
-    % LDFLAGS=-Wl
+On Mac, before running Make, change the line in *vcflib/smithwaterman/Makefile* from `LDFLAGS=-Wl,-s` to `LDFLAGS=-Wl`
 
 ## Quick Start
 To run HipSTR in its most common mode, run it on **all samples concurrently** using the syntax:
