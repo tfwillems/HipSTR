@@ -104,6 +104,7 @@ This analysis model is extremely similar to mode #2, except that we provide an a
 
 ### STR imputation
 
+## Performance Tuning
 
 ## Additional Usage Options
 
