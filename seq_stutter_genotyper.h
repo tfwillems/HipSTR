@@ -15,6 +15,7 @@
 #include "base_quality.h"
 #include "region.h"
 #include "stutter_model.h"
+#include "vcf_input.h"
 
 #include "SeqAlignment/AlignmentData.h"
 #include "SeqAlignment/Haplotype.h"
@@ -145,7 +146,10 @@ class SeqStutterGenotyper{
     haploid_               = haploid;
 
     // True iff no allele priors are available (for imputation)
-    require_one_read_ = (ref_vcf == NULL);
+    if (ref_vcf == NULL)
+      require_one_read_ = true;
+    else
+      require_one_read_ = (ref_vcf->formatTypes.find(PGP_KEY) == ref_vcf->formatTypes.end());
     
     region_       = region.copy();
     num_samples_  = alignments.size();
