@@ -21,7 +21,7 @@ private:
   int32_t match_count_, mismatch_count_;
 
 public:
-  SNPBamProcessor(bool use_lobstr_rg, bool check_mate_chroms):BamProcessor(use_lobstr_rg, check_mate_chroms){
+  SNPBamProcessor(bool use_bam_rgs, bool check_mate_chroms):BamProcessor(use_bam_rgs, check_mate_chroms){
     have_snp_vcf     = false;
     match_count_     = 0;
     mismatch_count_  = 0;

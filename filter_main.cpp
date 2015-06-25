@@ -101,8 +101,6 @@ int main(int argc, char** argv){
     std::cerr << "--pad     " << region_pad << "\n";
   std::cerr << std::endl;
   
-
-
   // Open the BAM file
   BamTools::BamReader reader;
   if (!reader.Open(input_file)) printErrorAndDie("Failed to open BAM file");

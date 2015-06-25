@@ -22,6 +22,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 
   // Extract bp differences and phasing probabilities for each read if we 
   // need to utilize the length-based EM genotyper for stutter model training or genotyping
+  int skip_count = 0;
   if (!read_stutter_models_ || !use_seq_aligner_){
     for (unsigned int i = 0; i < alignments.size(); ++i){
       for (unsigned int j = 0; j < alignments[i].size(); ++j){
@@ -41,8 +42,15 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	    str_log_p1s[i].push_back(log_p1s[i][j]); str_log_p2s[i].push_back(log_p2s[i][j]);
 	  }
 	}
+	else
+	  skip_count++;
       }
     }
+  }
+
+  if (total_reads-skip_count < MIN_TOTAL_READS){
+    std::cerr << "Skipping locus with too few reads: TOTAL=" << total_reads-skip_count << ", MIN=" << MIN_TOTAL_READS << std::endl;
+    return;
   }
 
   bool haploid = (haploid_chroms_.find(region.chrom()) != haploid_chroms_.end());

@@ -60,8 +60,8 @@ private:
   std::set<std::string> haploid_chroms_;
 
 public:
- GenotyperBamProcessor(bool use_lobstr_rg, bool check_mate_chroms,
-		       bool use_seq_aligner):SNPBamProcessor(use_lobstr_rg, check_mate_chroms){
+ GenotyperBamProcessor(bool use_bam_rgs, bool check_mate_chroms,
+		       bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, check_mate_chroms){
     output_stutter_models_ = false;
     output_alleles_        = false;
     output_str_gts_        = false;
@@ -133,11 +133,6 @@ public:
   void set_output_allele_vcf(std::string& vcf_file){
     output_alleles_ = true;
     allele_vcf_.open(vcf_file.c_str());
-    /*
-    allele_vcf_.open(vcf_file, std::ofstream::out);
-    if (!allele_vcf_.is_open())
-      printErrorAndDie("Failed to open VCF file for STR alleles");
-    */
     std::vector<std::string> no_samples;
     if (use_seq_aligner_)
       SeqStutterGenotyper::write_vcf_header(no_samples, output_gls_, output_pls_, allele_vcf_);
@@ -148,10 +143,6 @@ public:
   void set_output_str_vcf(std::string& vcf_file, std::set<std::string>& samples_to_output){
     output_str_gts_ = true;
     str_vcf_.open(vcf_file.c_str());
-    /*
-    if (!str_vcf_.rdbuf()->is_open())
-      printErrorAndDie("Failed to open VCF file for STR genotypes");
-    */
 
     // Print floats with exactly 3 decimal places
     str_vcf_.precision(3);

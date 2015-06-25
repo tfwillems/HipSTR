@@ -2,6 +2,7 @@
 #define BAM_PROCESSOR_H_
 
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -14,25 +15,25 @@
 
 class BamProcessor {
  private:
-  bool use_lobstr_rg_;
+  bool use_bam_rgs_;
   bool check_mate_info_;
 
  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq,
-			    std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& file_read_groups,
+			    std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& read_group_mapping,
 			    std::vector<std::string>& rg_names,
 			    std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,                                                             
 			    std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,                                                              
 			    std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,                                                           
 			    BamTools::BamWriter& bam_writer);
 
- std::string parse_lobstr_rg(BamTools::BamAlignment& aln);
+ std::string get_read_group(BamTools::BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping);
 
  std::string trim_alignment_name(BamTools::BamAlignment& aln);
 
   public:
- BamProcessor(bool use_lobstr_rg, bool filter_by_mate){
-   use_lobstr_rg_    = use_lobstr_rg;
-   check_mate_info_  = filter_by_mate;
+ BamProcessor(bool use_bam_rgs, bool filter_by_mate){
+   use_bam_rgs_             = use_bam_rgs;
+   check_mate_info_         = filter_by_mate;
    MAX_MATE_DIST            = 1000;
    MIN_BP_BEFORE_INDEL      = 7;
    MIN_FLANK                = 5;
@@ -51,6 +52,10 @@ class BamProcessor {
    REQUIRE_SPANNING         = false;
  }
 
+ void use_custom_read_groups(){
+   use_bam_rgs_ = false;
+ }
+
  void process_regions(BamTools::BamMultiReader& reader,
 		      std::string& region_file, std::string& fasta_dir,
 		      std::map<std::string, std::string>& file_read_groups,
@@ -62,11 +67,6 @@ class BamProcessor {
 			    std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq,
 			    std::ostream& out){
    std::cerr << "Doing nothing with reads" << std::endl;
- }
-
-
- void set_lobstr_rg_usage(bool use_lobstr_rg){
-   use_lobstr_rg_ = use_lobstr_rg;
  }
 
  int32_t MAX_MATE_DIST;
