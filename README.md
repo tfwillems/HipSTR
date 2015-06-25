@@ -48,8 +48,7 @@ For each region in *str_regions.bed*, **HipSTR** will:
 
 1. Learn locus-specific stutter models and output them to *stutter_models.txt*
 2. Use the stutter model and haplotype-based alignment algorithm to genotype each individual
-3. Output the resulting STR genotypes to *str_calls.vcf.gz*, a [bgzipped] (http://www.htslib.org/doc/tabix.html) [VCF](http://samtools.github.io/hts-specs/VCFv4.2.pdf) file
-4. The resulting VCF file will contain calls for each sample contained within any of the BAM files' read groups. *HipSTR* will automatically combine all reads for a sample using this read group information.
+3. Output the resulting STR genotypes to *str_calls.vcf.gz*, a [bgzipped] (http://www.htslib.org/doc/tabix.html) [VCF](http://samtools.github.io/hts-specs/VCFv4.2.pdf) file. This VCF will contain calls for each sample in any of the BAM files' read groups. 
 
 ## In-depth usage
 **HipSTR** has a variety of usage options designed to accomodate scenarios in which the sequencing data varies in terms of the number of samples and the coverage. Most scenarios will fall into one of the following categories:
