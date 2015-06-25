@@ -15,6 +15,10 @@
 #include "genotyper_bam_processor.h"
 #include "stringops.h"
 
+bool file_exists(std::string path){
+  return (access(path.c_str(), F_OK) != -1);
+}
+
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string,  std::string& bamindex_string,  std::string& rg_string,           std::string& haploid_chr_string,
 			     std::string& fasta_dir,       std::string& region_file,      std::string& snp_vcf_file,        std::string& chrom,
@@ -251,11 +255,29 @@ int main(int argc, char** argv){
   if (!ref_vcf_file.empty()){
     if (!string_ends_with(ref_vcf_file, ".gz"))
       printErrorAndDie("Ref VCF file must be bgzipped (and end in .gz)");
+
+    // Check that the VCF exists
+    if (!file_exists(ref_vcf_file))
+      printErrorAndDie("Ref VCF file does not exists. Please ensure that the path provided to --ref-vcf is valid");
+
+    // Check that tabix index exists
+    if (!file_exists(ref_vcf_file + ".tbi"))
+	printErrorAndDie("No .tbi index found for the ref VCF file. Please index using tabix and rerun HipSTR");
+
     bam_processor.set_ref_vcf(ref_vcf_file);
   }
   if (!snp_vcf_file.empty()){
     if (!string_ends_with(snp_vcf_file, ".gz"))
       printErrorAndDie("SNP VCF file must be bgzipped (and end in .gz)");
+    
+    // Check that the VCF exists
+    if (!file_exists(ref_vcf_file))
+      printErrorAndDie("SNP VCF file does not exists. Please ensure that the path provided to --snp-vcf is valid");
+
+    // Check that tabix index exists
+    if (!file_exists(snp_vcf_file + ".tbi"))
+	printErrorAndDie("No .tbi index found for the SNP VCF file. Please index using tabix and rerun HipSTR");
+
     bam_processor.set_input_snp_vcf(snp_vcf_file);
   }
 
