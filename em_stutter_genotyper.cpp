@@ -10,23 +10,28 @@ void EMStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names
   out << "##fileformat=VCFv4.1" << "\n";
 
   // Info field descriptors
-  out << "##INFO=<ID=" << "INFRAME_PGEOM,"  << "Number=1,Type=Float,Description=\""   << "Parameter for in-frame geometric step size distribution"                   << "\">\n"
-      << "##INFO=<ID=" << "INFRAME_UP,"     << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame increase in obs. STR size"     << "\">\n"
-      << "##INFO=<ID=" << "INFRAME_DOWN,"   << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame decrease in obs. STR size"     << "\">\n"
-      << "##INFO=<ID=" << "OUTFRAME_PGEOM," << "Number=1,Type=Float,Description=\""   << "Parameter for out-of-frame geometric step size distribution"               << "\">\n"
-      << "##INFO=<ID=" << "OUTFRAME_UP,"    << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame increase in obs. STR size" << "\">\n"
-      << "##INFO=<ID=" << "OUTFRAME_DOWN,"  << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame decrease in obs. STR size" << "\">\n"
-      << "##INFO=<ID=" << "BPDIFFS,"        << "Number=A,Type=Integer,Description=\"" << "Base pair difference of each alternate allele from the reference allele"   << "\">\n"
-      << "##INFO=<ID=" << "END,"            << "Number=1,Type=Integer,Description=\"" << "Inclusive end coordinate for STR's reference allele"                       << "\">\n";
+  out << "##INFO=<ID=" << "INFRAME_PGEOM,"  << "Number=1,Type=Float,Description=\""   << "Parameter for in-frame geometric step size distribution"                      << "\">\n"
+      << "##INFO=<ID=" << "INFRAME_UP,"     << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame increase in obs. STR size"        << "\">\n"
+      << "##INFO=<ID=" << "INFRAME_DOWN,"   << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame decrease in obs. STR size"        << "\">\n"
+      << "##INFO=<ID=" << "OUTFRAME_PGEOM," << "Number=1,Type=Float,Description=\""   << "Parameter for out-of-frame geometric step size distribution"                  << "\">\n"
+      << "##INFO=<ID=" << "OUTFRAME_UP,"    << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame increase in obs. STR size"    << "\">\n"
+      << "##INFO=<ID=" << "OUTFRAME_DOWN,"  << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame decrease in obs. STR size"    << "\">\n"
+      << "##INFO=<ID=" << "BPDIFFS,"        << "Number=A,Type=Integer,Description=\"" << "Base pair difference of each alternate allele from the reference allele"      << "\">\n"
+      << "##INFO=<ID=" << "START,"          << "Number=1,Type=Integer,Description=\"" << "Inclusive start coodinate for the repetitive potrion of the reference allele" << "\">\n"
+      << "##INFO=<ID=" << "END,"            << "Number=1,Type=Integer,Description=\"" << "Inclusive end coordinate for the repetitive portion of the reference allele"  << "\">\n"
+      << "##INFO=<ID=" << "PERIOD,"         << "Number=1,Type=Integer,Description=\"" << "Length of STR motif"                                                          << "\">\n"
+      << "##INFO=<ID=" << "AC,"             << "Number=A,Type=Integer,Description=\"" << "Alternate allele counts"                                                      << "\">\n";
 
   // Format field descriptors
-  out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""   << "Genotype" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "GB"          << ",Number=1,Type=String,Description=\""   << "Base pair differences of genotype from reference" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "Q"           << ",Number=1,Type=Float,Description=\""    << "Posterior probability of phased genotype"                      << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\""  << "Total observed reads for sample"                               << "\">" << "\n"
-      << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\""  << "Base pair difference observed in each read"                    << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\""  << "Total observed reads for sample with SNP phasing information"  << "\">" << "\n"
-      << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""   << "Fractional reads supporting each haploid genotype"             << "\">" << "\n";
+  out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""   << "Genotype"                                               << "\">" << "\n"
+      << "##FORMAT=<ID=" << "GB"          << ",Number=1,Type=String,Description=\""   << "Base pair differences of genotype from reference"       << "\">" << "\n"
+      << "##FORMAT=<ID=" << "Q"           << ",Number=1,Type=Float,Description=\""    << "Posterior probability of unphased genotype"             << "\">" << "\n"
+      << "##FORMAT=<ID=" << "PQ"          << ",Number=1,Type=Float,Description=\""    << "Posterior probability of phased genotype"               << "\">" << "\n"
+      << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\""  << "Read depth"                                             << "\">" << "\n"
+      << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\""  << "Number of reads with SNP phasing information"           << "\">" << "\n"
+      << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""   << "Fractional reads supporting each haploid genotype"      << "\">" << "\n"
+      << "##FORMAT=<ID=" << "BPDOSE"      << ",Number=1,Type=Float,Description=\""    << "Posterior mean base pair difference from reference"     << "\">" << "\n"
+      << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\""  << "Base pair difference observed in each read"             << "\">" << "\n";
   if (output_gls)
     out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "log-10 genotype likelihoods" << "\">" << "\n";
   if (output_pls)
@@ -356,9 +361,6 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
   std::vector< std::vector<double> > log_read_phases(num_samples_);
   std::vector<double> log_unphased_posteriors, phase_probs;
 
-  // TO DO: Consider selecting GT based on genotype with maximum UNPHASED posterior instead of maximum PHASED posterior
-  // Are we then double-counting het GTs vs hom GTs?
-
   // Extract each sample's MAP genotype and the associated posterior
   std::vector< std::vector<double> > gls(num_samples_);
   std::vector< std::vector<int> > pls(num_samples_);
@@ -384,6 +386,8 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
   }
 
   // Extract the phasing probability conditioned on the determined sample genotypes
+  // and compute the allele counts
+  std::vector<int> allele_counts(num_alleles_);
   for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++){
     int gt_a = gts[sample_index].first, gt_b = gts[sample_index].second;
     if (gt_a == gt_b){
@@ -396,6 +400,14 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
       double log_tot = log_sum_exp(log_p1, log_p2);
       log_unphased_posteriors.push_back(log_tot);
       phase_probs.push_back(exp(log_p1-log_tot));
+    }
+    if (haploid_){
+      assert(gt_a == gt_b);
+      allele_counts[gt_a]++;
+    }
+    else {
+      allele_counts[gt_a]++;
+      allele_counts[gt_b]++;
     }
   }
 
@@ -440,7 +452,10 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
       << "OUTFRAME_PGEOM="  << stutter_model_->get_parameter(false, 'P') << ";" 
       << "OUTFRAME_UP="     << stutter_model_->get_parameter(false, 'U') << ";" 
       << "OUTFRAME_DOWN="   << stutter_model_->get_parameter(false, 'D') << ";"
-      << "END="             << end_ << ";";
+      << "START="           << start_     << ";"
+      << "END="             << end_       << ";"
+      << "PERIOD="          << motif_len_ << ";";
+
   if (num_alleles_ > 1){
    out << "BPDIFFS=" << bps_per_allele_[1];
     for (unsigned int i = 2; i < num_alleles_; i++)
@@ -448,8 +463,15 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
     out << ";";
   }
 
+  if (allele_counts.size() > 1){
+    out << "AC=";
+    for (unsigned int i = 1; i < allele_counts.size()-1; i++)
+      out << allele_counts[i] << ",";
+    out << allele_counts.back() << ";";
+  }
+
   // Add FORMAT field
-  out << (!haploid_ ? "\tGT:GB:Q:DP:DSNP:PDP:ALLREADS" : "\tGT:GB:Q:DP:ALLREADS");
+  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:PDP:ALLREADS" : "\tGT:GB:Q:DP:ALLREADS");
   if (output_gls) out << ":GL";
   if (output_pls) out << ":PL";
 
@@ -461,9 +483,6 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
       continue;
     }
 
-    // TO DO: Report unphased posteriors instead of phased posteriors as quality score
-    // See seq_stutter_genotyper for template
-
     int sample_index    = sample_iter->second;
     int total_reads     = reads_per_sample_[sample_index];
     double phase1_reads = (total_reads == 0 ? 0 : exp(log_sum_exp(log_read_phases[sample_index])));
@@ -474,16 +493,17 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
       out << gts[sample_index].first << "|" << gts[sample_index].second     // Genotype
 	  << ":" << bps_per_allele_[gts[sample_index].first]
 	  << "|" << bps_per_allele_[gts[sample_index].second]               // Bp diffs from reference
-	  << ":" << exp(log_phased_posteriors[sample_index])                // Posterior
+	  << ":" << exp(log_unphased_posteriors[sample_index])              // Unphased posterior
+	  << ":" << exp(log_phased_posteriors[sample_index])                // Phased posterior
 	  << ":" << total_reads                                             // Total reads
 	  << ":" << num_reads_with_snps[sample_index]                       // Total reads with SNP information
 	  << ":" << phase1_reads << "|" << phase2_reads;                    // Reads per allele
     }
     else {
-      out << gts[sample_index].first                         // Genotype
-          << ":" << bps_per_allele_[gts[sample_index].first] // Bp diff from reference
-          << ":" << exp(log_phased_posteriors[sample_index]) // Posterior
-          << ":" << total_reads;                             // Total reads
+      out << gts[sample_index].first                           // Genotype
+          << ":" << bps_per_allele_[gts[sample_index].first]   // Bp diff from reference
+          << ":" << exp(log_unphased_posteriors[sample_index]) // Unphased posterior
+          << ":" << total_reads;                               // Total reads
     }
 
     if (bps_per_sample[sample_index].size() > 0){
