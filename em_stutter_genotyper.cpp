@@ -90,8 +90,8 @@ void EMStutterGenotyper::recalc_stutter_model(){
   std::vector<double> out_log_up, out_log_down, out_log_diffs;           // Out-of-frame values
   
   // Add various pseudocounts such that p_geom < 1 for both in-frame and out-of-frame stutter models
-  in_log_up.push_back(0.0);  in_log_down.push_back(0.0);  in_log_diffs.push_back(0.0);  in_log_diffs.push_back(log(2));
-  out_log_up.push_back(0.0); out_log_down.push_back(0.0); out_log_diffs.push_back(0.0); out_log_diffs.push_back(log(2));
+  in_log_up.push_back(0.0);  in_log_down.push_back(0.0);  in_log_diffs.push_back(0.0);  in_log_diffs.push_back(log(1.1));
+  out_log_up.push_back(0.0); out_log_down.push_back(0.0); out_log_diffs.push_back(0.0); out_log_diffs.push_back(log(1.1));
   in_log_eq.push_back(0.0);
 
   double* log_posterior_ptr = log_sample_posteriors_;
