@@ -36,10 +36,11 @@ void parse_command_line_args(int argc, char** argv,
 	      << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                         << "\n" << "\n"
 	    
 	      << "Optional input parameters:" << "\n"
-	      << "\t" << "--ref-vcf    <str_snp_ref_gts.vcf.gz> "  << "\t" << "Bgzipped input VCF file containing STR and SNP genotypes for a reference panel"      << "\n" 
+	      << "\t" << "--ref-vcf    <str_ref_panel.vcf.gz>   "  << "\t" << "Bgzipped input VCF file containing STR (and possibly SNP) genotypes for a ref panel" << "\n" 
 	      << "\t" << "                                      "  << "\t" << " This option is not available when the --len-genotyper option has been specified"    << "\n"
-	      << "\t" << "--snp-vcf    <phased_snp_gts.vcf.gz>  "  << "\t" << "Bgzipped input VCF file containing phased SNP genotypes for the samples"             << "\n" 
-	      << "\t" << "                                      "  << "\t" << " that are going to be genotyped"                                                     << "\n"
+	      << "\t" << "--snp-vcf    <phased_snps.vcf.gz>     "  << "\t" << "Bgzipped input VCF file containing phased SNP genotypes for the samples"             << "\n" 
+	      << "\t" << "                                      "  << "\t" << " that are going to be genotyped. These SNPs will be used to physically phase any "   << "\n"
+	      << "\t" << "                                      "  << "\t" << " STRs in which a read or its mate pair overlaps a heterozygous site"                 << "\n"
 	      << "\t" << "--stutter-in <stutter_models.txt>     "  << "\t" << "Input file containing stutter models for each locus. By default, an EM algorithm "   << "\n"
 	      << "\t" << "                                      "  << "\t" << "  will be used to learn locus-specific models"                               << "\n" << "\n"
 
@@ -59,9 +60,9 @@ void parse_command_line_args(int argc, char** argv,
 	      << "\t" << "--no-filters                          "  << "\t" << "Don't filter any putative STR reads"                                                 << "\n" 
 	      << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
       	      << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
-	      << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as .bam files. "                   << "\n"
+	      << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
 	      << "\t" << "                                      "  << "\t" << "  Assign each read the RG tag corresponding to its file. By default, "               << "\n"
-	      << "\t" << "                                      "  << "\t" << "  each read must have an RG flag from lobSTR and this is used instead"               << "\n"
+	      << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and this is used instead"                           << "\n"
       	      << "\t" << "--len-genotyper                       "  << "\t" << "Use a length-based model to genotype each STR. This option is much"                  << "\n"
 	      << "\t" << "                                      "  << "\t" << "  faster than the default sequence-based model but does not model the underlying"    << "\n"
 	      << "\t" << "                                      "  << "\t" << "  STR sequence. As a result, it cannot detect homoplasy and all STR alleles output"  << "\n"
@@ -248,10 +249,6 @@ int main(int argc, char** argv){
       rg_samples.insert(rg_iter->Sample);
     }
     std::cerr << "BAMs contain " << rg_ids_to_sample.size() << " unique read group IDs for " << rg_samples.size() << " unique samples" << std::endl;
-
-    for (auto iter = rg_ids_to_sample.begin(); iter != rg_ids_to_sample.end(); iter++)
-      std::cerr << iter->first << " " << iter->second << std::endl;
-
   }
   
   BamTools::BamWriter bam_writer;
@@ -267,7 +264,7 @@ int main(int argc, char** argv){
 
     // Check that the VCF exists
     if (!file_exists(ref_vcf_file)) 
-      printErrorAndDie("Ref VCF file does not exists. Please ensure that the path provided to --ref-vcf is valid");
+      printErrorAndDie("Ref VCF file " + ref_vcf_file + " does not exist. Please ensure that the path provided to --ref-vcf is valid");
 
     // Check that tabix index exists
     if (!file_exists(ref_vcf_file + ".tbi"))
@@ -280,8 +277,8 @@ int main(int argc, char** argv){
       printErrorAndDie("SNP VCF file must be bgzipped (and end in .gz)");
     
     // Check that the VCF exists
-    if (!file_exists(ref_vcf_file))
-      printErrorAndDie("SNP VCF file does not exists. Please ensure that the path provided to --snp-vcf is valid");
+    if (!file_exists(snp_vcf_file))
+      printErrorAndDie("SNP VCF file " + snp_vcf_file + " does not exist. Please ensure that the path provided to --snp-vcf is valid");
 
     // Check that tabix index exists
     if (!file_exists(snp_vcf_file + ".tbi"))
