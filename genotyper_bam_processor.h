@@ -88,6 +88,14 @@ public:
     stutter_models_.clear();
   }
 
+  void output_gls(){
+    output_gls_ = true;
+  }
+
+  void output_pls(){
+    output_pls_ = true;
+  }
+
   void add_haploid_chrom(std::string chrom){
     haploid_chroms_.insert(chrom);
   }

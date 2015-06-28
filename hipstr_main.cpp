@@ -24,7 +24,7 @@ void parse_command_line_args(int argc, char** argv,
 			     std::string& fasta_dir,       std::string& region_file,      std::string& snp_vcf_file,        std::string& chrom,
 			     std::string& bam_out_file,    std::string& str_vcf_out_file, std::string& allele_vcf_out_file, std::string& viz_out_file,
 			     std::string& stutter_in_file, std::string& stutter_out_file, int& use_hap_aligner,             int& remove_all_filters,
-			     std::string& ref_vcf_file,
+			     int& output_gls, int& output_pls, std::string& ref_vcf_file,
 			     BamProcessor& bam_processor){
   int def_mdist = bam_processor.MAX_MATE_DIST;
   if (argc == 1){
@@ -52,6 +52,8 @@ void parse_command_line_args(int argc, char** argv,
 	      << "\t" << "--viz-out       <aln_viz.html.gz>     "  << "\t" << "Output a bgzipped file containing Needleman-Wunsch alignments for each locus"        << "\n"
 	      << "\t" << "                                      "  << "\t" << " The resulting file can be readily visualized with VizAln"                           << "\n"
 	      << "\t" << "                                      "  << "\t" << " Option only available when the --len-genotyper flag has not been specified"         << "\n"
+	      << "\t" << "--output-gls                          "  << "\t" << "Write genotype likelihoods to VCF (default = False)"                                 << "\n"
+	      << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to VCF (default = False)"                    << "\n"
 	      
 	      << "Other optional parameters:" << "\n"
       	      << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
@@ -82,6 +84,8 @@ void parse_command_line_args(int argc, char** argv,
     {"ref-vcf",         required_argument, 0, 'h'},
     {"len-genotyper",   no_argument, &use_hap_aligner,    0},
     {"no-filters",      no_argument, &remove_all_filters, 1},
+    {"output-gls",      no_argument, &output_gls, 1},
+    {"output-pls",      no_argument, &output_pls, 1},
     {"str-vcf",         required_argument, 0, 'o'},
     {"regions",         required_argument, 0, 'r'},
     {"snp-vcf",         required_argument, 0, 'v'},
@@ -166,10 +170,14 @@ int main(int argc, char** argv){
   int use_hap_aligner = 1, remove_all_filters = 0;
   std::string bamfile_string= "", rg_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", stutter_in_file="", stutter_out_file="", viz_out_file="";
+  int output_gls = 0, output_pls = 0;
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, rg_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
 			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, viz_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, remove_all_filters, 
-			  ref_vcf_file, bam_processor);
+			  output_gls, output_pls, ref_vcf_file, bam_processor);
+  if (output_gls) bam_processor.output_gls();
+  if (output_pls) bam_processor.output_pls();
+
   if (!use_hap_aligner) {
     bam_processor.use_len_model();
     if (!ref_vcf_file.empty())
