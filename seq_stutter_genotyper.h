@@ -62,6 +62,9 @@ class SeqStutterGenotyper{
 
   // Iterates through allele_1, allele_2 and then samples by their indices
   double* log_sample_posteriors_; 
+
+  // Total log-likelihoods for each sample
+  double* sample_total_LLs_;
   
   // Iterates through allele_1, allele_2 and then samples by their indices
   // Only used if per-allele priors have been specified for each sample
@@ -136,6 +139,7 @@ class SeqStutterGenotyper{
     seed_positions_        = NULL;
     log_aln_probs_         = NULL;
     log_sample_posteriors_ = NULL;
+    sample_total_LLs_      = NULL;
     log_allele_priors_     = NULL;
     sample_label_          = NULL;
     haplotype_             = NULL;
@@ -171,6 +175,7 @@ class SeqStutterGenotyper{
     delete [] seed_positions_;
     delete [] log_aln_probs_;
     delete [] log_sample_posteriors_;
+    delete [] sample_total_LLs_;
     delete [] log_allele_priors_;
     for (unsigned int i = 0; i < hap_blocks_.size(); i++)
       delete hap_blocks_[i];

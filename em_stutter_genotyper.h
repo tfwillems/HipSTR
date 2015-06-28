@@ -44,6 +44,9 @@ class EMStutterGenotyper {
   // Iterates through allele_1, allele_2, and then reads and phases 1 or 2 by their indices
   double* log_read_phase_posteriors_; 
 
+  // Total log-likelihood for each sample
+  double* sample_total_LLs_;
+
   // Iterates through allele_1, allele 2 and then samples by their indices
   // Only used if per-allele priors have been specified for each sample
   double* log_allele_priors_;
@@ -116,6 +119,7 @@ class EMStutterGenotyper {
     log_gt_priors_             = new double[num_alleles_]; 
     log_sample_posteriors_     = new double[num_alleles_*num_alleles_*num_samples_]; 
     log_read_phase_posteriors_ = new double[num_alleles_*num_alleles_*num_reads_*2]; 
+    sample_total_LLs_          = new double[num_samples_];
 
     // Iterate through all reads and store the relevant information
     int read_index = 0;
@@ -142,6 +146,7 @@ class EMStutterGenotyper {
     delete [] log_gt_priors_;
     delete [] log_sample_posteriors_;
     delete [] log_read_phase_posteriors_;
+    delete [] sample_total_LLs_;
     delete [] log_allele_priors_;
     delete stutter_model_;
   }  

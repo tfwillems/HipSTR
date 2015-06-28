@@ -228,25 +228,25 @@ double EMStutterGenotyper::recalc_log_sample_posteriors(bool use_pop_freqs){
   }
 
   // Compute the normalizing factor for each sample using logsumexp trick
-  std::vector<double> sample_total_LLs(num_samples_, 0.0);
+  std::fill(sample_total_LLs_, sample_total_LLs_ + num_samples_, 0.0);
   LL_ptr = log_sample_posteriors_;
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2)
       for (int sample_index = 0; sample_index < num_samples_; ++sample_index, ++LL_ptr)
-	sample_total_LLs[sample_index] += exp(*LL_ptr - sample_max_LLs[sample_index]);
+	sample_total_LLs_[sample_index] += exp(*LL_ptr - sample_max_LLs[sample_index]);
   for (int sample_index = 0; sample_index < num_samples_; ++sample_index){
-    sample_total_LLs[sample_index] = sample_max_LLs[sample_index] + log(sample_total_LLs[sample_index]);    
-    assert(sample_total_LLs[sample_index] <= TOLERANCE);
+    sample_total_LLs_[sample_index] = sample_max_LLs[sample_index] + log(sample_total_LLs_[sample_index]);    
+    assert(sample_total_LLs_[sample_index] <= TOLERANCE);
   }
   // Compute the total log-likelihood given the current parameters
-  double total_LL = sum(sample_total_LLs);
+  double total_LL = sum(sample_total_LLs_, sample_total_LLs_ + num_samples_);
 
   // Normalize each genotype LL to generate valid log posteriors
   LL_ptr = log_sample_posteriors_;
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
     for(int index_2 = 0; index_2 < num_alleles_; ++index_2)
       for (int sample_index = 0; sample_index < num_samples_; ++sample_index, ++LL_ptr)
-	*LL_ptr -= sample_total_LLs[sample_index];  
+	*LL_ptr -= sample_total_LLs_[sample_index];
 
   return total_LL;
 }
@@ -373,8 +373,11 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
 	  gts[sample_index] = std::pair<int,int>(index_1, index_2);
 	}
 	if (index_2 <= index_1){
-          double gl_base_e = LOG_ONE_HALF + log_sum_exp(*log_post_ptr, log_sample_posteriors_[index_2*num_alleles_*num_samples_ + index_1*num_samples_ + sample_index]);
-          gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
+          double gl_base_e = sample_total_LLs_[sample_index] + LOG_ONE_HALF
+	    + log_sum_exp(*log_post_ptr, log_sample_posteriors_[index_2*num_alleles_*num_samples_ + index_1*num_samples_ + sample_index]);
+
+	  if (!haploid_ || (index_1 == index_2))
+	    gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
         }
       }
     }
@@ -513,12 +516,12 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
     }
 
     if (output_gls){
-      out << gls[sample_index][0];
+      out << ":" << gls[sample_index][0];
       for (unsigned int j = 1; j < gls[sample_index].size(); j++)
 	out << "," << gls[sample_index][j];
     }
     if (output_pls){
-      out << pls[sample_index][0];
+      out << ":" << pls[sample_index][0];
       for (unsigned int j = 1; j < pls[sample_index].size(); j++)
 	out << "," << pls[sample_index][j];
     }

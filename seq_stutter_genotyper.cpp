@@ -189,9 +189,10 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     num_reads_ += alignments[i].size();
 
   // Allocate some data structures
-  log_p1_       = new double[num_reads_];
-  log_p2_       = new double[num_reads_];
-  sample_label_ = new int[num_reads_];
+  log_p1_           = new double[num_reads_];
+  log_p2_           = new double[num_reads_];
+  sample_label_     = new int[num_reads_];
+  sample_total_LLs_ = new double[num_samples_];
 
   std::cerr << "Left aligning reads..." << std::endl;
   std::map<std::string, std::pair<int,int> > seq_to_alns;
@@ -226,7 +227,8 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 	  seq_to_alns[alignments[i][j].QueryBases] = std::pair<int,int>(i, j);
 	  alns_.back().back().check_CIGAR_string(alignments[i][j].Name);
 	  seq_to_index[alignments[i][j].QueryBases] = uniq_seq_count;
-	  bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region_->start()-region_->period(), region_->stop()+region_->period(), bp_diff);
+	  bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, 
+				       region_->start()-region_->period(), region_->stop()+region_->period(), bp_diff);
 	  bp_diffs_.push_back(got_size ? bp_diff : -999);
 	}
 	else {
@@ -394,7 +396,7 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##INFO=<ID=" << "OUTFRAME_UP,"    << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame increase in obs. STR size"    << "\">\n"
       << "##INFO=<ID=" << "OUTFRAME_DOWN,"  << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame decrease in obs. STR size"    << "\">\n"
       << "##INFO=<ID=" << "BPDIFFS,"        << "Number=A,Type=Integer,Description=\"" << "Base pair difference of each alternate allele from the reference allele"      << "\">\n"
-      << "##INFO=<ID=" << "START,"          << "Number=1,Type=Integer,Description=\"" << "Inclusive start coodinate for the repetitive potrion of the reference allele" << "\">\n"
+      << "##INFO=<ID=" << "START,"          << "Number=1,Type=Integer,Description=\"" << "Inclusive start coodinate for the repetitive portion of the reference allele" << "\">\n"
       << "##INFO=<ID=" << "END,"            << "Number=1,Type=Integer,Description=\"" << "Inclusive end coordinate for the repetitive portion of the reference allele"  << "\">\n"
       << "##INFO=<ID=" << "PERIOD,"         << "Number=1,Type=Integer,Description=\"" << "Length of STR motif"                                                          << "\">\n"
       << "##INFO=<ID=" << "AC,"             << "Number=A,Type=Integer,Description=\"" << "Alternate allele counts"                                                      << "\">\n"
@@ -547,25 +549,25 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
   }
 
   // Compute the normalizing factor for each sample using logsumexp trick
-  std::vector<double> sample_total_LLs(num_samples_, 0.0);
+  std::fill(sample_total_LLs_, sample_total_LLs_ + num_samples_, 0.0);
   sample_LL_ptr = log_sample_posteriors_;
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2)
       for (int sample_index = 0; sample_index < num_samples_; ++sample_index, ++sample_LL_ptr)
-	sample_total_LLs[sample_index] += exp(*sample_LL_ptr - sample_max_LLs[sample_index]);
+	sample_total_LLs_[sample_index] += exp(*sample_LL_ptr - sample_max_LLs[sample_index]);
   for (int sample_index = 0; sample_index < num_samples_; ++sample_index){
-    sample_total_LLs[sample_index] = sample_max_LLs[sample_index] + log(sample_total_LLs[sample_index]);
-    assert(sample_total_LLs[sample_index] <= TOLERANCE);
+    sample_total_LLs_[sample_index] = sample_max_LLs[sample_index] + log(sample_total_LLs_[sample_index]);
+    assert(sample_total_LLs_[sample_index] <= TOLERANCE);
   }
   // Compute the total log-likelihood given the current parameters
-  double total_LL = sum(sample_total_LLs);
+  double total_LL = sum(sample_total_LLs_, sample_total_LLs_ + num_samples_);
 
   // Normalize each genotype LL to generate valid log posteriors
   sample_LL_ptr = log_sample_posteriors_;
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
     for(int index_2 = 0; index_2 < num_alleles_; ++index_2)
       for (int sample_index = 0; sample_index < num_samples_; ++sample_index, ++sample_LL_ptr)
-	*sample_LL_ptr -= sample_total_LLs[sample_index];  
+	*sample_LL_ptr -= sample_total_LLs_[sample_index];
 
   return total_LL;
 }
@@ -575,9 +577,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   assert(haplotype_->num_blocks() == 3);
   if(log_allele_priors_ != NULL)
     assert(!output_gls && !output_pls); // These fields only make sense in the context of MLE estimation, not MAP estimation
-
-  // TO DO: Consider selecting GT based on genotype with maximum UNPHASED posterior instead of maximum PHASED posterior
-  // Are we then double-counting het GTs vs hom GTs?
 
   // Compute the base pair differences from the reference
   std::vector<int> allele_bp_diffs;
@@ -602,18 +601,17 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	}
 	log_post_probs[sample_index].push_back(*log_post_ptr);
 	if (index_2 <= index_1){
-	  double gl_base_e = LOG_ONE_HALF + log_sum_exp(*log_post_ptr, log_sample_posteriors_[index_2*num_alleles_*num_samples_ + index_1*num_samples_ + sample_index]);
-	  gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
+	  double gl_base_e =  sample_total_LLs_[sample_index] + LOG_ONE_HALF
+	    + log_sum_exp(*log_post_ptr, log_sample_posteriors_[index_2*num_alleles_*num_samples_ + index_1*num_samples_ + sample_index]);
+
+	  if (!haploid_ || (index_1 == index_2))
+	    gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
 	}
       }
     }
   }
   for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++){
-    if (!haploid_)
-      bp_dosages.push_back(expected_value(log_post_probs[sample_index], dip_bpdiffs));
-    else
-      bp_dosages.push_back(0.5*expected_value(log_post_probs[sample_index], dip_bpdiffs));
-
+    bp_dosages.push_back((!haploid_ ? 1.0 : 0.5)*expected_value(log_post_probs[sample_index], dip_bpdiffs));
     double max_gl = *(std::max_element(gls[sample_index].begin(), gls[sample_index].end()));
     for (unsigned int j = 0; j < gls[sample_index].size(); j++)
       pls[sample_index].push_back((int)(gls[sample_index][j]-max_gl));
@@ -680,8 +678,14 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     if (require_one_read_ && num_aligned_reads[sample_index] == 0)
       continue;
     if (call_sample_[sample_index]) {
-      allele_counts[gt_iter->first]++;
-      allele_counts[gt_iter->second]++;
+      if (haploid_){
+	assert(gt_iter->first == gt_iter->second);
+	allele_counts[gt_iter->first]++;
+      }
+      else {
+	allele_counts[gt_iter->first]++;
+	allele_counts[gt_iter->second]++;
+      }
     }
     else
       skip_count++;
@@ -812,12 +816,12 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     // Genotype and phred-scaled likelihoods
     if (output_gls){
-      out << gls[sample_index][0];
+      out << ":" << gls[sample_index][0];
       for (unsigned int j = 1; j < gls[sample_index].size(); j++)
 	out << "," << gls[sample_index][j];
     }
     if (output_pls){
-      out << pls[sample_index][0];
+      out << ":" << pls[sample_index][0];
       for (unsigned int j = 1; j < pls[sample_index].size(); j++)
 	out << "," << pls[sample_index][j];
     }
