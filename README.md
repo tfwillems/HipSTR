@@ -122,9 +122,9 @@ HipSTR doesn't currently have multi-threaded support, but there are several opti
 | **--haploid-chrs  <list_of_chroms>**      | Comma separated list of chromosomes to treat as haploid <br> By default, all chromosomes are treated as diploid
 | **--no-rmdup**                            | Don't remove PCR duplicates. By default, they'll be removed
 | **--snp-vcf    <phased_snps.vcf.gz>**     | Bgzipped VCF file containing phased SNP genotypes for samples <br> that are being genotyped. These SNPs will be used to physically <br> phase any STRs when a read or its mate pair overlaps a heterozygous site <br> **Always use this option if you have available phased SNP genotypes**
-| **--rgs           <list_of_read_groups>** | Comma separated list of read groups in same order as BAM files. <br> Assign each read the RG tag corresponding to its file. By default, <br> each read must have an RG flag and this is used instead
-| **--lbs           <list_of_read_groups>** | Comma separated list of libraries in same order as BAM files. <br> Assign each read the library (LB tag) corresponding to its file. By default, <br> each read must have an RG flag and the associated library is used instead <br> NOTE: This option is required when --rgs has been specified
+| **--rgs           <list_of_read_groups>** | Comma separated list of read groups in same order as BAM files. <br> Assign each read the read group corresponding to its file. By default, <br> each read must have an RG flag and this is used instead
+| **--lbs           <list_of_read_groups>** | Comma separated list of libraries in same order as BAM files. <br> Assign each read the library corresponding to its file. By default, <br> each read must have an RG flag and the associated library is used instead <br> NOTE: This option is required when --rgs has been specified
 
-For a complete list of HipSTR options, please type either `./HipSTR` or `./HipSTR -h`
+This list is comprised of the most useful and frequently used additional options, but is not all encompassing. For a complete list of HipSTR options, please type either `./HipSTR` or `./HipSTR --help`
 
 ## Alignment Visualization
