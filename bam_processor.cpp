@@ -266,7 +266,7 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
     std::vector< std::vector<BamTools::BamAlignment> > paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg;
     read_and_filter_reads(reader, chrom_seq, region_iter, rg_to_sample, rg_to_library, rg_names, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, bam_writer);
     if (rem_pcr_dups_)
-      remove_pcr_duplicates(base_quality_, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg);
+      remove_pcr_duplicates(base_quality_, use_bam_rgs_, rg_to_library, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg);
 
     std::string ref_allele = get_str_ref_allele(region_iter->start(), region_iter->stop(), chrom_seq);
     process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, *region_iter, ref_allele, chrom_seq, out);

@@ -14,19 +14,19 @@ private:
   std::string library_;
 
 public:
-  ReadPair(BamTools::BamAlignment& aln_1){
+  ReadPair(BamTools::BamAlignment& aln_1, std::string& library){
     aln_1_          = aln_1;
     min_read_start_ = -1;
     max_read_start_ = aln_1.Position;
-    library_        = ""; // TO DO: Get from read group
+    library_        = library;
   }
 
-  ReadPair(BamTools::BamAlignment& aln_1, BamTools::BamAlignment& aln_2){
+  ReadPair(BamTools::BamAlignment& aln_1, BamTools::BamAlignment& aln_2, std::string& library){
     aln_1_          = aln_1;
     aln_2_          = aln_2;
     min_read_start_ = std::min(aln_1.Position, aln_2.Position);
     max_read_start_ = std::max(aln_1.Position, aln_2.Position);
-    library_        = ""; // TO DO: Get from read group
+    library_        = library;
   }
   
   BamTools::BamAlignment& aln_one(){ return aln_1_; }
@@ -52,8 +52,21 @@ public:
   }
 };
 
+std::string get_library(BamTools::BamAlignment& aln, std::map<std::string, std::string>& rg_to_library){
+  std::string rg;
+  std::string rg_tag = "RG";
+  char tag_type = 'Z';
+  if (!aln.GetTagType(rg_tag, tag_type))
+    printErrorAndDie("Failed to retrieve BAM alignment's RG tag");
+  aln.GetTag("RG", rg);
+  auto iter = rg_to_library.find(rg);
+  if (iter == rg_to_library.end())
+    printErrorAndDie("No library found for read group " + rg + " in BAM file headers");
+  return iter->second;
+}
 
-void remove_pcr_duplicates(BaseQuality& base_quality,
+void remove_pcr_duplicates(BaseQuality& base_quality, bool use_bam_rgs,
+			   std::map<std::string, std::string>& rg_to_library,
 			   std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 			   std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 			   std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg){
@@ -63,10 +76,14 @@ void remove_pcr_duplicates(BaseQuality& base_quality,
     assert(paired_strs_by_rg[i].size() == mate_pairs_by_rg[i].size());
 
     std::vector<ReadPair> read_pairs;
-    for (unsigned int j = 0; j < paired_strs_by_rg[i].size(); j++)
-      read_pairs.push_back(ReadPair(paired_strs_by_rg[i][j], mate_pairs_by_rg[i][j]));
-    for (unsigned int j = 0; j < unpaired_strs_by_rg[i].size(); j++)
-      read_pairs.push_back(ReadPair(unpaired_strs_by_rg[i][j]));
+    for (unsigned int j = 0; j < paired_strs_by_rg[i].size(); j++){
+      std::string library = use_bam_rgs ? get_library(paired_strs_by_rg[i][j], rg_to_library): rg_to_library[paired_strs_by_rg[i][j].Filename];
+      read_pairs.push_back(ReadPair(paired_strs_by_rg[i][j], mate_pairs_by_rg[i][j], library));
+    }
+    for (unsigned int j = 0; j < unpaired_strs_by_rg[i].size(); j++){
+      std::string library = use_bam_rgs ? get_library(unpaired_strs_by_rg[i][j], rg_to_library): rg_to_library[unpaired_strs_by_rg[i][j].Filename];
+      read_pairs.push_back(ReadPair(unpaired_strs_by_rg[i][j], library));
+    }
     std::sort(read_pairs.begin(), read_pairs.end());
 
     paired_strs_by_rg[i].clear();
