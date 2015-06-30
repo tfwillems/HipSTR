@@ -56,19 +56,19 @@ For each region in *str_regions.bed*, **HipSTR** will:
 1. 200 or more low-coverage (~5x) samples
     * Sufficient reads for stutter estimation
     * Sufficient reads to detect candidate STR alleles
-    * **Use de novo stutter estimation + STR calling with de novo allele generation**
+    * [**Use de novo stutter estimation + STR calling with de novo allele generation**](1. De novo stutter estimation + STR calling with de novo allele generation)
 2. 50 or more high-coverage (~30x) samples
     * Sufficient reads for stutter estimation
     * Sufficient reads to detect candidate STR alleles
-    * **Use de novo stutter estimation + STR calling with de novo allele generation**
+    * [**Use de novo stutter estimation + STR calling with de novo allele generation**](1. De novo stutter estimation + STR calling with de novo allele generation)
 3. Handful of low-coverage  (~5x) samples
     * Insufficient reads for stutter estimation
     * Insufficient reads to detect candidate STR alleles
-    * **Use external stutter models + STR calling with a reference panel**
+    * [**Use external stutter models + STR calling with a reference panel**](3. External stutter models + STR calling with a reference panel)
 4. Handful of high-coverage (~30x) samples
     * Insufficient samples for stutter estimation
     * Sufficient reads to detect candidate STR alleles
-    * **Use external stutter models + STR calling with de novo allele generation**
+    * [**Use external stutter models + STR calling with de novo allele generation**](2. External stutter models + STR calling with de novo allele generation)
     
 #### 1. De novo stutter estimation + STR calling with de novo allele generation
 This mode is identical to the one suggested in the **Quick Start** section as it suits most applications. HipSTR will output the learned stutter models to *stutter_models.txt* and the STR genotypes in bgzipped VCF format to *str_calls.vcf.gz* 
