@@ -19,6 +19,58 @@ bool file_exists(std::string path){
   return (access(path.c_str(), F_OK) != -1);
 }
 
+void print_usage(int def_mdist){
+  std::cerr << "Usage: HipSTR --bams  <list_of_bams> --fasta <dir> --regions <region_file.bed>" << "\n" << "\n"
+    
+	    << "Required parameters:" << "\n"
+	    << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of .bam files"                                                  << "\n"
+	    << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located"                      << "\n"
+	    << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                         << "\n" << "\n"
+    
+	    << "Optional input parameters:" << "\n"
+	    << "\t" << "--ref-vcf    <str_ref_panel.vcf.gz>   "  << "\t" << "Bgzipped input VCF file containing STR (and possibly SNP) genotypes for a ref panel" << "\n" 
+	    << "\t" << "                                      "  << "\t" << " This option is not available when the --len-genotyper option has been specified"    << "\n"
+	    << "\t" << "--snp-vcf    <phased_snps.vcf.gz>     "  << "\t" << "Bgzipped input VCF file containing phased SNP genotypes for the samples"             << "\n" 
+	    << "\t" << "                                      "  << "\t" << " that are going to be genotyped. These SNPs will be used to physically phase any "   << "\n"
+	    << "\t" << "                                      "  << "\t" << " STRs in which a read or its mate pair overlaps a heterozygous site"                 << "\n"
+	    << "\t" << "--stutter-in <stutter_models.txt>     "  << "\t" << "Input file containing stutter models for each locus. By default, an EM algorithm "   << "\n"
+	    << "\t" << "                                      "  << "\t" << "  will be used to learn locus-specific models"                               << "\n" << "\n"
+    
+	    << "Optional output parameters:" << "\n"
+	    << "\t" << "--bam-out       <used_reads.bam>      "  << "\t" << "Output a BAM file containing the reads used to genotype each region"                 << "\n"
+	    << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Output a bgzipped VCF file containing phased STR genotypes"                          << "\n"
+	    << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a bgzipped VCF file containing alleles with strong evidence in the BAMs"      << "\n"
+	    << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n"
+	    << "\t" << "--viz-out       <aln_viz.html.gz>     "  << "\t" << "Output a bgzipped file containing Needleman-Wunsch alignments for each locus"        << "\n"
+	    << "\t" << "                                      "  << "\t" << " The resulting file can be readily visualized with VizAln"                           << "\n"
+	    << "\t" << "                                      "  << "\t" << " Option only available when the --len-genotyper flag has not been specified"         << "\n"
+	    << "\t" << "--output-gls                          "  << "\t" << "Write genotype likelihoods to VCF (default = False)"                                 << "\n"
+	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to VCF (default = False)"                    << "\n" << "\n"
+    
+	    << "Other optional parameters:" << "\n"
+	    << "\t" << "--help                                "  << "\t" << "Print this help message and exit"
+	    << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
+	    << "\t" << "--haploid-chrs  <list_of_chroms>      "  << "\t" << "Comma separated list of chromosomes to treat as haploid"                             << "\n"
+	    << "\t" << "                                      "  << "\t" << " By default, all chromosomes are treated as diploid"                                 << "\n"
+	    << "\t" << "--no-filters                          "  << "\t" << "Don't filter any putative STR reads"                                                 << "\n"
+	    << "\t" << "--no-rmdup                            "  << "\t" << "Don't remove PCR duplicates. By default, they'll be removed"                         << "\n"
+	    << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
+	    << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
+	    << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
+	    << "\t" << "                                      "  << "\t" << "  Assign each read the RG tag corresponding to its file. By default, "               << "\n"
+	    << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and this is used instead"                           << "\n"
+	    << "\t" << "--lbs           <list_of_read_groups> "  << "\t" << "Comma separated list of libraries in same order as BAM files. "                      << "\n"
+	    << "\t" << "                                      "  << "\t" << "  Assign each read the library (LB tag) corresponding to its file. By default, "     << "\n"
+	    << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and the associated library is used instead"         << "\n"
+	    << "\t" << "                                      "  << "\t" << "  NOTE: This option is required when --rgs has been specified"                       << "\n"
+	    << "\t" << "--len-genotyper                       "  << "\t" << "Use a length-based model to genotype each STR. This option is much"                  << "\n"
+	    << "\t" << "                                      "  << "\t" << "  faster than the default sequence-based model but does not model the underlying"    << "\n"
+	    << "\t" << "                                      "  << "\t" << "  STR sequence. As a result, it cannot detect homoplasy and all STR alleles output"  << "\n"
+	    << "\t" << "                                      "  << "\t" << "  in the VCF assume that indels are perfect copies of the repeat motif"              << "\n"
+	    << "\t" << "                                      "  << "\t" << "  The length-based approach is very similar to lobSTR's allelotype module"           << "\n"
+	    << "\n";
+}
+  
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string,  std::string& rg_string,        std::string& haploid_chr_string,
 			     std::string& fasta_dir,       std::string& region_file,      std::string& snp_vcf_file,        std::string& chrom,
@@ -28,57 +80,12 @@ void parse_command_line_args(int argc, char** argv,
 			     BamProcessor& bam_processor){
   int def_mdist = bam_processor.MAX_MATE_DIST;
   if (argc == 1){
-    std::cerr << "Usage: HipSTR --bams  <list_of_bams> --fasta <dir> --regions <region_file.bed>" << "\n" << "\n"
-
-	      << "Required parameters:" << "\n"
-	      << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of .bam files"                                                  << "\n"
-	      << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located"                      << "\n"
-	      << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                         << "\n" << "\n"
-	    
-	      << "Optional input parameters:" << "\n"
-	      << "\t" << "--ref-vcf    <str_ref_panel.vcf.gz>   "  << "\t" << "Bgzipped input VCF file containing STR (and possibly SNP) genotypes for a ref panel" << "\n" 
-	      << "\t" << "                                      "  << "\t" << " This option is not available when the --len-genotyper option has been specified"    << "\n"
-	      << "\t" << "--snp-vcf    <phased_snps.vcf.gz>     "  << "\t" << "Bgzipped input VCF file containing phased SNP genotypes for the samples"             << "\n" 
-	      << "\t" << "                                      "  << "\t" << " that are going to be genotyped. These SNPs will be used to physically phase any "   << "\n"
-	      << "\t" << "                                      "  << "\t" << " STRs in which a read or its mate pair overlaps a heterozygous site"                 << "\n"
-	      << "\t" << "--stutter-in <stutter_models.txt>     "  << "\t" << "Input file containing stutter models for each locus. By default, an EM algorithm "   << "\n"
-	      << "\t" << "                                      "  << "\t" << "  will be used to learn locus-specific models"                               << "\n" << "\n"
-
-      	      << "Optional output parameters:" << "\n"
-	      << "\t" << "--bam-out       <used_reads.bam>      "  << "\t" << "Output a BAM file containing the reads used to genotype each region"                 << "\n"
-	      << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Output a bgzipped VCF file containing phased STR genotypes"                          << "\n"
-	      << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a bgzipped VCF file containing alleles with strong evidence in the BAMs"      << "\n"
-	      << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n"
-	      << "\t" << "--viz-out       <aln_viz.html.gz>     "  << "\t" << "Output a bgzipped file containing Needleman-Wunsch alignments for each locus"        << "\n"
-	      << "\t" << "                                      "  << "\t" << " The resulting file can be readily visualized with VizAln"                           << "\n"
-	      << "\t" << "                                      "  << "\t" << " Option only available when the --len-genotyper flag has not been specified"         << "\n"
-	      << "\t" << "--output-gls                          "  << "\t" << "Write genotype likelihoods to VCF (default = False)"                                 << "\n"
-	      << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to VCF (default = False)"                    << "\n" << "\n"
-	      
-	      << "Other optional parameters:" << "\n"
-      	      << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
-	      << "\t" << "--haploid-chrs  <list_of_chroms>      "  << "\t" << "Comma separated list of chromosomes to treat as haploid"                             << "\n"
-	      << "\t" << "                                      "  << "\t" << " By default, all chromosomes are treated as diploid"                                 << "\n"
-	      << "\t" << "--no-filters                          "  << "\t" << "Don't filter any putative STR reads"                                                 << "\n"
-	      << "\t" << "--no-rmdup                            "  << "\t" << "Don't remove PCR duplicates. By default, they'll be removed"                         << "\n"
-	      << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
-      	      << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
-	      << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
-	      << "\t" << "                                      "  << "\t" << "  Assign each read the RG tag corresponding to its file. By default, "               << "\n"
-	      << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and this is used instead"                           << "\n"
-	      << "\t" << "--lbs           <list_of_read_groups> "  << "\t" << "Comma separated list of libraries in same order as BAM files. "                      << "\n"
-	      << "\t" << "                                      "  << "\t" << "  Assign each read the library (LB tag) corresponding to its file. By default, "     << "\n"
-	      << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and the associated library is used instead"         << "\n"
-	      << "\t" << "                                      "  << "\t" << "  NOTE: This option is required when --rgs has been specified"                       << "\n"
-      	      << "\t" << "--len-genotyper                       "  << "\t" << "Use a length-based model to genotype each STR. This option is much"                  << "\n"
-	      << "\t" << "                                      "  << "\t" << "  faster than the default sequence-based model but does not model the underlying"    << "\n"
-	      << "\t" << "                                      "  << "\t" << "  STR sequence. As a result, it cannot detect homoplasy and all STR alleles output"  << "\n"
-	      << "\t" << "                                      "  << "\t" << "  in the VCF assume that indels are perfect copies of the repeat motif"              << "\n"
-	      << "\t" << "                                      "  << "\t" << "  The length-based approach is very similar to lobSTR's allelotype module"           << "\n"
-	      << "\n";
+    print_usage(def_mdist);
     exit(0);
   }
- 
+
+  int print_help = 0;
+  
   static struct option long_options[] = {
     {"allele-vcf",      required_argument, 0, 'a'},
     {"bams",            required_argument, 0, 'b'},
@@ -86,13 +93,15 @@ void parse_command_line_args(int argc, char** argv,
     {"max-mate-dist",   required_argument, 0, 'd'},
     {"fasta",           required_argument, 0, 'f'},
     {"rgs",             required_argument, 0, 'g'},
-    {"ref-vcf",         required_argument, 0, 'h'},
+    {"h",               no_argument, &print_help, 1},
+    {"help",            no_argument, &print_help, 1},
     {"len-genotyper",   no_argument, &use_hap_aligner,    0},
     {"no-filters",      no_argument, &remove_all_filters, 1},
     {"no-rmdup",        no_argument, &remove_pcr_dups,    0},
     {"output-gls",      no_argument, &output_gls, 1},
     {"output-pls",      no_argument, &output_pls, 1},
     {"str-vcf",         required_argument, 0, 'o'},
+    {"ref-vcf",         required_argument, 0, 'p'},
     {"regions",         required_argument, 0, 'r'},
     {"snp-vcf",         required_argument, 0, 'v'},
     {"stutter-in",      required_argument, 0, 'm'},
@@ -132,14 +141,14 @@ void parse_command_line_args(int argc, char** argv,
     case 'g':
       rg_string = std::string(optarg);
       break;
-    case 'h':
-      ref_vcf_file = std::string(optarg);
-      break;
     case 'm':
       stutter_in_file = std::string(optarg);
       break;
     case 'o':
       str_vcf_out_file = std::string(optarg);
+      break;
+    case 'p':
+      ref_vcf_file = std::string(optarg);
       break;
     case 'r':
       region_file = std::string(optarg);
@@ -166,6 +175,11 @@ void parse_command_line_args(int argc, char** argv,
       abort();
       break;
     }
+  }
+
+  if (print_help){
+    print_usage(def_mdist);
+    exit(0);
   }
 }
 
