@@ -7,6 +7,7 @@
 #include "bam_processor.h"
 #include "alignment_filters.h"
 #include "error.h"
+#include "pcr_duplicates.h"
 #include "seqio.h"
 #include "stringops.h"
 
@@ -39,8 +40,9 @@ std::string get_str_ref_allele(uint32_t start, uint32_t end, std::string& chrom_
 }
 
 void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, 
-					 std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& read_group_mapping,
-					 std::vector<std::string>& rg_names, 
+					 std::vector<Region>::iterator region_iter,
+					 std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
+					 std::vector<std::string>& rg_names,
 					 std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 					 std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 					 std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
@@ -171,7 +173,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     for (auto read_iter = region_alignments.begin(); read_iter != region_alignments.end(); read_iter++){
       // Add RG to BAM record based on file
       if (!use_bam_rgs_){
-	std::string rg_tag = "lobSTR;" + read_group_mapping[read_iter->Filename] + ";" + read_group_mapping[read_iter->Filename];
+	std::string rg_tag = "lobSTR;" + rg_to_sample[read_iter->Filename] + ";" + rg_to_sample[read_iter->Filename];
 	read_iter->AddTag("RG", "Z", rg_tag);
       }
       
@@ -192,7 +194,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   // Separate the reads based on their associated read groups
   std::map<std::string, int> rg_indices;
   for (unsigned int i = 0; i < paired_str_alns.size(); ++i){
-    std::string rg = use_bam_rgs_ ? get_read_group(paired_str_alns[i], read_group_mapping): read_group_mapping[paired_str_alns[i].Filename];
+    std::string rg = use_bam_rgs_ ? get_read_group(paired_str_alns[i], rg_to_sample): rg_to_sample[paired_str_alns[i].Filename];
 
     int rg_index;
     auto index_iter = rg_indices.find(rg);
@@ -212,7 +214,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     mate_pairs_by_rg[rg_index].push_back(mate_alns[i]);
   }
   for (unsigned int i = 0; i < unpaired_str_alns.size(); ++i){
-    std::string rg = use_bam_rgs_ ? get_read_group(unpaired_str_alns[i], read_group_mapping): read_group_mapping[paired_str_alns[i].Filename];
+    std::string rg = use_bam_rgs_ ? get_read_group(unpaired_str_alns[i], rg_to_sample): rg_to_sample[paired_str_alns[i].Filename];
 
     int rg_index;
     auto index_iter = rg_indices.find(rg);
@@ -234,7 +236,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 
 void BamProcessor::process_regions(BamTools::BamMultiReader& reader, 
 				   std::string& region_file, std::string& fasta_dir,
-				   std::map<std::string, std::string>& file_read_groups,
+				   std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
 				   BamTools::BamWriter& bam_writer, std::ostream& out, int32_t max_regions, std::string chrom){
   std::vector<Region> regions;
   readRegions(region_file, regions, max_regions, chrom);
@@ -262,8 +264,12 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
 
     std::vector<std::string> rg_names;
     std::vector< std::vector<BamTools::BamAlignment> > paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg;
-    read_and_filter_reads(reader, chrom_seq, region_iter, file_read_groups, rg_names, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, bam_writer);
+    read_and_filter_reads(reader, chrom_seq, region_iter, rg_to_sample, rg_to_library, rg_names, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, bam_writer);
+    if (rem_pcr_dups_)
+      remove_pcr_duplicates(base_quality_, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg);
+
     std::string ref_allele = get_str_ref_allele(region_iter->start(), region_iter->stop(), chrom_seq);
     process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, *region_iter, ref_allele, chrom_seq, out);
   }
 }
+

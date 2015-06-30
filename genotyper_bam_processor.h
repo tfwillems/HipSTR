@@ -60,8 +60,8 @@ private:
   std::set<std::string> haploid_chroms_;
 
 public:
- GenotyperBamProcessor(bool use_bam_rgs, bool check_mate_chroms,
-		       bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, check_mate_chroms){
+ GenotyperBamProcessor(bool use_bam_rgs, bool check_mate_chroms, bool remove_pcr_dups,
+		       bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, check_mate_chroms, remove_pcr_dups){
     output_stutter_models_ = false;
     output_alleles_        = false;
     output_str_gts_        = false;

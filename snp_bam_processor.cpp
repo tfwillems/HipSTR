@@ -26,8 +26,8 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
 	  good_samples.insert(rg_names[i]);
 	  std::vector<double> log_p1, log_p2;
 	  SNPTree* snp_tree = snp_trees[sample_indices[rg_names[i]]];
-	  calc_het_snp_factors(paired_strs_by_rg[i], mate_pairs_by_rg[i], base_qualities, snp_tree, log_p1, log_p2, match_count_, mismatch_count_);
-	  calc_het_snp_factors(unpaired_strs_by_rg[i], base_qualities, snp_tree, log_p1, log_p2, match_count_, mismatch_count_);
+	  calc_het_snp_factors(paired_strs_by_rg[i], mate_pairs_by_rg[i], base_quality_, snp_tree, log_p1, log_p2, match_count_, mismatch_count_);
+	  calc_het_snp_factors(unpaired_strs_by_rg[i], base_quality_, snp_tree, log_p1, log_p2, match_count_, mismatch_count_);
 	  log_p1s.push_back(log_p1); log_p2s.push_back(log_p2);
 	}
 	else {

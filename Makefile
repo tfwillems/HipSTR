@@ -8,15 +8,13 @@
 CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX -pthread
 
 ## Source code files, add new files to this list
-SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp extract_indels.cpp mathops.cpp
-SRC_STUTTER = stutter_main.cpp
+SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp extract_indels.cpp mathops.cpp pcr_duplicates.cpp
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
 SRC_HIPSTR  = hipstr_main.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp vcf_input.cpp
 SRC_SEQALN  = SeqAlignment/AlignmentData.cpp SeqAlignment/HapAligner.cpp SeqAlignment/RepeatStutterInfo.cpp SeqAlignment/AlignmentModel.cpp SeqAlignment/AlignmentOps.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NWNoRefEndPenalty.cpp SeqAlignment/Haplotype.cpp SeqAlignment/RepeatBlock.cpp SeqAlignment/StutterAligner.cpp SeqAlignment/HaplotypeGenerator.cpp SeqAlignment/STRAlleleExpansion.cpp SeqAlignment/HTMLCreator.cpp SeqAlignment/AlignmentViz.cpp
 
 # For each CPP file, generate an object file
 OBJ_COMMON  := $(SRC_COMMON:.cpp=.o)
-OBJ_STUTTER := $(SRC_STUTTER:.cpp=.o)
 OBJ_SIEVE   := $(SRC_SIEVE:.cpp=.o)
 OBJ_HIPSTR  := $(SRC_HIPSTR:.cpp=.o)
 OBJ_SEQALN  := $(SRC_SEQALN:.cpp=.o)

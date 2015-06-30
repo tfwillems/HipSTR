@@ -10,6 +10,7 @@
 #include "bamtools/include/api/BamMultiReader.h"
 #include "bamtools/include/api/BamWriter.h"
 
+#include "base_quality.h"
 #include "error.h"
 #include "region.h"
 
@@ -17,9 +18,11 @@ class BamProcessor {
  private:
   bool use_bam_rgs_;
   bool check_mate_info_;
+  bool rem_pcr_dups_;
 
  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq,
-			    std::vector<Region>::iterator region_iter, std::map<std::string, std::string>& read_group_mapping,
+			    std::vector<Region>::iterator region_iter,
+			    std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
 			    std::vector<std::string>& rg_names,
 			    std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,                                                             
 			    std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,                                                              
@@ -30,10 +33,14 @@ class BamProcessor {
 
  std::string trim_alignment_name(BamTools::BamAlignment& aln);
 
+ protected:
+ BaseQuality base_quality_;
+
   public:
- BamProcessor(bool use_bam_rgs, bool filter_by_mate){
+ BamProcessor(bool use_bam_rgs, bool filter_by_mate, bool remove_pcr_dups){
    use_bam_rgs_             = use_bam_rgs;
    check_mate_info_         = filter_by_mate;
+   rem_pcr_dups_            = remove_pcr_dups;
    MAX_MATE_DIST            = 1000;
    MIN_BP_BEFORE_INDEL      = 7;
    MIN_FLANK                = 5;
@@ -56,9 +63,13 @@ class BamProcessor {
    use_bam_rgs_ = false;
  }
 
+ void allow_pcr_dups(){
+   rem_pcr_dups_ = false;
+ }
+
  void process_regions(BamTools::BamMultiReader& reader,
 		      std::string& region_file, std::string& fasta_dir,
-		      std::map<std::string, std::string>& file_read_groups,
+		      std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
 		      BamTools::BamWriter& bam_writer, std::ostream& out, int32_t max_regions, std::string chrom);
   
  virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
