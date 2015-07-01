@@ -48,7 +48,7 @@ For each region in *str_regions.bed*, **HipSTR** will:
 
 1. Learn locus-specific stutter models and output them to *stutter_models.txt*
 2. Use the stutter model and haplotype-based alignment algorithm to genotype each individual
-3. Output the resulting STR genotypes to *str_calls.vcf.gz*, a [bgzipped] (http://www.htslib.org/doc/tabix.html) [VCF](http://samtools.github.io/hts-specs/VCFv4.2.pdf) file. This VCF will contain calls for each sample in any of the BAM files' read groups. 
+3. Output the resulting STR genotypes to *str_calls.vcf.gz*, a [bgzipped] (http://www.htslib.org/doc/tabix.html) [VCF](#str-vcf) file. This VCF will contain calls for each sample in any of the BAM files' read groups. 
 
 ## In-depth usage
 **HipSTR** has a variety of usage options designed to accomodate scenarios in which the sequencing data varies in terms of the number of samples and the coverage. Most scenarios will fall into one of the following categories:
@@ -200,10 +200,11 @@ For humans, we've provided a *BED* file containing STR loci for hg19 at [FILL ME
 
 For other model organisms, we recommend that you 
 
-1. Use [Tandem Repeats Finder](https://tandem.bu.edu/trf/trf.html) or other repeat-finding tools to scan the reference genomes for STRs
+1. Use [Tandem Repeats Finder](https://tandem.bu.edu/trf/trf.html) or other tools to scan the reference genome for STRs
 2. Reformat the resulting output to conform with the format outlined above
 
+<a id="str-vcf"></a>
 ### VCF file
-[VCF](http://samtools.github.io/hts-specs/VCFv4.2.pdf)
+For more information on the VCF file format, please see the [VCF spec](http://samtools.github.io/hts-specs/VCFv4.2.pdf). For filtering and parsing VCFs, we recommend the fantastic python package [PyVCF](http://pyvcf.readthedocs.org/en/latest/)
 
 ### Stutter model
