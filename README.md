@@ -118,7 +118,7 @@ HipSTR doesn't currently have multi-threaded support, but there are several opti
 ## Additional Usage Options
 | Option | Description |
 | :------| :-----------|
-| **--viz-out       <aln_viz.html.gz>**     | Output a bgzipped file containing Needleman-Wunsch alignments <br> for each locus. The resulting file can be readily visualized with VizAln 
+| **--viz-out       <aln_viz.html.gz>**     | Output a bgzipped file containing Needleman-Wunsch alignments <br> for each locus. The resulting file can be readily visualized with [VizAln](#aln-viz) 
 | **--haploid-chrs  <list_of_chroms>**      | Comma separated list of chromosomes to treat as haploid <br> By default, all chromosomes are treated as diploid
 | **--no-rmdup**                            | Don't remove PCR duplicates. By default, they'll be removed
 | **--snp-vcf    <phased_snps.vcf.gz>**     | Bgzipped VCF file containing phased SNP genotypes for samples <br> that are being genotyped. These SNPs will be used to physically <br> phase any STRs when a read or its mate pair overlaps a heterozygous site <br> **Always use this option if you have available phased SNP genotypes**
@@ -127,6 +127,7 @@ HipSTR doesn't currently have multi-threaded support, but there are several opti
 
 This list is comprised of the most useful and frequently used additional options, but is not all encompassing. For a complete list of HipSTR options, please type either `./HipSTR` or `./HipSTR --help`
 
+<a id="aln-viz"></a>
 ## Alignment Visualization
 When deciphering and inspecting STR calls, it's extremely useful to visualize the supporting reads. HipSTR facilitates this through the **--viz-out** option, which writes a bgzipped file containing alignments for each call that can be readily visualized using the **VizAln** command included in HipSTR main directory. If you're interested in visualizing alignments, you first need to index the file using tabix. 
 For example, if you ran HipSTR with the option `--viz-out alns.html.gz`, you should use the command 
