@@ -150,3 +150,35 @@ If we wanted to inspect all calls for the same locus, we could  use the command
 ```
 NOTE: Because the **--viz-out** file can become fairly large if you're genotyping thousands of loci or thousands of samples, in some scenarios it may be best to rerun HipSTR using this option on the subset of loci in which you're interested.
 
+## File Formats
+
+### BAM files
+[BAM](https://samtools.github.io/hts-specs/SAMv1.pdf)
+
+### STR region BED file
+The BED file containing each STR region of interest is a tab-delimited file comprised of 5 mandatory columns: 
+
+1. The name of the chromosome on which the STR is located
+2. The start position of the STR on its chromosome
+3. The end position of the STR on its chromosome
+4. The motif length (i.e. the number of bases in the repeat unit)
+5. The number of copies of the repeat unit in the reference allele
+
+The 6th column is optional and contains the name of the STR locus, which will be written to the ID column in the VCF. 
+Below is an example file which contains 5 STR loci 
+
+**NOTE: The table header is for illustration purposes only. The BED file should not contain a header**
+
+CHROM | START | END | MOTIF_LEN | NUM_COPIES | NAME
+---- | ---- | ---- | --- | --- | ---
+chr1    | 13784267    | 13784306    | 4 | 10 | GATA27E01
+chr1    | 18789523    | 18789555    | 3 | 11 | ATA008
+chr2    | 32079410    | 32079469    | 4 | 15 | AGAT117
+chr17    | 38994441    | 38994492    | 4 | 12 | GATA25A04
+chr17    | 5529940    | 55299992    | 4 | 13 | AAT245
+
+
+### VCF file
+[VCF](http://samtools.github.io/hts-specs/VCFv4.2.pdf)
+
+### Stutter model
