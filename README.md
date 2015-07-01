@@ -128,3 +128,24 @@ HipSTR doesn't currently have multi-threaded support, but there are several opti
 This list is comprised of the most useful and frequently used additional options, but is not all encompassing. For a complete list of HipSTR options, please type either `./HipSTR` or `./HipSTR --help`
 
 ## Alignment Visualization
+When deciphering and inspecting STR calls, it's extremely useful to visualize the supporting reads. HipSTR facilitates this through the **--viz-out** option, which writes a bgzipped file containing alignments for each call that can be readily visualized using the **VizAln** command included in HipSTR main directory. If you're interested in visualizing alignments, you first need to index the file using tabix. 
+For example, if you ran HipSTR with the option `--viz-out alns.html.gz`, you should use the command 
+```
+tabix -p bed aln.html.gz
+```
+to generate a [tabix] (http://www.htslib.org/doc/tabix.html) index for the file so that we can rapidly extract alignments for a locus of interest. This command only needs to be run once after the file has been generated. 
+
+You could then visualize the calls for sample *ERR218433* at locus *chr1 51639636* using the command
+```
+./VizAln aln.html.gz chr1 51639636 ERR218433
+```
+This command will automatically open a rendering of the alignments in your browser and might look something like:
+![Read more words!](examples/example_viz.png)
+The top bar represents the reference sequence and the red text indicates the name of the sample and its associated call at the locus. The remaining rows indicate the alignment for each read used in genotyping. In this particular example, 7 reads have a *4bp deletion*, 9 reads have a *8bp deletion* and 1 read has a *12bp deletion*. The solitary *12bp deletion* is likely the result of PCR stutter and HipSTR therefore genotypes this sample as *-4 | -8*
+
+If we wanted to inspect all calls for the same locus, we could  use the command 
+```
+./VizAln aln.html.gz chr1 51639636
+```
+NOTE: Because the **--viz-out** file can become fairly large if you're genotyping thousands of loci or thousands of samples, in some scenarios it may be best to rerun HipSTR using this option on the subset of loci in which you're interested.
+
