@@ -23,7 +23,7 @@ void print_usage(int def_mdist){
   std::cerr << "Usage: HipSTR --bams  <list_of_bams> --fasta <dir> --regions <region_file.bed>" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
-	    << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of .bam files"                                                  << "\n"
+	    << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of BAM files"                                                   << "\n"
 	    << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located"                      << "\n"
 	    << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                         << "\n" << "\n"
     
@@ -32,7 +32,7 @@ void print_usage(int def_mdist){
 	    << "\t" << "                                      "  << "\t" << " This option is not available when the --len-genotyper option has been specified"    << "\n"
 	    << "\t" << "--snp-vcf    <phased_snps.vcf.gz>     "  << "\t" << "Bgzipped input VCF file containing phased SNP genotypes for the samples"             << "\n" 
 	    << "\t" << "                                      "  << "\t" << " that are going to be genotyped. These SNPs will be used to physically phase any "   << "\n"
-	    << "\t" << "                                      "  << "\t" << " STRs in which a read or its mate pair overlaps a heterozygous site"                 << "\n"
+	    << "\t" << "                                      "  << "\t" << " STRs when a read or its mate pair overlaps a heterozygous site"                     << "\n"
 	    << "\t" << "--stutter-in <stutter_models.txt>     "  << "\t" << "Input file containing stutter models for each locus. By default, an EM algorithm "   << "\n"
 	    << "\t" << "                                      "  << "\t" << "  will be used to learn locus-specific models"                               << "\n" << "\n"
     
@@ -48,7 +48,7 @@ void print_usage(int def_mdist){
 	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to VCF (default = False)"                    << "\n" << "\n"
     
 	    << "Other optional parameters:" << "\n"
-	    << "\t" << "--help                                "  << "\t" << "Print this help message and exit"
+	    << "\t" << "--help                                "  << "\t" << "Print this help message and exit"                                                    << "\n"
 	    << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
 	    << "\t" << "--haploid-chrs  <list_of_chroms>      "  << "\t" << "Comma separated list of chromosomes to treat as haploid"                             << "\n"
 	    << "\t" << "                                      "  << "\t" << " By default, all chromosomes are treated as diploid"                                 << "\n"
@@ -57,10 +57,10 @@ void print_usage(int def_mdist){
 	    << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
 	    << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
 	    << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
-	    << "\t" << "                                      "  << "\t" << "  Assign each read the RG tag corresponding to its file. By default, "               << "\n"
+	    << "\t" << "                                      "  << "\t" << "  Assign each read the read group corresponding to its file. By default, "           << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and this is used instead"                           << "\n"
 	    << "\t" << "--lbs           <list_of_read_groups> "  << "\t" << "Comma separated list of libraries in same order as BAM files. "                      << "\n"
-	    << "\t" << "                                      "  << "\t" << "  Assign each read the library (LB tag) corresponding to its file. By default, "     << "\n"
+	    << "\t" << "                                      "  << "\t" << "  Assign each read the library corresponding to its file. By default, "              << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and the associated library is used instead"         << "\n"
 	    << "\t" << "                                      "  << "\t" << "  NOTE: This option is required when --rgs has been specified"                       << "\n"
 	    << "\t" << "--len-genotyper                       "  << "\t" << "Use a length-based model to genotype each STR. This option is much"                  << "\n"
