@@ -153,10 +153,28 @@ NOTE: Because the **--viz-out** file can become fairly large if you're genotypin
 ## File Formats
 
 ### BAM files
-[BAM](https://samtools.github.io/hts-specs/SAMv1.pdf)
+HipSTR requires [BAM](https://samtools.github.io/hts-specs/SAMv1.pdf) files produced by any indel-sensitive aligner. These files must have been sorted by position using the `samtools sort` command and then indexed using `samtools index`. To associate a read with its sample of interest, HipSTR uses read group information in the BAM header lines. These *@RG* lines must contain an *ID* field, an *LB* field indicating the library and an *SM* field indicating the sample. For example, if a BAM contained the following header line 
+> @RG     ID:lobSTR;RUN1 LB:ERR044603        SM:HG01914
+
+an alignment with the RG tag 
+> RG:Z:lobSTR;RUN1
+
+will be associated with sample *HG01914* and library *ERR044603*. In this manner, HipSTR can analyze BAMs containing more than one sample and/or more than one library and can handle BAMs in which a single sample's reads are spread across multiple files. 
+
+Alternatively, if your BAM files lack *RG* information, you can use the **--rgs** and **-lbs** flags to specify the read groups and libraries associated with each BAM. In this setting, however, a BAM can only contain a single library and a single read group. For example, the command
+```
+./HipSTR --bams             run1.bam,run2.bam,run3.bam,run4.bam
+         --fasta            /data/
+         --regions          str_regions.bed
+         --stutter-out      stutter_models.txt
+         --str-vcf          str_calls.vcf.gz
+         --rgs              SAMPLE1,SAMPLE1,SAMPLE2,SAMPLE3
+         --libs             LIB1,LIB2,LIB3,LIB4
+```
+essentially tells HipSTR to associate all the reads in the first two BAMS with *SAMPLE1*, all the reads in the third file with *SAMPLE2* and all the reads in the last BAM with *SAMPLE3*.
 
 ### STR region BED file
-The BED file containing each STR region of interest is a tab-delimited file comprised of 5 mandatory columns: 
+The BED file containing each STR region of interest is a tab-delimited file comprised of 5 required columns and one optional column: 
 
 1. The name of the chromosome on which the STR is located
 2. The start position of the STR on its chromosome
