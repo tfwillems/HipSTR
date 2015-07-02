@@ -187,7 +187,7 @@ The BED file containing each STR region of interest is a tab-delimited file comp
 The 6th column is optional and contains the name of the STR locus, which will be written to the ID column in the VCF. 
 Below is an example file which contains 5 STR loci 
 
-**NOTE: The table header is for illustration purposes only. The BED file should not contain a header**
+**NOTE: The table header is for descriptive purposes. The BED file should not have a header**
 
 CHROM | START | END | MOTIF_LEN | NUM_COPIES | NAME
 ---- | ---- | ---- | --- | --- | ---
@@ -208,4 +208,70 @@ For other model organisms, we recommend that you
 ### VCF file
 For more information on the VCF file format, please see the [VCF spec](http://samtools.github.io/hts-specs/VCFv4.2.pdf). For filtering and parsing VCFs, we recommend the fantastic python package [PyVCF](http://pyvcf.readthedocs.org/en/latest/)
 
+#### INFO fields
+*INFO* fields contains statistics about each genotyped locus in the VCF. The INFO fields reported by HipSTR primarily describe the learned/supplied stutter model for the locus and its reference coordinates and sequence characteristics.
+
+FIELD | DESCRIPTION
+----- | -----------
+INFRAME_PGEOM  | Parameter for in-frame geometric step size distribution
+INFRAME_UP     | Probability that stutter causes an in-frame increase in obs. STR size
+INFRAME_DOWN   | Probability that stutter causes an in-frame decrease in obs. STR size
+OUTFRAME_PGEOM | Parameter for out-of-frame geometric step size distribution
+OUTFRAME_UP    | Probability that stutter causes an out-of-frame increase in obs. STR size
+OUTFRAME_DOWN  | Probability that stutter causes an out-of-frame decrease in obs. STR size
+BPDIFFS        | Base pair difference of each alternate allele from the reference allele
+START          | Inclusive start coodinate for the repetitive portion of the reference allele
+END            | Inclusive end coordinate for the repetitive portion of the reference allele
+PERIOD         | Length of STR motif
+AC             | Alternate allele counts
+NSKIP          | Number of samples not genotyped due to various issues
+
+#### FORMAT fields
+*FORMAT* fields contain information about the genotype for each sample at the locus. In addition to the most probable phased genotype (*GT*), HipSTR reports information about the posterior likelihood of this genotype (*PQ*) and its unphased analog (*Q*). HipSTR also reports the expected base pair difference from the reference for the genotype by marginalizing over all genotype probabilities (*BPDOSE*), a value that may be useful in association studies. 
+
+FIELD     | DESCRIPTION
+--------- | -----------
+GT        | Genotype
+GB        | Base pair differences of genotype from reference
+Q         | Posterior probability of unphased genotype
+PQ        | Posterior probability of phased genotype
+DP        | Read depth
+DSNP      | Number of reads with SNP phasing information
+PDP       | Fractional reads supporting each haploid genotype
+BPDOSE    | Posterior mean base pair difference from reference
+ALLREADS  | Base pair difference observed in each read
+PALLREADS | Expected base pair diff in each read based on haplotype alignment probs
+GL        | log-10 genotype likelihoods
+PL        | Phred-scaled genotype likelihoods
+
 ### Stutter model
+To model PCR stutter artifacts, we assume that there are three types of stutter artifacts:
+
+1. **In-frame changes**: Change the size of the STR in the read by multiples of the repeat unit. For instance, if the repeat motif is AGAT, in-frame changes could lead to differences of -8, -4, 4, 8, and so on. 
+2. **Out-of-frame changes**: Change the size of the STR by non-multiples of the repeat unit. For instance, if the repeat motif is AGAT, out-of-frame changes could lead to differences of -3, -2, -1, 1, 2, 3 and so on. 
+3. **No stutter change**: The size of the STR in the read is the same as the size of the underlying STR. 
+
+
+Stutter model files contain the information necessary to model each of these artifacts in a **tab-delimited BED-like** format with exactly 9 columns. An example of such a file is as follows:
+
+CHROM  | START       | END      | IGEOM | IDOWN | IUP   | OGEOM | ODOWN | OUP
+-----  | ----------- | -------- | ----  | ----  | ---   | ----  | ---   | ---
+chr1   | 13784267    | 13784306 | 0.95  | 0.05  | 0.01  | 0.9   | 0.01  | 0.001
+chr1   | 18789523    | 18789555 | 0.8   | 0.01  | 0.05  | 0.9   | 0.001 | 0.001
+chr2   | 32079410    | 32079469 | 0.9   | 0.01  | 0.01  | 0.9   | 0.001 | 0.001
+chr17  | 38994441    | 38994492 | 0.9   | 0.001 | 0.001 | 0.9   | 0.001 | 0.001 
+chr17  | 5529940     | 55299992 | 0.95  | 0.01  | 0.01  | 0.9   | 0.001 | 0.001
+
+**NOTE: The table header is for descriptive purposes. The BED file should not have a header**
+
+
+Each of the stutter parameters is defined as follows:
+
+| VARIABLE | DESCRIPTION
+| -------- | --------
+| IDOWN    | Probability that in-frame changes decrease the size of the observed STR allele
+| IUP      |  Probability that in-frame changes increase the size of the observed STR allele
+| ODOWN    | Probability that out-of-frame changes decrease the size of the observed STR allele
+| OUP      |  Probability that out-of-frame changes increase the size of the observed STR allele
+| IGEOM    | Parameter governing geometric step size distribution for in-frame changes
+| OGEOM    | Paramter  governing geometric step size distribution for out-of-frame changes
