@@ -262,7 +262,7 @@ chr2   | 32079410    | 32079469 | 0.9   | 0.01  | 0.01  | 0.9   | 0.001 | 0.001
 chr17  | 38994441    | 38994492 | 0.9   | 0.001 | 0.001 | 0.9   | 0.001 | 0.001 
 chr17  | 5529940     | 55299992 | 0.95  | 0.01  | 0.01  | 0.9   | 0.001 | 0.001
 
-**NOTE: The table header is for descriptive purposes. The BED file should not have a header**
+**NOTE: The table header is for descriptive purposes. The stutter file should not have a header**
 
 
 Each of the stutter parameters is defined as follows:
