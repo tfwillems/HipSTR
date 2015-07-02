@@ -83,7 +83,7 @@ This mode is identical to the one suggested in the **Quick Start** section as it
 
 <a id="mode-2"></a>
 #### 2. External stutter models + STR calling with de novo allele generation
-The sole difference in this mode is that we no longer output stutter models using the **--stutter-out** option and instead input them from a file using the **--stutter-in** file. For more details on the stutter model file format, see below. For humans, we've provided a file containing stutter models for each STR locus under PCR or PCR-free conditions at [FILL ME IN](www.google.com)
+The sole difference in this mode is that we no longer output stutter models using the **--stutter-out** option and instead input them from a file using the **--stutter-in** file. For more details on the stutter model file format, see [below](#stutter-file). For humans, we've provided a file containing stutter models for each STR locus under PCR or PCR-free conditions at [FILL ME IN](www.google.com)
 ```
 ./HipSTR --bams             run1.bam,run2.bam,run3.bam,run4.bam
          --fasta            /data/
@@ -244,6 +244,7 @@ PALLREADS | Expected base pair diff in each read based on haplotype alignment pr
 GL        | log-10 genotype likelihoods
 PL        | Phred-scaled genotype likelihoods
 
+<a id="stutter-file"></a>
 ### Stutter model
 To model PCR stutter artifacts, we assume that there are three types of stutter artifacts:
 
