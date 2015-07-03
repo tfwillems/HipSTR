@@ -56,13 +56,13 @@ void print_usage(int def_mdist){
 	    << "\t" << "--no-rmdup                            "  << "\t" << "Don't remove PCR duplicates. By default, they'll be removed"                         << "\n"
 	    << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
 	    << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
-	    << "\t" << "--rgs           <list_of_read_groups> "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
+	    << "\t" << "--bam-samps     <list_of_samples>     "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
 	    << "\t" << "                                      "  << "\t" << "  Assign each read the read group corresponding to its file. By default, "           << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and this is used instead"                           << "\n"
-	    << "\t" << "--lbs           <list_of_read_groups> "  << "\t" << "Comma separated list of libraries in same order as BAM files. "                      << "\n"
+	    << "\t" << "--bam-lbs       <list_of_libraries>   "  << "\t" << "Comma separated list of libraries in same order as BAM files. "                      << "\n"
 	    << "\t" << "                                      "  << "\t" << "  Assign each read the library corresponding to its file. By default, "              << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and the associated library is used instead"         << "\n"
-	    << "\t" << "                                      "  << "\t" << "  NOTE: This option is required when --rgs has been specified"                       << "\n"
+	    << "\t" << "                                      "  << "\t" << "  NOTE: This option is required when --bam-samps has been specified"                 << "\n"
 	    << "\t" << "--len-genotyper                       "  << "\t" << "Use a length-based model to genotype each STR. This option is much"                  << "\n"
 	    << "\t" << "                                      "  << "\t" << "  faster than the default sequence-based model but does not model the underlying"    << "\n"
 	    << "\t" << "                                      "  << "\t" << "  STR sequence. As a result, it cannot detect homoplasy and all STR alleles output"  << "\n"
@@ -72,9 +72,9 @@ void print_usage(int def_mdist){
 }
   
 void parse_command_line_args(int argc, char** argv, 
-			     std::string& bamfile_string,  std::string& rg_string,        std::string& haploid_chr_string,
-			     std::string& fasta_dir,       std::string& region_file,      std::string& snp_vcf_file,        std::string& chrom,
-			     std::string& bam_out_file,    std::string& str_vcf_out_file, std::string& allele_vcf_out_file, std::string& viz_out_file,
+			     std::string& bamfile_string,  std::string& rg_sample_string,  std::string& rg_lib_string,       std::string& haploid_chr_string,
+			     std::string& fasta_dir,       std::string& region_file,       std::string& snp_vcf_file,        std::string& chrom,
+			     std::string& bam_out_file,    std::string& str_vcf_out_file,  std::string& allele_vcf_out_file, std::string& viz_out_file,
 			     std::string& stutter_in_file, std::string& stutter_out_file, int& use_hap_aligner, int& remove_all_filters, int& remove_pcr_dups,
 			     int& output_gls, int& output_pls, std::string& ref_vcf_file,
 			     BamProcessor& bam_processor){
@@ -92,7 +92,8 @@ void parse_command_line_args(int argc, char** argv,
     {"chrom",           required_argument, 0, 'c'},
     {"max-mate-dist",   required_argument, 0, 'd'},
     {"fasta",           required_argument, 0, 'f'},
-    {"rgs",             required_argument, 0, 'g'},
+    {"bam-samps",       required_argument, 0, 'g'},
+    {"bam-lbs",         required_argument, 0, 'q'},
     {"h",               no_argument, &print_help, 1},
     {"help",            no_argument, &print_help, 1},
     {"len-genotyper",   no_argument, &use_hap_aligner,    0},
@@ -139,7 +140,7 @@ void parse_command_line_args(int argc, char** argv,
       fasta_dir = std::string(optarg);
       break;
     case 'g':
-      rg_string = std::string(optarg);
+      rg_sample_string = std::string(optarg);
       break;
     case 'm':
       stutter_in_file = std::string(optarg);
@@ -149,6 +150,9 @@ void parse_command_line_args(int argc, char** argv,
       break;
     case 'p':
       ref_vcf_file = std::string(optarg);
+      break;
+    case 'q':
+      rg_lib_string = std::string(optarg);
       break;
     case 'r':
       region_file = std::string(optarg);
@@ -188,11 +192,11 @@ int main(int argc, char** argv){
   GenotyperBamProcessor bam_processor(true, check_mate_chroms, true, true);
   
   int use_hap_aligner = 1, remove_all_filters = 0, remove_pcr_dups = 1;
-  std::string bamfile_string= "", rg_string="", lb_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
+  std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", stutter_in_file="", stutter_out_file="", viz_out_file="";
   int output_gls = 0, output_pls = 0;
   std::string ref_vcf_file="";
-  parse_command_line_args(argc, argv, bamfile_string, rg_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
+  parse_command_line_args(argc, argv, bamfile_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
 			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, viz_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, remove_all_filters, 
 			  remove_pcr_dups, output_gls, output_pls, ref_vcf_file, bam_processor);
   if (output_gls) bam_processor.output_gls();
@@ -247,21 +251,21 @@ int main(int argc, char** argv){
   // of samples of interest based on either the specified names or the RG tags in the BAM headers
   std::set<std::string> rg_samples, rg_libs;
   std::map<std::string, std::string> rg_ids_to_sample, rg_ids_to_library;
-  if (!rg_string.empty()){
-    if (lb_string.empty())
-      printErrorAndDie("--lbs option required when --rgs option specified");
+  if (!rg_sample_string.empty()){
+    if (rg_lib_string.empty())
+      printErrorAndDie("--bam-lbs option required when --bam-samps option specified");
 
     std::vector<std::string> read_groups, libraries;
-    split_by_delim(rg_string, ',', read_groups);
-    split_by_delim(lb_string, ',', libraries);
+    split_by_delim(rg_sample_string, ',', read_groups);
+    split_by_delim(rg_lib_string, ',', libraries);
     if (bam_files.size() != read_groups.size())
-      printErrorAndDie("Number of BAM files in --bams and RGs in --rgs must match");
+      printErrorAndDie("Number of BAM files in --bams and samples in --bam-samps must match");
     if (bam_files.size() != libraries.size())
-      printErrorAndDie("Number of BAM files in --bams and LBs in --lbs must match");
+      printErrorAndDie("Number of BAM files in --bams and libraries in --bam-lbs must match");
 
     for (unsigned int i = 0; i < bam_files.size(); i++){
       rg_ids_to_sample[bam_files[i]]  = read_groups[i];
-      rg_ids_to_library[bam_files[i]] = read_groups[i];
+      rg_ids_to_library[bam_files[i]] = libraries[i];
       rg_samples.insert(read_groups[i]);
     }
     bam_processor.use_custom_read_groups();
@@ -337,6 +341,7 @@ int main(int argc, char** argv){
       printErrorAndDie("Path for STR VCF output file must end in .gz as it will be bgzipped");
     bam_processor.set_output_str_vcf(str_vcf_out_file, rg_samples);
   }
+
   if (!stutter_in_file.empty())
     bam_processor.set_input_stutter(stutter_in_file);
   if (!stutter_out_file.empty())
