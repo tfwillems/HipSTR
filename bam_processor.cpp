@@ -248,19 +248,31 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
   for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
     std::cerr << "Processing region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << std::endl;
     int chrom_id = reader.GetReferenceID(region_iter->chrom());
+    if (chrom_id == -1 && region_iter->chrom().size() > 3 && region_iter->chrom().substr(0, 3).compare("chr") == 0)
+      chrom_id = reader.GetReferenceID(region_iter->chrom().substr(3));
+
+    if (chrom_id == -1){
+      std::cerr << "\n" << "WARNING: No reference sequence for chromosome " << region_iter->chrom() << " found in BAMs"  << "\n"
+		<< "\t" << "Please ensure that the names of reference sequences in your BED file match those in you BAMs" << "\n"
+		<< "\t" << "Skipping region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << "\n" << std::endl;
+      continue;
+    }
     
     // Read FASTA sequence for chromosome 
     if (cur_chrom_id != chrom_id){
       cur_chrom_id      = chrom_id;
-      std::string chrom = ref_vector[cur_chrom_id].RefName;
+      std::string chrom = region_iter->chrom();
       std::cerr << "Reading fasta file for " << chrom << std::endl;
       readFasta(chrom+".fa", fasta_dir, chrom_seq);
     }
-    
+
+    std::cerr << "Setting BAM region" << std::endl;
     if(!reader.SetRegion(chrom_id, (region_iter->start() < MAX_MATE_DIST ? 0: region_iter->start()-MAX_MATE_DIST), 
 			 chrom_id, region_iter->stop() + MAX_MATE_DIST)){
       printErrorAndDie("One or more BAM files failed to set the region properly");
     }
+    std::cerr << "Finished setting BAM region" << std::endl;
+
 
     std::vector<std::string> rg_names;
     std::vector< std::vector<BamTools::BamAlignment> > paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg;
