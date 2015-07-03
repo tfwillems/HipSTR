@@ -266,13 +266,10 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
       readFasta(chrom+".fa", fasta_dir, chrom_seq);
     }
 
-    std::cerr << "Setting BAM region" << std::endl;
     if(!reader.SetRegion(chrom_id, (region_iter->start() < MAX_MATE_DIST ? 0: region_iter->start()-MAX_MATE_DIST), 
 			 chrom_id, region_iter->stop() + MAX_MATE_DIST)){
       printErrorAndDie("One or more BAM files failed to set the region properly");
     }
-    std::cerr << "Finished setting BAM region" << std::endl;
-
 
     std::vector<std::string> rg_names;
     std::vector< std::vector<BamTools::BamAlignment> > paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg;
