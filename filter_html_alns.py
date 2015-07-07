@@ -28,8 +28,6 @@ class HTMLCharCounter(HTMLParser):
             self.coord += coord_change
 
     def handle_data(self, data):
-        if data == ' ':
-            return
         if self.coord not in self.counts:
             self.counts[self.coord] = collections.defaultdict(int)
         self.counts[self.coord][data.upper()] += 1
@@ -48,7 +46,8 @@ class FilteredHTMLOutputter(HTMLParser):
         coord_change = 1
         for i in xrange(len(attrs)):
             if attrs[i][0] == "colspan":
-                output += " %s=\"%d\""%(attrs[i][0], int(attrs[i][1])-self.left_trim)
+                lt = len(filter(lambda x: x < int(attrs[i][1]), self.skip_columns))
+                output += " %s=\"%d\""%(attrs[i][0], int(attrs[i][1])-self.left_trim-lt)
             else:
                 output += " %s=\"%s\""%(attrs[i][0], attrs[i][1])
 
@@ -100,10 +99,9 @@ def main():
                 trim_index += 1
             trim_index = max(0, trim_index-10)
             for i in xrange(0, trim_index):
-                bad_cols.add(fixed_points[i])
-            left_trim = 0 if trim_index == 0 else fixed_points[trim_index-1]
-        else:
-            left_trim = 0
+                if parser.counts[trim_index][0] != "*":
+                    bad_cols.add(fixed_points[i])
+        left_trim = 0
 
         if len(fixed_points) >= 1 and fixed_points[-1] == sorted(parser.counts.keys())[-1]:
             trim_index = len(fixed_points)-2
