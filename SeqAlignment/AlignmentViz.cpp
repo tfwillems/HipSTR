@@ -158,13 +158,14 @@ void overlayAlignments(std::vector<Alignment>& alignments,
     
     // Left pad with space characters
     std::map<int32_t,int>::iterator insertion_iter = max_insertions.begin();
-    for(int32_t i = min_start; i < position; i++){
+    for(int32_t i = min_start; i <= position; i++){
       if (i == insertion_iter->first){
 	for (int j = 0; j < insertion_iter->second; j++)
 	  result << SPACE_CHAR;
 	insertion_iter++;
       }
-      result <<  SPACE_CHAR;
+      if (i != position)
+	result << SPACE_CHAR;
     }
     
     while (true){
