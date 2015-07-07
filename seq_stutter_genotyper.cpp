@@ -350,7 +350,7 @@ bool SeqStutterGenotyper::genotype(){
   // Align each read against each candidate haplotype
   std::cerr << "Aligning reads to each candidate haplotype..." << std::endl;
   init_alignment_model();
-  HapAligner hap_aligner(haplotype_, MAX_REF_FLANK_LEN, &base_quality_);
+  HapAligner hap_aligner(haplotype_);
   if (pool_identical_seqs_){
     // TO DO: Add check to see if sequence already encountered
     // If so, reuse alignment probs(even though qual scores may differ)
@@ -361,7 +361,7 @@ bool SeqStutterGenotyper::genotype(){
   else {
     int read_index = 0;
     for (unsigned int i = 0; i < alns_.size(); i++){
-      hap_aligner.process_reads(alns_[i], read_index, log_aln_probs_, seed_positions_); 
+      hap_aligner.process_reads(alns_[i], read_index, &base_quality_, log_aln_probs_, seed_positions_); 
       read_index += alns_[i].size();
     }  
   }

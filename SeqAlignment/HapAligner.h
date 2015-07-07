@@ -11,8 +11,6 @@
 class HapAligner {
  private:
   Haplotype* haplotype_;
-  int32_t max_ref_flank_len_; // Maximum length of reference sequences flanking the repetitive region
-  BaseQuality* base_quality_;
 
   /**
    * Align the sequence contained in SEQ_0 -> SEQ_N using the recursion
@@ -40,10 +38,8 @@ class HapAligner {
 			     double* r_match_matrix, double* r_insert_matrix, double* r_deletion_matrix, double r_prob);
 
  public:
-  HapAligner(Haplotype* haplotype, int32_t max_ref_flank_len, BaseQuality* base_quality){
+  HapAligner(Haplotype* haplotype){
     haplotype_         = haplotype;
-    max_ref_flank_len_ = max_ref_flank_len;
-    base_quality_      = base_quality;
   }
 
   /** 
@@ -53,7 +49,8 @@ class HapAligner {
   int calc_seed_base(Alignment& alignment);
 
 
-  void process_reads(std::vector<Alignment>& alignments, int init_read_index, double* aln_probs, int* seed_positions);
+  void process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality,
+		     double* aln_probs, int* seed_positions);
 };
 
 #endif

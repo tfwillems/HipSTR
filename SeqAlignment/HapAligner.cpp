@@ -271,7 +271,7 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
   assert(haplotype_index == haplotype_->cur_size());
 }
 
-double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base, 
+double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base,
 				       char seed_char, double log_seed_wrong, double log_seed_correct,
 				       double* l_match_matrix, double* l_insert_matrix, double* l_deletion_matrix, double l_prob,
 				       double* r_match_matrix, double* r_insert_matrix, double* r_deletion_matrix, double r_prob){
@@ -416,7 +416,8 @@ int HapAligner::calc_seed_base(Alignment& aln){
   return best_seed;
 }
 
-void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read_index, double* aln_probs, int* seed_positions){
+void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality,
+			       double* aln_probs, int* seed_positions){
   double* prob_ptr = aln_probs + (init_read_index*haplotype_->num_combs());
   for (unsigned int i = 0; i < alignments.size(); i++){
     int seed_base = calc_seed_base(alignments[i]);
@@ -434,8 +435,8 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
       double base_log_correct[alignments[i].get_sequence().size()]; // log10(Prob(correct))
       const std::string& qual_string = alignments[i].get_base_qualities();
       for (unsigned int j = 0; j < qual_string.size(); j++){
-	base_log_wrong[j]   = base_quality_->log_prob_error(qual_string[j]);
-	base_log_correct[j] = base_quality_->log_prob_correct(qual_string[j]);
+	base_log_wrong[j]   = base_quality->log_prob_error(qual_string[j]);
+	base_log_correct[j] = base_quality->log_prob_correct(qual_string[j]);
       }                                                                         
 
       const char* base_seq = alignments[i].get_sequence().c_str();
