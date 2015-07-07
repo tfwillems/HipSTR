@@ -11,10 +11,8 @@
 class HapAligner {
  private:
   Haplotype* haplotype_;
-  int total_reads_;
   int32_t max_ref_flank_len_; // Maximum length of reference sequences flanking the repetitive region
   BaseQuality* base_quality_;
-  double* log_align_probs_;   // Iterates over haplotype and then read
 
   /**
    * Align the sequence contained in SEQ_0 -> SEQ_N using the recursion
@@ -42,16 +40,10 @@ class HapAligner {
 			     double* r_match_matrix, double* r_insert_matrix, double* r_deletion_matrix, double r_prob);
 
  public:
-  HapAligner(Haplotype* haplotype, int32_t max_ref_flank_len, BaseQuality* base_quality, int total_reads){
+  HapAligner(Haplotype* haplotype, int32_t max_ref_flank_len, BaseQuality* base_quality){
     haplotype_         = haplotype;
-    total_reads_       = total_reads;
     max_ref_flank_len_ = max_ref_flank_len;
     base_quality_      = base_quality;
-    log_align_probs_   = new double[haplotype_->num_combs()*total_reads_];
-  }
-
-  ~HapAligner(){
-    delete [] log_align_probs_;
   }
 
   /** 
