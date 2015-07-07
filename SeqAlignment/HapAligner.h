@@ -39,7 +39,7 @@ class HapAligner {
 
  public:
   HapAligner(Haplotype* haplotype){
-    haplotype_         = haplotype;
+    haplotype_ = haplotype;
   }
 
   /** 

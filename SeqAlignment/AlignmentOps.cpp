@@ -182,8 +182,6 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
     
     if (alignment.QueryBases.size() != alignment.Qualities.size())
         printErrorAndDie("Lengths of sequence and quality strings don't match");
-    //std::string base_qualities = alignment.Qualities.substr(num_head_sclips, ref_al.size()-num_head_sclips-num_back_sclips);
-    //std::string sequence       = uppercase(read_seq.substr(num_head_sclips,  ref_al.size()-num_head_sclips-num_back_sclips));
     std::string base_qualities = alignment.Qualities.substr(num_head_sclips, read_seq.size()-num_head_sclips-num_back_sclips);
     std::string sequence       = uppercase(read_seq.substr(num_head_sclips, read_seq.size()-num_head_sclips-num_back_sclips));
     std::string alignment_seq  = uppercase(read_al.substr(num_head_sclips+num_lead, read_al.size()-num_head_sclips-num_lead-num_trail-num_back_sclips));

@@ -20,7 +20,7 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
 				  const double* base_log_wrong, const double* base_log_correct,
 				  double* match_matrix, double* insert_matrix, double* deletion_matrix, double& left_prob){
   // NOTE: Input matrix structure: Row = Haplotype position, Column = Read index
-  double L_log_probs[seq_len];
+  double* L_log_probs = new double[seq_len];
  
   // Initialize first row of matrix (each base position matched with leftmost haplotype base)
   left_prob = 0.0;
@@ -140,6 +140,7 @@ void HapAligner::align_left_flank(const char* seq_0, int seq_len,
       }
     }
   }
+  delete [] L_log_probs;
   assert(haplotype_index == haplotype_->cur_size());
 }
 
@@ -148,7 +149,7 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
 				   const double* base_log_wrong, const double* base_log_correct,
 				   double* match_matrix, double* insert_matrix, double* deletion_matrix, double& right_prob){
   // Note: Input matrix structure: Row = Haplotype position, Column = Read index
-  double R_log_probs[seq_len];
+  double* R_log_probs = new double[seq_len];
  
   // Initialize first row of matrix (each base position matched with rightmost haplotype base)
   right_prob = 0.0;
@@ -268,6 +269,7 @@ void HapAligner::align_right_flank(const char* seq_n, int seq_len,
       }
     }
   }
+  delete [] R_log_probs;
   assert(haplotype_index == haplotype_->cur_size());
 }
 

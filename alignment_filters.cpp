@@ -45,7 +45,6 @@ namespace AlignmentFilters {
       ss << iter->Length << iter->Type;
     return ss.str();
   }
-
   
   pair<int,int> GetEndDistToIndel(BamTools::BamAlignment& aln){
     vector<int> vals;
