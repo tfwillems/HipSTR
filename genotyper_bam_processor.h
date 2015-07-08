@@ -126,7 +126,7 @@ public:
     if (!input.is_open())
       printErrorAndDie("Failed to open input file for stutter models");
     StutterModel::read_models(input, stutter_models_);
-    std::cerr << stutter_models_.size() << std::endl;
+    std::cerr << "Read stutter models for " << stutter_models_.size() << " loci" << std::endl;
     read_stutter_models_ = true;
     input.close();
   }

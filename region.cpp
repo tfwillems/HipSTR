@@ -38,16 +38,8 @@ void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t
   std::cerr << "Region file contains " << regions.size() << " regions" << std::endl;
 }
 
-bool region_lt(const Region& r1, const Region& r2){
-  int chrom_comp = (r1.chrom().compare(r2.chrom()));
-  if (chrom_comp != 0)
-    return chrom_comp < 0;
-  else
-    return r1.start() < r2.start();
-}
-
 void orderRegions(std::vector<Region>& regions){
-  std::sort(regions.begin(), regions.end(), region_lt);
+  std::sort(regions.begin(), regions.end());
 }
 
 void orderRegions(std::vector<Region>& input_regions, std::vector< std::vector<Region> >& output_regions, std::map<std::string, int>& chrom_order){
@@ -62,7 +54,7 @@ void orderRegions(std::vector<Region>& input_regions, std::vector< std::vector<R
     output_regions[chrom_order[iter->chrom()]].push_back(*iter);
   }
   for (unsigned int i = 0; i < output_regions.size(); i++)
-    std::sort(output_regions[i].begin(), output_regions[i].end(), region_lt);
+    std::sort(output_regions[i].begin(), output_regions[i].end());
 } 
 
 

@@ -45,7 +45,7 @@ public:
 
   bool operator<(const Region &r)  const {
     if (chrom_.compare(r.chrom()) != 0)
-      return chrom_.compare(r.chrom());
+      return chrom_.compare(r.chrom()) < 0;
     if (start_ != r.start())
       return start_ < r.start();
     if (stop_ != r.stop())

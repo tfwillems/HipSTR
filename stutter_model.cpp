@@ -86,7 +86,6 @@ double StutterModel::log_stutter_geq(int sample_bps, int min_read_bps){
   return log_sum_exp(log_probs);
 }
 
-
 void StutterModel::write(std::ostream& output){
   output << in_geom_  << "\t" << in_down_  << "\t" << in_up_  << "\t" 
 	 << out_geom_ << "\t" << out_down_ << "\t" << out_up_ << "\t" << motif_len_ << std::endl;
@@ -96,7 +95,6 @@ void StutterModel::write_model(const std::string& chrom, int32_t start, int32_t 
   output << chrom << "\t" << start << "\t" << end << "\t";
   write(output);
 }
-
 
 StutterModel* StutterModel::read(std::istream& input){
   double inframe_geom,  inframe_up,  inframe_down;
@@ -117,7 +115,7 @@ void StutterModel::read_models(std::istream& input, std::map<Region, StutterMode
     int32_t start, end;
     if(input >> chrom >> start >> end){
       StutterModel* model = read(input);
-      models[Region(chrom, start, end, model->period())]= model;
+      models.insert(std::pair<Region,StutterModel*>(Region(chrom, start, end, model->period()), model));
     }
     else
       break;
