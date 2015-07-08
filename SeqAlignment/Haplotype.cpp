@@ -1,3 +1,4 @@
+#include "../error.h"
 #include "Haplotype.h"
 
 void Haplotype::init(){
@@ -14,7 +15,6 @@ void Haplotype::init(){
   counter_      = 0;
   last_changed_ = -1;
 }
-
 
 void Haplotype::reset(){
   init();
@@ -42,6 +42,16 @@ bool Haplotype::next(){
   }
   counter_++;
   return true;
+}
+
+void Haplotype::go_to(int hap_index){
+  if (hap_index < 0 || hap_index >= ncombs_)
+    printErrorAndDie("Invalid haplotype index in go_to()");
+  if (hap_index < counter_)
+    reset();
+  while (counter_ < hap_index)
+    next();
+  last_changed_ = -1; // Don't want to reuse haplotype info as we're no longer just incrementing
 }
 
 void Haplotype::print_block_structure(int max_ref_len, 

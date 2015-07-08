@@ -101,6 +101,8 @@ class Haplotype {
 
   bool next();
 
+  void go_to(int hap_index);
+
   unsigned int homopolymer_length(int block_index, int base_index);
 };
 

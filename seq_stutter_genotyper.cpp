@@ -828,10 +828,29 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   }
   out << "\n";
 
-  // Render HTML of Smith-Waterman alignments (not haplotype alignments)
+  // Render HTML of Smith-Waterman alignments (and eventually haplotype alignments)
   if (output_viz){
     std::stringstream locus_info;
     locus_info << region_->chrom() << "\t" << region_->start() << "\t" << region_->stop();
-    visualizeAlignments(alns_, sample_names_, sample_results, hap_blocks_, chrom_seq, locus_info.str(), true, html_output);
+
+    double* read_LL_ptr = log_aln_probs_;
+    std::vector< std::vector<Alignment> > max_LL_alns(num_samples_);
+    HapAligner hap_aligner(haplotype_);
+    unsigned int read_index = 0;
+    for (unsigned int i = 0; i < alns_.size(); ++i){
+      for (unsigned int j = 0; j < alns_[i].size(); ++j, ++read_index){
+	if (seed_positions_[read_index] == -1){
+	  read_LL_ptr += num_alleles_;
+	  continue;
+	}
+
+	int gt_a    = gts[sample_label_[read_index]].first, gt_b = gts[sample_label_[read_index]].second;
+	int best_gt = (LOG_ONE_HALF+log_p1_[read_index]+read_LL_ptr[gt_a] >
+		       LOG_ONE_HALF+log_p2_[read_index]+read_LL_ptr[gt_b]) ? gt_a : gt_b;
+	max_LL_alns[i].push_back(hap_aligner.trace_optimal_aln(alns_[i][j], seed_positions_[read_index], best_gt));
+	read_LL_ptr += num_alleles_;
+      }
+    }
+    visualizeAlignments(max_LL_alns, sample_names_, sample_results, hap_blocks_, chrom_seq, locus_info.str(), true, html_output);
   }
 }

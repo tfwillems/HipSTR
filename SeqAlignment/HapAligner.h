@@ -51,6 +51,13 @@ class HapAligner {
 
   void process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality,
 		     double* aln_probs, int* seed_positions);
+
+
+  /*
+    Retraces the Alignment's optimal alignment to the provided haplotype.
+    Returns the result as a new Alignment relative to the reference haplotype
+   */
+  Alignment trace_optimal_aln(Alignment& alignment, int seed_base, int best_haplotype);
 };
 
 #endif

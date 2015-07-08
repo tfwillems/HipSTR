@@ -476,3 +476,32 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
     }
   }
 }
+
+
+Alignment HapAligner::trace_optimal_aln(Alignment& alignment, int seed_base, int best_haplotype){
+  haplotype_->go_to(best_haplotype);
+  int hap_size         = haplotype_->cur_size();
+  const char* base_seq = alignment.get_sequence().c_str();
+  int base_seq_len     = (int)alignment.get_sequence().size();
+
+  double* l_match_matrix    = new double [seed_base*hap_size];
+  double* l_insert_matrix   = new double [seed_base*hap_size];
+  double* l_deletion_matrix = new double [seed_base*hap_size];
+  double* r_match_matrix    = new double [(base_seq_len-seed_base-1)*hap_size];
+  double* r_insert_matrix   = new double [(base_seq_len-seed_base-1)*hap_size];
+  double* r_deletion_matrix = new double [(base_seq_len-seed_base-1)*hap_size];
+
+  // TO DO: Implement this function
+
+
+
+
+  delete [] l_match_matrix;
+  delete [] l_insert_matrix;
+  delete [] l_deletion_matrix;
+  delete [] r_match_matrix;
+  delete [] r_insert_matrix;
+  delete [] r_deletion_matrix;
+
+  return alignment;
+}
