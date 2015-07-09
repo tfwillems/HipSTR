@@ -143,13 +143,15 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   std::cerr << "Locus timing:"                                          << "\n"
 	    << " Read filtering      = " << locus_read_filter_time()    << " seconds\n"
 	    << " SNP info extraction = " << locus_snp_phase_info_time() << " seconds\n"
-	    << " Stutter estimation  = " << locus_stutter_time()        << " seconds\n"
-	    << " Genotyping          = " << locus_genotype_time()       << " seconds\n";
-  if (use_seq_aligner_){
-    assert(seq_genotyper != NULL);
-    std::cerr << "\t" << " Left alignment       = "  << seq_genotyper->locus_left_aln_time()  << " seconds\n"
-	      << "\t" << " Haplotype generation = "  << seq_genotyper->locus_hap_build_time() << " seconds\n"
-	      << "\t" << " Haplotype alignment  = "  << seq_genotyper->locus_hap_aln_time()   << " seconds\n";
+	    << " Stutter estimation  = " << locus_stutter_time()        << " seconds\n";
+  if (stutter_model != NULL){
+    std::cerr << " Genotyping          = " << locus_genotype_time()       << " seconds\n";
+    if (use_seq_aligner_){
+      assert(seq_genotyper != NULL);
+      std::cerr << "\t" << " Left alignment       = "  << seq_genotyper->locus_left_aln_time()  << " seconds\n"
+		<< "\t" << " Haplotype generation = "  << seq_genotyper->locus_hap_build_time() << " seconds\n"
+		<< "\t" << " Haplotype alignment  = "  << seq_genotyper->locus_hap_aln_time()   << " seconds\n";
+    }
   }
   std::cerr << std::endl;
 
