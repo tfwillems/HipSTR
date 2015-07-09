@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <sstream>
+#include <time.h>
 
 #include "seq_stutter_genotyper.h"
 #include "error.h"
@@ -194,6 +195,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   sample_label_     = new int[num_reads_];
   sample_total_LLs_ = new double[num_samples_];
 
+  locus_left_aln_time_ = clock();
   std::cerr << "Left aligning reads..." << std::endl;
   std::map<std::string, std::pair<int,int> > seq_to_alns;
   std::map<std::string, int> seq_to_index;
@@ -259,6 +261,9 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
       sample_label_[read_index] = i; 
     }
   }
+  locus_left_aln_time_  = (clock() - locus_left_aln_time_)/CLOCKS_PER_SEC;
+  total_left_aln_time_ += locus_left_aln_time_;
+
   if (align_fail_count != 0)
     std::cerr << "Failed to left align " << align_fail_count << " out of " << num_reads_ << " reads" << std::endl;
   if (qual_filt_count != 0)
@@ -270,6 +275,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     for (unsigned int j = 0; j < alns_[i].size(); ++j)
       alns_[i][j].fix_N_base_qualities(base_quality_);
 
+  locus_hap_build_time_ = clock();
   std::vector<std::string> vcf_alleles;
   if (ref_vcf_ != NULL){
     bool success = false;
@@ -318,6 +324,9 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     // Extract full STR sequence for each allele using annotated repeat region and the haplotype above
     get_alleles(chrom_seq, alleles_);
   }
+  locus_hap_build_time_  = (clock() - locus_hap_build_time_)/CLOCKS_PER_SEC;
+  total_hap_build_time_ += locus_hap_build_time_;
+
 
   if (pos_ != -1){
     // Print information about the haplotype and the stutter model
@@ -350,6 +359,7 @@ bool SeqStutterGenotyper::genotype(){
   // Align each read against each candidate haplotype
   std::cerr << "Aligning reads to each candidate haplotype..." << std::endl;
   init_alignment_model();
+  locus_hap_aln_time_ = clock();
   HapAligner hap_aligner(haplotype_);
   if (pool_identical_seqs_){
     // TO DO: Add check to see if sequence already encountered
@@ -365,6 +375,8 @@ bool SeqStutterGenotyper::genotype(){
       read_index += alns_[i].size();
     }  
   }
+  locus_hap_aln_time_  = (clock() - locus_hap_aln_time_)/CLOCKS_PER_SEC;
+  total_hap_aln_time_ += locus_hap_aln_time_;
 
   std::cerr << "Genotyping samples..." << std::endl;
   if (stutter_model_ == NULL)

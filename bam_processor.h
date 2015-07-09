@@ -20,6 +20,10 @@ class BamProcessor {
   bool check_mate_info_;
   bool rem_pcr_dups_;
 
+  // Timing statistics (in seconds)
+  double total_read_filter_time_;
+  double locus_read_filter_time_;
+
  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq,
 			    std::vector<Region>::iterator region_iter,
 			    std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
@@ -48,6 +52,8 @@ class BamProcessor {
    MAXIMAL_END_MATCH_WINDOW = 15;
    REMOVE_MULTIMAPPERS      = 0;
    REQUIRE_SPANNING         = true;
+   total_read_filter_time_  = 0;
+   locus_read_filter_time_  = -1;
  }
 
  void remove_all_filters(){
@@ -58,6 +64,9 @@ class BamProcessor {
    REMOVE_MULTIMAPPERS      = 0;
    REQUIRE_SPANNING         = false;
  }
+
+ double total_read_filter_time() { return total_read_filter_time_; }
+ double locus_read_filter_time() { return locus_read_filter_time_; }
 
  void use_custom_read_groups(){
    use_bam_rgs_ = false;

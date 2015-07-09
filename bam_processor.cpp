@@ -3,6 +3,7 @@
 #include <locale>
 #include <sstream>
 #include <stdlib.h>
+#include <time.h>
 
 #include "bam_processor.h"
 #include "alignment_filters.h"
@@ -47,6 +48,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 					 std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 					 std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
 					 BamTools::BamWriter& bam_writer){
+  locus_read_filter_time_ = clock();
+
   std::vector<BamTools::BamAlignment> region_alignments;
   int read_count = 0;
   int diff_chrom_mate = 0, unmapped_mate = 0, not_spanning = 0; // Counts for filters that are always applied
@@ -232,6 +235,9 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     // Record unpaired STR read
     unpaired_strs_by_rg[rg_index].push_back(unpaired_str_alns[i]);
   }
+
+  locus_read_filter_time_  = (clock() - locus_read_filter_time_)/CLOCKS_PER_SEC;
+  total_read_filter_time_ += locus_read_filter_time_;
 }
 
 void BamProcessor::process_regions(BamTools::BamMultiReader& reader, 

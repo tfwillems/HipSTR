@@ -1,4 +1,6 @@
+#include <iomanip>
 #include <iostream>
+#include <time.h>
 
 #include "extract_indels.h"
 #include "genotyper_bam_processor.h"
@@ -57,6 +59,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   bool trained = false;
   StutterModel* stutter_model          = NULL;
   EMStutterGenotyper* length_genotyper = NULL;
+  locus_stutter_time_ = clock();
   if (read_stutter_models_){
     // Attempt to extact model from dictionary
     auto model_iter = stutter_models_.find(region);
@@ -86,25 +89,29 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 		<< " with " << inf_reads << " informative reads" << std::endl;
     }
   }
-  
+  locus_stutter_time_  = (clock() - locus_stutter_time_)/CLOCKS_PER_SEC;;
+  total_stutter_time_ += locus_stutter_time_;
+
+  SeqStutterGenotyper* seq_genotyper = NULL;
   if (stutter_model != NULL) {
+    locus_genotype_time_ = clock();
     if (use_seq_aligner_){
       // Use sequence-based genotyper
       vcflib::VariantCallFile* reference_panel_vcf = NULL;
       if (have_ref_vcf_)
 	reference_panel_vcf = &ref_vcf_;
 
-      SeqStutterGenotyper seq_genotyper(region, haploid, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, reference_panel_vcf);
+      seq_genotyper = new SeqStutterGenotyper(region, haploid, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, reference_panel_vcf);
       if (output_alleles_){
 	std::vector<std::string> no_samples;
-	seq_genotyper.write_vcf_record(no_samples, false, chrom_seq, false, false, false, viz_out_, allele_vcf_);
+	seq_genotyper->write_vcf_record(no_samples, false, chrom_seq, false, false, false, viz_out_, allele_vcf_);
       }
 
       if (output_str_gts_){
-	if (seq_genotyper.genotype()) {
+	if (seq_genotyper->genotype()) {
 	  num_genotype_success_++;
 	  if (output_str_gts_)
-	    seq_genotyper.write_vcf_record(samples_to_genotype_, true, chrom_seq, output_gls_, output_pls_, output_viz_, viz_out_, str_vcf_);
+	    seq_genotyper->write_vcf_record(samples_to_genotype_, true, chrom_seq, output_gls_, output_pls_, output_viz_, viz_out_, str_vcf_);
 	}
 	else
 	  num_genotype_fail_++;
@@ -129,7 +136,24 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	  num_genotype_fail_++;
       }
     }
+    locus_genotype_time_  = (clock() - locus_genotype_time_)/CLOCKS_PER_SEC;
+    total_genotype_time_ += locus_genotype_time_;
   }
+
+  std::cerr << "Locus timing:"                                          << "\n"
+	    << " Read filtering      = " << locus_read_filter_time()    << " seconds\n"
+	    << " SNP info extraction = " << locus_snp_phase_info_time() << " seconds\n"
+	    << " Stutter estimation  = " << locus_stutter_time()        << " seconds\n"
+	    << " Genotyping          = " << locus_genotype_time()       << " seconds\n";
+  if (use_seq_aligner_){
+    assert(seq_genotyper != NULL);
+    std::cerr << "\t" << " Left alignment       = "  << seq_genotyper->locus_left_aln_time()  << " seconds\n"
+	      << "\t" << " Haplotype generation = "  << seq_genotyper->locus_hap_build_time() << " seconds\n"
+	      << "\t" << " Haplotype alignment  = "  << seq_genotyper->locus_hap_aln_time()   << " seconds\n";
+  }
+  std::cerr << std::endl;
+
+  delete seq_genotyper;
   delete stutter_model;
   delete length_genotyper;
 }

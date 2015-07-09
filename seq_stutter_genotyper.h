@@ -126,6 +126,11 @@ class SeqStutterGenotyper{
   // True iff the underlying marker is haploid
   bool haploid_;
 
+  // Timing statistics (in seconds)
+  double total_hap_build_time_, locus_hap_build_time_;
+  double total_left_aln_time_,  locus_left_aln_time_;
+  double total_hap_aln_time_,   locus_hap_aln_time_;
+
  public:
   SeqStutterGenotyper(Region& region, bool haploid,
 		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,
@@ -148,6 +153,13 @@ class SeqStutterGenotyper{
     pool_identical_seqs_   = false;
     MIN_SUM_QUAL_LOG_PROB  = -10;
     haploid_               = haploid;
+
+    total_hap_build_time_  = 0;
+    locus_hap_build_time_  = -1;
+    total_left_aln_time_   = 0;
+    locus_left_aln_time_   = -1;
+    total_hap_aln_time_    = 0;
+    locus_hap_aln_time_    = -1;
 
     // True iff no allele priors are available (for imputation)
     if (ref_vcf == NULL)
@@ -197,6 +209,13 @@ class SeqStutterGenotyper{
 
   void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq, bool output_gls, bool output_pls,
 			bool output_viz, std::ostream& html_output, std::ostream& out);
+
+  double total_hap_build_time(){ return total_hap_build_time_; }
+  double locus_hap_build_time(){ return locus_hap_build_time_; }
+  double total_left_aln_time() { return total_left_aln_time_;  }
+  double locus_left_aln_time() { return locus_left_aln_time_;  }
+  double total_hap_aln_time()  { return total_hap_aln_time_;   }
+  double locus_hap_aln_time()  { return locus_hap_aln_time_;   }
   
   bool genotype();
 };

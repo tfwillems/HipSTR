@@ -59,6 +59,10 @@ private:
 
   std::set<std::string> haploid_chroms_;
 
+  // Timing statistics (in seconds)
+  double total_stutter_time_,  locus_stutter_time_;
+  double total_genotype_time_, locus_genotype_time_;
+
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool check_mate_chroms, bool remove_pcr_dups,
 		       bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, check_mate_chroms, remove_pcr_dups){
@@ -80,6 +84,11 @@ public:
     MIN_TOTAL_READS        = 100;
     output_gls_            = false;
     output_pls_            = false;
+
+    total_stutter_time_    = 0;
+    locus_stutter_time_    = -1;
+    total_genotype_time_   = 0;
+    locus_genotype_time_   = -1;
   }
 
   ~GenotyperBamProcessor(){
@@ -87,6 +96,11 @@ public:
       delete iter->second;
     stutter_models_.clear();
   }
+
+  double total_stutter_time()  { return total_stutter_time_;  }
+  double locus_stutter_time()  { return locus_stutter_time_;  }
+  double total_genotype_time() { return total_genotype_time_; }
+  double locus_genotype_time() { return locus_genotype_time_; }
 
   void output_gls(){
     output_gls_ = true;

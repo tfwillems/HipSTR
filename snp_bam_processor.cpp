@@ -1,3 +1,5 @@
+#include <time.h>
+
 #include "snp_bam_processor.h"
 #include "snp_phasing_quality.h"
 #include "snp_tree.h"
@@ -7,6 +9,7 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
 				    std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
 				    std::vector<std::string>& rg_names, Region& region, 
 				    std::string& ref_allele, std::string& chrom_seq, std::ostream& out){
+  locus_snp_phase_info_time_ = clock();
   assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
   if (paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
     return;
@@ -74,6 +77,10 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
 
   std::cout << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads" 
 	    << " and " << phased_samples << " out of " << rg_names.size() <<  " samples" << std::endl;
+
+
+  locus_snp_phase_info_time_  = (clock() - locus_snp_phase_info_time_)/CLOCKS_PER_SEC;
+  total_snp_phase_info_time_ += locus_snp_phase_info_time_;
 
   // Run any additional analyses using phasing probabilities
   analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region, ref_allele, chrom_seq);

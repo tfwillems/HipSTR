@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <stdlib.h>
+#include <time.h>
 
 #include "bamtools/include/api/BamAlignment.h"
 #include "vcflib/src/Variant.h"
@@ -188,6 +189,7 @@ void parse_command_line_args(int argc, char** argv,
 }
 
 int main(int argc, char** argv){
+  double total_time = clock();
   bool check_mate_chroms = false;
   GenotyperBamProcessor bam_processor(true, check_mate_chroms, true, true);
   
@@ -368,5 +370,8 @@ int main(int argc, char** argv){
 
   if (!bam_out_file.empty()) bam_writer.Close();
   reader.Close();
+
+  total_time = (clock() - total_time)/CLOCKS_PER_SEC;
+  std::cerr << "HipSTR execution finished: Total runtime = " << total_time << " sec" << std::endl;
   return 0;  
 }

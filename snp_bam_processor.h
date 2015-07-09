@@ -19,12 +19,21 @@ private:
   vcflib::VariantCallFile phased_snp_vcf;
   int32_t match_count_, mismatch_count_;
 
+  // Timing statistics (in seconds)
+  double total_snp_phase_info_time_;
+  double locus_snp_phase_info_time_;
+
 public:
  SNPBamProcessor(bool use_bam_rgs, bool check_mate_chroms, bool remove_pcr_dups):BamProcessor(use_bam_rgs, check_mate_chroms, remove_pcr_dups){
     have_snp_vcf     = false;
     match_count_     = 0;
     mismatch_count_  = 0;
+    total_snp_phase_info_time_  = 0;;
+    locus_snp_phase_info_time_  = -1;
   }
+
+  double total_snp_phase_info_time() { return total_snp_phase_info_time_; }
+  double locus_snp_phase_info_time() { return locus_snp_phase_info_time_; }
 
   void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 		     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
