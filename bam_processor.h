@@ -52,6 +52,7 @@ class BamProcessor {
    MAXIMAL_END_MATCH_WINDOW = 15;
    REMOVE_MULTIMAPPERS      = 0;
    REQUIRE_SPANNING         = true;
+   MIN_MAPPING_QUALITY      = 0;
    total_read_filter_time_  = 0;
    locus_read_filter_time_  = -1;
  }
@@ -63,18 +64,15 @@ class BamProcessor {
    MAXIMAL_END_MATCH_WINDOW = 0;
    REMOVE_MULTIMAPPERS      = 0;
    REQUIRE_SPANNING         = false;
+   MIN_MAPPING_QUALITY      = 0;
  }
 
  double total_read_filter_time() { return total_read_filter_time_; }
  double locus_read_filter_time() { return locus_read_filter_time_; }
+ void use_custom_read_groups()   { use_bam_rgs_ = false;           }
+ void allow_pcr_dups()           { rem_pcr_dups_ = false;          }
 
- void use_custom_read_groups(){
-   use_bam_rgs_ = false;
- }
-
- void allow_pcr_dups(){
-   rem_pcr_dups_ = false;
- }
+ void set_min_mapping_quality(int quality) { MIN_MAPPING_QUALITY = quality; }
 
  void process_regions(BamTools::BamMultiReader& reader,
 		      std::string& region_file, std::string& fasta_dir,
@@ -94,6 +92,7 @@ class BamProcessor {
  int32_t MIN_FLANK;
  int32_t MIN_READ_END_MATCH;
  int32_t MAXIMAL_END_MATCH_WINDOW;
+ int32_t MIN_MAPPING_QUALITY;
  int REMOVE_MULTIMAPPERS;
  bool REQUIRE_SPANNING;
 };

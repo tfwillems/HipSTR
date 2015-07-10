@@ -53,7 +53,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   std::vector<BamTools::BamAlignment> region_alignments;
   int read_count = 0;
   int diff_chrom_mate = 0, unmapped_mate = 0, not_spanning = 0; // Counts for filters that are always applied
-  int insert_size = 0, multimapped = 0, flank_len = 0, bp_before_indel = 0, end_match_window = 0, num_end_matches = 0; // Counts for filters that are user-controlled
+  int insert_size = 0, multimapped = 0, mapping_quality = 0, flank_len = 0; // Counts for filters that are user-controlled
+  int bp_before_indel = 0, end_match_window = 0, num_end_matches = 0;
   BamTools::BamAlignment alignment;
 
   std::vector<BamTools::BamAlignment> paired_str_alns, mate_alns, unpaired_str_alns;
@@ -90,6 +91,11 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 
     // Simple test to exclude mate pairs
     if (alignment.Position > region_iter->stop() || alignment.GetEndPosition() < region_iter->start()){
+      pass = false;
+    }
+    // Ignore read if its mapping quality is too low
+    if (pass && MIN_MAPPING_QUALITY > alignment.MapQuality){
+      mapping_quality++;
       pass = false;
     }
     // Ignore read if it does not span the STR
@@ -162,6 +168,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   std::cerr << read_count << " reads overlapped region, of which " 
 	    << "\n\t" << diff_chrom_mate  << " had mates on a different chromosome"
 	    << "\n\t" << unmapped_mate    << " had unmapped mates"
+	    << "\n\t" << mapping_quality  << " had too low of a mapping quality"
 	    << "\n\t" << not_spanning     << " did not span the STR"
 	    << "\n\t" << insert_size      << " failed the insert size filter"      
 	    << "\n\t" << multimapped      << " were removed due to multimapping"
