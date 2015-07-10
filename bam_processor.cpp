@@ -54,7 +54,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   int read_count = 0;
   int diff_chrom_mate = 0, unmapped_mate = 0, not_spanning = 0; // Counts for filters that are always applied
   int insert_size = 0, multimapped = 0, mapping_quality = 0, flank_len = 0; // Counts for filters that are user-controlled
-  int bp_before_indel = 0, end_match_window = 0, num_end_matches = 0;
+  int bp_before_indel = 0, end_match_window = 0, num_end_matches = 0, read_has_N = 0;
   BamTools::BamAlignment alignment;
 
   std::vector<BamTools::BamAlignment> paired_str_alns, mate_alns, unpaired_str_alns;
@@ -91,6 +91,11 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 
     // Simple test to exclude mate pairs
     if (alignment.Position > region_iter->stop() || alignment.GetEndPosition() < region_iter->start()){
+      pass = false;
+    }
+    // Ignore reads with N bases
+    if (pass && REMOVE_READS_WITH_N && (alignment.QueryBases.find('N') != std::string::npos)){
+      read_has_N++;
       pass = false;
     }
     // Ignore read if its mapping quality is too low
@@ -166,6 +171,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   std::cerr << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads" << std::endl;
   
   std::cerr << read_count << " reads overlapped region, of which " 
+	    << "\n\t" << read_has_N       << " had an 'N' base call"
 	    << "\n\t" << diff_chrom_mate  << " had mates on a different chromosome"
 	    << "\n\t" << unmapped_mate    << " had unmapped mates"
 	    << "\n\t" << mapping_quality  << " had too low of a mapping quality"

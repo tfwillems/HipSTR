@@ -53,6 +53,7 @@ class BamProcessor {
    REMOVE_MULTIMAPPERS      = 0;
    REQUIRE_SPANNING         = true;
    MIN_MAPPING_QUALITY      = 0;
+   REMOVE_READS_WITH_N      = 1;
    total_read_filter_time_  = 0;
    locus_read_filter_time_  = -1;
  }
@@ -65,6 +66,7 @@ class BamProcessor {
    REMOVE_MULTIMAPPERS      = 0;
    REQUIRE_SPANNING         = false;
    MIN_MAPPING_QUALITY      = 0;
+   REMOVE_READS_WITH_N      = 0;
  }
 
  double total_read_filter_time() { return total_read_filter_time_; }
@@ -94,6 +96,7 @@ class BamProcessor {
  int32_t MAXIMAL_END_MATCH_WINDOW;
  int32_t MIN_MAPPING_QUALITY;
  int REMOVE_MULTIMAPPERS;
+ int REMOVE_READS_WITH_N;
  bool REQUIRE_SPANNING;
 };
 
