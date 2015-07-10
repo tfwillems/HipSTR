@@ -355,7 +355,7 @@ std::string EMStutterGenotyper::get_allele(std::string& ref_allele, int bp_diff)
 }
 
 void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<std::string>& sample_names,
-					  bool output_gls, bool output_pls, std::ostream& out){
+					  bool output_gls, bool output_pls, bool output_allreads, std::ostream& out){
   std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
   std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX);
   std::vector< std::vector<double> > log_read_phases(num_samples_);
@@ -474,9 +474,10 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
   }
 
   // Add FORMAT field
-  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:PDP:ALLREADS" : "\tGT:GB:Q:DP:ALLREADS");
-  if (output_gls) out << ":GL";
-  if (output_pls) out << ":PL";
+  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:PDP" : "\tGT:GB:Q:DP");
+  if (output_allreads) out << ":ALLREADS";
+  if (output_gls)      out << ":GL";
+  if (output_pls)      out << ":PL";
 
   for (unsigned int i = 0; i < sample_names.size(); i++){
     out << "\t";
@@ -509,10 +510,12 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
           << ":" << total_reads;                               // Total reads
     }
 
-    if (bps_per_sample[sample_index].size() > 0){
-      out << ":" << bps_per_sample[sample_index][0];
-      for (unsigned int j = 1; j < bps_per_sample[sample_index].size(); j++)
-	out << "," << bps_per_sample[sample_index][j];
+    if (output_allreads){
+      if (bps_per_sample[sample_index].size() > 0){
+	out << ":" << bps_per_sample[sample_index][0];
+	for (unsigned int j = 1; j < bps_per_sample[sample_index].size(); j++)
+	  out << "," << bps_per_sample[sample_index][j];
+      }
     }
 
     if (output_gls){

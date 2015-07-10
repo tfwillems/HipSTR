@@ -45,6 +45,9 @@ void print_usage(int def_mdist){
 	    << "\t" << "--viz-out       <aln_viz.html.gz>     "  << "\t" << "Output a bgzipped file containing Needleman-Wunsch alignments for each locus"        << "\n"
 	    << "\t" << "                                      "  << "\t" << " The resulting file can be readily visualized with VizAln"                           << "\n"
 	    << "\t" << "                                      "  << "\t" << " Option only available when the --len-genotyper flag has not been specified"         << "\n"
+
+	    << "\t" << "--hide-allreads                       "  << "\t" << "Don't output the ALLREADS FORMAT field to the VCF. By default, it will be output"    << "\n"
+	    << "\t" << "--hide-pallreads                      "  << "\t" << "Don't output the PALLREADS FORMAT field to the VCF. By default, it will be output"   << "\n"
 	    << "\t" << "--output-gls                          "  << "\t" << "Write genotype likelihoods to VCF (default = False)"                                 << "\n"
 	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to VCF (default = False)"                    << "\n" << "\n"
     
@@ -57,6 +60,7 @@ void print_usage(int def_mdist){
 	    << "\t" << "--no-rmdup                            "  << "\t" << "Don't remove PCR duplicates. By default, they'll be removed"                         << "\n"
 	    << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
 	    << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
+	    << "\t" << "--min-mapq      <min_qual>            "  << "\t" << "Remove reads with a mapping quality below this threshold (Default = 0)"              << "\n"
 	    << "\t" << "--bam-samps     <list_of_samples>     "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
 	    << "\t" << "                                      "  << "\t" << "  Assign each read the read group corresponding to its file. By default, "           << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and this is used instead"                           << "\n"
@@ -77,7 +81,7 @@ void parse_command_line_args(int argc, char** argv,
 			     std::string& fasta_dir,       std::string& region_file,       std::string& snp_vcf_file,        std::string& chrom,
 			     std::string& bam_out_file,    std::string& str_vcf_out_file,  std::string& allele_vcf_out_file, std::string& viz_out_file,
 			     std::string& stutter_in_file, std::string& stutter_out_file, int& use_hap_aligner, int& remove_all_filters, int& remove_pcr_dups,
-			     int& output_gls, int& output_pls, std::string& ref_vcf_file,
+			     int& output_gls, int& output_pls, int& output_all_reads, int& output_pall_reads, std::string& ref_vcf_file,
 			     BamProcessor& bam_processor){
   int def_mdist = bam_processor.MAX_MATE_DIST;
   if (argc == 1){
@@ -95,8 +99,11 @@ void parse_command_line_args(int argc, char** argv,
     {"fasta",           required_argument, 0, 'f'},
     {"bam-samps",       required_argument, 0, 'g'},
     {"bam-lbs",         required_argument, 0, 'q'},
+    {"min-mapq",        required_argument, 0, 'e'},
     {"h",               no_argument, &print_help, 1},
     {"help",            no_argument, &print_help, 1},
+    {"hide-allreads",   no_argument, &output_all_reads,   0},
+    {"hide-pallreads",  no_argument, &output_pall_reads,  0},
     {"len-genotyper",   no_argument, &use_hap_aligner,    0},
     {"no-filters",      no_argument, &remove_all_filters, 1},
     {"no-rmdup",        no_argument, &remove_pcr_dups,    0},
@@ -136,6 +143,9 @@ void parse_command_line_args(int argc, char** argv,
       break;
     case 'd':
       bam_processor.MAX_MATE_DIST = atoi(optarg);
+      break;
+    case 'e':
+      bam_processor.MIN_MAPPING_QUALITY = atoi(optarg);
       break;
     case 'f':
       fasta_dir = std::string(optarg);
@@ -196,13 +206,15 @@ int main(int argc, char** argv){
   int use_hap_aligner = 1, remove_all_filters = 0, remove_pcr_dups = 1;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", stutter_in_file="", stutter_out_file="", viz_out_file="";
-  int output_gls = 0, output_pls = 0;
+  int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 1;
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
 			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, viz_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, remove_all_filters, 
-			  remove_pcr_dups, output_gls, output_pls, ref_vcf_file, bam_processor);
+			  remove_pcr_dups, output_gls, output_pls, output_all_reads, output_pall_reads, ref_vcf_file, bam_processor);
   if (output_gls) bam_processor.output_gls();
   if (output_pls) bam_processor.output_pls();
+  if (output_all_reads == 0)  bam_processor.hide_all_reads();
+  if (output_pall_reads == 0) bam_processor.hide_pall_reads();
   if (remove_pcr_dups == 0)
     bam_processor.allow_pcr_dups();
 

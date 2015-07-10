@@ -207,8 +207,8 @@ class SeqStutterGenotyper{
     pool_identical_seqs_ = true;
   }
 
-  void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq, bool output_gls, bool output_pls,
-			bool output_viz, std::ostream& html_output, std::ostream& out);
+  void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
+			bool output_gls, bool output_pls, bool output_allreads, bool output_pallreads, bool output_viz, std::ostream& html_output, std::ostream& out);
 
   double total_hap_build_time(){ return total_hap_build_time_; }
   double locus_hap_build_time(){ return locus_hap_build_time_; }

@@ -585,7 +585,7 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
 }
 
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq, bool output_gls, bool output_pls,
-					   bool output_viz, std::ostream& html_output, std::ostream& out){
+					   bool output_allreads, bool output_pallreads, bool output_viz, std::ostream& html_output, std::ostream& out){
   assert(haplotype_->num_blocks() == 3);
   if(log_allele_priors_ != NULL)
     assert(!output_gls && !output_pls); // These fields only make sense in the context of MLE estimation, not MAP estimation
@@ -754,9 +754,11 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   }
 
   // Add FORMAT field
-  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:PDP:BPDOSE:ALLREADS:PALLREADS" : "\tGT:GB:Q:DP:BPDOSE:ALLREADS:PALLREADS");
-  if (output_gls) out << ":GL";
-  if (output_pls) out << ":PL";
+  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:PDP:BPDOSE" : "\tGT:GB:Q:DP:BPDOSE");
+  if (output_allreads)  out << ":ALLREADS";
+  if (output_pallreads) out << ":PALLREADS";
+  if (output_gls)       out << ":GL";
+  if (output_pls)       out << ":PL";
 
   std::map<std::string, std::string> sample_results;
   for (unsigned int i = 0; i < sample_names.size(); i++){
@@ -809,22 +811,26 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     out << ":" << bp_dosages[sample_index];
 
     // Add bp diffs from regular left-alignment
-    if (bps_per_sample[sample_index].size() != 0){
-      out << ":" << bps_per_sample[sample_index][0];
-      for (unsigned int j = 1; j < bps_per_sample[sample_index].size(); j++)
-	out << "," << bps_per_sample[sample_index][j];
+    if (output_allreads){
+      if (bps_per_sample[sample_index].size() != 0){
+	out << ":" << bps_per_sample[sample_index][0];
+	for (unsigned int j = 1; j < bps_per_sample[sample_index].size(); j++)
+	  out << "," << bps_per_sample[sample_index][j];
+      }
+      else
+	out << ":" << ".";
     }
-    else
-      out << ":" << ".";
 
     // Expected base pair differences from alignment probabilities
-    if (posterior_bps_per_sample[sample_index].size() != 0){
-      out << ":" << posterior_bps_per_sample[sample_index][0];
-      for (unsigned int j = 1; j < posterior_bps_per_sample[sample_index].size(); j++)
-        out << "," << posterior_bps_per_sample[sample_index][j];
+    if (output_pallreads){
+      if (posterior_bps_per_sample[sample_index].size() != 0){
+	out << ":" << posterior_bps_per_sample[sample_index][0];
+	for (unsigned int j = 1; j < posterior_bps_per_sample[sample_index].size(); j++)
+	  out << "," << posterior_bps_per_sample[sample_index][j];
+      }
+      else
+	out << ":" << ".";
     }
-    else
-      out << ":" << ".";
 
     // Genotype and phred-scaled likelihoods
     if (output_gls){
