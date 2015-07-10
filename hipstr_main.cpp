@@ -20,7 +20,7 @@ bool file_exists(std::string path){
   return (access(path.c_str(), F_OK) != -1);
 }
 
-void print_usage(int def_mdist){
+void print_usage(int def_mdist, int def_min_reads){
   std::cerr << "Usage: HipSTR --bams  <list_of_bams> --fasta <dir> --regions <region_file.bed> [OPTION]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
@@ -61,6 +61,7 @@ void print_usage(int def_mdist){
 	    << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
 	    << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
 	    << "\t" << "--min-mapq      <min_qual>            "  << "\t" << "Remove reads with a mapping quality below this threshold (Default = 0)"              << "\n"
+	    << "\t" << "--min-reads     <num_reads>           "  << "\t" << "Minimum total reads required to genotype a locus (Default = " << def_min_reads << ")" << "\n"
 	    << "\t" << "--bam-samps     <list_of_samples>     "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
 	    << "\t" << "                                      "  << "\t" << "  Assign each read the read group corresponding to its file. By default, "           << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and this is used instead"                           << "\n"
@@ -79,13 +80,14 @@ void print_usage(int def_mdist){
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string,  std::string& rg_sample_string,  std::string& rg_lib_string,       std::string& haploid_chr_string,
 			     std::string& fasta_dir,       std::string& region_file,       std::string& snp_vcf_file,        std::string& chrom,
-			     std::string& bam_out_file,    std::string& str_vcf_out_file,  std::string& allele_vcf_out_file, std::string& viz_out_file,
-			     std::string& stutter_in_file, std::string& stutter_out_file, int& use_hap_aligner, int& remove_all_filters, int& remove_pcr_dups,
+			     std::string& bam_out_file,    std::string& str_vcf_out_file,  std::string& allele_vcf_out_file,
+			     int& use_hap_aligner, int& remove_all_filters, int& remove_pcr_dups,
 			     int& output_gls, int& output_pls, int& output_all_reads, int& output_pall_reads, std::string& ref_vcf_file,
-			     BamProcessor& bam_processor){
-  int def_mdist = bam_processor.MAX_MATE_DIST;
+			     GenotyperBamProcessor& bam_processor){
+  int def_mdist     = bam_processor.MAX_MATE_DIST;
+  int def_min_reads = bam_processor.MIN_TOTAL_READS;
   if (argc == 1){
-    print_usage(def_mdist);
+    print_usage(def_mdist, def_min_reads);
     exit(0);
   }
 
@@ -100,6 +102,7 @@ void parse_command_line_args(int argc, char** argv,
     {"bam-samps",       required_argument, 0, 'g'},
     {"bam-lbs",         required_argument, 0, 'q'},
     {"min-mapq",        required_argument, 0, 'e'},
+    {"min-reads",       required_argument, 0, 'i'},
     {"h",               no_argument, &print_help, 1},
     {"help",            no_argument, &print_help, 1},
     {"hide-allreads",   no_argument, &output_all_reads,   0},
@@ -122,6 +125,7 @@ void parse_command_line_args(int argc, char** argv,
     {0, 0, 0, 0}
   };
 
+  std::string filename;
   int c;
   while (true){
     int option_index = 0;
@@ -153,8 +157,12 @@ void parse_command_line_args(int argc, char** argv,
     case 'g':
       rg_sample_string = std::string(optarg);
       break;
+    case 'i':
+      bam_processor.MIN_TOTAL_READS = atoi(optarg);
+      break;
     case 'm':
-      stutter_in_file = std::string(optarg);
+      filename = std::string(optarg);
+      bam_processor.set_input_stutter(filename);
       break;
     case 'o':
       str_vcf_out_file = std::string(optarg);
@@ -169,7 +177,8 @@ void parse_command_line_args(int argc, char** argv,
       region_file = std::string(optarg);
       break;
     case 's':
-      stutter_out_file = std::string(optarg);
+      filename = std::string(optarg);
+      bam_processor.set_output_stutter(filename);
       break;
     case 't':
       haploid_chr_string = std::string(optarg);
@@ -181,7 +190,10 @@ void parse_command_line_args(int argc, char** argv,
       bam_out_file = std::string(optarg);
       break;
     case 'z':
-      viz_out_file = std::string(optarg);
+      filename = std::string(optarg);
+      if (!string_ends_with(filename, ".gz"))
+	printErrorAndDie("Path for alignment visualization file must end in .gz as it will be bgzipped");
+      bam_processor.set_output_viz(filename);;
       break;
     case '?':
       printErrorAndDie("Unrecognized command line option");
@@ -193,7 +205,7 @@ void parse_command_line_args(int argc, char** argv,
   }
 
   if (print_help){
-    print_usage(def_mdist);
+    print_usage(def_mdist, def_min_reads);
     exit(0);
   }
 }
@@ -205,11 +217,11 @@ int main(int argc, char** argv){
   
   int use_hap_aligner = 1, remove_all_filters = 0, remove_pcr_dups = 1;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
-  std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", stutter_in_file="", stutter_out_file="", viz_out_file="";
+  std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="";
   int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 1;
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
-			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, viz_out_file, stutter_in_file, stutter_out_file, use_hap_aligner, remove_all_filters, 
+			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, use_hap_aligner, remove_all_filters, 
 			  remove_pcr_dups, output_gls, output_pls, output_all_reads, output_pall_reads, ref_vcf_file, bam_processor);
   if (output_gls) bam_processor.output_gls();
   if (output_pls) bam_processor.output_pls();
@@ -222,8 +234,8 @@ int main(int argc, char** argv){
     bam_processor.use_len_model();
     if (!ref_vcf_file.empty())
       printErrorAndDie("--ref-vcf option is not compatible with the --len-genotyper option");
-    if (!viz_out_file.empty())
-      printErrorAndDie("--viz-out option is not compatible with the --len-genotyper option");
+    //if (!viz_out_file.empty())
+    //printErrorAndDie("--viz-out option is not compatible with the --len-genotyper option");
   }
     
   
@@ -354,16 +366,6 @@ int main(int argc, char** argv){
     if (!string_ends_with(str_vcf_out_file, ".gz"))
       printErrorAndDie("Path for STR VCF output file must end in .gz as it will be bgzipped");
     bam_processor.set_output_str_vcf(str_vcf_out_file, rg_samples);
-  }
-
-  if (!stutter_in_file.empty())
-    bam_processor.set_input_stutter(stutter_in_file);
-  if (!stutter_out_file.empty())
-    bam_processor.set_output_stutter(stutter_out_file);
-  if(!viz_out_file.empty()){
-    if (!string_ends_with(viz_out_file, ".gz"))
-      printErrorAndDie("Path for alignment visualization file must end in .gz as it will be bgzipped");
-    bam_processor.set_output_viz(viz_out_file);
   }
   
   if (remove_all_filters)
