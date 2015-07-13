@@ -18,7 +18,7 @@ class HapAligner {
    **/
   void align_left_flank(const char* seq_0, int seq_len,
 			const double* base_log_wrong, const double* base_log_correct,
-			double* match_matrix, double* insert_matrix, double* deletion_matrix, double& left_prob);
+			double* match_matrix, double* insert_matrix, double* deletion_matrix, int* best_artifact, double& left_prob);
 
   /**                                                                                                                                                                         
    * Align the sequence contained in SEQ_N -> SEQ_END using the recursion
@@ -26,20 +26,33 @@ class HapAligner {
    **/
   void align_right_flank(const char* seq_n, int seq_len,
 			 const double* base_log_wrong, const double* base_log_correct,
-                         double* match_matrix, double* insert_matrix, double* deletion_matrix, double& right_prob);
+                         double* match_matrix, double* insert_matrix, double* deletion_matrix, int* best_artifact, double& right_prob);
 
   /**
    * Compute the log-probability of the alignment given the 
-   * alignment matrices for the left and right segments
+   * alignment matrices for the left and right segments.
+   *
+   * Stores the index of the haplotype position with which the seed base
+   * is aligned in the maximum likelihood alignment
    **/
   double compute_aln_logprob(int base_seq_len, int seed_base,
 			     char seed_char, double log_seed_wrong, double log_seed_correct,
 			     double* l_match_matrix, double* l_insert_matrix, double* l_deletion_matrix, double l_prob,
-			     double* r_match_matrix, double* r_insert_matrix, double* r_deletion_matrix, double r_prob);
+			     double* r_match_matrix, double* r_insert_matrix, double* r_deletion_matrix, double r_prob,
+			     int& max_index);
+
+
+  void retrace_left(int seq_len, int block_index, int base_index, int matrix_index, double* l_match_matrix, 
+		    double* l_insert_matrix, double* l_deletion_matrix, int* best_artifact);
+  void retrace_right(int seq_len, int block_index, int base_index, int matrix_index, double* r_match_matrix, 
+		     double* r_insert_matrix, double* r_deletion_matrix, int* best_artifact);
 
  public:
   HapAligner(Haplotype* haplotype){
     haplotype_ = haplotype;
+
+    // Construct the reverse haplotype
+
   }
 
   /** 
@@ -47,6 +60,10 @@ class HapAligner {
    * used as the seed for alignment. Returns -1 iff no valid seed exists 
    **/
   int calc_seed_base(Alignment& alignment);
+
+
+  void process_read(Alignment& aln, int seed_base, BaseQuality* base_quality, bool retrace_aln,
+		    double* prob_ptr);
 
 
   void process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality,
@@ -57,7 +74,7 @@ class HapAligner {
     Retraces the Alignment's optimal alignment to the provided haplotype.
     Returns the result as a new Alignment relative to the reference haplotype
    */
-  Alignment trace_optimal_aln(Alignment& alignment, int seed_base, int best_haplotype);
+  Alignment trace_optimal_aln(Alignment& alignment, int seed_base, int best_haplotype, BaseQuality* base_quality);
 };
 
 #endif

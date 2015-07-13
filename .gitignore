@@ -4,6 +4,7 @@ test/allele_expansion_test
 test/base_qual_test
 test/em_stutter_test
 test/fast_ops_test
+test/haplotype_test
 test/hap_aligner_test
 test/read_vcf_alleles_test
 test/read_vcf_priors_test

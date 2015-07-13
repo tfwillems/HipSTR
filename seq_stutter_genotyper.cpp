@@ -865,7 +865,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	int gt_a    = gts[sample_label_[read_index]].first, gt_b = gts[sample_label_[read_index]].second;
 	int best_gt = (LOG_ONE_HALF+log_p1_[read_index]+read_LL_ptr[gt_a] >
 		       LOG_ONE_HALF+log_p2_[read_index]+read_LL_ptr[gt_b]) ? gt_a : gt_b;
-	max_LL_alns[i].push_back(hap_aligner.trace_optimal_aln(alns_[i][j], seed_positions_[read_index], best_gt));
+	max_LL_alns[i].push_back(hap_aligner.trace_optimal_aln(alns_[i][j], seed_positions_[read_index], best_gt, &base_quality_));
 	read_LL_ptr += num_alleles_;
       }
     }
