@@ -23,23 +23,32 @@ void Haplotype::reset(){
 }
 
 bool Haplotype::next(){
+  if (fixed_)
+    return false;
   if (counter_ == ncombs_-1)
     return false;
-  
-  int t = counter_+1;
+
+  int index = -1;
+  int t     = counter_+1;
   for (int j = blocks_.size()-1; j >= 0; j--){
     t %= factors_[j];
     if (t == 0){
-      last_changed_ = j;
-      nchanges_[j] += 1;
-      cur_size_    -= blocks_[j]->size(counts_[j]);
-      counts_[j]   += dirs_[j];
-      cur_size_    += blocks_[j]->size(counts_[j]);
-      if (counts_[j] == 0 || counts_[j] == nopts_[j]-1)
-	dirs_[j] *= -1;
+      index = j;
       break;
     }
   }
+  if (inc_rev_)
+    index = blocks_.size()-1-index;
+
+  assert(index != -1);
+  last_changed_     = index;
+  nchanges_[index] += 1;
+  cur_size_        -= blocks_[index]->size(counts_[index]);
+  counts_[index]   += dirs_[index];
+  cur_size_        += blocks_[index]->size(counts_[index]);
+  if (counts_[index] == 0 || counts_[index] == nopts_[index]-1)
+    dirs_[index] *= -1;
+
   counter_++;
   return true;
 }
@@ -119,7 +128,6 @@ unsigned int Haplotype::right_homopolymer_len(char c, int block_index){
   return total;
 }
 
-
 unsigned int Haplotype::homopolymer_length(int block_index, int base_index){
   HapBlock* block        = blocks_[block_index];
   const std::string& seq = block->get_seq(counts_[block_index]);
@@ -130,4 +138,14 @@ unsigned int Haplotype::homopolymer_length(int block_index, int base_index){
   if (base_index+rlen == seq.size()-1)
     rlen += right_homopolymer_len(seq[base_index], block_index+1);
   return llen + rlen + 1;
+}
+
+Haplotype* Haplotype::reverse(){
+  std::vector<HapBlock*> rev_blocks;
+  for (unsigned int i = 0; i < blocks_.size(); i++)
+    rev_blocks.push_back(blocks_[i]->reverse());
+  std::reverse(rev_blocks.begin(), rev_blocks.end());
+  Haplotype* rev_hap = new Haplotype(rev_blocks);
+  rev_hap->inc_rev_  = true;
+  return rev_hap;
 }

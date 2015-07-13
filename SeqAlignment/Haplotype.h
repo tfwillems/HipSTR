@@ -1,7 +1,9 @@
 #ifndef HAPLOTYPE_H_
 #define HAPLOTYPE_H_
 
+#include <assert.h>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -12,14 +14,13 @@ class Haplotype {
   std::vector<HapBlock*> blocks_;
   std::vector<int> nopts_;
   int ncombs_, cur_size_;
+  bool fixed_;
 
   // Variables for graycode-based iterator
   int counter_, last_changed_, max_size_;
   std::vector<int> dirs_, factors_, counts_, nchanges_;
+  bool inc_rev_; // Iff true, increment from back to front
 
-  // Information about repetitive regions [start, stop)
-  std::vector<int> repeat_starts_, repeat_stops_;
- 
   void init();
   
   unsigned int left_homopolymer_len(char c, int block_index);
@@ -27,23 +28,19 @@ class Haplotype {
 
  public:
   Haplotype(std::vector<HapBlock*>& blocks) {
-    int32_t ref_coord = blocks[0]->start();
     max_size_ = 0;
     for (unsigned int i = 0; i < blocks.size(); i++) {
-      if (blocks[i]->get_repeat_info() != NULL) {
-	repeat_starts_.push_back(ref_coord);
-	repeat_stops_.push_back(ref_coord + blocks[i]->get_seq(0).size());
-      }
       blocks_.push_back(blocks[i]);
       nopts_.push_back(blocks[i]->num_options());
       max_size_ += blocks[i]->max_size();
-      ref_coord += blocks[i]->get_seq(0).size();
     }
+    fixed_ = false;
 
     dirs_.resize(blocks_.size());
     factors_.resize(blocks_.size());
     counts_.resize(blocks_.size());
     nchanges_.resize(blocks_.size());
+    inc_rev_ = false;
     init();
   }
 
@@ -60,21 +57,36 @@ class Haplotype {
   }
   
   inline const std::string& get_seq(int block_index)     { return blocks_[block_index]->get_seq(counts_[block_index]); }
-  inline const std::vector<int32_t>& get_repeat_starts() { return repeat_starts_; }
-  inline const std::vector<int32_t>& get_repeat_stops()  { return repeat_stops_; }
   inline HapBlock* get_block(int block_index)            { return blocks_[block_index]; }
   inline char get_first_char()                           { return blocks_[0]->get_seq(counts_[0])[0]; }
   inline char get_last_char()                            { return blocks_.back()->get_seq(counts_[blocks_.size()-1]).back(); }
+  inline int num_blocks()                          const { return blocks_.size(); }
+  inline int num_combs()                           const { return ncombs_; }
+  int num_options(int block_index)                 const {  return blocks_[block_index]->num_options(); }
 
-  inline int num_blocks()   const { return blocks_.size(); }
-  inline int num_combs()    const { return ncombs_; }
-  inline int last_changed() const { return last_changed_; }
-  inline int max_size()     const { return max_size_; }
-  inline int cur_size()     const { return cur_size_; }
-  inline int cur_index(int block_index) const { return counts_[block_index]; }
+  inline int last_changed()                        const { return last_changed_; }
+  inline int max_size()                            const { return max_size_; }
+  inline int cur_size()                            const { return cur_size_; }
+  inline int cur_index(int block_index)            const { return counts_[block_index]; }
 
-  int num_options(int block_index) const {
-    return blocks_[block_index]->num_options();
+  void get_coordinates(int hap_pos, int& block, int& block_pos){
+    assert(hap_pos >= 0 && hap_pos < cur_size_);
+    for (int i = 0; i < blocks_.size(); i++){
+      if (hap_pos < blocks_[i]->size(counts_[i])){
+	block     = i;
+	block_pos = hap_pos;
+	return;
+      }
+      hap_pos -= blocks_[i]->size(counts_[i]);
+    }
+    assert(false);
+  }
+
+  std::string get_seq(){
+    std::stringstream ss;
+    for (int i = 0; i < num_blocks(); i++)
+      ss << get_seq(i);
+    return ss.str();
   }
 
   void print(std::ostream& out) {
@@ -96,7 +108,11 @@ class Haplotype {
     }
     out << std::endl;
   }
-    
+
+  // Prevent haplotype from being changed using next()
+  void fix()  { fixed_ = true;  }
+  void unfix(){ fixed_ = false; }
+
   void reset();
 
   bool next();
@@ -104,6 +120,8 @@ class Haplotype {
   void go_to(int hap_index);
 
   unsigned int homopolymer_length(int block_index, int base_index);
+
+  Haplotype* reverse();
 };
 
 #endif

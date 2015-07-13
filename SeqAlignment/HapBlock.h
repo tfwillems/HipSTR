@@ -13,7 +13,7 @@
 #include "RepeatStutterInfo.h"
 
 class HapBlock {
- private:
+ protected:
   std::string ref_seq_;
   std::vector<std::string> alt_seqs_;
   int32_t start_;  // Start of region (inclusive)
@@ -34,7 +34,7 @@ class HapBlock {
     alt_seqs_ = std::vector<std::string>();
   }
 
-  ~HapBlock() {
+  virtual ~HapBlock() {
     for (unsigned int i = 0; i < l_homopolymer_lens.size(); i++)
       delete [] l_homopolymer_lens[i];
     for (unsigned int i = 0; i < r_homopolymer_lens.size(); i++)
@@ -90,6 +90,19 @@ class HapBlock {
   }
   
   void initialize();
+
+  virtual HapBlock* reverse(){
+    std::string rev_ref_seq = ref_seq_;
+    std::reverse(rev_ref_seq.begin(), rev_ref_seq.end());
+    HapBlock* rev_block = new HapBlock(end_, start_, rev_ref_seq);
+    for (unsigned int i = 0; i < alt_seqs_.size(); i++) {
+      std::string alt = alt_seqs_[i];
+      std::reverse(alt.begin(), alt.end());
+      rev_block->add_alternate(alt);
+    }
+    rev_block->initialize();
+    return rev_block;
+  }
 };
 
 #endif

@@ -17,9 +17,7 @@ class RepeatBlock : public HapBlock {
       repeat_info_ = new RepeatStutterInfo(period, ref_seq, stutter_model); 
     }
     
-    ~RepeatBlock(){
-      delete repeat_info_;
-    }
+    ~RepeatBlock(){ delete repeat_info_; }
 
     void add_alternate(std::string& alt){
       HapBlock::add_alternate(alt);
@@ -27,6 +25,20 @@ class RepeatBlock : public HapBlock {
     }
 
     RepeatStutterInfo* get_repeat_info(){ return repeat_info_; }
+
+
+    HapBlock* reverse(){
+      std::string rev_ref_seq = ref_seq_;
+      std::reverse(rev_ref_seq.begin(), rev_ref_seq.end());
+      RepeatBlock* rev_block = new RepeatBlock(start_, end_, rev_ref_seq, repeat_info_->get_period(), repeat_info_->get_stutter_model());
+      for (unsigned int i = 0; i < alt_seqs_.size(); i++) {
+	std::string alt = alt_seqs_[i];
+	std::reverse(alt.begin(), alt.end());
+	rev_block->add_alternate(alt);
+      }
+      rev_block->initialize();
+      return rev_block;
+    }
 };
 
 
