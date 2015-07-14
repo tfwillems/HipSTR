@@ -17,7 +17,7 @@ int main(){
   fill_qual_scores(base_log_wrong, base_seq.size(), log(1e-5));
   fill_qual_scores(base_log_right, base_seq.size(), log(1-1e-5));
   double prob_a, prob_b, prob_c, prob_d, prob_e;
-
+  /*
   prob_a = align_no_artifact_forward(  block_seq.size(),   block_seq.c_str(), base_seq.size(),   base_seq.c_str(), &base_log_wrong[0], &base_log_right[0]);
   prob_b = align_pcr_insertion_forward(block_seq.size()-4, block_seq.c_str(), base_seq.size(),   base_seq.c_str(), &base_log_wrong[0], &base_log_right[0], 4, 2);
   prob_c = align_pcr_deletion_forward( block_seq.size(),   block_seq.c_str(), base_seq.size()-4, base_seq.c_str(), &base_log_wrong[0], &base_log_right[0], -4);
@@ -57,5 +57,5 @@ int main(){
   fill_qual_scores(base_log_right, base_seq.size(), log(1-1e-5));
   prob_b = align_pcr_insertion_forward(block_seq.size(), block_seq.c_str(), base_seq.size(), base_seq.c_str(), &base_log_wrong[0], &base_log_right[0], 4, 2);
   prob_d = align_pcr_insertion_reverse(block_seq.size(), block_seq.c_str()+block_seq.size()-1, base_seq.size(), base_seq.c_str()+base_seq.size()-1, &base_log_wrong[base_seq.size()-1], &base_log_right[base_seq.size()-1], 4, 2);
-  std::cerr << prob_b << " " << prob_d << std::endl;
+  std::cerr << prob_b << " " << prob_d << std::endl;*/
 }

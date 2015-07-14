@@ -10,23 +10,17 @@
 
 class HapAligner {
  private:
-  Haplotype* haplotype_;
+  Haplotype* fw_haplotype_;
+  Haplotype* rev_haplotype_;
 
   /**
    * Align the sequence contained in SEQ_0 -> SEQ_N using the recursion
    * 0 -> 1 -> 2 ... N
    **/
-  void align_left_flank(const char* seq_0, int seq_len,
+  void align_seq_to_hap(Haplotype* haplotype,
+			const char* seq_0, int seq_len,
 			const double* base_log_wrong, const double* base_log_correct,
 			double* match_matrix, double* insert_matrix, double* deletion_matrix, int* best_artifact, double& left_prob);
-
-  /**                                                                                                                                                                         
-   * Align the sequence contained in SEQ_N -> SEQ_END using the recursion
-   * END -> END-1 -> END-2 ... N
-   **/
-  void align_right_flank(const char* seq_n, int seq_len,
-			 const double* base_log_wrong, const double* base_log_correct,
-                         double* match_matrix, double* insert_matrix, double* deletion_matrix, int* best_artifact, double& right_prob);
 
   /**
    * Compute the log-probability of the alignment given the 
@@ -42,17 +36,14 @@ class HapAligner {
 			     int& max_index);
 
 
-  void retrace_left(int seq_len, int block_index, int base_index, int matrix_index, double* l_match_matrix, 
-		    double* l_insert_matrix, double* l_deletion_matrix, int* best_artifact);
-  void retrace_right(int seq_len, int block_index, int base_index, int matrix_index, double* r_match_matrix, 
-		     double* r_insert_matrix, double* r_deletion_matrix, int* best_artifact);
+  void retrace(Haplotype* haplotype,
+	       int seq_len, int block_index, int base_index, int matrix_index, double* l_match_matrix,
+	       double* l_insert_matrix, double* l_deletion_matrix, int* best_artifact);
 
  public:
   HapAligner(Haplotype* haplotype){
-    haplotype_ = haplotype;
-
-    // Construct the reverse haplotype
-
+    fw_haplotype_  = haplotype;
+    rev_haplotype_ = haplotype->reverse();
   }
 
   /** 
