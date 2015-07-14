@@ -22,9 +22,8 @@ OBJ_SEQALN  := $(SRC_SEQALN:.cpp=.o)
 BAMTOOLS_ROOT=bamtools
 VCFLIB_ROOT=vcflib
 
-LIBS              = -L./ -lz -lm -lgmp -lgmpxx -lhts -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/ -Lvcflib/tabixpp/htslib/ -lz
-INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I$(VCFLIB_ROOT)/ -I/usr/local/opt/boost149/include  -I$(VCFLIB_ROOT)/tabixpp/htslib/
-ARGWEAVER_LIB     = argweaver/lib/libargweaver.a
+LIBS              = -L./ -lm -lhts -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/ -Lvcflib/tabixpp/htslib/ -lz
+INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I$(VCFLIB_ROOT)/ -I$(VCFLIB_ROOT)/tabixpp/htslib/
 BAMTOOLS_LIB      = $(BAMTOOLS_ROOT)/lib/libbamtools.a
 VCFLIB_LIB        = vcflib/libvcflib.a
 PHASED_BEAGLE_JAR = PhasedBEAGLE/PhasedBEAGLE.jar
