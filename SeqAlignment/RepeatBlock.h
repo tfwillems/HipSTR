@@ -2,6 +2,8 @@
 #define REPEAT_BLOCK_H_
 
 #include <algorithm>
+#include <set>
+#include <vector>
 
 #include "../error.h"
 #include "../stutter_model.h"
@@ -26,7 +28,6 @@ class RepeatBlock : public HapBlock {
 
     RepeatStutterInfo* get_repeat_info(){ return repeat_info_; }
 
-
     HapBlock* reverse(){
       std::string rev_ref_seq = ref_seq_;
       std::reverse(rev_ref_seq.begin(), rev_ref_seq.end());
@@ -38,6 +39,19 @@ class RepeatBlock : public HapBlock {
       }
       rev_block->initialize();
       return rev_block;
+    }
+
+    RepeatBlock* remove_alleles(std::vector<int>& allele_indices){
+      std::set<int> bad_alleles(allele_indices.begin(), allele_indices.end());
+      assert(bad_alleles.find(0) == bad_alleles.end());
+
+      RepeatBlock* new_block = new RepeatBlock(start_, end_, ref_seq_, repeat_info_->get_period(), repeat_info_->get_stutter_model());
+      for (unsigned int i = 0; i < alt_seqs_.size(); i++){
+	if (bad_alleles.find(i+1) == bad_alleles.end())
+	  new_block->add_alternate(alt_seqs_[i]);
+      }
+      new_block->initialize();
+      return new_block;
     }
 };
 
