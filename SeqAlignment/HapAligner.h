@@ -20,7 +20,8 @@ class HapAligner {
   void align_seq_to_hap(Haplotype* haplotype,
 			const char* seq_0, int seq_len,
 			const double* base_log_wrong, const double* base_log_correct,
-			double* match_matrix, double* insert_matrix, double* deletion_matrix, int* best_artifact, double& left_prob);
+			double* match_matrix, double* insert_matrix, double* deletion_matrix,
+			int* best_artifact_size, int* best_artifact_pos, double& left_prob);
 
   /**
    * Compute the log-probability of the alignment given the 
@@ -35,10 +36,10 @@ class HapAligner {
 			     double* r_match_matrix, double* r_insert_matrix, double* r_deletion_matrix, double r_prob,
 			     int& max_index);
 
-
-  void retrace(Haplotype* haplotype,
-	       int seq_len, int block_index, int base_index, int matrix_index, double* l_match_matrix,
-	       double* l_insert_matrix, double* l_deletion_matrix, int* best_artifact);
+  std::string retrace(Haplotype* haplotype,
+		      int seq_len, int block_index, int base_index, int matrix_index, double* l_match_matrix,
+		      double* l_insert_matrix, double* l_deletion_matrix, int* best_artifact_size, int* best_artifact_pos,
+		      int& flank_ins_size, int& flank_del_size);
 
  public:
   HapAligner(Haplotype* haplotype){
@@ -52,20 +53,18 @@ class HapAligner {
    **/
   int calc_seed_base(Alignment& alignment);
 
-
   void process_read(Alignment& aln, int seed_base, BaseQuality* base_quality, bool retrace_aln,
-		    double* prob_ptr);
-
+		    double* prob_ptr, Alignment& traced_aln, int& num_flank_ins, int& num_flank_del);
 
   void process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality,
 		     double* aln_probs, int* seed_positions);
-
 
   /*
     Retraces the Alignment's optimal alignment to the provided haplotype.
     Returns the result as a new Alignment relative to the reference haplotype
    */
-  Alignment trace_optimal_aln(Alignment& alignment, int seed_base, int best_haplotype, BaseQuality* base_quality);
+  void trace_optimal_aln(Alignment& orig_aln, int seed_base, int best_haplotype, BaseQuality* base_quality,
+			 Alignment& traced_aln, int& num_flank_ins, int& num_flank_del);
 };
 
 #endif
