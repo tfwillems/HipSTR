@@ -130,6 +130,7 @@ class SeqStutterGenotyper{
   double total_hap_build_time_, locus_hap_build_time_;
   double total_left_aln_time_,  locus_left_aln_time_;
   double total_hap_aln_time_,   locus_hap_aln_time_;
+  double total_aln_trace_time_, locus_aln_trace_time_;
 
  public:
   SeqStutterGenotyper(Region& region, bool haploid,
@@ -160,6 +161,8 @@ class SeqStutterGenotyper{
     locus_left_aln_time_   = -1;
     total_hap_aln_time_    = 0;
     locus_hap_aln_time_    = -1;
+    total_aln_trace_time_  = 0;
+    locus_aln_trace_time_  = -1;
 
     // True iff no allele priors are available (for imputation)
     if (ref_vcf == NULL)
@@ -207,6 +210,13 @@ class SeqStutterGenotyper{
     pool_identical_seqs_ = true;
   }
 
+
+  /*
+   *  Returns true iff the read with the associated retraced maximum log-likelihood alignment should be used in genotyping
+   *  Considers factors such as indels in the regions flanking the STR block and the total number of matched bases
+   */
+  bool use_read(Alignment& max_LL_aln, int num_flank_ins, int num_flank_del);
+
   void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
 			bool output_gls, bool output_pls, bool output_allreads, bool output_pallreads, bool output_viz, std::ostream& html_output, std::ostream& out);
 
@@ -216,6 +226,8 @@ class SeqStutterGenotyper{
   double locus_left_aln_time() { return locus_left_aln_time_;  }
   double total_hap_aln_time()  { return total_hap_aln_time_;   }
   double locus_hap_aln_time()  { return locus_hap_aln_time_;   }
+  double total_aln_trace_time(){ return total_aln_trace_time_; }
+  double locus_aln_trace_time(){ return locus_aln_trace_time_; }
   
   bool genotype();
 };
