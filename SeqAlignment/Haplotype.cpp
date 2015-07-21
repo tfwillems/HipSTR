@@ -1,5 +1,35 @@
+#include <assert.h>
+
 #include "../error.h"
 #include "Haplotype.h"
+#include "NWNoRefEndPenalty.h"
+
+void Haplotype::aln_haps_to_ref(){
+  std::string ref_hap_seq = get_seq(), alt_hap_seq;
+  std::string ref_hap_al, alt_hap_al;
+  float score;
+  std::vector<BamTools::CigarOp> cigar_list;
+
+  do {
+    alt_hap_seq = get_seq();
+    if (!NWNoRefEndPenalty::LeftAlign(ref_hap_seq, alt_hap_seq, ref_hap_al, alt_hap_al, &score, cigar_list))
+      printErrorAndDie("Failed to left-align haplotype sequence to reference allele");
+    cigar_list.clear();
+
+    std::string aln_info = ""; aln_info.reserve(alt_hap_al.size());
+    for (unsigned int i = 0; i < alt_hap_al.size(); i++){
+      if (ref_hap_al[i] == '-')
+	aln_info += 'I';
+      else if (alt_hap_al[i] == '-')
+	aln_info += 'D';
+      else
+	aln_info += 'M';
+    }
+    hap_aln_info_.push_back(aln_info);
+  }
+  while (next());
+  reset();
+}
 
 void Haplotype::init(){
   ncombs_   = 1;
@@ -147,5 +177,12 @@ Haplotype* Haplotype::reverse(){
   std::reverse(rev_blocks.begin(), rev_blocks.end());
   Haplotype* rev_hap = new Haplotype(rev_blocks);
   rev_hap->inc_rev_  = true;
+
+  // Set the haplotype alignments to the reverse of those in the current haplotype
+  // Can't use the values obtained from the constructor as the reverse
+  // haplotype would have right align indels instead of left aligning them
+  rev_hap->hap_aln_info_ = hap_aln_info_;
+  for (auto iter = rev_hap->hap_aln_info_.begin(); iter != rev_hap->hap_aln_info_.end(); iter++)
+    std::reverse(iter->begin(), iter->end());
   return rev_hap;
 }

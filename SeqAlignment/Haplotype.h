@@ -26,6 +26,9 @@ class Haplotype {
   unsigned int left_homopolymer_len(char c, int block_index);
   unsigned int right_homopolymer_len(char c, int block_index);
 
+  std::vector<std::string> hap_aln_info_;
+  void aln_haps_to_ref();
+
  public:
   Haplotype(std::vector<HapBlock*>& blocks) {
     max_size_ = 0;
@@ -42,6 +45,7 @@ class Haplotype {
     nchanges_.resize(blocks_.size());
     inc_rev_ = false;
     init();
+    aln_haps_to_ref();
   }
 
   void print_nchanges(std::ostream& out) {
@@ -57,17 +61,20 @@ class Haplotype {
   }
   
   inline const std::string& get_seq(int block_index)     { return blocks_[block_index]->get_seq(counts_[block_index]); }
+  inline const std::string& get_aln_info()               { return hap_aln_info_[counter_]; }
   inline HapBlock* get_block(int block_index)            { return blocks_[block_index]; }
   inline char get_first_char()                           { return blocks_[0]->get_seq(counts_[0])[0]; }
   inline char get_last_char()                            { return blocks_.back()->get_seq(counts_[blocks_.size()-1]).back(); }
   inline int num_blocks()                          const { return blocks_.size(); }
   inline int num_combs()                           const { return ncombs_; }
-  int num_options(int block_index)                 const {  return blocks_[block_index]->num_options(); }
+  int num_options(int block_index)                 const { return blocks_[block_index]->num_options(); }
 
   inline int last_changed()                        const { return last_changed_; }
   inline int max_size()                            const { return max_size_; }
   inline int cur_size()                            const { return cur_size_; }
   inline int cur_index(int block_index)            const { return counts_[block_index]; }
+  inline bool reversed()                           const { return inc_rev_; }
+
 
   void get_coordinates(int hap_pos, int& block, int& block_pos){
     assert(hap_pos >= 0 && hap_pos < cur_size_);
