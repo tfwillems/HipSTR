@@ -20,6 +20,7 @@ void EMStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names
       << "##INFO=<ID=" << "START,"          << "Number=1,Type=Integer,Description=\"" << "Inclusive start coodinate for the repetitive potrion of the reference allele" << "\">\n"
       << "##INFO=<ID=" << "END,"            << "Number=1,Type=Integer,Description=\"" << "Inclusive end coordinate for the repetitive portion of the reference allele"  << "\">\n"
       << "##INFO=<ID=" << "PERIOD,"         << "Number=1,Type=Integer,Description=\"" << "Length of STR motif"                                                          << "\">\n"
+      << "##INFO=<ID=" << "REFAC,"          << "Number=1,Type=Integer,Description=\"" << "Reference allele count"                                                       << "\">\n"
       << "##INFO=<ID=" << "AC,"             << "Number=A,Type=Integer,Description=\"" << "Alternate allele counts"                                                      << "\">\n";
 
   // Format field descriptors
@@ -466,6 +467,7 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
     out << ";";
   }
 
+  out << "REFAC=" << allele_counts[0] << ";";
   if (allele_counts.size() > 1){
     out << "AC=";
     for (unsigned int i = 1; i < allele_counts.size()-1; i++)
