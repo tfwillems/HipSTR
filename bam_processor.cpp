@@ -159,8 +159,13 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	mate_alns.push_back(alignment);
 	potential_strs.erase(aln_iter);
       }
-      else 
-	potential_mates.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
+      else {
+	auto other_iter = potential_mates.find(aln_key);
+	if (other_iter != potential_mates.end())
+	  potential_mates.erase(other_iter);
+	else
+	  potential_mates.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
+      }
     }
   }
 
