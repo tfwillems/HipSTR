@@ -21,7 +21,7 @@ bool file_exists(std::string path){
 }
 
 void print_usage(int def_mdist, int def_min_reads){
-  std::cerr << "Usage: HipSTR --bams  <list_of_bams> --fasta <dir> --regions <region_file.bed> [OPTION]" << "\n" << "\n"
+  std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <dir> --regions <region_file.bed> [OPTION]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
 	    << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of BAM files"                                                   << "\n"
