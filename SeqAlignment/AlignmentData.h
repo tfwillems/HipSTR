@@ -114,6 +114,14 @@ class Alignment {
     return num;
   }
 
+  int num_matched_bases() const{
+    int num = 0;
+    for (std::vector<CigarElement>::const_iterator iter = cigar_list_.begin(); iter != cigar_list_.end(); iter++)
+      if (iter->get_type() == 'M')
+	num += iter->get_num();
+    return num;
+  }
+
   inline void set_base_qualities(const std::string& base_qualities)       { base_qualities_.assign(base_qualities); }
   inline void set_sequence(const std::string& sequence)                   { sequence_.assign(sequence);             }
   inline void set_alignment(const std::string& alignment)                 { alignment_.assign(alignment);           }
