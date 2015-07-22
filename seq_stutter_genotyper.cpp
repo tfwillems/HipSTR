@@ -428,9 +428,10 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##FORMAT=<ID=" << "GB"          << ",Number=1,Type=String,Description=\""  << "Base pair differences of genotype from reference"              << "\">" << "\n"
       << "##FORMAT=<ID=" << "Q"           << ",Number=1,Type=Float,Description=\""   << "Posterior probability of unphased genotype"                    << "\">" << "\n"
       << "##FORMAT=<ID=" << "PQ"          << ",Number=1,Type=Float,Description=\""   << "Posterior probability of phased genotype"                      << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\"" << "Read depth"                                                    << "\">" << "\n"
+      << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\"" << "Number of valid reads used for sample's genotype"              << "\">" << "\n"
       << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\"" << "Number of reads with SNP phasing information"                  << "\">" << "\n"
       << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""  << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
+      << "##FORMAT=<ID=" << "DFILT"       << ",Number=1,Type=Integer,Description=\"" << "Number of reads filtered due to various issues"                << "\">" << "\n"
       << "##FORMAT=<ID=" << "BPDOSE"      << ",Number=1,Type=Float,Description=\""   << "Posterior mean base pair difference from reference"            << "\">" << "\n"
       << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\"" << "Base pair difference observed in each read"                    << "\">" << "\n"
       << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probs" << "\">" << "\n";
@@ -593,10 +594,16 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
   return total_LL;
 }
 
-
 bool SeqStutterGenotyper::use_read(Alignment& max_LL_aln, int num_flank_ins, int num_flank_del){
-  // TO DO: Implement filter
-  // May want to discard all reads with non-zero flank indels and less than X matched bases?
+  return true;
+
+  printErrorAndDie("Need to rerun calc_sample_posteriors if filtering some reads using use_read");
+  if (num_flank_ins > 0)
+    return false;
+  if (num_flank_del > 0)
+    return false;
+  if (max_LL_aln.num_matched_bases() < 25)
+    return false;
   return true;
 }
 
@@ -685,7 +692,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     double log_phase_one = LOG_ONE_HALF + log_p1_[read_index] + read_LL_ptr[gt_a] - total_read_LL; 
     log_read_phases[sample_label_[read_index]].push_back(log_phase_one);
 
-    // Retrace alignment and ensure that it's sufficient quality
+    // Retrace alignment and ensure that it's of sufficient quality
     double trace_start = clock();
     int best_gt = (log_phase_one > LOG_ONE_HALF ? gt_a : gt_b);
     Alignment traced_aln;
@@ -697,7 +704,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       read_LL_ptr += num_alleles_;
       continue;
     }
-    //max_LL_alns[idx_1].push_back(alns_[idx_1][idx_2]);
+    max_LL_alns[idx_1].push_back(alns_[idx_1][idx_2]);
     max_LL_alns[idx_1].push_back(traced_aln);
     locus_aln_trace_time_ += (clock() - trace_start)/CLOCKS_PER_SEC;
 
@@ -792,7 +799,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   }
 
   // Add FORMAT field
-  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:PDP:BPDOSE" : "\tGT:GB:Q:DP:BPDOSE");
+  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DFILT:PDP:BPDOSE" : "\tGT:GB:Q:DP:DFILT:BPDOSE");
   if (output_allreads)  out << ":ALLREADS";
   if (output_pallreads) out << ":PALLREADS";
   if (output_gls)       out << ":GL";
@@ -834,19 +841,20 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	  << "|" << allele_bp_diffs[gts[sample_index].second]                                      // Base pair differences from reference
 	  << ":" << exp(log_unphased_posteriors[sample_index])                                     // Unphased posterior
 	  << ":" << exp(log_phased_posteriors[sample_index])                                       // Phased posterior
-	  << ":" << num_aligned_reads[sample_index]                                                // Total realigned reads
+	  << ":" << num_aligned_reads[sample_index]                                                // Total reads used to genotype (after filtering)
 	  << ":" << num_reads_with_snps[sample_index]                                              // Total reads with SNP information
-	  << ":" << phase1_reads << "|" << phase2_reads;                                           // Reads per allele
+	  << ":" << masked_reads[sample_index]                                                     // Total masked reads
+	  << ":" << phase1_reads << "|" << phase2_reads                                            // Reads per allele
+	  << ":" << bp_dosages[sample_index];                                                      // Posterior STR dosage (in base pairs)
     }
     else {
       out << gts[sample_index].first                                                               // Genotype
 	  << ":" << allele_bp_diffs[gts[sample_index].first]                                       // Base pair differences from reference
 	  << ":" << exp(log_unphased_posteriors[sample_index])                                     // Unphased posterior
-	  << ":" << num_aligned_reads[sample_index];                                               // Total realigned reads
+	  << ":" << num_aligned_reads[sample_index]                                                // Total reads used to genotype (after filtering)
+	  << ":" << masked_reads[sample_index]                                                     // Total masked reads
+	  << ":" << bp_dosages[sample_index];                                                      // Posterior STR dosage (in base pairs)
     }
-
-    // Posterior STR dosage (in base pairs)
-    out << ":" << bp_dosages[sample_index];
 
     // Add bp diffs from regular left-alignment
     if (output_allreads){
@@ -884,7 +892,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   }
   out << "\n";
 
-  // Render HTML of Smith-Waterman alignments (and eventually haplotype alignments)
+  // Render HTML of Smith-Waterman alignments (or haplotype alignments)
   if (output_viz){
     std::stringstream locus_info;
     locus_info << region_->chrom() << "\t" << region_->start() << "\t" << region_->stop();
