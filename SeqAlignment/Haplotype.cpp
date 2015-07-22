@@ -4,6 +4,58 @@
 #include "Haplotype.h"
 #include "NWNoRefEndPenalty.h"
 
+
+void Haplotype::adjust_indels(std::string& ref_hap_al, std::string& alt_hap_al){
+  assert(blocks_.size() == 3);
+  int32_t ref_pos = blocks_[0]->start(), str_pos = blocks_[1]->start();
+  int aln_index   = 0;
+  while (aln_index < alt_hap_al.size()){
+    if (alt_hap_al[aln_index] == '-' && ref_pos < str_pos){
+      // If necessary and possible, move deletion to the right until it lies fully within the repeat block
+      int index = aln_index;
+      while (index < alt_hap_al.size() && alt_hap_al[index] == '-')
+	index++;
+      int pos       = ref_pos;
+      int del_index = aln_index;
+      int del_size  = index - aln_index;
+      while (index < alt_hap_al.size() && pos < str_pos && (ref_hap_al[del_index] == ref_hap_al[index])){
+	alt_hap_al[del_index] = alt_hap_al[index];
+	alt_hap_al[index]     = '-';
+	index++;
+	del_index++;
+	pos++;
+      }
+
+      aln_index = index;
+      ref_pos   = pos+del_size;
+    }
+    else if (ref_hap_al[aln_index] == '-' && ref_pos < str_pos){
+      // If necessary and possible, move insertion to the right until it lies directly in front of the repeat block
+      int index = aln_index;
+      while (index < ref_hap_al.size() && ref_hap_al[index] == '-')
+	index++;
+      int pos       = ref_pos;
+      int ins_index = aln_index;
+      while (index < ref_hap_al.size() && pos < str_pos && (alt_hap_al[ins_index] == alt_hap_al[index])){
+	ref_hap_al[ins_index] = ref_hap_al[index];
+	ref_hap_al[index]     = '-';
+	index++;
+	ins_index++;
+	pos++;
+      }
+
+      aln_index = index;
+      ref_pos   = pos;
+    }
+    else {
+      if (ref_hap_al[aln_index] != '-')
+	ref_pos++;
+      aln_index++;
+    }
+  }
+}
+
+
 void Haplotype::aln_haps_to_ref(){
   std::string ref_hap_seq = get_seq(), alt_hap_seq;
   std::string ref_hap_al, alt_hap_al;
@@ -15,6 +67,9 @@ void Haplotype::aln_haps_to_ref(){
     if (!NWNoRefEndPenalty::LeftAlign(ref_hap_seq, alt_hap_seq, ref_hap_al, alt_hap_al, &score, cigar_list))
       printErrorAndDie("Failed to left-align haplotype sequence to reference allele");
     cigar_list.clear();
+
+    // Attempt to merge indels inside of repeat block
+    adjust_indels(ref_hap_al, alt_hap_al);
 
     std::string aln_info = ""; aln_info.reserve(alt_hap_al.size());
     for (unsigned int i = 0; i < alt_hap_al.size(); i++){

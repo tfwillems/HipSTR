@@ -28,6 +28,7 @@ class Haplotype {
 
   std::vector<std::string> hap_aln_info_;
   void aln_haps_to_ref();
+  void adjust_indels(std::string& ref_hap_al, std::string& alt_hap_al);
 
  public:
   Haplotype(std::vector<HapBlock*>& blocks) {
