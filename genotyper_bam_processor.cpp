@@ -63,9 +63,8 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   if (read_stutter_models_){
     // Attempt to extact model from dictionary
     auto model_iter = stutter_models_.find(region);
-    if (model_iter != stutter_models_.end()){
+    if (model_iter != stutter_models_.end())
       stutter_model = model_iter->second->copy();
-    }
     else
       std::cerr << "WARNING: No stutter model found for " << region.chrom() << ":" << region.start() << "-" << region.stop() << std::endl;
   }
@@ -113,6 +112,10 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	  if (output_str_gts_)
 	    seq_genotyper->write_vcf_record(samples_to_genotype_, true, chrom_seq, output_gls_, output_pls_,
 					    output_all_reads_, output_pall_reads_, output_viz_, viz_out_, str_vcf_);
+	  if (recalc_stutter_model_){
+	    // Recalculate the stutter model using the haplotype ML alignments instead of the left alignments
+	    printErrorAndDie("recalc_stutter_model option not yet implemented");
+	  }
 	}
 	else
 	  num_genotype_fail_++;

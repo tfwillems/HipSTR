@@ -674,7 +674,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector<int> num_aligned_reads(num_samples_, 0), num_reads_with_snps(num_samples_, 0), masked_reads(num_samples_, 0), num_proc_alns(num_samples_, 0);
   std::vector< std::vector<int> > bps_per_sample(num_samples_);
   std::vector< std::vector<double> > log_read_phases(num_samples_), posterior_bps_per_sample(num_samples_);
-  std::vector< std::vector<Alignment> > max_LL_alns(num_samples_);
+
+  assert(max_LL_alns_.size() == 0);
+  max_LL_alns_ = std::vector< std::vector<Alignment> >(num_samples_);
   HapAligner hap_aligner(haplotype_);
   double* read_LL_ptr   = log_aln_probs_;
   locus_aln_trace_time_ = 0;
@@ -704,8 +706,8 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       read_LL_ptr += num_alleles_;
       continue;
     }
-    max_LL_alns[idx_1].push_back(alns_[idx_1][idx_2]);
-    max_LL_alns[idx_1].push_back(traced_aln);
+    max_LL_alns_[idx_1].push_back(alns_[idx_1][idx_2]);
+    max_LL_alns_[idx_1].push_back(traced_aln);
     locus_aln_trace_time_ += (clock() - trace_start)/CLOCKS_PER_SEC;
 
     // Adjust number of aligned reads per sample
@@ -896,6 +898,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   if (output_viz){
     std::stringstream locus_info;
     locus_info << region_->chrom() << "\t" << region_->start() << "\t" << region_->stop();
-    visualizeAlignments(max_LL_alns, sample_names_, sample_results, hap_blocks_, chrom_seq, locus_info.str(), true, html_output);
+    visualizeAlignments(max_LL_alns_, sample_names_, sample_results, hap_blocks_, chrom_seq, locus_info.str(), true, html_output);
   }
 }

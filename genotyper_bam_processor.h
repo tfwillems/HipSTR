@@ -54,8 +54,8 @@ private:
   bool output_viz_;
   bgzfostream viz_out_;
 
-  bool output_gls_; // Output the GL FORMAT field to the VCF
-  bool output_pls_; // Output the PL FORMAT field to the VCF
+  bool output_gls_;        // Output the GL FORMAT field to the VCF
+  bool output_pls_;        // Output the PL FORMAT field to the VCF
   bool output_all_reads_;  // Output the ALLREADS  FORMAT field to the VCF
   bool output_pall_reads_; // Output the PALLREADS FORMAT field to the VCF
 
@@ -64,6 +64,11 @@ private:
   // Timing statistics (in seconds)
   double total_stutter_time_,  locus_stutter_time_;
   double total_genotype_time_, locus_genotype_time_;
+
+  // True iff we should recalculate the stutter model after performing haplotype alignments
+  // The idea is that the haplotype-based alignments should be far more accurate, and reperforming
+  // the stutter analysis will result in a better stutter model
+  bool recalc_stutter_model_;
 
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool check_mate_chroms, bool remove_pcr_dups,
@@ -93,6 +98,8 @@ public:
     locus_stutter_time_    = -1;
     total_genotype_time_   = 0;
     locus_genotype_time_   = -1;
+
+    recalc_stutter_model_  = false;
   }
 
   ~GenotyperBamProcessor(){
