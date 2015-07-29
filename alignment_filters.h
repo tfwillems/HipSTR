@@ -27,6 +27,10 @@ namespace AlignmentFilters {
      Ignores clipped bases when performing these comparions 
   */
   bool HasLargestEndMatches(BamTools::BamAlignment& aln, const std::string& ref_seq, int ref_seq_start, int max_upstream, int max_downstream);
+
+
+  /* Determines the number of hard and soft clipped bases based on the CIGAR string and stores them in the provided integer references */
+  void GetNumClippedBases(BamTools::BamAlignment& aln, int& num_hard_clips, int& num_soft_clips);
 }
 
 #endif

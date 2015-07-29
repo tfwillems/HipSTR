@@ -227,4 +227,21 @@ namespace AlignmentFilters {
     }       
     return true;
   }
+
+  void GetNumClippedBases(BamTools::BamAlignment& aln, int& num_hard_clips, int& num_soft_clips){
+    num_hard_clips = 0;
+    num_soft_clips = 0;
+    for (std::vector<BamTools::CigarOp>::iterator cigar_iter = aln.CigarData.begin(); cigar_iter != aln.CigarData.end(); cigar_iter++){
+      switch(cigar_iter->Type){
+      case 'H':
+	num_hard_clips += cigar_iter->Length;
+	break;
+      case 'S':
+	num_soft_clips += cigar_iter->Length;
+	break;
+      default:
+	break;
+      }
+    }
+  }
 }
