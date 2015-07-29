@@ -56,6 +56,8 @@ class BamProcessor {
    REMOVE_READS_WITH_N      = 1;
    total_read_filter_time_  = 0;
    locus_read_filter_time_  = -1;
+   MAX_SOFT_CLIPS           = 100000;
+   MAX_HARD_CLIPS           = 100000;
  }
 
  void remove_all_filters(){
@@ -67,6 +69,8 @@ class BamProcessor {
    REQUIRE_SPANNING         = false;
    MIN_MAPPING_QUALITY      = 0;
    REMOVE_READS_WITH_N      = 0;
+   MAX_SOFT_CLIPS           = 100000;
+   MAX_HARD_CLIPS           = 100000;
  }
 
  double total_read_filter_time() { return total_read_filter_time_; }
@@ -95,6 +99,8 @@ class BamProcessor {
  int32_t MIN_READ_END_MATCH;
  int32_t MAXIMAL_END_MATCH_WINDOW;
  int32_t MIN_MAPPING_QUALITY;
+ int32_t MAX_SOFT_CLIPS;
+ int32_t MAX_HARD_CLIPS;
  int REMOVE_MULTIMAPPERS;
  int REMOVE_READS_WITH_N;
  bool REQUIRE_SPANNING;

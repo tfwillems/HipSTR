@@ -54,7 +54,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   int read_count = 0;
   int diff_chrom_mate = 0, unmapped_mate = 0, not_spanning = 0; // Counts for filters that are always applied
   int insert_size = 0, multimapped = 0, mapping_quality = 0, flank_len = 0; // Counts for filters that are user-controlled
-  int bp_before_indel = 0, end_match_window = 0, num_end_matches = 0, read_has_N = 0;
+  int bp_before_indel = 0, end_match_window = 0, num_end_matches = 0, read_has_N = 0, hard_clip = 0, soft_clip = 0;;
   BamTools::BamAlignment alignment;
 
   std::vector<BamTools::BamAlignment> paired_str_alns, mate_alns, unpaired_str_alns;
@@ -101,6 +101,17 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     // Ignore read if its mapping quality is too low
     if (pass && MIN_MAPPING_QUALITY > alignment.MapQuality){
       mapping_quality++;
+      pass = false;
+    }
+    // Ignore reads with too many clipped bases
+    int num_hard_clips, num_soft_clips;
+    AlignmentFilters::GetNumClippedBases(alignment, num_hard_clips, num_soft_clips);
+    if (pass && num_hard_clips > MAX_HARD_CLIPS){
+      hard_clip++;
+      pass = false;
+    }
+    if (pass && num_soft_clips > MAX_SOFT_CLIPS){
+      soft_clip++;
       pass = false;
     }
     // Ignore read if it does not span the STR
@@ -180,6 +191,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	    << "\n\t" << diff_chrom_mate  << " had mates on a different chromosome"
 	    << "\n\t" << unmapped_mate    << " had unmapped mates"
 	    << "\n\t" << mapping_quality  << " had too low of a mapping quality"
+	    << "\n\t" << hard_clip        << " had too many hard clipped bases"
+	    << "\n\t" << soft_clip        << " had too many soft clipped bases"
 	    << "\n\t" << not_spanning     << " did not span the STR"
 	    << "\n\t" << insert_size      << " failed the insert size filter"      
 	    << "\n\t" << multimapped      << " were removed due to multimapping"
