@@ -9,7 +9,7 @@
 
 #include "bamtools/include/api/BamAlignment.h"
 #include "vcflib/src/Variant.h"
-#include "bgzf_ostream.h"
+#include "bgzf_streams.h"
 
 #include "em_stutter_genotyper.h"
 #include "region.h"

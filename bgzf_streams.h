@@ -1,12 +1,12 @@
-#ifndef __BGZF_OSTREAM_H__
-#define __BGZF_OSTREAM_H__
+#ifndef __BGZF_STREAMS_H__
+#define __BGZF_STREAMS_H__
 
 /***********************************************************************
 
 Copyright (C) 2015 Assaf Gordon (agordon@nygenome.org)
 License: GPLv2-or-later.
 
-An STl/Ostream wrapper around HTSLIB's BGZF module.
+STl/ostream and STL/istream wrappers around HTSLIB's BGZF module.
 
 Typical usage:
 
@@ -17,13 +17,11 @@ Typical usage:
 	a << "\nanother test" << endl;
 
 
-bgzfostream inherits from 'std::ostream' and can be used interchangibly.
-
+bgzfostream inherits from std::ostream and can be used interchangeably.
+bgzfistream inherits from std::istream and can be used interchangeably.
 
 TODO:
-1. implement read functionality as well, rename 'bgzf_write_streambuf'
-   to 'bgzf_streambuf'.
-2. replace 'err()' with proper STL exceptions.
+`. Replace 'err()' with proper STL exceptions.
 
 ************************************************************************/
 
@@ -33,24 +31,27 @@ TODO:
 
 #include "vcflib/tabixpp/htslib/htslib/bgzf.h"
 
-class bgzf_write_streambuf : public std::streambuf {
+class bgzf_streambuf : public std::streambuf {
  private:
   BGZF* _fp;
   std::string filename;
-  
+  int cur_val;
+
  public:
- bgzf_write_streambuf(): _fp(NULL){ }
+ bgzf_streambuf(): _fp(NULL){ 
+    cur_val = -999;
+  }
   
-  virtual ~bgzf_write_streambuf(){
+  virtual ~bgzf_streambuf(){
     close();
   }
   
   void open(const char *_filename, const char *mode){
     if (_fp != NULL)
-      throw std::invalid_argument("bgzf_write_streambuf: open: called on an open stream");
+      throw std::invalid_argument("bgzf_streambuf: open: called on an open stream");
     
-    _fp = bgzf_open ( _filename, mode );
-    if (_fp == NULL )
+    _fp = bgzf_open(_filename, mode);
+    if (_fp == NULL)
       err(1,"bgzf_open(%s,%s) failed", _filename, mode);
     filename = _filename;
   }
@@ -67,9 +68,30 @@ class bgzf_write_streambuf : public std::streambuf {
     filename = "";
   }
   
-  virtual int overflow(int c = EOF){
+  virtual int uflow(){
+    if (cur_val != -999){
+      int res = cur_val;
+      cur_val = -999;
+      return res;
+    }
+    int res = bgzf_getc(_fp);
+    if (res == -2) err(1, "bgzf_getc() failed");
+    if (res == -1) return EOF;
+    return res;
+  }
+  
+  virtual int underflow(){
     if ( _fp == NULL)
-      throw std::invalid_argument("bgzf_write_streambuf: overflow: called on non-open stream");
+      throw std::invalid_argument("bgzf_streambuf: underflow: called on non-open stream");
+    if (cur_val != -999)
+      return cur_val;
+    cur_val = bgzf_getc(_fp);
+    if (cur_val == -2) err(1, "bgzf_getc() failed");
+    if (cur_val == -1) cur_val = EOF;
+    return cur_val;
+  }
+
+  virtual int overflow(int c = EOF){
     char z = (char) c;
     ssize_t i = bgzf_write(_fp, &z, 1);
     if (i < 0) {
@@ -81,7 +103,7 @@ class bgzf_write_streambuf : public std::streambuf {
 
   virtual std::streamsize xsputn (const char* s, std::streamsize n){
     if ( _fp == NULL)
-      throw std::invalid_argument("bgzf_write_streambuf: overflow: called on non-open stream");
+      throw std::invalid_argument("bgzf_streambuf: overflow: called on non-open stream");
     
     ssize_t i = bgzf_write(_fp, s, n);
     if (i < 0) {
@@ -97,9 +119,31 @@ class bgzf_write_streambuf : public std::streambuf {
   }
 };
 
+class bgzfistream : public std::istream {
+ protected:
+  bgzf_streambuf buf;
+ public:
+  
+ bgzfistream(const char* filename, const char *mode="r") : std::istream(0) {
+    buf.open(filename, mode);
+    rdbuf(&buf);
+  }
+  
+ bgzfistream() : std::istream(0) {}
+  
+  void open(const char* filename, const char *mode="r") {
+    buf.open(filename, mode);
+    rdbuf(&buf);
+  }
+
+  void close(){
+    buf.close();
+  }
+};
+
 class bgzfostream : public std::ostream {
  protected:
-  bgzf_write_streambuf buf;
+  bgzf_streambuf buf;
  public:
   
  bgzfostream(const char* filename, const char *mode="w") : std::ostream(0) {
