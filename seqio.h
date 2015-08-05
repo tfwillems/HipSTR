@@ -3,8 +3,10 @@
 
 #include <string>
 
-void readFasta(std::string input_file, std::string fasta_dir,
-	       std::string& res);
+bool is_file(const std::string& name);
+
+void readFastaFromDir(std::string input_file, std::string fasta_dir,
+		      std::string& res);
 
 #endif
 

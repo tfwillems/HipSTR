@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "fastahack/Fasta.h"
+
 #include "bam_processor.h"
 #include "alignment_filters.h"
 #include "error.h"
@@ -278,7 +280,14 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
   std::vector<Region> regions;
   readRegions(region_file, regions, max_regions, chrom);
   orderRegions(regions);
-  
+
+  bool fasta_file_exists = is_file(fasta_dir);
+  FastaReference fasta_ref;
+  if (fasta_file_exists){
+    std::cerr << "Fasta file exists..." << fasta_dir << std::endl;
+    fasta_ref.open(fasta_dir);
+  }
+
   std::string ref_seq;
   BamTools::RefVector ref_vector = reader.GetReferenceData();
   int cur_chrom_id = -1; std::string chrom_seq;
@@ -299,8 +308,11 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
     if (cur_chrom_id != chrom_id){
       cur_chrom_id      = chrom_id;
       std::string chrom = region_iter->chrom();
-      std::cerr << "Reading fasta file for " << chrom << std::endl;
-      readFasta(chrom+".fa", fasta_dir, chrom_seq);
+      if (fasta_file_exists)
+	chrom_seq = fasta_ref.getSequence(chrom);
+      else
+	readFastaFromDir(chrom+".fa", fasta_dir, chrom_seq);
+      assert(chrom_seq.size() != 0);
     }
 
     if(!reader.SetRegion(chrom_id, (region_iter->start() < MAX_MATE_DIST ? 0: region_iter->start()-MAX_MATE_DIST), 

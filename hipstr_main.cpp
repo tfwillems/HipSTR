@@ -14,6 +14,7 @@
 
 #include "error.h"
 #include "genotyper_bam_processor.h"
+#include "seqio.h"
 #include "stringops.h"
 
 bool file_exists(std::string path){
@@ -25,7 +26,8 @@ void print_usage(int def_mdist, int def_min_reads){
     
 	    << "Required parameters:" << "\n"
 	    << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of BAM files"                                                   << "\n"
-	    << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located"                      << "\n"
+	    << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located or the path to a"     << "\n"
+	    << "\t" << "                                      "  << "\t" << " single FASTA file that contains all of the relevant sequences"                      << "\n"
 	    << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                         << "\n" << "\n"
     
 	    << "Optional input parameters:" << "\n"
@@ -223,12 +225,11 @@ int main(int argc, char** argv){
   parse_command_line_args(argc, argv, bamfile_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
 			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, use_hap_aligner, remove_all_filters, 
 			  remove_pcr_dups, output_gls, output_pls, output_all_reads, output_pall_reads, ref_vcf_file, bam_processor);
-  if (output_gls) bam_processor.output_gls();
-  if (output_pls) bam_processor.output_pls();
+  if (output_gls)             bam_processor.output_gls();
+  if (output_pls)             bam_processor.output_pls();
   if (output_all_reads == 0)  bam_processor.hide_all_reads();
   if (output_pall_reads == 0) bam_processor.hide_pall_reads();
-  if (remove_pcr_dups == 0)
-    bam_processor.allow_pcr_dups();
+  if (remove_pcr_dups == 0)   bam_processor.allow_pcr_dups();
 
   if (!use_hap_aligner) {
     bam_processor.use_len_model();
@@ -246,7 +247,7 @@ int main(int argc, char** argv){
   else if (fasta_dir.empty())
     printErrorAndDie("--fasta option required");
 
-  if (fasta_dir.back() != '/')
+  if (fasta_dir.back() != '/' && !is_file(fasta_dir))
     fasta_dir += "/";
 
   std::vector<std::string> bam_files;
