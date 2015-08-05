@@ -13,3 +13,6 @@
 [submodule "PhasedBEAGLE"]
 	path = PhasedBEAGLE
 	url = https://github.com/tfwillems/PhasedBEAGLE
+[submodule "fastahack"]
+	path = fastahack
+	url = https://github.com/ekg/fastahack.git
