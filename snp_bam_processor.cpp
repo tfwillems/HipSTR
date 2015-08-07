@@ -17,11 +17,11 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
   std::vector<  std::vector<BamTools::BamAlignment> > alignments(paired_strs_by_rg.size());
   std::vector< std::vector<double> > log_p1s, log_p2s;
   bool got_snp_info = false;
-  if (have_snp_vcf){
+  if (have_snp_vcf_){
     std::vector<SNPTree*> snp_trees;
     std::map<std::string, unsigned int> sample_indices;      
     if(create_snp_trees(region.chrom(), (region.start() > MAX_MATE_DIST ? region.start()-MAX_MATE_DIST : 1), 
-			region.stop()+MAX_MATE_DIST, phased_snp_vcf, sample_indices, snp_trees)){
+			region.stop()+MAX_MATE_DIST, phased_snp_vcf_, sample_indices, snp_trees)){
       got_snp_info = true;
       std::set<std::string> bad_samples, good_samples;
       for (unsigned int i = 0; i < paired_strs_by_rg.size(); ++i){

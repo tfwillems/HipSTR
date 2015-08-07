@@ -15,8 +15,8 @@
 
 class SNPBamProcessor : public BamProcessor {
 private:
-  bool have_snp_vcf;
-  vcflib::VariantCallFile phased_snp_vcf;
+  bool have_snp_vcf_;
+  vcflib::VariantCallFile phased_snp_vcf_;
   int32_t match_count_, mismatch_count_;
 
   // Timing statistics (in seconds)
@@ -25,7 +25,7 @@ private:
 
 public:
  SNPBamProcessor(bool use_bam_rgs, bool check_mate_chroms, bool remove_pcr_dups):BamProcessor(use_bam_rgs, check_mate_chroms, remove_pcr_dups){
-    have_snp_vcf     = false;
+    have_snp_vcf_    = false;
     match_count_     = 0;
     mismatch_count_  = 0;
     total_snp_phase_info_time_  = 0;;
@@ -50,9 +50,9 @@ public:
   }
 
   void set_input_snp_vcf(std::string& vcf_file){
-    if(!phased_snp_vcf.open(vcf_file))
+    if(!phased_snp_vcf_.open(vcf_file))
       printErrorAndDie("Failed to open input SNP VCF file");
-    have_snp_vcf = true;
+    have_snp_vcf_ = true;
   }
 
   void finish(){
