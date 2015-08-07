@@ -65,8 +65,9 @@ void extract_bases_and_qualities(BamTools::BamAlignment& aln, std::vector<SNP>& 
   assert(bases.size() == snps.size() && snp_index == snps.size());
 }
 
-void add_log_phasing_probs(BamTools::BamAlignment& aln, SNPTree* tree, BaseQuality& base_qualities, 
-			   double& log_p1, double& log_p2, int& match_count, int& mismatch_count){
+void add_log_phasing_probs(BamTools::BamAlignment& aln, SNPTree* tree, BaseQuality& base_qualities,
+			   //double& log_p1, double& log_p2, int& match_count, int& mismatch_count){
+			   double& log_p1, double& log_p2, int32_t& p1_match_count, int32_t& p2_match_count, int32_t& mismatch_count){
   std::vector<SNP> snps;  
   // NOTE: GetEndPosition() returns a non-inclusive position. Use -1 to only find SNPs overlapped by read
   tree->findContained(aln.Position, aln.GetEndPosition()-1, snps);
@@ -77,12 +78,21 @@ void add_log_phasing_probs(BamTools::BamAlignment& aln, SNPTree* tree, BaseQuali
     assert(snps.size() == bases.size());
     for (unsigned int i = 0; i < snps.size(); ++i){
       if (bases[i] != '-'){
-	log_p1 += (bases[i] == snps[i].base_one() ? base_qualities.log_prob_correct(quals[i]) : base_qualities.log_prob_error(quals[i]));
-	log_p2 += (bases[i] == snps[i].base_two() ? base_qualities.log_prob_correct(quals[i]) : base_qualities.log_prob_error(quals[i]));
-	if (bases[i] != snps[i].base_one() && bases[i] != snps[i].base_two())
+	if (bases[i] == snps[i].base_one()){
+	  log_p1 += base_qualities.log_prob_correct(quals[i]);
+	  log_p2 += base_qualities.log_prob_error(quals[i]);
+	  p1_match_count++;
+	}
+	else if (bases[i] == snps[i].base_two()){
+	  log_p1 += base_qualities.log_prob_error(quals[i]);
+	  log_p2 += base_qualities.log_prob_correct(quals[i]);
+	  p2_match_count++;
+	}
+	else {
+	  log_p1 += base_qualities.log_prob_error(quals[i]);
+	  log_p2 += base_qualities.log_prob_error(quals[i]);
 	  mismatch_count++;
-	else
-	  match_count++;
+	}
       }
     }
   }
@@ -91,23 +101,27 @@ void add_log_phasing_probs(BamTools::BamAlignment& aln, SNPTree* tree, BaseQuali
 
 void calc_het_snp_factors(std::vector<BamTools::BamAlignment>& str_reads, std::vector<BamTools::BamAlignment>& mate_reads, 
 			  BaseQuality& base_qualities, SNPTree* snp_tree,
-			  std::vector<double>& log_p1s, std::vector<double>& log_p2s, int& match_count, int& mismatch_count) {
+			  std::vector<double>& log_p1s, std::vector<double>& log_p2s, int32_t& match_count, int32_t& mismatch_count) {
   assert(str_reads.size() == mate_reads.size());
+  int32_t p1_match_count = 0, p2_match_count = 0;
   for (unsigned int i = 0; i < str_reads.size(); i++){
     double log_p1 = 0.0, log_p2 = 0.0;
-    add_log_phasing_probs(str_reads[i],  snp_tree, base_qualities, log_p1, log_p2, match_count, mismatch_count);
-    add_log_phasing_probs(mate_reads[i], snp_tree, base_qualities, log_p1, log_p2, match_count, mismatch_count);
+    add_log_phasing_probs(str_reads[i],  snp_tree, base_qualities, log_p1, log_p2, p1_match_count, p2_match_count, mismatch_count);
+    add_log_phasing_probs(mate_reads[i], snp_tree, base_qualities, log_p1, log_p2, p1_match_count, p2_match_count, mismatch_count);
     log_p1s.push_back(log_p1);
     log_p2s.push_back(log_p2);
   }
+  match_count += (p1_match_count + p2_match_count);
 }
 
 void calc_het_snp_factors(std::vector<BamTools::BamAlignment>& str_reads, BaseQuality& base_qualities, SNPTree* snp_tree, 
-			  std::vector<double>& log_p1s, std::vector<double>& log_p2s, int& match_count, int& mismatch_count){
+			  std::vector<double>& log_p1s, std::vector<double>& log_p2s, int32_t& match_count, int32_t& mismatch_count){
+  int32_t p1_match_count = 0, p2_match_count = 0;
   for (unsigned int i = 0; i < str_reads.size(); i++){
     double log_p1 = 0.0, log_p2 = 0.0;
-    add_log_phasing_probs(str_reads[i], snp_tree, base_qualities, log_p1, log_p2, match_count, mismatch_count);
+    add_log_phasing_probs(str_reads[i], snp_tree, base_qualities, log_p1, log_p2, p1_match_count, p2_match_count, mismatch_count);
     log_p1s.push_back(log_p1);
     log_p2s.push_back(log_p2);
   }
+  match_count += (p1_match_count + p2_match_count);
 }
