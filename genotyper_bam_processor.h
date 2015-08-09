@@ -93,12 +93,10 @@ public:
     output_pls_            = false;
     output_all_reads_      = true;
     output_pall_reads_     = true;
-
     total_stutter_time_    = 0;
     locus_stutter_time_    = -1;
     total_genotype_time_   = 0;
     locus_genotype_time_   = -1;
-
     recalc_stutter_model_  = false;
   }
 

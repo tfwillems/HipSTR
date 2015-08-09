@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <time.h>
 
 #include "snp_bam_processor.h"
@@ -9,6 +10,12 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
 				    std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
 				    std::vector<std::string>& rg_names, Region& region, 
 				    std::string& ref_allele, std::string& chrom_seq, std::ostream& out){
+  // Only use specialized function for 10X genomics BAMs if flag has been set
+  if(bams_from_10x_){
+    process_10x_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, region, ref_allele, chrom_seq, out);
+    return;
+  }
+
   locus_snp_phase_info_time_ = clock();
   assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
   if (paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
@@ -78,7 +85,6 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
   std::cout << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads" 
 	    << " and " << phased_samples << " out of " << rg_names.size() <<  " samples" << std::endl;
 
-
   locus_snp_phase_info_time_  = (clock() - locus_snp_phase_info_time_)/CLOCKS_PER_SEC;
   total_snp_phase_info_time_ += locus_snp_phase_info_time_;
 
@@ -86,6 +92,77 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
   analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region, ref_allele, chrom_seq);
 }
 
+int SNPBamProcessor::get_haplotype(BamTools::BamAlignment& aln){
+  if (!aln.HasTag(HAPLOTYPE_TAG))
+    return -1;
+  int haplotype;
+  if (!aln.GetTag(HAPLOTYPE_TAG, haplotype))
+    printErrorAndDie("Failed to extract haplotype tag");
+  assert(haplotype == 1 || haplotype == 2);
+  return haplotype;
+}
 
+/*
+** Exploratory function for analyzing data from 10X Genomics BAMs
+** These BAMs contain haplotype tags, which can be used in place of the physical-phasing + VCF approach
+** used in the standard process_reads function
+ */
+void SNPBamProcessor::process_10x_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
+					std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
+					std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
+					std::vector<std::string>& rg_names, Region& region,
+					std::string& ref_allele, std::string& chrom_seq, std::ostream& out){
+  locus_snp_phase_info_time_ = clock();
+  assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
+  if (paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
+    return;
 
+  std::vector<  std::vector<BamTools::BamAlignment> > alignments(paired_strs_by_rg.size());
+  std::vector< std::vector<double> > log_p1s, log_p2s;
+  int32_t phased_reads = 0, total_reads = 0;
+  for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
+    // Copy alignments
+    alignments[i].insert(alignments[i].end(), paired_strs_by_rg[i].begin(),   paired_strs_by_rg[i].end());
+    alignments[i].insert(alignments[i].end(), unpaired_strs_by_rg[i].begin(), unpaired_strs_by_rg[i].end());
+
+    log_p1s.push_back(std::vector<double>());
+    log_p2s.push_back(std::vector<double>());
+    for (unsigned int j = 0; j < paired_strs_by_rg[i].size(); j++){
+      total_reads++;
+      int haplotype_1 = get_haplotype(paired_strs_by_rg[i][j]);
+      int haplotype_2 = get_haplotype(mate_pairs_by_rg[i][j]);
+      assert(haplotype_1 == haplotype_2);
+      int haplotype = haplotype_1;
+      if (haplotype != -1){
+	phased_reads++;
+	log_p1s[i].push_back(haplotype == 1 ? FROM_HAP_LL : OTHER_HAP_LL);
+	log_p2s[i].push_back(haplotype == 2 ? FROM_HAP_LL : OTHER_HAP_LL);
+      }
+      else {
+	log_p1s[i].push_back(0.0);
+	log_p2s[i].push_back(0.0);
+      }
+    }
+    for (unsigned int j = 0; j < unpaired_strs_by_rg[i].size(); j++){
+      total_reads++;
+      int haplotype = get_haplotype(unpaired_strs_by_rg[i][j]);
+      if (haplotype != -1){
+	phased_reads++;
+	log_p1s[i].push_back(haplotype == 1 ? FROM_HAP_LL : OTHER_HAP_LL);
+	log_p2s[i].push_back(haplotype == 2 ? FROM_HAP_LL : OTHER_HAP_LL);
+      }
+      else {
+	log_p1s[i].push_back(0.0);
+	log_p2s[i].push_back(0.0);
+      }
+    }
+  }
+
+  std::cout << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads" << std::endl;
+  locus_snp_phase_info_time_  = (clock() - locus_snp_phase_info_time_)/CLOCKS_PER_SEC;
+  total_snp_phase_info_time_ += locus_snp_phase_info_time_;
+
+  // Run any additional analyses using phasing probabilities
+  analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region, ref_allele, chrom_seq);
+}
 
