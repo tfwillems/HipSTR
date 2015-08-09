@@ -250,7 +250,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     mate_pairs_by_rg[rg_index].push_back(mate_alns[i]);
   }
   for (unsigned int i = 0; i < unpaired_str_alns.size(); ++i){
-    std::string rg = use_bam_rgs_ ? get_read_group(unpaired_str_alns[i], rg_to_sample): rg_to_sample[paired_str_alns[i].Filename];
+    std::string rg = use_bam_rgs_ ? get_read_group(unpaired_str_alns[i], rg_to_sample): rg_to_sample[unpaired_str_alns[i].Filename];
 
     int rg_index;
     auto index_iter = rg_indices.find(rg);
