@@ -95,11 +95,15 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
 int SNPBamProcessor::get_haplotype(BamTools::BamAlignment& aln){
   if (!aln.HasTag(HAPLOTYPE_TAG))
     return -1;
-  int haplotype;
-  if (!aln.GetTag(HAPLOTYPE_TAG, haplotype))
+  uint8_t haplotype;
+  if (!aln.GetTag(HAPLOTYPE_TAG, haplotype)){
+    char type;
+    aln.GetTagType(HAPLOTYPE_TAG, type);
+    std::cerr << type << std::endl;
     printErrorAndDie("Failed to extract haplotype tag");
+  }
   assert(haplotype == 1 || haplotype == 2);
-  return haplotype;
+  return (int)haplotype;
 }
 
 /*
@@ -131,8 +135,16 @@ void SNPBamProcessor::process_10x_reads(std::vector< std::vector<BamTools::BamAl
       total_reads++;
       int haplotype_1 = get_haplotype(paired_strs_by_rg[i][j]);
       int haplotype_2 = get_haplotype(mate_pairs_by_rg[i][j]);
-      assert(haplotype_1 == haplotype_2);
-      int haplotype = haplotype_1;
+
+      // If the two mate pairs don't have the same haplotype index, it's possible that
+      // i)  One of them is unmapped (and therefore has a -1)
+      // ii) They map to two different phase sets. This is essentially a phasing breakpoint and we
+      //     probably want to avoid using phase information for these reads
+      int haplotype;
+      if (haplotype_1 != haplotype_2)
+	haplotype = -1;
+      else
+	haplotype = haplotype_1;
       if (haplotype != -1){
 	phased_reads++;
 	log_p1s[i].push_back(haplotype == 1 ? FROM_HAP_LL : OTHER_HAP_LL);
