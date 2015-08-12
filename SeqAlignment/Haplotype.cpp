@@ -227,7 +227,6 @@ unsigned int Haplotype::homopolymer_length(int block_index, int base_index){
 
 Haplotype* Haplotype::reverse( std::vector<HapBlock*>& rev_blocks){
   assert(rev_blocks.size() == 0);
-  //std::vector<HapBlock*> rev_blocks;
   for (unsigned int i = 0; i < blocks_.size(); i++)
     rev_blocks.push_back(blocks_[i]->reverse());
   std::reverse(rev_blocks.begin(), rev_blocks.end());
