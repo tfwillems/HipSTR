@@ -21,7 +21,7 @@ bool file_exists(std::string path){
   return (access(path.c_str(), F_OK) != -1);
 }
 
-void print_usage(int def_mdist, int def_min_reads){
+void print_usage(int def_mdist, int def_min_reads, int def_max_sclips, int def_max_hclips){
   std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <dir> --regions <region_file.bed> [OPTION]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
@@ -47,6 +47,8 @@ void print_usage(int def_mdist, int def_min_reads){
 	    << "\t" << "--viz-out       <aln_viz.html.gz>     "  << "\t" << "Output a bgzipped file containing Needleman-Wunsch alignments for each locus"        << "\n"
 	    << "\t" << "                                      "  << "\t" << " The resulting file can be readily visualized with VizAln"                           << "\n"
 	    << "\t" << "                                      "  << "\t" << " Option only available when the --len-genotyper flag has not been specified"         << "\n"
+	    << "\t" << "--log <log.txt>                       "  << "\t" << "Output the log information to the provided file. By default, the log will be "       << "\n"
+	    << "\t" << "                                      "  << "\t" << " written to standard err"                                                            << "\n"
 
 	    << "\t" << "--hide-allreads                       "  << "\t" << "Don't output the ALLREADS FORMAT field to the VCF. By default, it will be output"    << "\n"
 	    << "\t" << "--hide-pallreads                      "  << "\t" << "Don't output the PALLREADS FORMAT field to the VCF. By default, it will be output"   << "\n"
@@ -63,6 +65,8 @@ void print_usage(int def_mdist, int def_min_reads){
 	    << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
 	    << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
 	    << "\t" << "--min-mapq      <min_qual>            "  << "\t" << "Remove reads with a mapping quality below this threshold (Default = 0)"              << "\n"
+	    << "\t" << "--max-softclips <num_bases>           "  << "\t" << "Remove reads with more than NUM_BASES soft-clipped bases (Default = " << def_max_sclips << ")" << "\n"
+	    << "\t" << "--max-hardclips <num_bases>           "  << "\t" << "Remove reads with more than NUM_BASES hard-clipped bases (Default = " << def_max_hclips << ")" << "\n"
 	    << "\t" << "--min-reads     <num_reads>           "  << "\t" << "Minimum total reads required to genotype a locus (Default = " << def_min_reads << ")" << "\n"
 	    << "\t" << "--bam-samps     <list_of_samples>     "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
 	    << "\t" << "                                      "  << "\t" << "  Assign each read the read group corresponding to its file. By default, "           << "\n"
@@ -84,14 +88,16 @@ void print_usage(int def_mdist, int def_min_reads){
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string,  std::string& rg_sample_string,  std::string& rg_lib_string,       std::string& haploid_chr_string,
 			     std::string& fasta_dir,       std::string& region_file,       std::string& snp_vcf_file,        std::string& chrom,
-			     std::string& bam_out_file,    std::string& str_vcf_out_file,  std::string& allele_vcf_out_file,
+			     std::string& bam_out_file,    std::string& str_vcf_out_file,  std::string& allele_vcf_out_file, std::string& log_file,
 			     int& use_hap_aligner, int& remove_all_filters, int& remove_pcr_dups, int& bams_from_10x,
 			     int& output_gls, int& output_pls, int& output_all_reads, int& output_pall_reads, std::string& ref_vcf_file,
 			     GenotyperBamProcessor& bam_processor){
-  int def_mdist     = bam_processor.MAX_MATE_DIST;
-  int def_min_reads = bam_processor.MIN_TOTAL_READS;
+  int def_mdist      = bam_processor.MAX_MATE_DIST;
+  int def_min_reads  = bam_processor.MIN_TOTAL_READS;
+  int def_max_sclips = bam_processor.MAX_SOFT_CLIPS;
+  int def_max_hclips = bam_processor.MAX_HARD_CLIPS;
   if (argc == 1){
-    print_usage(def_mdist, def_min_reads);
+    print_usage(def_mdist, def_min_reads, def_max_sclips, def_max_hclips);
     exit(0);
   }
 
@@ -108,6 +114,9 @@ void parse_command_line_args(int argc, char** argv,
     {"bam-lbs",         required_argument, 0, 'q'},
     {"min-mapq",        required_argument, 0, 'e'},
     {"min-reads",       required_argument, 0, 'i'},
+    {"max-softclips",   required_argument, 0, 'j'},
+    {"max-hardclips",   required_argument, 0, 'k'},
+    {"log",             required_argument, 0, 'l'},
     {"h",               no_argument, &print_help, 1},
     {"help",            no_argument, &print_help, 1},
     {"hide-allreads",   no_argument, &output_all_reads,   0},
@@ -134,7 +143,7 @@ void parse_command_line_args(int argc, char** argv,
   int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "a:b:c:d:f:g:h:i:o:r:v:m:s:w:", long_options, &option_index);
+    c = getopt_long(argc, argv, "a:b:c:d:f:g:h:i:j:k:o:r:v:m:s:w:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -164,6 +173,15 @@ void parse_command_line_args(int argc, char** argv,
       break;
     case 'i':
       bam_processor.MIN_TOTAL_READS = atoi(optarg);
+      break;
+    case 'j':
+      bam_processor.MAX_SOFT_CLIPS = atoi(optarg);
+      break;
+    case 'k':
+      bam_processor.MAX_HARD_CLIPS = atoi(optarg);
+      break;
+    case 'l':
+      log_file = std::string(optarg);
       break;
     case 'm':
       filename = std::string(optarg);
@@ -210,7 +228,7 @@ void parse_command_line_args(int argc, char** argv,
   }
 
   if (print_help){
-    print_usage(def_mdist, def_min_reads);
+    print_usage(def_mdist, def_min_reads, def_max_sclips, def_max_hclips);
     exit(0);
   }
 }
@@ -222,15 +240,17 @@ int main(int argc, char** argv){
   
   int use_hap_aligner = 1, remove_all_filters = 0, remove_pcr_dups = 1, bams_from_10x = 0;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
-  std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="";
+  std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", log_file = "";
   int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 1;
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
-			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, use_hap_aligner, remove_all_filters, 
+			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, log_file, use_hap_aligner, remove_all_filters, 
 			  remove_pcr_dups, bams_from_10x, output_gls, output_pls, output_all_reads, output_pall_reads, ref_vcf_file, bam_processor);
+  if (!log_file.empty())
+    bam_processor.set_log(log_file);
   if (bams_from_10x){
     bam_processor.use_10x_bam_tags();
-    std::cerr << "Using 10X BAM tags to genotype and phase STRs (WARNING: Any arguments provided to --snp-vcf will be ignored)" << std::endl;
+    bam_processor.logger() << "Using 10X BAM tags to genotype and phase STRs (WARNING: Any arguments provided to --snp-vcf will be ignored)" << std::endl;
   }
   if (output_gls)             bam_processor.output_gls();
   if (output_pls)             bam_processor.output_pls();
@@ -259,7 +279,7 @@ int main(int argc, char** argv){
 
   std::vector<std::string> bam_files;
   split_by_delim(bamfile_string, ',', bam_files);
-  std::cerr << "Detected " << bam_files.size() << " BAM files" << std::endl;
+  bam_processor.logger() << "Detected " << bam_files.size() << " BAM files" << std::endl;
 
   // Open all BAM files
   BamTools::BamMultiReader reader;
@@ -276,10 +296,8 @@ int main(int argc, char** argv){
       printErrorAndDie("BAM index file " + bai_file + " does not exist. Please ensure that each BAM has been sorted by position and indexed using samtools");
     bam_indexes.push_back(bai_file);
   }
-  if (!reader.OpenIndexes(bam_indexes)) {
-    std::cerr << reader.GetErrorString() << std::endl;
+  if (!reader.OpenIndexes(bam_indexes))
     printErrorAndDie("Failed to open one or more BAM index files");
-  }
 
   // Construct filename->read group map (if one has been specified) and determine the list
   // of samples of interest based on either the specified names or the RG tags in the BAM headers
@@ -303,7 +321,7 @@ int main(int argc, char** argv){
       rg_samples.insert(read_groups[i]);
     }
     bam_processor.use_custom_read_groups();
-    std::cerr << "User-specified read groups for " << rg_samples.size() << " unique samples" << std::endl;
+    bam_processor.logger() << "User-specified read groups for " << rg_samples.size() << " unique samples" << std::endl;
   }
   else {
     if (!reader.GetHeader().HasReadGroups())
@@ -327,9 +345,9 @@ int main(int argc, char** argv){
       rg_samples.insert(rg_iter->Sample);
       rg_libs.insert(rg_iter->Library);
     }
-    std::cerr << "BAMs contain " << rg_ids_to_sample.size() << " unique read group IDs for "
-	      << rg_libs.size()    << " unique libraries and "
-	      << rg_samples.size() << " unique samples" << std::endl;
+    bam_processor.logger() << "BAMs contain " << rg_ids_to_sample.size() << " unique read group IDs for "
+			   << rg_libs.size()    << " unique libraries and "
+			   << rg_samples.size() << " unique samples" << std::endl;
   }
   
   BamTools::BamWriter bam_writer;
@@ -394,6 +412,6 @@ int main(int argc, char** argv){
   reader.Close();
 
   total_time = (clock() - total_time)/CLOCKS_PER_SEC;
-  std::cerr << "HipSTR execution finished: Total runtime = " << total_time << " sec" << std::endl;
+  bam_processor.logger() << "HipSTR execution finished: Total runtime = " << total_time << " sec" << std::endl;
   return 0;  
 }
