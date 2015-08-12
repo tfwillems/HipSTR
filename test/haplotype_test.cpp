@@ -31,7 +31,8 @@ int main(){
   hap_blocks.push_back(&right_flank);
 
   Haplotype haplotype(hap_blocks);
-  Haplotype* rev_haplotype = haplotype.reverse();
+  std::vector<HapBlock*> rev_blocks;
+  Haplotype* rev_haplotype = haplotype.reverse(rev_blocks);
   haplotype.print_block_structure(100, 100, std::cout);
   rev_haplotype->print_block_structure(100, 100, std::cout);
   do {
@@ -45,7 +46,6 @@ int main(){
   while(haplotype.next() && rev_haplotype->next());
   assert(rev_haplotype->get_block(1)->get_repeat_info() != NULL);
 
-
   for (unsigned int i = 0; i < 100; i++){
     int hap_index = rand() % haplotype.num_combs();
     haplotype.go_to(hap_index);
@@ -57,7 +57,7 @@ int main(){
   }
 
   // Delete datastructures for reverse haplotype
-  for (unsigned int i = 0; i < rev_haplotype->num_blocks(); i++)
-    delete rev_haplotype->get_block(i);
+  for (unsigned int i = 0; i < rev_blocks.size(); i++)
+    delete rev_blocks[i];
   delete rev_haplotype;
 }
