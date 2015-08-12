@@ -105,15 +105,11 @@ void overlayHaplotypeRegions(std::vector<HapBlock*> blocks,
       
       // Right pad region with spaces for non-maximal length sequences
       if (n < blocks[block_index]->num_options())
-	for (int i = 0; i < max_reg_sizes[block_index]-blocks[block_index]->get_seq(n).size(); i++){
-	  std::cerr << "a " << i << " " << max_reg_sizes[block_index] << " " << blocks[block_index]->get_seq(n).size() << " " << max_reg_sizes[block_index]-blocks[block_index]->get_seq(n).size() << std::endl;
+	for (int i = 0; i < max_reg_sizes[block_index]-blocks[block_index]->get_seq(n).size(); i++)
 	  result << NOT_APP_CHAR;
-	}
       else
-	for(int i = 0; i < max_reg_sizes[block_index]; i++){
-	  std::cerr << "b " << i << std::endl;
+	for(int i = 0; i < max_reg_sizes[block_index]; i++)
 	  result << SPACE_CHAR;
-	}
       
       // Discard insertions within region
       if ((*block_iter)->start() == (*block_iter)->end())

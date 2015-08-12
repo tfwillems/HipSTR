@@ -115,7 +115,7 @@ int main(int argc, char* argv[]){
   double FRAC_LL_CONVERGE = 0.001;
   EMStutterGenotyper genotyper(chrom, 0, 100, haploid, num_bps, log_p1s, log_p2s, sample_names, motif_len, 0);
 
-  if (!genotyper.train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false)){
+  if (!genotyper.train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false, std::cerr)){
     std::cout << "EM_FAILED_TO_CONVERGE" << std::endl;
   }
   else {

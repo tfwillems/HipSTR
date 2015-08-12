@@ -13,7 +13,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   for (unsigned int i = 0; i < alignments.size(); i++)
     total_reads += alignments[i].size();
   if (total_reads < MIN_TOTAL_READS){
-    std::cerr << "Skipping locus with too few reads: TOTAL=" << total_reads << ", MIN=" << MIN_TOTAL_READS << std::endl;
+    logger() << "Skipping locus with too few reads: TOTAL=" << total_reads << ", MIN=" << MIN_TOTAL_READS << std::endl;
     return;
   }
 
@@ -32,7 +32,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region.start()-region.period(), region.stop()+region.period(), bp_diff);
 	if (got_size){
 	  if (bp_diff < -(int)(region.stop()-region.start()+1)) {
-	    std::cerr << "WARNING: Excluding read with bp difference greater than reference allele: " << alignments[i][j].Name << std::endl;
+	    log("WARNING: Excluding read with bp difference greater than reference allele: " +alignments[i][j].Name);
 	    continue;
 	  }
 	  inf_reads++;
@@ -51,7 +51,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   }
 
   if (total_reads-skip_count < MIN_TOTAL_READS){
-    std::cerr << "Skipping locus with too few reads: TOTAL=" << total_reads-skip_count << ", MIN=" << MIN_TOTAL_READS << std::endl;
+    logger() << "Skipping locus with too few reads: TOTAL=" << total_reads-skip_count << ", MIN=" << MIN_TOTAL_READS << std::endl;
     return;
   }
 
@@ -66,26 +66,26 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     if (model_iter != stutter_models_.end())
       stutter_model = model_iter->second->copy();
     else
-      std::cerr << "WARNING: No stutter model found for " << region.chrom() << ":" << region.start() << "-" << region.stop() << std::endl;
+      logger() << "WARNING: No stutter model found for " << region.chrom() << ":" << region.start() << "-" << region.stop() << std::endl;
   }
   else {
     // Learn stutter model using length-based EM algorithm
-    std::cerr << "Building EM stutter genotyper" << std::endl;
+    log("Building EM stutter genotyper");
     length_genotyper = new EMStutterGenotyper(region.chrom(), region.start(), region.stop(), haploid, str_bp_lengths,
 					      str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
-    std::cerr << "Training EM stutter genotyper" << std::endl;
-    trained = length_genotyper->train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false);
+    log("Training EM stutter genotyper");
+    trained = length_genotyper->train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false, logger());
     if (trained){
       if (output_stutter_models_)
 	length_genotyper->get_stutter_model()->write_model(region.chrom(), region.start(), region.stop(), stutter_model_out_);
       num_em_converge_++;
       stutter_model = length_genotyper->get_stutter_model()->copy();
-      std::cerr << "Learned stutter model: " << *stutter_model << std::endl;
+      logger() << "Learned stutter model: " << *stutter_model << std::endl;
     }
     else {
       num_em_fail_++;
-      std::cerr << "Stutter model training failed for locus " << region.chrom() << ":" << region.start() << "-" << region.stop() 
-		<< " with " << inf_reads << " informative reads" << std::endl;
+      logger() << "Stutter model training failed for locus " << region.chrom() << ":" << region.start() << "-" << region.stop()
+	       << " with " << inf_reads << " informative reads" << std::endl;
     }
   }
   locus_stutter_time_  = (clock() - locus_stutter_time_)/CLOCKS_PER_SEC;;
@@ -100,18 +100,18 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
       if (have_ref_vcf_)
 	reference_panel_vcf = &ref_vcf_;
 
-      seq_genotyper = new SeqStutterGenotyper(region, haploid, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, reference_panel_vcf);
+      seq_genotyper = new SeqStutterGenotyper(region, haploid, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, reference_panel_vcf, logger());
       if (output_alleles_){
 	std::vector<std::string> no_samples;
-	seq_genotyper->write_vcf_record(no_samples, false, chrom_seq, false, false, false, false, false, viz_out_, allele_vcf_);
+	seq_genotyper->write_vcf_record(no_samples, false, chrom_seq, false, false, false, false, false, viz_out_, allele_vcf_, logger());
       }
 
       if (output_str_gts_){
-	if (seq_genotyper->genotype()) {
+	if (seq_genotyper->genotype(logger())) {
 	  num_genotype_success_++;
 	  if (output_str_gts_)
 	    seq_genotyper->write_vcf_record(samples_to_genotype_, true, chrom_seq, output_gls_, output_pls_,
-					    output_all_reads_, output_pall_reads_, output_viz_, viz_out_, str_vcf_);
+					    output_all_reads_, output_pall_reads_, output_viz_, viz_out_, str_vcf_, logger());
 	  if (recalc_stutter_model_){
 	    // Recalculate the stutter model using the haplotype ML alignments instead of the left alignments
 	    printErrorAndDie("recalc_stutter_model option not yet implemented");
@@ -144,21 +144,21 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     total_genotype_time_ += locus_genotype_time_;
   }
 
-  std::cerr << "Locus timing:"                                          << "\n"
-	    << " Read filtering      = " << locus_read_filter_time()    << " seconds\n"
-	    << " SNP info extraction = " << locus_snp_phase_info_time() << " seconds\n"
-	    << " Stutter estimation  = " << locus_stutter_time()        << " seconds\n";
+  logger() << "Locus timing:"                                          << "\n"
+	   << " Read filtering      = " << locus_read_filter_time()    << " seconds\n"
+	   << " SNP info extraction = " << locus_snp_phase_info_time() << " seconds\n"
+	   << " Stutter estimation  = " << locus_stutter_time()        << " seconds\n";
   if (stutter_model != NULL){
-    std::cerr << " Genotyping          = " << locus_genotype_time()       << " seconds\n";
+    logger() << " Genotyping          = " << locus_genotype_time()       << " seconds\n";
     if (use_seq_aligner_){
       assert(seq_genotyper != NULL);
-      std::cerr << "\t" << " Left alignment       = "  << seq_genotyper->locus_left_aln_time()  << " seconds\n"
-		<< "\t" << " Haplotype generation = "  << seq_genotyper->locus_hap_build_time() << " seconds\n"
-		<< "\t" << " Haplotype alignment  = "  << seq_genotyper->locus_hap_aln_time()   << " seconds\n"
-		<< "\t" << " Alignment traceback  = "  << seq_genotyper->locus_aln_trace_time() << " seconds\n";
+      logger() << "\t" << " Left alignment       = "  << seq_genotyper->locus_left_aln_time()  << " seconds\n"
+	       << "\t" << " Haplotype generation = "  << seq_genotyper->locus_hap_build_time() << " seconds\n"
+	       << "\t" << " Haplotype alignment  = "  << seq_genotyper->locus_hap_aln_time()   << " seconds\n"
+	       << "\t" << " Alignment traceback  = "  << seq_genotyper->locus_aln_trace_time() << " seconds\n";
     }
   }
-  std::cerr << std::endl;
+  logger() << std::endl;
 
   delete seq_genotyper;
   delete stutter_model;

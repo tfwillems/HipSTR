@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <iostream>
 
 #include "../vcflib/src/Variant.h"
 
@@ -18,7 +19,7 @@ int main(int argc, char** argv) {
   uint32_t end      = 20000000;
   std::vector<SNPTree*> snp_trees;
   std::map<std::string, unsigned int> sample_indices;
-  create_snp_trees(chrom, start, end, variant_file, sample_indices, snp_trees);
+  create_snp_trees(chrom, start, end, variant_file, sample_indices, snp_trees, std::cerr);
   destroy_snp_trees(snp_trees);
   return 0;
 }

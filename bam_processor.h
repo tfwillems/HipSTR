@@ -40,6 +40,9 @@ class BamProcessor {
  protected:
  BaseQuality base_quality_;
 
+ bool log_to_file_;
+ std::ofstream log_;
+
   public:
  BamProcessor(bool use_bam_rgs, bool filter_by_mate, bool remove_pcr_dups){
    use_bam_rgs_             = use_bam_rgs;
@@ -58,6 +61,12 @@ class BamProcessor {
    locus_read_filter_time_  = -1;
    MAX_SOFT_CLIPS           = 100000;
    MAX_HARD_CLIPS           = 100000;
+   log_to_file_             = false;
+ }
+
+ ~BamProcessor(){
+   if (log_to_file_)
+     log_.close();
  }
 
  void remove_all_filters(){
@@ -90,7 +99,28 @@ class BamProcessor {
 			    std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
 			    std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq,
 			    std::ostream& out){
-   std::cerr << "Doing nothing with reads" << std::endl;
+   log("Doing nothing with reads");
+ }
+
+
+ void set_log(std::string log_file){
+   if (log_to_file_)
+     printErrorAndDie("Cannot reset the log file multiple times");
+   log_to_file_ = true;
+   log_.open(log_file, std::ofstream::out);
+   if (!log_.is_open())
+     printErrorAndDie("Failed to open the log file: " + log_file);
+ }
+
+ inline void log(std::string msg){
+   if (log_to_file_)
+     log_ << msg << std::endl;
+   else
+     std::cerr << msg << std::endl;
+ }
+
+ inline std::ostream& logger(){
+   return (log_to_file_ ? log_ : std::cerr);
  }
 
  int32_t MAX_MATE_DIST;

@@ -61,7 +61,7 @@ void read_vcf_alleles(vcflib::VariantCallFile* ref_vcf, Region* region, std::vec
  * The user is responsible for freeing the returned array when it is no longer needed.
  */
 double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
-					   std::vector<std::string>& alleles, std::vector<bool>& got_priors, int32_t& pos, bool& success){
+					   std::vector<std::string>& alleles, std::vector<bool>& got_priors, int32_t& pos, bool& success, std::ostream& logger){
   assert(alleles.size() == 0 && got_priors.size() == 0);
   got_priors.resize(sample_indices.size(), false);
 
@@ -148,10 +148,7 @@ double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Reg
   }
     
   // Warn if the VCF did not contain priors for all samples
-  if (sample_count != num_samples){
-    std::stringstream ss; ss << "VCF only contained allele priors for " << sample_count << " out of " << num_samples << " samples";
-    std::cerr << "WARNING: " << ss.str() << std::endl;
-  }
-
+  if (sample_count != num_samples)
+    logger << "WARNING: VCF only contained allele priors for " << sample_count << " out of " << num_samples << " samples";
   return log_allele_priors;
 }

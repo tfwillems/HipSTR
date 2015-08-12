@@ -28,7 +28,7 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
     std::vector<SNPTree*> snp_trees;
     std::map<std::string, unsigned int> sample_indices;      
     if(create_snp_trees(region.chrom(), (region.start() > MAX_MATE_DIST ? region.start()-MAX_MATE_DIST : 1), 
-			region.stop()+MAX_MATE_DIST, phased_snp_vcf_, sample_indices, snp_trees)){
+			region.stop()+MAX_MATE_DIST, phased_snp_vcf_, sample_indices, snp_trees, logger())){
       got_snp_info = true;
       std::set<std::string> bad_samples, good_samples;
       for (unsigned int i = 0; i < paired_strs_by_rg.size(); ++i){
@@ -53,10 +53,10 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
 	alignments[i].insert(alignments[i].end(), paired_strs_by_rg[i].begin(),   paired_strs_by_rg[i].end());
 	alignments[i].insert(alignments[i].end(), unpaired_strs_by_rg[i].begin(), unpaired_strs_by_rg[i].end());
       }
-      std::cerr << "Found VCF info for " << good_samples.size() << " out of " << good_samples.size()+bad_samples.size() << " samples with STR reads" << std::endl;
+      logger() << "Found VCF info for " << good_samples.size() << " out of " << good_samples.size()+bad_samples.size() << " samples with STR reads" << std::endl;
     }
     else 
-      std::cerr << "Warning: Failed to construct SNP trees for " << region.chrom() << ":" << region.start() << "-" << region.stop() << std::endl; 
+      logger() << "Warning: Failed to construct SNP trees for " << region.chrom() << ":" << region.start() << "-" << region.stop() << std::endl;
     destroy_snp_trees(snp_trees);      
   }
   if (!got_snp_info){
@@ -82,8 +82,8 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
     phased_samples += sample_phased;
   }
 
-  std::cout << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads" 
-	    << " and " << phased_samples << " out of " << rg_names.size() <<  " samples" << std::endl;
+  logger() << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads"
+	   << " and " << phased_samples << " out of " << rg_names.size() <<  " samples" << std::endl;
 
   locus_snp_phase_info_time_  = (clock() - locus_snp_phase_info_time_)/CLOCKS_PER_SEC;
   total_snp_phase_info_time_ += locus_snp_phase_info_time_;
@@ -99,7 +99,6 @@ int SNPBamProcessor::get_haplotype(BamTools::BamAlignment& aln){
   if (!aln.GetTag(HAPLOTYPE_TAG, haplotype)){
     char type;
     aln.GetTagType(HAPLOTYPE_TAG, type);
-    std::cerr << type << std::endl;
     printErrorAndDie("Failed to extract haplotype tag");
   }
   assert(haplotype == 1 || haplotype == 2);
@@ -170,7 +169,7 @@ void SNPBamProcessor::process_10x_reads(std::vector< std::vector<BamTools::BamAl
     }
   }
 
-  std::cout << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads" << std::endl;
+  logger() << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads" << std::endl;
   locus_snp_phase_info_time_  = (clock() - locus_snp_phase_info_time_)/CLOCKS_PER_SEC;
   total_snp_phase_info_time_ += locus_snp_phase_info_time_;
 

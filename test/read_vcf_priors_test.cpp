@@ -16,7 +16,7 @@ int main(int argc, char* argv[]){
 
   // Read list of regions
   std::vector<Region> regions;  
-  readRegions(region_file, regions, 1000, "");
+  readRegions(region_file, regions, 1000, "", std::cerr);
 
   vcflib::VariantCallFile ref_vcf;
   if(!ref_vcf.open(vcf_file))
@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
   int32_t pos;
   for (unsigned int i = 0; i < regions.size(); i++){
     bool success;
-    double* priors = extract_vcf_alleles_and_log_priors(&ref_vcf, &(regions[i]), sample_indices, alleles, got_priors, pos, success);
+    double* priors = extract_vcf_alleles_and_log_priors(&ref_vcf, &(regions[i]), sample_indices, alleles, got_priors, pos, success, std::cerr);
 
     if (success){
       std::cerr << "Position=" << pos << std::endl;

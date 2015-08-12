@@ -63,7 +63,7 @@ public:
 					 std::vector< std::vector<double> >& log_p1s, 
 					 std::vector< std::vector<double> >& log_p2s,
 					 std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq){
-    std::cerr << "Ignoring read phasing probabilties" << std::endl;
+    log("Ignoring read phasing probabilties");
   }
 
   void use_10x_bam_tags(){
@@ -77,7 +77,7 @@ public:
   }
 
   void finish(){
-    std::cerr << "SNP matching statistics: "   << match_count_     << "\t" << mismatch_count_ << std::endl;
+    log("SNP matching statistics: " + std::to_string(match_count_) + "\t" + std::to_string( mismatch_count_));
   }
 };
 

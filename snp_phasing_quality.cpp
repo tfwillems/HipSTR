@@ -1,9 +1,9 @@
 #include "snp_phasing_quality.h"
 #include "error.h"
 
-void printCigarString(BamTools::BamAlignment& aln){
+void printCigarString(BamTools::BamAlignment& aln, std::ostream& out){
   for (unsigned int i = 0; i < aln.CigarData.size(); ++i)
-    std::cerr << aln.CigarData[i].Length << aln.CigarData[i].Type;
+    out << aln.CigarData[i].Length << aln.CigarData[i].Type;
 }
 
 void extract_bases_and_qualities(BamTools::BamAlignment& aln, std::vector<SNP>& snps, 

@@ -97,10 +97,10 @@ void get_deletion_matches(const std::string& haplotype_allele, const std::string
 
 
 void get_candidates(std::vector<std::string>& str_seqs, std::vector< std::vector<std::string> >& read_seqs, int period,
-		    std::set<std::string>& new_str_seqs){
+		    std::set<std::string>& new_str_seqs, std::ostream& logger){
   assert(new_str_seqs.size() == 0);
   std::set<std::string> existing(str_seqs.begin(), str_seqs.end());
-  std::cerr << "Beginning additional allele identification..." << std::endl;
+  logger << "Beginning additional allele identification..." << std::endl;
   for (unsigned int i = 0; i < read_seqs.size(); i++){
     std::map<std::string, int> match_counts;
     for (unsigned int j = 0; j < read_seqs[i].size(); j++){
@@ -120,11 +120,11 @@ void get_candidates(std::vector<std::string>& str_seqs, std::vector< std::vector
 	new_str_seqs.insert(iter->first);
   }
 
-  std::cerr << "Existing alleles: " << std::endl;
+  logger << "Existing alleles: " << std::endl;
   for (auto iter = str_seqs.begin(); iter != str_seqs.end(); iter++)
-    std::cerr << *iter << std::endl;
+    logger << *iter << std::endl;
 
-  std::cerr << "Identified " << new_str_seqs.size() << " additional candidate STR alleles:" << std::endl;
+  logger << "Identified " << new_str_seqs.size() << " additional candidate STR alleles:" << std::endl;
   for (auto iter = new_str_seqs.begin(); iter != new_str_seqs.end(); iter++)
-    std::cerr << *iter << std::endl;
+    logger << *iter << std::endl;
 }

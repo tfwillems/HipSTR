@@ -270,7 +270,7 @@ void EMStutterGenotyper::recalc_log_read_phase_posteriors(){
   }
 }
 
-bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double min_LL_frac_change, bool disp_stats){
+bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double min_LL_frac_change, bool disp_stats, std::ostream& logger){
   // Initialization
   if (log_allele_priors_ == NULL)
     init_log_gt_priors();
@@ -285,11 +285,11 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
     double new_LL = recalc_log_sample_posteriors(true);
     recalc_log_read_phase_posteriors();
     if (disp_stats){
-      std::cerr << "Iteration " << num_iter << ": LL = " << new_LL << "\n" << *stutter_model_;
-      std::cerr << "Pop freqs: ";
+      logger << "Iteration " << num_iter << ": LL = " << new_LL << "\n" << *stutter_model_;
+      logger << "Pop freqs: ";
       for (unsigned int i = 0; i < num_alleles_; i++)
-	std::cerr << exp(log_gt_priors_[i]) << " ";
-      std::cerr << std::endl;
+	logger << exp(log_gt_priors_[i]) << " ";
+      logger << std::endl;
     }
 
     assert(new_LL <= TOLERANCE);
@@ -307,7 +307,7 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
     double abs_change  = new_LL - LL;
     double frac_change = -(new_LL - LL)/LL;
     if (disp_stats)
-      std::cerr << abs_change << " " << min_LL_abs_change << " " << frac_change << " " << min_LL_frac_change << std::endl;
+      logger << abs_change << " " << min_LL_abs_change << " " << frac_change << " " << min_LL_frac_change << std::endl;
     if (abs_change < min_LL_abs_change && frac_change < min_LL_frac_change){
       converged = true;
       return true;

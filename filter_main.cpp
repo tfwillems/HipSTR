@@ -107,7 +107,7 @@ int main(int argc, char** argv){
 
   // Read and arrange regions
   std::vector<Region> regions;
-  readRegions(region_file, regions, -1, "");
+  readRegions(region_file, regions, -1, "", std::cerr);
 
   // Extend regions by padding
   if (region_pad != 0){

@@ -69,7 +69,7 @@ void remove_pcr_duplicates(BaseQuality& base_quality, bool use_bam_rgs,
 			   std::map<std::string, std::string>& rg_to_library,
 			   std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 			   std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
-			   std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg){
+			   std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg, std::ostream& logger){
   int32_t dup_count = 0;
   assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
   for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
@@ -120,5 +120,5 @@ void remove_pcr_duplicates(BaseQuality& base_quality, bool use_bam_rgs,
       mate_pairs_by_rg[i].push_back(read_pairs[best_index].aln_two());
     }
   }
-  std::cerr << "Removed " << dup_count << " sets of PCR duplicate reads" << std::endl;
+  logger << "Removed " << dup_count << " sets of PCR duplicate reads" << std::endl;
 }

@@ -172,7 +172,7 @@ bool extract_sequence(Alignment& aln, int32_t start, int32_t end, std::string& s
 
 void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, int32_t left_padding, int32_t right_padding, int ideal_min_length,
 				 std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles, bool search_bams_for_alleles,
-				 int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
+				 int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences, std::ostream& logger){
   assert(sequences.size() == 0);
 
   std::map<std::string, double> sample_counts;
@@ -229,8 +229,8 @@ void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, i
       if (iter->second >= MIN_STRONG_SAMPLES){
 	auto iter_1 = sample_counts.find(iter->first);
 	auto iter_2 = read_counts.find(iter->first);
-	std::cerr << "Strong   stats: " << iter->first << " " << iter->second << " " << iter_1->second/alignments.size()
-		  << " " << iter_2->second << " " << iter_2->second*1.0/tot_reads << std::endl;
+	logger << "Strong   stats: " << iter->first << " " << iter->second << " " << iter_1->second/alignments.size()
+	       << " " << iter_2->second << " " << iter_2->second*1.0/tot_reads << std::endl;
 	sample_counts.erase(iter_1);
 	read_counts.erase(iter_2);
 	sequences.push_back(iter->first);
@@ -242,8 +242,8 @@ void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, i
     // Identify additional alleles satisfying thresholds
     for (auto iter = sample_counts.begin(); iter != sample_counts.end(); iter++){
       if (iter->second > MIN_FRAC_SAMPLES*tot_samples || read_counts[iter->first] > MIN_FRAC_READS*tot_reads){
-	std::cerr << "Sequence stats: " << iter->first << " " << iter->first.size() << " " 
-		  << iter->second*1.0/tot_samples << " " << read_counts[iter->first] << " " << read_counts[iter->first]*1.0/tot_reads << std::endl;
+	logger << "Sequence stats: " << iter->first << " " << iter->first.size() << " "
+	       << iter->second*1.0/tot_samples << " " << read_counts[iter->first] << " " << read_counts[iter->first]*1.0/tot_reads << std::endl;
 	sequences.push_back(iter->first);
 	if (ref_index == -1 && (iter->first.compare(ref_seq) == 0))
 	  ref_index = sequences.size()-1;
@@ -378,7 +378,7 @@ int check_deletion_bounds(std::vector< std::vector<Alignment> >& alignments, int
 Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
 			      std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles,
 			      StutterModel* stutter_model, bool search_bams_for_alleles,
-			      std::vector<HapBlock*>& blocks, std::vector<bool>& call_sample){
+			      std::vector<HapBlock*>& blocks, std::vector<bool>& call_sample, std::ostream& logger){
   assert(blocks.size() == 0);
   assert(call_sample.size() == 0);
 
@@ -394,7 +394,7 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
     }
   }
   
-  std::cerr << "# Seqs = " << seqs.size() << std::endl;
+  logger << "# Seqs = " << seqs.size() << std::endl;
 			 
   // Extract candidate STR sequences (use some padding to ensure indels near STR ends are included)
   std::vector<std::string> str_seqs;
@@ -416,12 +416,12 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
 
   // Recheck deletions after expanding the STR window
   if(1.0*nfail/alignments.size() <= MAX_FRAC_SAMPLE_DEL_FAIL){
-    std::cerr << "PASS SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << num_ext_del
-	      << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
+    logger << "PASS SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << num_ext_del
+	    << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
   }
   else {
-    std::cerr << "FAIL SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << num_ext_del
-	      << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
+    logger << "FAIL SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << num_ext_del
+	   << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
 
     int32_t min_s = std::min(min_del_start, std::min(flank_del_start, min_ins_pos));
     int32_t max_e = std::max(max_del_stop,  std::max(flank_del_stop,  max_ins_pos));
@@ -440,18 +440,18 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
     
       /*
       if(1.0*sample_fail_count/alignments.size() <= MAX_FRAC_SAMPLE_DEL_FAIL){
-	std::cerr << "REDONE_PASS SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count
+	logger << "REDONE_PASS SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count
 		  << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
       }
       else {
-	std::cerr << "REDONE_FAIL SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count
+	logger << "REDONE_FAIL SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count
 		  << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
       }
       */
   }
 
   /*
-  std::cerr << "# Flank deletions = " << num_flank_del << ", # Flank insertions = " << num_flank_ins << std::endl;
+  logger << "# Flank deletions = " << num_flank_del << ", # Flank insertions = " << num_flank_ins << std::endl;
   for (unsigned int i = 0; i < call_sample.size(); i++)
     call_sample[i] = call_sample[i] && flank_del_call_sample[i] && flank_ins_call_sample[i];
   */
@@ -468,13 +468,13 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
     std::string rflank = uppercase(chrom_seq.substr(str_region.stop(), rep_region_end-str_region.stop())); 
     for (unsigned int i = 0; i < vcf_alleles.size(); i++){
       ext_vcf_alleles.push_back(lflank + vcf_alleles[i] + rflank);
-      std::cerr << ext_vcf_alleles.back() << std::endl;
+      logger << ext_vcf_alleles.back() << std::endl;
     }
-    std::cerr << ext_vcf_alleles[0] << std::endl << ref_seq << std::endl;
+    logger << ext_vcf_alleles[0] << std::endl << ref_seq << std::endl;
     assert(ext_vcf_alleles[0].compare(ref_seq) == 0);
   }
   generate_candidate_str_seqs(ref_seq, chrom_seq, left_padding, right_padding, ideal_min_length, alignments, 
-			      ext_vcf_alleles, search_bams_for_alleles, rep_region_start, rep_region_end, str_seqs);
+			      ext_vcf_alleles, search_bams_for_alleles, rep_region_start, rep_region_end, str_seqs, logger);
   
   // Create a set of haplotype regions, consisting of STR sequence block flanked by two reference sequence stretches
   assert(rep_region_start > min_start && rep_region_end < max_stop);
@@ -491,16 +491,16 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
   for (unsigned int i = 0; i < blocks.size(); i++)
     blocks[i]->initialize();
  
-  std::cerr << "Constructing haplotype" << std::endl;
+  logger << "Constructing haplotype" << std::endl;
   Haplotype* haplotype = new Haplotype(blocks);
-  haplotype->print_block_structure(30, 100, std::cerr);  
+  haplotype->print_block_structure(30, 100, logger);
   return haplotype;
 }
 
 
 Haplotype* generate_haplotype(int32_t pos, Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
 			      std::vector<std::string>& vcf_alleles, StutterModel* stutter_model,
-			      std::vector<HapBlock*>& blocks){
+			      std::vector<HapBlock*>& blocks, std::ostream& logger){
   assert(blocks.size() == 0);
   assert(vcf_alleles.size() >= 1);
 
@@ -522,8 +522,8 @@ Haplotype* generate_haplotype(int32_t pos, Region& str_region, int32_t max_ref_f
   for (unsigned int i = 0; i < blocks.size(); i++)
     blocks[i]->initialize();
 
-  std::cerr << "Constructing haplotype" << std::endl;
+  logger << "Constructing haplotype" << std::endl;
   Haplotype* haplotype = new Haplotype(blocks);
-  haplotype->print_block_structure(30, 100, std::cerr);
+  haplotype->print_block_structure(30, 100, logger);
   return haplotype;
 }

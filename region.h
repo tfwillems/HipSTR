@@ -2,6 +2,7 @@
 #define REGION_H_
 
 #include <assert.h>
+#include <iostream>
 #include <map>
 #include <set>
 #include <sstream>
@@ -55,7 +56,7 @@ public:
 
 };
 
-void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t max_regions, std::string chrom);
+void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t max_regions, std::string chrom, std::ostream& logger);
 
 void orderRegions(std::vector<Region>& regions);
 

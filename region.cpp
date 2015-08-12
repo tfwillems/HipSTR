@@ -11,8 +11,8 @@
 #include "error.h"
 #include "region.h"
 
-void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t max_regions, std::string chrom_limit){
-  std::cerr << "Reading region file " << input_file << std::endl;
+void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t max_regions, std::string chrom_limit, std::ostream& logger){
+  logger << "Reading region file " << input_file << std::endl;
   std::ifstream input(input_file.c_str());
   if (!input.is_open()) 
     printErrorAndDie("Failed to open region file");
@@ -36,7 +36,7 @@ void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t
       regions.push_back(Region(chrom, start, stop, period));
   }
   input.close();
-  std::cerr << "Region file contains " << regions.size() << " regions" << std::endl;
+  logger << "Region file contains " << regions.size() << " regions" << std::endl;
 }
 
 void orderRegions(std::vector<Region>& regions){

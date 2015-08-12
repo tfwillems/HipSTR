@@ -32,16 +32,16 @@ void init_alignment_model(){
 }
 
 
-void print_alignment_model(){
-  std::cerr << "Match->Insertion transition probabilities:\n"
-	    << " homopolymer_len: log_P \n";
+void print_alignment_model(std::ostream& out){
+  out << "Match->Insertion transition probabilities:\n"
+      << " homopolymer_len: log_P \n";
   for (unsigned int i = 0; i <= MAX_HOMOP_LEN; i++)
-    std::cerr <<  " " << i << ":" << LOG_MATCH_TO_INS[i] << "\n";
-  std::cerr << "\n";
+    out <<  " " << i << ":" << LOG_MATCH_TO_INS[i] << "\n";
+  out << "\n";
 
-  std::cerr << "Match->Deletion transition probabilities:\n"
-	    << " homopolymer_len: log_P \n";
+  out << "Match->Deletion transition probabilities:\n"
+      << " homopolymer_len: log_P \n";
   for (unsigned int i = 0; i <= MAX_HOMOP_LEN; i++)
-    std::cerr << " " << i << ":" << LOG_MATCH_TO_DEL[i] << "\n";
-  std::cerr << std::endl;
+    out << " " << i << ":" << LOG_MATCH_TO_DEL[i] << "\n";
+  out << std::endl;
 }

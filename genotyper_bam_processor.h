@@ -155,9 +155,9 @@ public:
     std::ifstream input;
     input.open(model_file, std::ifstream::in);
     if (!input.is_open())
-      printErrorAndDie("Failed to open input file for stutter models");
+      printErrorAndDie("Failed to open input file for stutter models. Filename = " + model_file);
     StutterModel::read_models(input, stutter_models_);
-    std::cerr << "Read stutter models for " << stutter_models_.size() << " loci" << std::endl;
+    log("Read stutter models for " + std::to_string(stutter_models_.size()) + " loci");
     read_stutter_models_ = true;
     input.close();
   }
@@ -213,8 +213,8 @@ public:
     if (output_viz_)
       viz_out_.close();
 
-    std::cerr << "Stutter model training succeeded for " << num_em_converge_ << " out of " << num_em_converge_+num_em_fail_ << " loci" << std::endl;
-    std::cerr << "Genotyping succeeded for " << num_genotype_success_ << " out of " << num_genotype_success_+num_genotype_fail_ << " loci" << std::endl;
+    log("Stutter model training succeeded for " + std::to_string(num_em_converge_) + " out of " + std::to_string(num_em_converge_+num_em_fail_) + " loci");
+    log("Genotyping succeeded for " + std::to_string(num_genotype_success_) + " out of " + std::to_string(num_genotype_success_+num_genotype_fail_) + " loci");
   }
 
   // EM parameters for length-based stutter learning

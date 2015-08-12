@@ -31,10 +31,10 @@ std::string BaseQuality::average_base_qualities(std::vector<const std::string*> 
 }
 
 
-void printBaseCounts(int* counts){
+void printBaseCounts(int* counts, std::ostream& out){
   for (unsigned int i = 0; i < 256; i++)
     if (counts[i] != 0)
-      std::cerr << (char)i << " " << counts[i] << std::endl;
+      out << (char)i << " " << counts[i] << std::endl;
 }
 
 void BaseQuality::deduce_quality_encodings(BamTools::BamMultiReader& reader){

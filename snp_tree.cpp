@@ -18,8 +18,8 @@ bool is_biallelic_snp(vcflib::Variant& variant){
 }
 
 bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vcflib::VariantCallFile& variant_file,
-                      std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees){
-  std::cerr << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
+                      std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees, std::ostream& logger){
+  logger << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
   assert(variant_file.is_open());
 
@@ -39,12 +39,12 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vc
   vcflib::Variant variant(variant_file);
   uint32_t locus_count = 0, skip_count = 0;
   while(variant_file.getNextVariant(variant)){
-    ++locus_count;
-    if (locus_count % 1000 == 0)   std::cout << "\rProcessing locus #" << locus_count << " (skipped " << skip_count << ") at position " << variant.position << std::flush;
+    //if (locus_count % 1000 == 0)   std::cout << "\rProcessing locus #" << locus_count << " (skipped " << skip_count << ") at position " << variant.position << std::flush;
     if(!is_biallelic_snp(variant)){
       skip_count++;
       continue;
     }
+    ++locus_count;
     for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
       std::string gts = variant.getGenotype(*sample_iter);
       if (gts.size() == 0)
@@ -64,15 +64,15 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vc
         }
       }
       else {
-	printErrorAndDie("SNP panel VCF must contain phased genotypes and therefore utilize the | genotype separator");
+	//printErrorAndDie("SNP panel VCF must contain phased genotypes and therefore utilize the | genotype separator");
       }
     }
   }
-  std::cerr << "Region contained a total of " << locus_count << " valid SNPs" << std::endl;
+  logger << "Region contained a total of " << locus_count << " valid SNPs" << std::endl;
   
   // Create SNP trees
   for(unsigned int i = 0; i < snps_by_sample.size(); i++){
-    //std::cout << "Building interval tree for " << variant_file.sampleNames[i] << " containing " << snps_by_sample[i].size() << " heterozygous SNPs" << std::endl;
+    //logger << "Building interval tree for " << variant_file.sampleNames[i] << " containing " << snps_by_sample[i].size() << " heterozygous SNPs" << std::endl;
     snp_trees.push_back(new SNPTree(snps_by_sample[i]));
   }
 

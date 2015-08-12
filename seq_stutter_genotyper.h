@@ -97,7 +97,7 @@ class SeqStutterGenotyper{
   void init(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 	    std::vector< std::vector<double> >& log_p1,
 	    std::vector< std::vector<double> >& log_p2,
-	    std::vector<std::string>& sample_names, std::string& chrom_seq);
+	    std::vector<std::string>& sample_names, std::string& chrom_seq, std::ostream& logger);
 
   // Extract the sequences for each allele and the VCF start position
   void get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles);
@@ -106,8 +106,7 @@ class SeqStutterGenotyper{
   
   // Attempt to identify additional haplotypes given all alignments and the current
   // haplotype structure. Modifies the underlying haplotype and haplotype blocks accordingly
-  void expand_haplotype();
-
+  void expand_haplotype(std::ostream& logger);
 
   // Identify a list of alleles that aren't the MAP genotype for any sample
   // Doesn't include the reference allele (index = 0)
@@ -144,7 +143,7 @@ class SeqStutterGenotyper{
 		      std::vector< std::vector<double> >& log_p1, 
 		      std::vector< std::vector<double> >& log_p2, 
 		      std::vector<std::string>& sample_names, std::string& chrom_seq, 
-		      StutterModel& stutter_model, vcflib::VariantCallFile* ref_vcf){
+		      StutterModel& stutter_model, vcflib::VariantCallFile* ref_vcf, std::ostream& logger){
     assert(alignments.size() == log_p1.size() && alignments.size() == log_p2.size() && alignments.size() == sample_names.size());
     log_p1_                = NULL;
     log_p2_                = NULL;
@@ -184,7 +183,7 @@ class SeqStutterGenotyper{
     stutter_model_      = stutter_model.copy();
     ref_vcf_            = ref_vcf;
     alleles_from_bams_  = true;
-    init(alignments, log_p1, log_p2, sample_names, chrom_seq);
+    init(alignments, log_p1, log_p2, sample_names, chrom_seq, logger);
   }
 
   ~SeqStutterGenotyper(){
@@ -216,7 +215,6 @@ class SeqStutterGenotyper{
     pool_identical_seqs_ = true;
   }
 
-
   /*
    *  Returns true iff the read with the associated retraced maximum log-likelihood alignment should be used in genotyping
    *  Considers factors such as indels in the regions flanking the STR block and the total number of matched bases
@@ -224,7 +222,8 @@ class SeqStutterGenotyper{
   bool use_read(Alignment& max_LL_aln, int num_flank_ins, int num_flank_del);
 
   void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
-			bool output_gls, bool output_pls, bool output_allreads, bool output_pallreads, bool output_viz, std::ostream& html_output, std::ostream& out);
+			bool output_gls, bool output_pls, bool output_allreads, bool output_pallreads, bool output_viz,
+			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 
   double total_hap_build_time(){ return total_hap_build_time_; }
   double locus_hap_build_time(){ return locus_hap_build_time_; }
@@ -235,7 +234,7 @@ class SeqStutterGenotyper{
   double total_aln_trace_time(){ return total_aln_trace_time_; }
   double locus_aln_trace_time(){ return locus_aln_trace_time_; }
   
-  bool genotype();
+  bool genotype(std::ostream& logger);
 };
 
 #endif

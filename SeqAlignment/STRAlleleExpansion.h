@@ -1,6 +1,7 @@
 #ifndef STR_ALLELE_EXPANSION_H_
 #define STR_ALLELE_EXPANSION_H_
 
+#include <iostream>
 #include <map>
 #include <set>
 #include <string>
@@ -15,6 +16,6 @@ void get_deletion_matches(const std::string& haplotype_allele, const std::string
 			  std::set<std::string>& new_seqs);
 
 void get_candidates(std::vector<std::string>& str_seqs, std::vector< std::vector<std::string> >& read_seqs, int period,
-		    std::set<std::string>& new_str_seqs);
+		    std::set<std::string>& new_str_seqs, std::ostream& logger);
 
 #endif
