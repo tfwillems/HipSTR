@@ -54,7 +54,7 @@ class RepeatStutterInfo {
   }
 
   inline double log_prob_pcr_artifact(int seq_index, int artifact_size) const {
-    int read_size = allele_sizes_[seq_index]+artifact_size;
+    int read_size = allele_sizes_.at(seq_index)+artifact_size;
     if (artifact_size == 0)
       return stutter_model_->log_stutter_pmf(allele_sizes_[seq_index], read_size);
     else if (artifact_size > 0)
