@@ -18,6 +18,7 @@ class HapBlock {
   std::vector<std::string> alt_seqs_;
   int32_t start_;  // Start of region (inclusive)
   int32_t end_;    // End   of region (not inclusive)
+  int min_size_;
   int max_size_;
 
   std::vector<int*> l_homopolymer_lens;
@@ -30,6 +31,7 @@ class HapBlock {
     start_    = start;
     end_      = end;
     ref_seq_  = ref_seq;
+    min_size_ = (int)ref_seq.size();
     max_size_ = (int)ref_seq.size();
     alt_seqs_ = std::vector<std::string>();
   }
@@ -53,9 +55,11 @@ class HapBlock {
 
   virtual void add_alternate(std::string& alt) {
     alt_seqs_.push_back(alt);
+    min_size_ = std::min(min_size_, (int)alt.size());
     max_size_ = std::max(max_size_, (int)alt.size());
   }
 
+  int min_size() const { return min_size_; }
   int max_size() const { return max_size_; }
 
   void print(std::ostream& out);
