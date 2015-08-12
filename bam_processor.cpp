@@ -63,8 +63,13 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   std::map<std::string, BamTools::BamAlignment> potential_strs, potential_mates;
 
   while (reader.GetNextAlignment(alignment)){
+    //std::cerr << alignment.Name << std::endl;
+
     read_count++;
     
+    if (!alignment.IsMapped() || alignment.Position == 0 || alignment.CigarData.size() == 0)
+	continue;
+
     if (check_mate_info_){
       // Ignore read if its mate pair chromosome doesn't match
       if (alignment.RefID != alignment.MateRefID){
@@ -72,7 +77,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	continue;
       }
       // Ignore read if its mate pair is unmapped
-      if (alignment.InsertSize == 0){
+      // TO DO: Check that insert size != 0 ?
+      if (!alignment.IsMateMapped() || alignment.MatePosition == 0){
 	unmapped_mate++;
 	continue;
       }
@@ -89,6 +95,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       continue;
     }
 
+    assert(alignment.CigarData.size() > 0 && alignment.RefID != -1);
     bool pass = true;
 
     // Simple test to exclude mate pairs
@@ -281,11 +288,11 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
   readRegions(region_file, regions, max_regions, chrom);
   orderRegions(regions);
 
-  bool fasta_file_exists = is_file(fasta_dir);
-  FastaReference fasta_ref;
-  if (fasta_file_exists){
+  FastaReference* fasta_ref = NULL;
+  if (is_file(fasta_dir)){
+    fasta_ref = new FastaReference();
     std::cerr << "Fasta file exists..." << fasta_dir << std::endl;
-    fasta_ref.open(fasta_dir);
+    fasta_ref->open(fasta_dir);
   }
 
   std::string ref_seq;
@@ -308,8 +315,8 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
     if (cur_chrom_id != chrom_id){
       cur_chrom_id      = chrom_id;
       std::string chrom = region_iter->chrom();
-      if (fasta_file_exists)
-	chrom_seq = fasta_ref.getSequence(chrom);
+      if (fasta_ref != NULL)
+	chrom_seq = fasta_ref->getSequence(chrom);
       else
 	readFastaFromDir(chrom+".fa", fasta_dir, chrom_seq);
       assert(chrom_seq.size() != 0);
@@ -329,5 +336,8 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
     std::string ref_allele = get_str_ref_allele(region_iter->start(), region_iter->stop(), chrom_seq);
     process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, *region_iter, ref_allele, chrom_seq, out);
   }
+
+  if (fasta_ref != NULL)
+    delete fasta_ref;
 }
 
