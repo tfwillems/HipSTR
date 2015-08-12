@@ -363,6 +363,13 @@ bool SeqStutterGenotyper::genotype(std::ostream& logger){
   if (pos_ == -1)
     return false;
 
+  // If the smallest stutter block sequence is smaller than the maximum deletion size, the stutter aligner will fail
+  // We could extend the stutter block to prevent this, but if this happens, the locus is probably not very high quality
+  // As a result, for now, just abort the genotyping for this locus
+  RepeatBlock* rep_block = (RepeatBlock *)haplotype_->get_block(1);
+  if (rep_block->min_size() < std::abs(rep_block->get_repeat_info()->max_deletion()))
+    return false;
+
   // Align each read against each candidate haplotype
   logger << "Aligning reads to each candidate haplotype..." << std::endl;
   init_alignment_model();
