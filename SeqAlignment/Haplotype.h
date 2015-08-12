@@ -129,7 +129,7 @@ class Haplotype {
 
   unsigned int homopolymer_length(int block_index, int base_index);
 
-  Haplotype* reverse();
+  Haplotype* reverse( std::vector<HapBlock*>& rev_blocks);
 };
 
 #endif

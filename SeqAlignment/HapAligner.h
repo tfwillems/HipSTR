@@ -13,6 +13,8 @@ class HapAligner {
   Haplotype* fw_haplotype_;
   Haplotype* rev_haplotype_;
 
+  std::vector<HapBlock*> rev_blocks_;
+
   /**
    * Align the sequence contained in SEQ_0 -> SEQ_N using the recursion
    * 0 -> 1 -> 2 ... N
@@ -44,7 +46,14 @@ class HapAligner {
  public:
   HapAligner(Haplotype* haplotype){
     fw_haplotype_  = haplotype;
-    rev_haplotype_ = haplotype->reverse();
+    rev_haplotype_ = haplotype->reverse(rev_blocks_);
+  }
+
+  ~HapAligner(){
+    for (unsigned int i = 0; i < rev_blocks_.size(); i++)
+      delete rev_blocks_[i];
+    rev_blocks_.clear();
+    delete rev_haplotype_;
   }
 
   /** 

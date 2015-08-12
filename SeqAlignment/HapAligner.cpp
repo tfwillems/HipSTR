@@ -575,8 +575,8 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	stitch_alignment_trace(fw_haplotype_->get_block(0)->start(), fw_haplotype_->get_aln_info(),
 			       read_aln_to_hap, max_index, seed_base, aln, traced_aln);
 
-	/*
-	std::string test = "GACTAGATAGATAGATGATAGACTAGATAGA";
+
+	std::string test = "GCCTGGTCTGTTACACAGAGAAATCCTGTCTCAAAAACAAACACACACACACACACACAAACAAACAAAAAACTAAAAAAAACACTCACCCACCCACCTAACCAATCAACTAAAACCACAATTTT";
 	if (aln.get_sequence().substr(0, test.size()).compare(test) == 0){
 	  std::cerr << aln.get_sequence() << std::endl
 		    << aln.get_sequence().substr(0, seed_base) << " " << aln.get_sequence().substr(seed_base+1) << std::endl
@@ -586,7 +586,6 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 		    << traced_aln.getCigarString() << std::endl
 		    << std::endl;
 	}
-	*/
       }
     }
   } while (fw_haplotype_->next() && rev_haplotype_->next());
