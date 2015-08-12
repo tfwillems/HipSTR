@@ -344,7 +344,8 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     std::cerr << std::endl << "Stutter model information" << std::endl;
     RepeatStutterInfo* stutter_info = hap_blocks_[1]->get_repeat_info();
     for (int i = stutter_info->max_deletion(); i <= stutter_info->max_insertion(); i += stutter_info->get_period())
-      std::cerr << i << " " << stutter_info->log_prob_pcr_artifact(1, i) << std::endl;
+      std::cerr << i << " " << stutter_info->log_prob_pcr_artifact(0, i) << std::endl;
+      //std::cerr << i << " " << stutter_info->log_prob_pcr_artifact(1, i) << std::endl;
     std::cerr << std::endl;
     
     // Allocate the remaining data structures
@@ -391,6 +392,8 @@ bool SeqStutterGenotyper::genotype(){
     printErrorAndDie("Must specify stutter model before running genotype()");
   calc_log_sample_posteriors();
 
+  //debug_sample(sample_indices_["NA12878"]);
+
   // Remove alleles with no MAP genotype calls and recompute the posteriors
   if (log_allele_priors_ == NULL){
     std::vector<int> uncalled_indices;
@@ -401,7 +404,7 @@ bool SeqStutterGenotyper::genotype(){
     }
   }
   
-  //debug_sample(sample_indices_["ERR194146"]);
+  //debug_sample(sample_indices_["NA12878"]);
   return true;
 }
 
@@ -494,6 +497,7 @@ void SeqStutterGenotyper::debug_sample(int sample_index){
       std::cerr << "\t" << "READ #" << read_index << ", SEED BASE=" << seed_positions_[i] 
 		<< ", TOTAL QUAL CORRECT= " << alns_[sample_index][read_index].sum_log_prob_correct(base_quality_) << ", " 
 		<< bp_diffs_[i] << " " << max_index(read_LL_ptr, num_alleles_) << ", "
+		<< log_p1_[read_index] << " " << log_p2_[read_index] <<  ", "
 		<< alns_[sample_index][read_index].get_sequence().substr(0, seed_positions_[i]) 
 		<< " " << alns_[sample_index][read_index].get_sequence().substr(seed_positions_[i]+1) << std::endl;
       for (unsigned int j = 0; j < num_alleles_; ++j, ++read_LL_ptr)
