@@ -113,9 +113,12 @@ bool extract_sequence(Alignment& aln, int32_t start, int32_t end, std::string& s
       char_index = 0;
     }
     else if (pos > end){
+      //      if (reg_seq.str() == "")
+      //reg_seq << "X";
       if (reg_seq.str() == "")
-	reg_seq << "X";
-      seq = uppercase(reg_seq.str());
+	seq = "";
+      else
+	seq = uppercase(reg_seq.str());
       return true;
     }
     else if (pos == end){
@@ -126,9 +129,12 @@ bool extract_sequence(Alignment& aln, int32_t start, int32_t end, std::string& s
 	cigar_iter++;
       }
       else {
+	//if (reg_seq.str() == "")
+	//  reg_seq << "X";
 	if (reg_seq.str() == "")
-	  reg_seq << "X";
-	seq = uppercase(reg_seq.str());
+	  seq = "";
+	else
+	  seq = uppercase(reg_seq.str());
 	return true;
       }
     }
