@@ -141,7 +141,7 @@ void SeqStutterGenotyper::combine_reads(std::vector<Alignment>& alignments, Alig
 }
 
 
-void SeqStutterGenotyper::expand_haplotype(std::ostream& logger){
+bool SeqStutterGenotyper::expand_haplotype(std::ostream& logger){
   assert(haplotype_->num_blocks() == 3);
   std::vector< std::vector<std::string> > read_seqs(alns_.size());
   for (unsigned int i = 0; i < alns_.size(); ++i){
@@ -149,6 +149,10 @@ void SeqStutterGenotyper::expand_haplotype(std::ostream& logger){
     for (unsigned int j = 0; j < alns_[i].size(); ++j)
       read_seqs[i].push_back(alns_[i][j].get_sequence());
   }
+
+  // Check that the flanking sequences are sufficiently large to support the operations
+  if (std::min(haplotype_->get_block(0)->get_seq(0).size(),  haplotype_->get_block(2)->get_seq(0).size()) <= 5)
+    return false;
 
   // Identify additional candidate STR alleles
   int flank_match = 5;
@@ -187,6 +191,7 @@ void SeqStutterGenotyper::expand_haplotype(std::ostream& logger){
   num_alleles_   = haplotype_->num_combs();
   logger << "Haplotype after additional allele identification:" << std::endl;
   haplotype_->print_block_structure(30, 100, logger);
+  return true;
 }
 
 void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> >& alignments, 
@@ -326,14 +331,13 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     assert(call_sample_.size() == num_samples_);
 
     // Reconstruct haplotype after looking for additional alleles
-    expand_haplotype(logger);
-
-    // Extract full STR sequence for each allele using annotated repeat region and the haplotype above
-    get_alleles(chrom_seq, alleles_);
+    if(expand_haplotype(logger))
+      get_alleles(chrom_seq, alleles_); // Extract full STR sequence for each allele using annotated repeat region and the haplotype above
+    else
+      pos_ = -1;
   }
   locus_hap_build_time_  = (clock() - locus_hap_build_time_)/CLOCKS_PER_SEC;
   total_hap_build_time_ += locus_hap_build_time_;
-
 
   if (pos_ != -1){
     // Print information about the haplotype and the stutter model
