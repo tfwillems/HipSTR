@@ -433,7 +433,8 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##INFO=<ID=" << "PERIOD,"         << "Number=1,Type=Integer,Description=\"" << "Length of STR motif"                                                          << "\">\n"
       << "##INFO=<ID=" << "REFAC,"          << "Number=1,Type=Integer,Description=\"" << "Reference allele count"                                                       << "\">\n"
       << "##INFO=<ID=" << "AC,"             << "Number=A,Type=Integer,Description=\"" << "Alternate allele counts"                                                      << "\">\n"
-      << "##INFO=<ID=" << "NSKIP,"          << "Number=1,Type=Integer,Description=\"" << "Number of samples not genotyped due to various issues"                        << "\">\n";
+      << "##INFO=<ID=" << "NSKIP,"          << "Number=1,Type=Integer,Description=\"" << "Number of samples not genotyped due to various issues"                        << "\">\n"
+      << "##INFO=<ID=" << "NFILT,"          << "Number=1,Type=Integer,Description=\"" << "Number of samples whose genotypes were filtered due to various issues"        << "\">\n";
 
   // Format field descriptors
   out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""  << "Genotype" << "\">" << "\n"
@@ -720,7 +721,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       read_LL_ptr += num_alleles_;
       continue;
     }
-    max_LL_alns_[idx_1].push_back(alns_[idx_1][idx_2]);
+    //max_LL_alns_[idx_1].push_back(alns_[idx_1][idx_2]);
     max_LL_alns_[idx_1].push_back(traced_aln);
     locus_aln_trace_time_ += (clock() - trace_start)/CLOCKS_PER_SEC;
 
@@ -743,7 +744,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   // Compute allele counts for samples of interest
   std::set<std::string> samples_of_interest(sample_names.begin(), sample_names.end());
   std::vector<int> allele_counts(num_alleles_);
-  int sample_index = 0, skip_count = 0;
+  int sample_index = 0, skip_count = 0, filt_count = 0;
   for (auto gt_iter = gts.begin(); gt_iter != gts.end(); ++gt_iter, ++sample_index){
     if (samples_of_interest.find(sample_names_[sample_index]) == samples_of_interest.end())
       continue;
@@ -798,7 +799,8 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       << "START="           << region_->start()  << ";"
       << "END="             << region_->stop()   << ";"
       << "PERIOD="          << region_->period() << ";"
-      << "NSKIP="           << skip_count        << ";";
+      << "NSKIP="           << skip_count        << ";"
+      << "NFILT="           << filt_count        << ";";
   if (num_alleles_ > 1){
     out << "BPDIFFS=" << allele_bp_diffs[1];
     for (unsigned int i = 2; i < num_alleles_; i++)
