@@ -21,7 +21,7 @@ bool file_exists(std::string path){
   return (access(path.c_str(), F_OK) != -1);
 }
 
-void print_usage(int def_mdist, int def_min_reads, int def_max_sclips, int def_max_hclips){
+void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_sclips, int def_max_hclips){
   std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <dir> --regions <region_file.bed> [OPTION]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
@@ -68,6 +68,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_sclips, int def_m
 	    << "\t" << "--max-softclips <num_bases>           "  << "\t" << "Remove reads with more than NUM_BASES soft-clipped bases (Default = " << def_max_sclips << ")" << "\n"
 	    << "\t" << "--max-hardclips <num_bases>           "  << "\t" << "Remove reads with more than NUM_BASES hard-clipped bases (Default = " << def_max_hclips << ")" << "\n"
 	    << "\t" << "--min-reads     <num_reads>           "  << "\t" << "Minimum total reads required to genotype a locus (Default = " << def_min_reads << ")" << "\n"
+	    << "\t" << "--max-reads     <num_reads>           "  << "\t" << "Skip a locus if it has more than NUM_READS reads (Default = " << def_max_reads << ")" << "\n"
 	    << "\t" << "--bam-samps     <list_of_samples>     "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
 	    << "\t" << "                                      "  << "\t" << "  Assign each read the read group corresponding to its file. By default, "           << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and this is used instead"                           << "\n"
@@ -94,10 +95,11 @@ void parse_command_line_args(int argc, char** argv,
 			     GenotyperBamProcessor& bam_processor){
   int def_mdist      = bam_processor.MAX_MATE_DIST;
   int def_min_reads  = bam_processor.MIN_TOTAL_READS;
+  int def_max_reads  = bam_processor.MAX_TOTAL_READS;
   int def_max_sclips = bam_processor.MAX_SOFT_CLIPS;
   int def_max_hclips = bam_processor.MAX_HARD_CLIPS;
   if (argc == 1){
-    print_usage(def_mdist, def_min_reads, def_max_sclips, def_max_hclips);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_sclips, def_max_hclips);
     exit(0);
   }
 
@@ -117,6 +119,7 @@ void parse_command_line_args(int argc, char** argv,
     {"max-softclips",   required_argument, 0, 'j'},
     {"max-hardclips",   required_argument, 0, 'k'},
     {"log",             required_argument, 0, 'l'},
+    {"max-reads",       required_argument, 0, 'n'},
     {"h",               no_argument, &print_help, 1},
     {"help",            no_argument, &print_help, 1},
     {"hide-allreads",   no_argument, &output_all_reads,   0},
@@ -143,7 +146,7 @@ void parse_command_line_args(int argc, char** argv,
   int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "a:b:c:d:f:g:h:i:j:k:o:r:v:m:s:w:", long_options, &option_index);
+    c = getopt_long(argc, argv, "a:b:c:d:f:g:h:i:j:k:n:o:r:v:m:s:w:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -187,6 +190,9 @@ void parse_command_line_args(int argc, char** argv,
       filename = std::string(optarg);
       bam_processor.set_input_stutter(filename);
       break;
+    case 'n':
+      bam_processor.MAX_TOTAL_READS = atoi(optarg);
+      break;
     case 'o':
       str_vcf_out_file = std::string(optarg);
       break;
@@ -228,7 +234,7 @@ void parse_command_line_args(int argc, char** argv,
   }
 
   if (print_help){
-    print_usage(def_mdist, def_min_reads, def_max_sclips, def_max_hclips);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_sclips, def_max_hclips);
     exit(0);
   }
 }
