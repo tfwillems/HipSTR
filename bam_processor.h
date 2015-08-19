@@ -21,6 +21,8 @@ class BamProcessor {
   bool rem_pcr_dups_;
 
   // Timing statistics (in seconds)
+  double total_bam_seek_time_;
+  double locus_bam_seek_time_;
   double total_read_filter_time_;
   double locus_read_filter_time_;
 
@@ -57,6 +59,8 @@ class BamProcessor {
    REQUIRE_SPANNING         = true;
    MIN_MAPPING_QUALITY      = 0;
    REMOVE_READS_WITH_N      = 1;
+   total_bam_seek_time_     = 0;
+   locus_bam_seek_time_     = -1;
    total_read_filter_time_  = 0;
    locus_read_filter_time_  = -1;
    MAX_SOFT_CLIPS           = 100000;
@@ -82,6 +86,8 @@ class BamProcessor {
    MAX_HARD_CLIPS           = 100000;
  }
 
+ double total_bam_seek_time()    { return total_bam_seek_time_;    }
+ double locus_bam_seek_time()    { return locus_bam_seek_time_;    }
  double total_read_filter_time() { return total_read_filter_time_; }
  double locus_read_filter_time() { return locus_read_filter_time_; }
  void use_custom_read_groups()   { use_bam_rgs_ = false;           }

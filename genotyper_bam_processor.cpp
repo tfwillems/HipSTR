@@ -149,6 +149,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   }
 
   logger() << "Locus timing:"                                          << "\n"
+	   << " BAM seek time       = " << locus_bam_seek_time()       << " seconds\n"
 	   << " Read filtering      = " << locus_read_filter_time()    << " seconds\n"
 	   << " SNP info extraction = " << locus_snp_phase_info_time() << " seconds\n"
 	   << " Stutter estimation  = " << locus_stutter_time()        << " seconds\n";
