@@ -178,6 +178,8 @@ void parse_command_line_args(int argc, char** argv,
       break;
     case 'i':
       bam_processor.MIN_TOTAL_READS = atoi(optarg);
+      if (bam_processor.MIN_TOTAL_READS < 1)
+	printErrorAndDie("--min-total-reads must be greater than 0");
       break;
     case 'j':
       bam_processor.MAX_SOFT_CLIPS = atoi(optarg);
