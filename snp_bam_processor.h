@@ -77,7 +77,7 @@ public:
   }
 
   void finish(){
-    log("SNP matching statistics: " + std::to_string(match_count_) + "\t" + std::to_string( mismatch_count_));
+    log("SNP matching statistics: " + std::to_string(match_count_) + "\t" + std::to_string(mismatch_count_));
   }
 };
 

@@ -53,18 +53,16 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   locus_read_filter_time_ = clock();
 
   std::vector<BamTools::BamAlignment> region_alignments;
-  int read_count = 0;
-  int diff_chrom_mate = 0, unmapped_mate = 0, not_spanning = 0; // Counts for filters that are always applied
-  int insert_size = 0, multimapped = 0, mapping_quality = 0, flank_len = 0; // Counts for filters that are user-controlled
-  int bp_before_indel = 0, end_match_window = 0, num_end_matches = 0, read_has_N = 0, hard_clip = 0, soft_clip = 0;;
+  int32_t read_count = 0;
+  int32_t diff_chrom_mate = 0, unmapped_mate = 0, not_spanning = 0; // Counts for filters that are always applied
+  int32_t insert_size = 0, multimapped = 0, mapping_quality = 0, flank_len = 0; // Counts for filters that are user-controlled
+  int32_t bp_before_indel = 0, end_match_window = 0, num_end_matches = 0, read_has_N = 0, hard_clip = 0, soft_clip = 0, split_alignment = 0, low_qual_score = 0;
   BamTools::BamAlignment alignment;
 
   std::vector<BamTools::BamAlignment> paired_str_alns, mate_alns, unpaired_str_alns;
   std::map<std::string, BamTools::BamAlignment> potential_strs, potential_mates;
 
   while (reader.GetNextAlignment(alignment)){
-    //std::cerr << alignment.Name << std::endl;
-
     read_count++;
     
     if (!alignment.IsMapped() || alignment.Position == 0 || alignment.CigarData.size() == 0)
@@ -101,6 +99,11 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     // Simple test to exclude mate pairs
     if (alignment.Position > region_iter->stop() || alignment.GetEndPosition() < region_iter->start()){
       pass = false;
+    }
+    // Ignore chimeric alignments
+    if (pass && alignment.HasTag("SA")){
+      pass = false;
+      split_alignment++;
     }
     // Ignore reads with N bases
     if (pass && REMOVE_READS_WITH_N && (alignment.QueryBases.find('N') != std::string::npos)){
@@ -157,6 +160,12 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	pass = false;
       }
     }
+    // Ignore reads with a very low overall base quality score
+    // Want to avoid situations in which it's more advantageous to have misalignments b/c the scores are so low
+    if (pass && base_quality_.sum_log_prob_correct(alignment.Qualities) < MIN_SUM_QUAL_LOG_PROB){
+      low_qual_score++;
+      pass = false;
+    }
 
     if (pass)
       region_alignments.push_back(alignment);
@@ -196,6 +205,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   logger() << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads" << std::endl;
   
   logger() << read_count << " reads overlapped region, of which "
+	   << "\n\t" << split_alignment  << " had an SA (split alignment) BAM tag"
 	   << "\n\t" << read_has_N       << " had an 'N' base call"
 	   << "\n\t" << diff_chrom_mate  << " had mates on a different chromosome"
 	   << "\n\t" << unmapped_mate    << " had unmapped mates"
@@ -209,6 +219,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	   << "\n\t" << bp_before_indel  << " had too few bp before the first indel"
 	   << "\n\t" << end_match_window << " did not have the maximal number of end matches within the specified window"
 	   << "\n\t" << num_end_matches  << " had too few bp matches along the ends"
+	   << "\n\t" << low_qual_score   << " had low base quality scores"
 	   << "\n"   << region_alignments.size() << " PASSED ALL FILTERS" << "\n" << std::endl;
     
   // Output the spanning reads to a BAM file, if requested

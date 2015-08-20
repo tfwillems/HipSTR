@@ -65,6 +65,7 @@ class BamProcessor {
    locus_read_filter_time_  = -1;
    MAX_SOFT_CLIPS           = 100000;
    MAX_HARD_CLIPS           = 100000;
+   MIN_SUM_QUAL_LOG_PROB    = -10;
    log_to_file_             = false;
  }
 
@@ -140,6 +141,7 @@ class BamProcessor {
  int REMOVE_MULTIMAPPERS;
  int REMOVE_READS_WITH_N;
  bool REQUIRE_SPANNING;
+ double MIN_SUM_QUAL_LOG_PROB;
 };
 
 
