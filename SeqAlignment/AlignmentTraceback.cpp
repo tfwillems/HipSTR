@@ -12,7 +12,7 @@ std::string stitch(const std::string& hap_aln, const std::string& read_aln, int 
       r_index += increment;
       continue;
     }
-    
+
     assert(h_index >= 0 && h_index < hap_aln.size());
     if (hap_aln[h_index] == 'D'){
       if (read_aln[r_index] == 'I'){
@@ -33,7 +33,7 @@ std::string stitch(const std::string& hap_aln, const std::string& read_aln, int 
       if (hap_aln[h_index] == 'M')
 	stitched_aln << 'D';
       else if (hap_aln[h_index] == 'I')
-	stitched_aln << "";//'M';
+	stitched_aln << "";
       else
 	printErrorAndDie("Logical error in stitch_alignment_trace()");
       r_index += increment;
@@ -65,6 +65,8 @@ void stitch_alignment_trace(int32_t hap_start, const std::string& hap_aln_to_ref
       seed_pos++;
     hap_aln_index++;
   }
+  while (hap_aln_index < hap_aln_to_ref.size() && hap_aln_to_ref[hap_aln_index] == 'D')
+    hap_aln_index++;
   assert(hap_aln_index != hap_aln_to_ref.size());
 
   int read_aln_index = 0;
@@ -73,6 +75,8 @@ void stitch_alignment_trace(int32_t hap_start, const std::string& hap_aln_to_ref
       seed_base--;
     read_aln_index++;
   }
+  while (read_aln_index < read_aln_to_hap.size() && read_aln_to_hap[read_aln_index] == 'D')
+    read_aln_index++;
   assert(read_aln_index != read_aln_to_hap.size());
     
   std::string left_aln  = stitch(hap_aln_to_ref, read_aln_to_hap, hap_aln_index-1, read_aln_index-1, -1);
