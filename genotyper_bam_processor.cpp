@@ -2,8 +2,35 @@
 #include <iostream>
 #include <time.h>
 
+#include "sys/sysinfo.h"
+#include "sys/types.h"
+
 #include "extract_indels.h"
 #include "genotyper_bam_processor.h"
+
+int parseLine(char* line){
+  int i = strlen(line);
+  while (*line < '0' || *line > '9') line++;
+  line[i-3] = '\0';
+  i = atoi(line);
+  return i;
+}
+
+int getUsedPhysicalMemoryKB(){
+  FILE* file = fopen("/proc/self/status", "r");
+  int result = -1;
+  char line[128];
+
+  while (fgets(line, 128, file) != NULL){
+    if (strncmp(line, "VmRSS:", 6) == 0){
+      result = parseLine(line);
+      break;
+    }
+  }
+  fclose(file);
+  return result;
+}
+
 
 void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 						      std::vector< std::vector<double> >& log_p1s,
@@ -163,7 +190,9 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	       << "\t" << " Alignment traceback  = "  << seq_genotyper->locus_aln_trace_time() << " seconds\n";
     }
   }
-  logger() << std::endl;
+
+  logger() << "Total memory in use = " << getUsedPhysicalMemoryKB() << " KB"
+	   << std::endl;
 
   delete seq_genotyper;
   delete stutter_model;
