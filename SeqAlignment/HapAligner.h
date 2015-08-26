@@ -41,7 +41,7 @@ class HapAligner {
   std::string retrace(Haplotype* haplotype,
 		      int seq_len, int block_index, int base_index, int matrix_index, double* l_match_matrix,
 		      double* l_insert_matrix, double* l_deletion_matrix, int* best_artifact_size, int* best_artifact_pos,
-		      int& flank_ins_size, int& flank_del_size);
+		      int& flank_ins_size, int& flank_del_size, int& stutter_size);
 
  public:
   HapAligner(Haplotype* haplotype){
@@ -63,7 +63,7 @@ class HapAligner {
   int calc_seed_base(Alignment& alignment);
 
   void process_read(Alignment& aln, int seed_base, BaseQuality* base_quality, bool retrace_aln,
-		    double* prob_ptr, Alignment& traced_aln, int& num_flank_ins, int& num_flank_del);
+		    double* prob_ptr, Alignment& traced_aln, int& num_flank_ins, int& num_flank_del, int& stutter_size);
 
   void process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality,
 		     double* aln_probs, int* seed_positions);
@@ -73,7 +73,7 @@ class HapAligner {
     Returns the result as a new Alignment relative to the reference haplotype
    */
   void trace_optimal_aln(Alignment& orig_aln, int seed_base, int best_haplotype, BaseQuality* base_quality,
-			 Alignment& traced_aln, int& num_flank_ins, int& num_flank_del);
+			 Alignment& traced_aln, int& num_flank_ins, int& num_flank_del, int& stutter_size);
 };
 
 #endif
