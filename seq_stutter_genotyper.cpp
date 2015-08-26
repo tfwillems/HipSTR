@@ -445,6 +445,8 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\"" << "Number of reads with SNP phasing information"                  << "\">" << "\n"
       << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""  << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
       << "##FORMAT=<ID=" << "DFILT"       << ",Number=1,Type=Integer,Description=\"" << "Number of reads filtered due to various issues"                << "\">" << "\n"
+      << "##FORMAT=<ID=" << "DSTUTTER"    << ",Number=1,Type=Integer,Description=\"" << "Number of reads with a stutter indel in the STR region"        << "\">" << "\n"
+      << "##FORMAT=<ID=" << "DFLANKINDEL" << ",Number=1,Type=Integer,Description=\"" << "Number of reads with an indel in the regions flanking the STR" << "\">" << "\n"
       << "##FORMAT=<ID=" << "BPDOSE"      << ",Number=1,Type=Float,Description=\""   << "Posterior mean base pair difference from reference"            << "\">" << "\n"
       << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\"" << "Base pair difference observed in each read"                    << "\">" << "\n"
       << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probs" << "\">" << "\n";
@@ -687,6 +689,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   // Extract information about each read and group by sample
   assert(bp_diffs_.size() == num_reads_);
   std::vector<int> num_aligned_reads(num_samples_, 0), num_reads_with_snps(num_samples_, 0), masked_reads(num_samples_, 0), num_proc_alns(num_samples_, 0);
+  std::vector<int> num_reads_with_stutter(num_samples_, 0), num_reads_with_flank_indels(num_samples_, 0);
   std::vector< std::vector<int> > bps_per_sample(num_samples_);
   std::vector< std::vector<double> > log_read_phases(num_samples_), posterior_bps_per_sample(num_samples_);
 
@@ -713,14 +716,19 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     double trace_start = clock();
     int best_gt = (log_phase_one > LOG_ONE_HALF ? gt_a : gt_b);
     Alignment traced_aln;
-    int idx_1 = sample_label_[read_index], idx_2 = num_proc_alns[sample_label_[read_index]], num_flank_ins, num_flank_del;
-    hap_aligner.trace_optimal_aln(alns_[idx_1][idx_2], seed_positions_[read_index], best_gt, &base_quality_, traced_aln, num_flank_ins, num_flank_del);
+    int idx_1 = sample_label_[read_index], idx_2 = num_proc_alns[sample_label_[read_index]], num_flank_ins, num_flank_del, stutter_size;
+    hap_aligner.trace_optimal_aln(alns_[idx_1][idx_2], seed_positions_[read_index], best_gt, &base_quality_, traced_aln, num_flank_ins, num_flank_del, stutter_size);
     num_proc_alns[idx_1]++;
     if (!use_read(traced_aln, num_flank_ins, num_flank_del)){
       masked_reads[idx_1]++;
       read_LL_ptr += num_alleles_;
       continue;
     }
+    if (stutter_size != 0)
+      num_reads_with_stutter[sample_label_[read_index]]++;
+    if (num_flank_ins != 0 || num_flank_del != 0)
+      num_reads_with_flank_indels[sample_label_[read_index]]++;
+
     //max_LL_alns_[idx_1].push_back(alns_[idx_1][idx_2]);
     max_LL_alns_[idx_1].push_back(traced_aln);
     locus_aln_trace_time_ += (clock() - trace_start)/CLOCKS_PER_SEC;
@@ -817,7 +825,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   }
 
   // Add FORMAT field
-  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DFILT:PDP:BPDOSE" : "\tGT:GB:Q:DP:DFILT:BPDOSE");
+  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DFILT:DSTUTTER:DFLANKINDEL:PDP:BPDOSE" : "\tGT:GB:Q:DP:DFILT:DSTUTTER:DFLANKINDEL:BPDOSE");
   if (output_allreads)  out << ":ALLREADS";
   if (output_pallreads) out << ":PALLREADS";
   if (output_gls)       out << ":GL";
@@ -862,6 +870,8 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	  << ":" << num_aligned_reads[sample_index]                                                // Total reads used to genotype (after filtering)
 	  << ":" << num_reads_with_snps[sample_index]                                              // Total reads with SNP information
 	  << ":" << masked_reads[sample_index]                                                     // Total masked reads
+	  << ":" << num_reads_with_stutter[sample_index]                                           // Total reads with a non-zero stutter artifact in ML alignment
+	  << ":" << num_reads_with_flank_indels[sample_index]                                      // Total reads with an indel in flank in ML alignment
 	  << ":" << phase1_reads << "|" << phase2_reads                                            // Reads per allele
 	  << ":" << bp_dosages[sample_index];                                                      // Posterior STR dosage (in base pairs)
     }
@@ -871,6 +881,8 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	  << ":" << exp(log_unphased_posteriors[sample_index])                                     // Unphased posterior
 	  << ":" << num_aligned_reads[sample_index]                                                // Total reads used to genotype (after filtering)
 	  << ":" << masked_reads[sample_index]                                                     // Total masked reads
+	  << ":" << num_reads_with_stutter[sample_index]                                           // Total reads with a non-zero stutter artifact in ML alignment
+	  << ":" << num_reads_with_flank_indels[sample_index]                                      // Total reads with an indel in flank in ML alignment
 	  << ":" << bp_dosages[sample_index];                                                      // Posterior STR dosage (in base pairs)
     }
 
