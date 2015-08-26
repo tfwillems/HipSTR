@@ -14,6 +14,60 @@
 #include "seqio.h"
 #include "stringops.h"
 
+const std::string ALT_MAP_TAG = "XA";
+
+void BamProcessor::extract_mappings(BamTools::BamAlignment& aln, const BamTools::RefVector& ref_vector,
+				    std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs){
+  assert(chrom_pos_pairs.size() == 0);
+  if (aln.RefID == -1 || aln.CigarData.size() == 0)
+    return;
+  assert(aln.RefID < ref_vector.size());
+  chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(ref_vector[aln.RefID].RefName, aln.Position));
+
+  if (aln.HasTag(ALT_MAP_TAG)){
+    std::string alt_info;
+    if (!aln.GetTag(ALT_MAP_TAG, alt_info))
+      printErrorAndDie("Failed to extract XA tag from BAM alignment");
+    std::vector<std::string> alts;
+    split_by_delim(alt_info, ';', alts);
+    for (unsigned int i = 0; i < alts.size(); i++){
+      std::vector<std::string> tokens;
+      split_by_delim(alts[i], ',', tokens);
+      chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(tokens[0], abs(std::stol(tokens[1]))));
+    }
+  }
+}
+
+void BamProcessor::get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::BamAlignment& aln_2, const BamTools::RefVector& ref_vector,
+				      std::vector< std::pair<std::string, int32_t> >& p1, std::vector< std::pair<std::string, int32_t> >& p2){
+  assert(p1.size() == 0 && p2.size() == 0);
+  if (aln_1.RefID == -1 || aln_2.RefID == -1)
+    return;
+
+  std::vector< std::pair<std::string, int32_t> > pairs_1, pairs_2;
+  extract_mappings(aln_1, ref_vector, pairs_1);
+  extract_mappings(aln_2, ref_vector, pairs_2);
+  std::sort(pairs_1.begin(), pairs_1.end());
+  std::sort(pairs_2.begin(), pairs_2.end());
+
+  unsigned int min_j = 0;
+  for (unsigned int i = 0; i < pairs_1.size(); i++){
+    for (unsigned int j = min_j; j < pairs_2.size(); j++){
+      int chrom_comp = pairs_1[i].first.compare(pairs_2[j].first);
+      if (chrom_comp < 0)
+	break;
+      else if (chrom_comp > 0)
+	min_j = j+1;
+      else {
+	if (abs(pairs_1[i].second - pairs_2[j].second) < MAX_MATE_DIST){
+	  p1.push_back(pairs_1[i]);
+	  p2.push_back(pairs_2[j]);
+	}
+      }
+    }
+  }
+}
+
 std::string BamProcessor::get_read_group(BamTools::BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping){
   std::string rg;
   std::string rg_tag = "RG";
@@ -57,8 +111,10 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   int32_t diff_chrom_mate = 0, unmapped_mate = 0, not_spanning = 0; // Counts for filters that are always applied
   int32_t insert_size = 0, multimapped = 0, mapping_quality = 0, flank_len = 0; // Counts for filters that are user-controlled
   int32_t bp_before_indel = 0, end_match_window = 0, num_end_matches = 0, read_has_N = 0, hard_clip = 0, soft_clip = 0, split_alignment = 0, low_qual_score = 0;
+  int32_t unique_mapping = 0;
   BamTools::BamAlignment alignment;
 
+  const BamTools::RefVector& ref_vector = reader.GetReferenceData();
   std::vector<BamTools::BamAlignment> paired_str_alns, mate_alns, unpaired_str_alns;
   std::map<std::string, BamTools::BamAlignment> potential_strs, potential_mates;
 
@@ -174,8 +230,20 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     if (pass){
       auto aln_iter = potential_mates.find(aln_key);
       if (aln_iter != potential_mates.end()){
-	paired_str_alns.push_back(alignment);
-	mate_alns.push_back(aln_iter->second);
+	bool add = true;
+	if (check_unique_mapping_){
+	  std::vector< std::pair<std::string, int32_t> > p_1, p_2;
+	  get_valid_pairings(alignment, aln_iter->second, ref_vector, p_1, p_2);
+	  if (p_1.size() != 1 || p_1[0].second != alignment.Position){
+	    add = false;
+	    unique_mapping++;
+	  }
+	}
+
+	if (add){
+	  paired_str_alns.push_back(alignment);
+	  mate_alns.push_back(aln_iter->second);
+	}
 	potential_mates.erase(aln_iter);
       }
       else 
@@ -184,8 +252,20 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     else {
       auto aln_iter = potential_strs.find(aln_key);
       if (aln_iter != potential_strs.end()){
-	paired_str_alns.push_back(aln_iter->second);
-	mate_alns.push_back(alignment);
+	bool add = true;
+	if (check_unique_mapping_){
+	  std::vector< std::pair<std::string, int32_t> > p_1, p_2;
+          get_valid_pairings(alignment, aln_iter->second, ref_vector, p_1, p_2);
+          if (p_2.size() != 1 || p_2[0].second != aln_iter->second.Position){
+            add = false;
+            unique_mapping++;
+          }
+	}
+
+	if (add){
+	  paired_str_alns.push_back(aln_iter->second);
+	  mate_alns.push_back(alignment);
+	}
 	potential_strs.erase(aln_iter);
       }
       else {
@@ -198,8 +278,16 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     }
   }
 
-  for (auto aln_iter = potential_strs.begin(); aln_iter != potential_strs.end(); ++aln_iter)
-    unpaired_str_alns.push_back(aln_iter->second);
+  for (auto aln_iter = potential_strs.begin(); aln_iter != potential_strs.end(); ++aln_iter){
+    if (check_unique_mapping_){
+      if (!aln_iter->second.HasTag(ALT_MAP_TAG))
+	unpaired_str_alns.push_back(aln_iter->second);
+      else
+	unique_mapping++;
+    }
+    else
+      unpaired_str_alns.push_back(aln_iter->second);
+  }
   potential_strs.clear();
   potential_mates.clear();
   logger() << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads" << std::endl;
@@ -219,8 +307,10 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	   << "\n\t" << bp_before_indel  << " had too few bp before the first indel"
 	   << "\n\t" << end_match_window << " did not have the maximal number of end matches within the specified window"
 	   << "\n\t" << num_end_matches  << " had too few bp matches along the ends"
-	   << "\n\t" << low_qual_score   << " had low base quality scores"
-	   << "\n"   << region_alignments.size() << " PASSED ALL FILTERS" << "\n" << std::endl;
+	   << "\n\t" << low_qual_score   << " had low base quality scores";
+  if (check_unique_mapping_)
+    logger() << "\n\t" << unique_mapping << " did not have a unique mapping";
+  logger() << "\n" << region_alignments.size() << " PASSED ALL FILTERS" << "\n" << std::endl;
     
   // Output the spanning reads to a BAM file, if requested
   if (bam_writer.IsOpen()){

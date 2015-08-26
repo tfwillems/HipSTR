@@ -19,6 +19,9 @@ class BamProcessor {
   bool use_bam_rgs_;
   bool check_mate_info_;
   bool rem_pcr_dups_;
+  bool check_unique_mapping_; // Check that a read maps uniquely based on the BAM information
+                              // For single-end reads, this is only the case if it doesn't have an XA tag
+                              // For paired-end reads, the intersection of mapping locations must be unique
 
   // Timing statistics (in seconds)
   double total_bam_seek_time_;
@@ -26,14 +29,20 @@ class BamProcessor {
   double total_read_filter_time_;
   double locus_read_filter_time_;
 
- void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq,
-			    std::vector<Region>::iterator region_iter,
-			    std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
-			    std::vector<std::string>& rg_names,
-			    std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,                                                             
-			    std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,                                                              
-			    std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,                                                           
-			    BamTools::BamWriter& bam_writer);
+  void extract_mappings(BamTools::BamAlignment& aln, const BamTools::RefVector& ref_vector,
+			std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs);
+
+  void get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::BamAlignment& aln_2, const BamTools::RefVector& ref_vector,
+			  std::vector< std::pair<std::string, int32_t> >& p1, std::vector< std::pair<std::string, int32_t> >& p2);
+
+  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq,
+			     std::vector<Region>::iterator region_iter,
+			     std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
+			     std::vector<std::string>& rg_names,
+			     std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
+			     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
+			     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
+			     BamTools::BamWriter& bam_writer);
 
  std::string get_read_group(BamTools::BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping);
 
@@ -49,6 +58,7 @@ class BamProcessor {
  BamProcessor(bool use_bam_rgs, bool filter_by_mate, bool remove_pcr_dups){
    use_bam_rgs_             = use_bam_rgs;
    check_mate_info_         = filter_by_mate;
+   check_unique_mapping_    = true;
    rem_pcr_dups_            = remove_pcr_dups;
    MAX_MATE_DIST            = 1000;
    MIN_BP_BEFORE_INDEL      = 7;
@@ -75,6 +85,7 @@ class BamProcessor {
  }
 
  void remove_all_filters(){
+   check_unique_mapping_    = false;
    MIN_BP_BEFORE_INDEL      = 0;
    MIN_FLANK                = 0;
    MIN_READ_END_MATCH       = 0;
