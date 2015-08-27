@@ -44,10 +44,11 @@ class RepeatStutterInfo {
     return copy;
   }
 
-  inline StutterModel* get_stutter_model()       const  { return stutter_model_; }
-  inline const int get_period()                  const  { return period_;  }
-  inline const int max_insertion()               const  { return max_ins_; }
-  inline const int max_deletion()                const  { return max_del_; }
+  inline void set_stutter_model(StutterModel* model)  { stutter_model_ = model; }
+  inline StutterModel* get_stutter_model()     const  { return stutter_model_;  }
+  inline const int get_period()                const  { return period_;         }
+  inline const int max_insertion()             const  { return max_ins_;        }
+  inline const int max_deletion()              const  { return max_del_;        }
 
   void add_alternate_allele(std::string& alt_allele){
     allele_sizes_.push_back((int)alt_allele.size());
