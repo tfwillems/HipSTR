@@ -62,7 +62,7 @@ public:
   virtual void analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 					 std::vector< std::vector<double> >& log_p1s, 
 					 std::vector< std::vector<double> >& log_p2s,
-					 std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq){
+					 std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq, int iter){
     log("Ignoring read phasing probabilties");
   }
 

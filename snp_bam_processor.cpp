@@ -89,7 +89,7 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
   total_snp_phase_info_time_ += locus_snp_phase_info_time_;
 
   // Run any additional analyses using phasing probabilities
-  analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region, ref_allele, chrom_seq);
+  analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region, ref_allele, chrom_seq, 0);
 }
 
 int SNPBamProcessor::get_haplotype(BamTools::BamAlignment& aln){
@@ -174,6 +174,6 @@ void SNPBamProcessor::process_10x_reads(std::vector< std::vector<BamTools::BamAl
   total_snp_phase_info_time_ += locus_snp_phase_info_time_;
 
   // Run any additional analyses using phasing probabilities
-  analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region, ref_allele, chrom_seq);
+  analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region, ref_allele, chrom_seq, 0);
 }
 
