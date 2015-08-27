@@ -4,6 +4,7 @@
 #include <time.h>
 
 #include "seq_stutter_genotyper.h"
+#include "em_stutter_genotyper.h"
 #include "error.h"
 #include "extract_indels.h"
 #include "mathops.h"
@@ -210,7 +211,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   sample_label_     = new int[num_reads_];
   sample_total_LLs_ = new double[num_samples_];
 
-  locus_left_aln_time_ = clock();
+  double locus_left_aln_time = clock();
   logger << "Left aligning reads..." << std::endl;
   std::map<std::string, std::pair<int,int> > seq_to_alns;
   std::map<std::string, int> seq_to_index;
@@ -273,8 +274,8 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
       sample_label_[read_index] = i; 
     }
   }
-  locus_left_aln_time_  = (clock() - locus_left_aln_time_)/CLOCKS_PER_SEC;
-  total_left_aln_time_ += locus_left_aln_time_;
+  locus_left_aln_time  = (clock() - locus_left_aln_time)/CLOCKS_PER_SEC;
+  total_left_aln_time_ += locus_left_aln_time;
 
   if (align_fail_count != 0)
     logger << "Failed to left align " << align_fail_count << " out of " << num_reads_ << " reads" << std::endl;
@@ -287,7 +288,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     for (unsigned int j = 0; j < alns_[i].size(); ++j)
       alns_[i][j].fix_N_base_qualities(base_quality_);
 
-  locus_hap_build_time_ = clock();
+  double locus_hap_build_time = clock();
   std::vector<std::string> vcf_alleles;
   if (ref_vcf_ != NULL){
     bool success = false;
@@ -336,8 +337,8 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     else
       pos_ = -1;
   }
-  locus_hap_build_time_  = (clock() - locus_hap_build_time_)/CLOCKS_PER_SEC;
-  total_hap_build_time_ += locus_hap_build_time_;
+  locus_hap_build_time  = (clock() - locus_hap_build_time)/CLOCKS_PER_SEC;
+  total_hap_build_time_ += locus_hap_build_time;
 
   if (pos_ != -1){
     // Print information about the haplotype and the stutter model
@@ -377,7 +378,7 @@ bool SeqStutterGenotyper::genotype(std::ostream& logger){
   // Align each read against each candidate haplotype
   logger << "Aligning reads to each candidate haplotype..." << std::endl;
   init_alignment_model();
-  locus_hap_aln_time_ = clock();
+  double locus_hap_aln_time = clock();
   HapAligner hap_aligner(haplotype_);
   if (pool_identical_seqs_){
     // TO DO: Add check to see if sequence already encountered
@@ -393,8 +394,8 @@ bool SeqStutterGenotyper::genotype(std::ostream& logger){
       read_index += alns_[i].size();
     }  
   }
-  locus_hap_aln_time_  = (clock() - locus_hap_aln_time_)/CLOCKS_PER_SEC;
-  total_hap_aln_time_ += locus_hap_aln_time_;
+  locus_hap_aln_time   = (clock() - locus_hap_aln_time)/CLOCKS_PER_SEC;
+  total_hap_aln_time_ += locus_hap_aln_time;
 
   logger << "Genotyping samples..." << std::endl;
   if (stutter_model_ == NULL)
@@ -624,9 +625,11 @@ bool SeqStutterGenotyper::use_read(Alignment& max_LL_aln, int num_flank_ins, int
 }
 
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq, bool output_gls, bool output_pls,
-					   bool output_allreads, bool output_pallreads, bool output_viz,
+					   bool output_allreads, bool output_pallreads, bool output_viz, std::vector<int>& read_str_sizes,
 					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
   assert(haplotype_->num_blocks() == 3);
+  assert(read_str_sizes.size() == 0);
+
   if(log_allele_priors_ != NULL)
     assert(!output_gls && !output_pls); // These fields only make sense in the context of MLE estimation, not MAP estimation
 
@@ -697,11 +700,11 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   max_LL_alns_ = std::vector< std::vector<Alignment> >(num_samples_);
   HapAligner hap_aligner(haplotype_);
   double* read_LL_ptr   = log_aln_probs_;
-  locus_aln_trace_time_ = 0;
   for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
     if (seed_positions_[read_index] == -1){
       read_LL_ptr += num_alleles_;
       num_proc_alns[sample_label_[read_index]]++;
+      read_str_sizes.push_back(-999);
       continue;
     }
 
@@ -722,16 +725,18 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     if (!use_read(traced_aln, num_flank_ins, num_flank_del)){
       masked_reads[idx_1]++;
       read_LL_ptr += num_alleles_;
+      read_str_sizes.push_back(-999);
       continue;
     }
     if (stutter_size != 0)
       num_reads_with_stutter[sample_label_[read_index]]++;
     if (num_flank_ins != 0 || num_flank_del != 0)
       num_reads_with_flank_indels[sample_label_[read_index]]++;
+    read_str_sizes.push_back(allele_bp_diffs[best_gt]+stutter_size);
 
     //max_LL_alns_[idx_1].push_back(alns_[idx_1][idx_2]);
     max_LL_alns_[idx_1].push_back(traced_aln);
-    locus_aln_trace_time_ += (clock() - trace_start)/CLOCKS_PER_SEC;
+    total_aln_trace_time_ += (clock() - trace_start)/CLOCKS_PER_SEC;
 
     // Adjust number of aligned reads per sample
     num_aligned_reads[sample_label_[read_index]]++;
@@ -747,7 +752,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     read_LL_ptr += num_alleles_;
   }
-  total_aln_trace_time_ += locus_aln_trace_time_;
  
   // Compute allele counts for samples of interest
   std::set<std::string> samples_of_interest(sample_names.begin(), sample_names.end());
@@ -927,5 +931,46 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     std::stringstream locus_info;
     locus_info << region_->chrom() << "\t" << region_->start() << "\t" << region_->stop();
     visualizeAlignments(max_LL_alns_, sample_names_, sample_results, hap_blocks_, chrom_seq, locus_info.str(), true, html_output);
+  }
+}
+
+
+bool SeqStutterGenotyper::recompute_stutter_model(std::string& chrom_seq, std::ostream& logger,
+						  int max_em_iter, double abs_ll_converge, double frac_ll_converge){
+  logger << "Retraining EM stutter genotyper using maximum likelihood alignments" << std::endl;
+
+  // Get the artifact sizes observed in each read
+  std::vector<std::string> empty_sample_names;
+  std::vector<int> read_str_sizes;
+  write_vcf_record(empty_sample_names, false, chrom_seq, false, false, false, false, false, read_str_sizes, std::cerr, std::cerr, logger);
+  max_LL_alns_.clear(); // Need to clear this data structure for a future call to write_vcf_record to work
+  assert(read_str_sizes.size() == num_reads_);
+
+  std::vector< std::vector<int> > str_num_bps(num_samples_);
+  std::vector< std::vector<double> > str_log_p1s(num_samples_), str_log_p2s(num_samples_);
+  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
+    if (read_str_sizes[read_index] != -999){
+      str_num_bps[sample_label_[read_index]].push_back(read_str_sizes[read_index]);
+      str_log_p1s[sample_label_[read_index]].push_back(log_p1_[read_index]);
+      str_log_p2s[sample_label_[read_index]].push_back(log_p2_[read_index]);
+    }
+  }
+
+  EMStutterGenotyper length_genotyper(region_->chrom(), region_->start(), region_->stop(), haploid_, str_num_bps, str_log_p1s, str_log_p2s, sample_names_, region_->period(), 0);
+  bool trained = length_genotyper.train(max_em_iter, abs_ll_converge, frac_ll_converge, false, logger);
+  if (trained){
+    delete stutter_model_;
+    stutter_model_ = length_genotyper.get_stutter_model()->copy();
+    logger << "Learned stutter model: " << *stutter_model_ << std::endl;
+
+    // Replace the stutter model in the repeat block
+    assert(haplotype_->num_blocks() == 3);
+    assert(haplotype_->get_block(1)->get_repeat_info() != NULL);
+    ((RepeatBlock*)(haplotype_->get_block(1)))->get_repeat_info()->set_stutter_model(stutter_model_);
+    return genotype(logger);
+  }
+  else {
+    logger << "Retraining stutter model training failed for locus " << region_->chrom() << ":" << region_->start() << "-" << region_->stop() << std::endl;
+    return false;
   }
 }

@@ -133,10 +133,10 @@ class SeqStutterGenotyper{
   bool haploid_;
 
   // Timing statistics (in seconds)
-  double total_hap_build_time_, locus_hap_build_time_;
-  double total_left_aln_time_,  locus_left_aln_time_;
-  double total_hap_aln_time_,   locus_hap_aln_time_;
-  double total_aln_trace_time_, locus_aln_trace_time_;
+  double total_hap_build_time_;
+  double total_left_aln_time_;
+  double total_hap_aln_time_;
+  double total_aln_trace_time_;
 
  public:
   SeqStutterGenotyper(Region& region, bool haploid,
@@ -160,15 +160,10 @@ class SeqStutterGenotyper{
     pool_identical_seqs_   = false;
     MIN_SUM_QUAL_LOG_PROB  = -10;
     haploid_               = haploid;
-
     total_hap_build_time_  = 0;
-    locus_hap_build_time_  = -1;
     total_left_aln_time_   = 0;
-    locus_left_aln_time_   = -1;
     total_hap_aln_time_    = 0;
-    locus_hap_aln_time_    = -1;
     total_aln_trace_time_  = 0;
-    locus_aln_trace_time_  = -1;
 
     // True iff no allele priors are available (for imputation)
     if (ref_vcf == NULL)
@@ -224,21 +219,24 @@ class SeqStutterGenotyper{
 
   void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
 			bool output_gls, bool output_pls, bool output_allreads, bool output_pallreads, bool output_viz,
+			std::vector<int>& read_str_sizes,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 
-  double total_hap_build_time(){ return total_hap_build_time_; }
-  double locus_hap_build_time(){ return locus_hap_build_time_; }
-  double total_left_aln_time() { return total_left_aln_time_;  }
-  double locus_left_aln_time() { return locus_left_aln_time_;  }
-  double total_hap_aln_time()  { return total_hap_aln_time_;   }
-  double locus_hap_aln_time()  { return locus_hap_aln_time_;   }
-  double total_aln_trace_time(){ return total_aln_trace_time_; }
-  double locus_aln_trace_time(){ return locus_aln_trace_time_; }
-  
+
+  double hap_build_time(){ return total_hap_build_time_; }
+  double left_aln_time() { return total_left_aln_time_;  }
+  double hap_aln_time()  { return total_hap_aln_time_;   }
+  double aln_trace_time(){ return total_aln_trace_time_; }
+
+
   bool genotype(std::ostream& logger);
+
+
+  /*
+   * Recompute the stutter model using the PCR artifacts obtained from the ML alignments
+   * and regenotype the samples using this new model
+  */
+  bool recompute_stutter_model(std::string& chrom_seq, std::ostream& logger, int max_em_iter, double abs_ll_converge, double frac_ll_converge);
 };
 
 #endif
-
-
-
