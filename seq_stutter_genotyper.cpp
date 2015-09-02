@@ -1059,5 +1059,5 @@ void SeqStutterGenotyper::compute_bootstrap_qualities(int num_iter, std::vector<
     bootstrap_qualities.push_back(1.0*ML_gt_counts[i]/num_iter);
 
   double bootstrap_time = (clock() - bootstrap_start)/CLOCKS_PER_SEC;
-  std::cerr << "Bootstrapping time = " << bootstrap_time << std::endl;
+  //std::cerr << "Bootstrapping time = " << bootstrap_time << std::endl;
 }
