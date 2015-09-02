@@ -90,8 +90,9 @@ class SeqStutterGenotyper{
   /* Compute the alignment probabilites between each read and each haplotype */
   double calc_align_probs();
 
-  /* Compute the posteriors for each sample, given the haplotype probabilites and stutter model */
+  /* Compute the posteriors for each sample using the haplotype probabilites, stutter model and read weights */
   double calc_log_sample_posteriors();  
+  double calc_log_sample_posteriors(std::vector<int>& read_weights);
 
   // Set up the relevant data structures. Invoked by the constructor 
   void init(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
@@ -117,6 +118,13 @@ class SeqStutterGenotyper{
   // Designed to remove alleles who aren't the MAP genotype of any samples
   // However, it does not modify any of the haplotype-related data structures
   void remove_alleles(std::vector<int>& allele_indices);
+
+  // Determine the genotype associated with each sample based on the current genotype posteriors
+  void get_optimal_genotypes(std::vector< std::pair<int, int> >& gts);
+
+  // Compute bootstrapped quality scores by resampling reads and determining how frequently
+  // the genotypes match the ML genotype
+  void compute_bootstrap_qualities(int num_iter, std::vector<double>& bootstrap_qualities);
 
   std::set<std::string> expanded_alleles_;
 
@@ -218,7 +226,8 @@ class SeqStutterGenotyper{
   bool use_read(Alignment& max_LL_aln, int num_flank_ins, int num_flank_del);
 
   void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
-			bool output_gls, bool output_pls, bool output_allreads, bool output_pallreads, bool output_viz,
+			bool output_bootstrap_qualities, bool output_gls, bool output_pls,
+			bool output_allreads, bool output_pallreads, bool output_viz,
 			std::vector<int>& read_str_sizes,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 

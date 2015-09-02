@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cfloat>
+#include <random>
 #include <sstream>
 #include <time.h>
 
@@ -445,6 +446,7 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\"" << "Number of valid reads used for sample's genotype"              << "\">" << "\n"
       << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\"" << "Number of reads with SNP phasing information"                  << "\">" << "\n"
       << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""  << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
+      << "##FORMAT=<ID=" << "BQ"          << ",Number=1,Type=Float,Description=\""   << "Bootstrapped quality score"                                    << "\">" << "\n"
       << "##FORMAT=<ID=" << "DFILT"       << ",Number=1,Type=Integer,Description=\"" << "Number of reads filtered due to various issues"                << "\">" << "\n"
       << "##FORMAT=<ID=" << "DSTUTTER"    << ",Number=1,Type=Integer,Description=\"" << "Number of reads with a stutter indel in the STR region"        << "\">" << "\n"
       << "##FORMAT=<ID=" << "DFLANKINDEL" << ",Number=1,Type=Integer,Description=\"" << "Number of reads with an indel in the regions flanking the STR" << "\">" << "\n"
@@ -533,7 +535,8 @@ void SeqStutterGenotyper::debug_sample(int sample_index){
 }
 
 
-double SeqStutterGenotyper::calc_log_sample_posteriors(){
+double SeqStutterGenotyper::calc_log_sample_posteriors(std::vector<int>& read_weights){
+  assert(read_weights.size() == num_reads_);
   std::vector<double> sample_max_LLs(num_samples_, -DBL_MAX);
   double* sample_LL_ptr = log_sample_posteriors_;
 
@@ -574,8 +577,8 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
       double* read_LL_ptr = log_aln_probs_;
       for (int read_index = 0; read_index < num_reads_; ++read_index){
-	sample_LL_ptr[sample_label_[read_index]] += log_sum_exp(LOG_ONE_HALF + log_p1_[read_index] + read_LL_ptr[index_1], 
-								LOG_ONE_HALF + log_p2_[read_index] + read_LL_ptr[index_2]);
+	sample_LL_ptr[sample_label_[read_index]] += read_weights[read_index]*log_sum_exp(LOG_ONE_HALF + log_p1_[read_index] + read_LL_ptr[index_1],
+											 LOG_ONE_HALF + log_p2_[read_index] + read_LL_ptr[index_2]);
 	assert(sample_LL_ptr[sample_label_[read_index]] <= TOLERANCE);
 	read_LL_ptr += num_alleles_;
       }
@@ -611,6 +614,12 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
   return total_LL;
 }
 
+
+double SeqStutterGenotyper::calc_log_sample_posteriors(){
+  std::vector<int> weights(num_reads_, 1);
+  return calc_log_sample_posteriors(weights);
+}
+
 bool SeqStutterGenotyper::use_read(Alignment& max_LL_aln, int num_flank_ins, int num_flank_del){
   return true;
 
@@ -624,7 +633,22 @@ bool SeqStutterGenotyper::use_read(Alignment& max_LL_aln, int num_flank_ins, int
   return true;
 }
 
-void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq, bool output_gls, bool output_pls,
+void SeqStutterGenotyper::get_optimal_genotypes(std::vector< std::pair<int, int> >& gts){
+  assert(gts.size() == 0);
+  gts = std::vector< std::pair<int,int> > (num_samples_, std::pair<int,int>(-1,-1));
+  double* log_post_ptr = log_sample_posteriors_;
+  std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX);
+  for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
+    for (int index_2 = 0; index_2 < num_alleles_; ++index_2)
+      for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index, ++log_post_ptr)
+        if (*log_post_ptr > log_phased_posteriors[sample_index]){
+          log_phased_posteriors[sample_index] = *log_post_ptr;
+          gts[sample_index] = std::pair<int,int>(index_1, index_2);
+        }
+}
+
+void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
+					   bool output_bootstrap_qualities, bool output_gls, bool output_pls,
 					   bool output_allreads, bool output_pallreads, bool output_viz, std::vector<int>& read_str_sizes,
 					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
   assert(haplotype_->num_blocks() == 3);
@@ -752,6 +776,12 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     read_LL_ptr += num_alleles_;
   }
+
+  // Compute bootstrap qualities if flag set
+  std::vector<double> bootstrap_qualities;
+  int bootstrap_iter = 100;
+  if (output_bootstrap_qualities)
+    compute_bootstrap_qualities(bootstrap_iter, bootstrap_qualities);
  
   // Compute allele counts for samples of interest
   std::set<std::string> samples_of_interest(sample_names.begin(), sample_names.end());
@@ -830,10 +860,11 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
   // Add FORMAT field
   out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DFILT:DSTUTTER:DFLANKINDEL:PDP:BPDOSE" : "\tGT:GB:Q:DP:DFILT:DSTUTTER:DFLANKINDEL:BPDOSE");
-  if (output_allreads)  out << ":ALLREADS";
-  if (output_pallreads) out << ":PALLREADS";
-  if (output_gls)       out << ":GL";
-  if (output_pls)       out << ":PL";
+  if (output_bootstrap_qualities) out << ":BQ";
+  if (output_allreads)            out << ":ALLREADS";
+  if (output_pallreads)           out << ":PALLREADS";
+  if (output_gls)                 out << ":GL";
+  if (output_pls)                 out << ":PL";
 
   std::map<std::string, std::string> sample_results;
   for (unsigned int i = 0; i < sample_names.size(); i++){
@@ -890,6 +921,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	  << ":" << bp_dosages[sample_index];                                                      // Posterior STR dosage (in base pairs)
     }
 
+    if (output_bootstrap_qualities)
+      out << ":" << bootstrap_qualities[sample_index];
+
     // Add bp diffs from regular left-alignment
     if (output_allreads){
       if (bps_per_sample[sample_index].size() != 0){
@@ -942,7 +976,7 @@ bool SeqStutterGenotyper::recompute_stutter_model(std::string& chrom_seq, std::o
   // Get the artifact sizes observed in each read
   std::vector<std::string> empty_sample_names;
   std::vector<int> read_str_sizes;
-  write_vcf_record(empty_sample_names, false, chrom_seq, false, false, false, false, false, read_str_sizes, std::cerr, std::cerr, logger);
+  write_vcf_record(empty_sample_names, false, chrom_seq, false, false, false, false, false, false, read_str_sizes, std::cerr, std::cerr, logger);
   max_LL_alns_.clear(); // Need to clear this data structure for a future call to write_vcf_record to work
   assert(read_str_sizes.size() == num_reads_);
 
@@ -973,4 +1007,57 @@ bool SeqStutterGenotyper::recompute_stutter_model(std::string& chrom_seq, std::o
     logger << "Retraining stutter model training failed for locus " << region_->chrom() << ":" << region_->start() << "-" << region_->stop() << std::endl;
     return false;
   }
+}
+
+
+void SeqStutterGenotyper::compute_bootstrap_qualities(int num_iter, std::vector<double>& bootstrap_qualities){
+  assert(bootstrap_qualities.size() == 0);
+  double bootstrap_start = clock();
+
+  // Extract the original ML genotypes
+  std::vector< std::pair<int, int> > ML_gts;
+  get_optimal_genotypes(ML_gts);
+
+  // Partition the aligned reads by sample
+  std::vector< std::vector<int> > reads_by_sample(num_samples_);
+  for (unsigned int i = 0; i < num_reads_; i++)
+    if (seed_positions_[i] != -1)
+      reads_by_sample.at(sample_label_[i]).push_back(i);
+
+  std::vector<int> ML_gt_counts(num_samples_, 0);
+  std::uniform_int_distribution<int> unif_dist;
+  std::default_random_engine gen;
+  for (unsigned int i = 0; i < num_iter; i++){
+    std::vector<int> bootstrap_weights(num_reads_, 0);
+
+    // Bootstrap reads for each sample
+    for (unsigned int j = 0; j < num_samples_; j++){
+      int mod = reads_by_sample[j].size();
+      for (unsigned int k = 0; k < mod; k++)
+	bootstrap_weights[reads_by_sample[j][unif_dist(gen)% mod]]++;
+    }
+
+    // Recompute the posteriors using bootstrapped read weights
+    calc_log_sample_posteriors(bootstrap_weights);
+
+    // Increment count if bootstrapped ML genotype (unordered) matches the ML genotype
+    std::vector< std::pair<int, int> > bootstrap_gts;
+    get_optimal_genotypes(bootstrap_gts);
+    for (unsigned int i = 0; i < num_samples_; i++){
+      if (bootstrap_gts[i].first == ML_gts[i].first && bootstrap_gts[i].second == ML_gts[i].second)
+	ML_gt_counts[i]++;
+      else if (bootstrap_gts[i].first == ML_gts[i].second && bootstrap_gts[i].second == ML_gts[i].first)
+	ML_gt_counts[i]++;
+    }
+  }
+
+  // Recalculate the posteriors using the original read indices to restore everything to normalcy
+  calc_log_sample_posteriors();
+
+  // Compute the boostrapped qualities as the fraction of iterations in which the genotype matched
+  for (unsigned int i = 0; i < num_samples_; i++)
+    bootstrap_qualities.push_back(1.0*ML_gt_counts[i]/num_iter);
+
+  double bootstrap_time = (clock() - bootstrap_start)/CLOCKS_PER_SEC;
+  std::cerr << "Bootstrapping time = " << bootstrap_time << std::endl;
 }
