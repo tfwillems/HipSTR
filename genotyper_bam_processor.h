@@ -54,10 +54,11 @@ private:
   bool output_viz_;
   bgzfostream viz_out_;
 
-  bool output_gls_;        // Output the GL FORMAT field to the VCF
-  bool output_pls_;        // Output the PL FORMAT field to the VCF
-  bool output_all_reads_;  // Output the ALLREADS  FORMAT field to the VCF
-  bool output_pall_reads_; // Output the PALLREADS FORMAT field to the VCF
+  bool output_bstrap_quals_;    // Output the BQ FORMAT field to the VCF
+  bool output_gls_;             // Output the GL FORMAT field to the VCF
+  bool output_pls_;             // Output the PL FORMAT field to the VCF
+  bool output_all_reads_;       // Output the ALLREADS  FORMAT field to the VCF
+  bool output_pall_reads_;      // Output the PALLREADS FORMAT field to the VCF
 
   std::set<std::string> haploid_chroms_;
 
@@ -90,6 +91,7 @@ public:
     FRAC_LL_CONVERGE       = 0.001;
     MIN_TOTAL_READS        = 100;
     MAX_TOTAL_READS        = 25000;
+    output_bstrap_quals_   = true;
     output_gls_            = false;
     output_pls_            = false;
     output_all_reads_      = true;
