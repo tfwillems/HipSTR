@@ -162,7 +162,7 @@ double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base,
   // Compute number of viable seed positions and the corresponding uniform prior
   int num_seeds = 0;
   for (int block_index = 0; block_index < fw_haplotype_->num_blocks(); block_index++)
-    if (fw_haplotype_->get_block(block_index)->get_repeat_info() != NULL)
+    if (fw_haplotype_->get_block(block_index)->get_repeat_info() == NULL)
       num_seeds += fw_haplotype_->get_seq(block_index).size();
   double SEED_LOG_MATCH_PRIOR = -log(num_seeds);
   
