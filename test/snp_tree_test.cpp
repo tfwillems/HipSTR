@@ -1,6 +1,4 @@
 #include <iostream>
-#include <thread>
-#include <chrono>
 #include <random>
 #include <time.h>
 #include <assert.h>
@@ -56,14 +54,11 @@ int main() {
   for (int i = 0; i < 10000; ++i)
     queries.push_back(randomInterval(10000000, 1000, 10000000 + 1));
 
-  typedef std::chrono::high_resolution_clock Clock;
-  typedef std::chrono::milliseconds milliseconds;
-
   // using brute-force search
   std::cerr << "Running brute-force approach" << std::endl;
   std::vector<size_t> bruteforcecounts;
-  Clock::time_point t0 = Clock::now();
-  for (auto query_iter = queries.begin(); query_iter != queries.end(); ++query_iter) {
+  double time = clock();
+  for (auto query_iter = queries.begin(); query_iter != queries.end(); ++query_iter){
     std::vector<SNP> results;
     for (auto snp_iter = snps.begin(); snp_iter != snps.end(); ++snp_iter) {
       if (snp_iter->pos() >= query_iter->first && snp_iter->pos() <= query_iter->second)
@@ -71,24 +66,21 @@ int main() {
     }
     bruteforcecounts.push_back(results.size());
   }
-
-  Clock::time_point t1 = Clock::now();
-  milliseconds ms = std::chrono::duration_cast<milliseconds>(t1 - t0);
-  std::cout << "brute force:\t" << ms.count() << "ms" << std::endl;
+  time = (clock() - time)/CLOCKS_PER_SEC;
+  std::cout << "brute force:\t" << time << " sec" << std::endl;
 
   // using the SNP tree
   SNPTree tree = SNPTree(snps);
   std::vector<size_t> treecounts;
   std::cerr << "Running SNP tree approach" << std::endl;
-  t0 = Clock::now();
+  time = clock();
   for (auto query_iter = queries.begin(); query_iter != queries.end(); ++query_iter) {
     std::vector<SNP> results;
     tree.findContained(query_iter->first, query_iter->second, results);
     treecounts.push_back(results.size());
   }
-  t1 = Clock::now();
-  ms = std::chrono::duration_cast<milliseconds>(t1 - t0);
-  std::cout << "interval tree:\t" << ms.count() << "ms" << std::endl;
+  time = (clock() - time)/CLOCKS_PER_SEC;
+  std::cout << "interval tree:\t" << time << " sec" << std::endl;
   
   // check that the same number of results are returned
   auto bfc_iter = bruteforcecounts.begin();
