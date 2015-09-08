@@ -1,9 +1,8 @@
-# HipSTR
+# HipSTR <img src="https://travis-ci.org/tfwillems/HipSTR.svg">
 **H**aplotype-based **i**mputation, **p**hasing and genotyping of **STR**s
 
 #### Author: Thomas Willems <twillems@mit.edu>
 #### License: GNU v2
-
 ## Introduction
 Short tandem repeats [(STRs)](http://en.wikipedia.org/wiki/Microsatellite) are highly repetitive genomic sequences comprised of repeated copies of an underlying motif. Prevalent in most organisms' genomes, STRs are of particular interest because they mutate much more rapidly than most other genomic elements. As a result, they're extremely informative for genomic identification, ancestry inference and genealogy.
 
