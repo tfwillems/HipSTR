@@ -9,7 +9,7 @@
 
 class InsertSizeCounter {
  private:
-  int64_t bin_boundaries[21] = {0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1250, 1500, 1750, 2000, 2500, 3000, 3500, 4000, 5000, 10000};
+  static constexpr int64_t bin_boundaries[21] = {0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1250, 1500, 1750, 2000, 2500, 3000, 3500, 4000, 5000, 10000};
   int64_t total_comps_, valid_comps_;
   double sum_diffs_, sum_square_diffs_;
   std::vector<int64_t> bins_, counts_;
