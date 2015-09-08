@@ -263,10 +263,12 @@ int HapAligner::calc_seed_base(Alignment& aln){
 	// Choose larger of valid two regions
 	if (min_region < repeat_start && max_region >= repeat_stop){
 	  if (repeat_start-1-min_region > max_region-repeat_stop){
-	    min_region = min_region; max_region = repeat_start-1;
+	    //min_region = min_region;
+	    max_region = repeat_start-1;
 	  }
 	  else {
-	    min_region = repeat_stop; max_region = max_region;
+	    min_region = repeat_stop;
+	    //max_region = max_region;
 	  }
 	}
 	
@@ -483,7 +485,6 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 
   const char* base_seq = aln.get_sequence().c_str();
   int base_seq_len     = (int)aln.get_sequence().size();
-  int offset           = base_seq_len-1;
 
   // Allocate scoring matrices based on the maximum haplotype size
   int max_hap_size          = fw_haplotype_->max_size();

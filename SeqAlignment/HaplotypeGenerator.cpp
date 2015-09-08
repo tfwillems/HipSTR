@@ -29,9 +29,6 @@ const double MAX_BLOCK_DEL_TO_READS_RATIO = 0.05;
 // using a large padding window
 const double MAX_FRAC_SAMPLE_DEL_FAIL = 0.01; 
 
-const int MAX_INSERTION_MERGE_DISTANCE = 10;
-const int MAX_DELETION_MERGE_DISTANCE  = 10;
-
 void trim(int32_t left_padding, int32_t right_padding, int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   int min_len = INT_MAX;
   for (unsigned int i = 0; i < sequences.size(); i++)
@@ -349,7 +346,6 @@ int check_deletion_bounds(std::vector< std::vector<Alignment> >& alignments, int
   std::vector<int32_t> del_starts, del_ends;
   for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++){
     int bad_deletions = 0;
-    bool sample_fail  = false;
     for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++)
       aln_iter->get_deletion_boundaries(del_starts, del_ends);
 

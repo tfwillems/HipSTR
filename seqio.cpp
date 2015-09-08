@@ -9,7 +9,7 @@
 
 bool is_file(const std::string& name){
   struct stat st_buf;
-  int status = stat(name.c_str(), &st_buf);
+  stat(name.c_str(), &st_buf);
   return (S_ISREG (st_buf.st_mode));
 }
 

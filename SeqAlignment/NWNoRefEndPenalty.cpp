@@ -39,11 +39,11 @@ public:
 	uint64_t tmp  = val_;
 	uint64_t mask = (1 << BITS_PER_INDEL)-1;
 	for (unsigned int i = 0; i < num_indels_; i++){
-	  //std::cerr << (tmp & mask) << " ";
+	  std::cerr << (tmp & mask) << " ";
 	  tmp >>= BITS_PER_INDEL; 
 	}
 	
-	//std::cerr << num_indels_+1 << std::endl;
+	std::cerr << num_indels_+1 << std::endl;
 	printErrorAndDie("Maximum number of indels exceeded in IndelTracker");
       }
       else {

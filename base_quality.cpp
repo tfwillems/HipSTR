@@ -58,7 +58,7 @@ void BaseQuality::deduce_quality_encodings(BamTools::BamMultiReader& reader){
 
     // Count base qualities
     for (auto qual_iter = alignment.Qualities.begin(); qual_iter != alignment.Qualities.end(); qual_iter++)
-      count_iter->second[*qual_iter]++;
+      count_iter->second[(int)(*qual_iter)]++;
   }
 
   int Illumina_18_count = 0, Illumina_15_count = 0, Illumina_13_count = 0, invalid_count = 0;
