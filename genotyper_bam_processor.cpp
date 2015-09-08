@@ -2,8 +2,8 @@
 #include <iostream>
 #include <time.h>
 
-#include "sys/sysinfo.h"
-#include "sys/types.h"
+//#include "sys/sysinfo.h"
+//#include "sys/types.h"
 
 #include "extract_indels.h"
 #include "genotyper_bam_processor.h"
@@ -198,8 +198,10 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     }
   }
 
+  /*
   logger() << "Total memory in use = " << getUsedPhysicalMemoryKB() << " KB"
 	   << std::endl;
+  */
 
   delete seq_genotyper;
   delete stutter_model;

@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "error.h"
+#include "../error.h"
 #include "exon_info.h"
 
 void ExonInfo::cluster_genes(std::vector< std::vector< Interval<EXON> > >& exon_intervals_by_chrom){

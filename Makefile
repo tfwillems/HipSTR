@@ -31,7 +31,8 @@ VCFLIB_LIB        = vcflib/libvcflib.a
 PHASED_BEAGLE_JAR = PhasedBEAGLE/PhasedBEAGLE.jar
 
 .PHONY: all
-all: BamSieve HipSTR test/allele_expansion_test test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test test/base_qual_test test/read_vcf_alleles_test test/read_vcf_priors_test test/em_stutter_test test/haplotype_test $(PHASED_BEAGLE_JAR) exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
+all: BamSieve HipSTR test/allele_expansion_test test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test test/base_qual_test test/read_vcf_alleles_test test/read_vcf_priors_test test/haplotype_test $(PHASED_BEAGLE_JAR) exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
+#test/em_stutter_test
 
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
@@ -71,7 +72,7 @@ test/haplotype_test: test/haplotype_test.cpp SeqAlignment/Haplotype.cpp SeqAlign
 test/allele_expansion_test: test/allele_expansion_test.cpp SeqAlignment/STRAlleleExpansion.cpp zalgorithm.cpp error.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/em_stutter_test: test/em_stutter_test.cpp em_stutter_genotyper.cpp genotyper_bam_processor.h error.cpp mathops.cpp stringops.cpp stutter_model.cpp $(VCFLIB_LIB)
+test/em_stutter_test: test/em_stutter_test.cpp em_stutter_genotyper.cpp genotyper_bam_processor.cpp error.cpp mathops.cpp stringops.cpp stutter_model.cpp $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/read_vcf_alleles_test: test/read_vcf_alleles_test.cpp error.cpp region.cpp vcf_input.cpp $(VCFLIB_LIB)
