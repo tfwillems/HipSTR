@@ -12,7 +12,7 @@ SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp seqio.cpp zalg
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
 SRC_HIPSTR  = hipstr_main.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp vcf_input.cpp
 SRC_SEQALN  = SeqAlignment/AlignmentData.cpp SeqAlignment/HapAligner.cpp SeqAlignment/RepeatStutterInfo.cpp SeqAlignment/AlignmentModel.cpp SeqAlignment/AlignmentOps.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NWNoRefEndPenalty.cpp SeqAlignment/Haplotype.cpp SeqAlignment/RepeatBlock.cpp SeqAlignment/StutterAligner.cpp SeqAlignment/HaplotypeGenerator.cpp SeqAlignment/STRAlleleExpansion.cpp SeqAlignment/HTMLCreator.cpp SeqAlignment/AlignmentViz.cpp SeqAlignment/AlignmentTraceback.cpp
-SRC_RNASEQ  = filter_rnaseq.cpp exon_info.cpp
+SRC_RNASEQ  = exploratory/filter_rnaseq.cpp exploratory/exon_info.cpp
 
 # For each CPP file, generate an object file
 OBJ_COMMON  := $(SRC_COMMON:.cpp=.o)
@@ -31,12 +31,12 @@ VCFLIB_LIB        = vcflib/libvcflib.a
 PHASED_BEAGLE_JAR = PhasedBEAGLE/PhasedBEAGLE.jar
 
 .PHONY: all
-all: BamSieve HipSTR test/allele_expansion_test test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test test/base_qual_test test/read_vcf_alleles_test test/read_vcf_priors_test test/em_stutter_test test/haplotype_test $(PHASED_BEAGLE_JAR) RNASeq Clipper
+all: BamSieve HipSTR test/allele_expansion_test test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test test/base_qual_test test/read_vcf_alleles_test test/read_vcf_priors_test test/em_stutter_test test/haplotype_test $(PHASED_BEAGLE_JAR) exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
 
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
 clean:
-	rm -f *.o *.d BamSieve HipSTR test/snp_tree_test test/vcf_snp_tree_test test/haplotype_test test/hap_aligner_test test/stutter_aligner_test test/read_vcf_priors_test test/read_vcf_alleles_test test/em_stutter_test SeqAlignment/*.o ${PHASED_BEAGLE_JAR} RNASeq
+	rm -f *.o *.d BamSieve HipSTR test/snp_tree_test test/vcf_snp_tree_test test/haplotype_test test/hap_aligner_test test/stutter_aligner_test test/read_vcf_priors_test test/read_vcf_alleles_test test/em_stutter_test SeqAlignment/*.o ${PHASED_BEAGLE_JAR} exploratory/RNASeq exploratory/Clipper exploratory/Mapper exploratory/10X
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -59,7 +59,7 @@ BamSieve: $(OBJ_COMMON) $(OBJ_SIEVE) $(BAMTOOLS_LIB)
 HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(OBJ_SEQALN)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-RNASeq: $(OBJ_COMMON) $(OBJ_RNASEQ) $(BAMTOOLS_LIB)
+exploratory/RNASeq: $(OBJ_COMMON) $(OBJ_RNASEQ) $(BAMTOOLS_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/base_qual_test: test/base_quality_test.cpp base_quality.cpp error.cpp mathops.cpp $(BAMTOOLS_LIB)
@@ -95,7 +95,13 @@ test/stutter_aligner_test: test/stutter_aligner_test.cpp SeqAlignment/StutterAli
 test/fast_ops_test: test/fast_ops_test.cpp mathops.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
-Clipper: count_trimmed_bases.cpp error.cpp zalgorithm.cpp $(BAMTOOLS_LIB)
+exploratory/Clipper: exploratory/count_trimmed_bases.cpp error.cpp zalgorithm.cpp $(BAMTOOLS_LIB)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+exploratory/10X: base_quality.cpp exploratory/calc_10x_barcode_phasings.cpp error.cpp mathops.cpp snp_phasing_quality.cpp snp_tree.cpp $(BAMTOOLS_LIB) $(VCFLIB_LIB)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+exploratory/Mapper: error.cpp seqio.cpp stringops.cpp exploratory/mapping_efficiency.cpp $(BAMTOOLS_LIB) $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 # Build each object file independently
