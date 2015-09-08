@@ -105,11 +105,11 @@ exploratory/Mapper: error.cpp seqio.cpp stringops.cpp exploratory/mapping_effici
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 # Build each object file independently
-%.o: %.cpp $(BAMTOOLS_LIB)
+%.o: %.cpp $(BAMTOOLS_LIB)  $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ -c $<
 
 # Auto-Generate header dependencies for each CPP file.
-%.d: %.cpp $(BAMTOOLS_LIB)
+%.d: %.cpp $(BAMTOOLS_LIB)  $(VCFLIB_LIB)
 	$(CXX) -c -MP -MD $(CXXFLAGS) $(INCLUDE) $< > $@
 
 # Rebuild BAMTools if needed
