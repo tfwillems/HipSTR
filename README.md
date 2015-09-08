@@ -1,4 +1,4 @@
-# HipSTR <img src="https://travis-ci.org/tfwillems/HipSTR.svg">
+# HipSTR <img src="https://travis-ci.org/tfwillems/HipSTR.svg?branch=master">
 **H**aplotype-based **i**mputation, **p**hasing and genotyping of **STR**s
 
 #### Author: Thomas Willems <twillems@mit.edu>
