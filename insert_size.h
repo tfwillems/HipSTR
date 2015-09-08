@@ -7,9 +7,11 @@
 
 #include "bamtools/include/api/BamAlignment.h"
 
+constexpr int64_t bin_boundaries[21] = {0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1250, 1500, 1750, 2000, 2500, 3000, 3500, 4000, 5000, 10000};
+
 class InsertSizeCounter {
  private:
-  int64_t bin_boundaries[21] = {0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1250, 1500, 1750, 2000, 2500, 3000, 3500, 4000, 5000, 10000};
+  //int64_t bin_boundaries[21];
   int64_t total_comps_, valid_comps_;
   double sum_diffs_, sum_square_diffs_;
   std::vector<int64_t> bins_, counts_;
@@ -22,6 +24,23 @@ class InsertSizeCounter {
     counts_[count_index-1]++;
     return true;
   }
+
+  /*
+  void init_bins(){
+    int index = 0;
+    // 0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000
+    for (unsigned int i = 0; i < 11; i++)
+      bin_boundaries[index++] = i*100;
+    // 1250, 1500, 1750, 2000
+    for (unsigned int i = 0; i < 4; i++)
+      bin_boundaries[index++] = 1250 + i*250;
+    // 2500, 3000, 3500, 4000
+    for (unsigned int i = 0; i < 4; i++)
+      bin_boundaries[index++] = 2500 + i*500;
+    bin_boundaries[index++] = 5000;
+    bin_boundaries[index++] = 10000;
+  }
+  */
 
  public:
   InsertSizeCounter(int64_t max_diff){
