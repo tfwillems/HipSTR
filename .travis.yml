@@ -1,0 +1,9 @@
+language: cpp
+compiler:
+  - clang
+  - gcc
+before_install:
+  - sudo apt-get install g++ libz-dev
+script:
+  - make
+after_success:
