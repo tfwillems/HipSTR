@@ -445,8 +445,10 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##FORMAT=<ID=" << "PQ"          << ",Number=1,Type=Float,Description=\""   << "Posterior probability of phased genotype"                      << "\">" << "\n"
       << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\"" << "Number of valid reads used for sample's genotype"              << "\">" << "\n"
       << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\"" << "Number of reads with SNP phasing information"                  << "\">" << "\n"
+      << "##FORMAT=<ID=" << "PSNP"        << ",Number=1,Type=String,Description=\""  << "Number of reads with SNPs supporting each haploid genotype"    << "\">" << "\n"
       << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""  << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
       << "##FORMAT=<ID=" << "BQ"          << ",Number=1,Type=Float,Description=\""   << "Bootstrapped quality score"                                    << "\">" << "\n"
+      << "##FORMAT=<ID=" << "GLDIFF"      << ",Number=1,Type=Float,Description=\""   << "Difference in likelihood between the reported and next best genotypes" << "\">" << "\n"
       << "##FORMAT=<ID=" << "DFILT"       << ",Number=1,Type=Integer,Description=\"" << "Number of reads filtered due to various issues"                << "\">" << "\n"
       << "##FORMAT=<ID=" << "DSTUTTER"    << ",Number=1,Type=Integer,Description=\"" << "Number of reads with a stutter indel in the STR region"        << "\">" << "\n"
       << "##FORMAT=<ID=" << "DFLANKINDEL" << ",Number=1,Type=Integer,Description=\"" << "Number of reads with an indel in the regions flanking the STR" << "\">" << "\n"
@@ -689,11 +691,31 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       }
     }
   }
+
+  std::vector<double> gl_diffs;
   for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++){
     bp_dosages.push_back((!haploid_ ? 1.0 : 0.5)*expected_value(log_post_probs[sample_index], dip_bpdiffs));
-    double max_gl = *(std::max_element(gls[sample_index].begin(), gls[sample_index].end()));
-    for (unsigned int j = 0; j < gls[sample_index].size(); j++)
+    double max_gl    = *(std::max_element(gls[sample_index].begin(), gls[sample_index].end()));
+    double second_gl = -DBL_MAX;
+    for (unsigned int j = 0; j < gls[sample_index].size(); j++){
       pls[sample_index].push_back((int)(gls[sample_index][j]-max_gl));
+      if (gls[sample_index][j] < max_gl)
+	second_gl = std::max(second_gl, gls[sample_index][j]);
+    }
+
+    if (num_alleles_ == 1)
+      gl_diffs.push_back(-1000);
+    else {
+      int gl_index;
+      if (haploid_)
+	gl_index = gts[sample_index].first;
+      else {
+	int min_gt = std::min(gts[sample_index].first, gts[sample_index].second);
+	int max_gt = std::max(gts[sample_index].first, gts[sample_index].second);
+	gl_index   = max_gt*(max_gt+1)/2 + min_gt;
+      }
+      gl_diffs.push_back((abs(max_gl-gls[sample_index][gl_index]) < TOLERANCE) ? (max_gl-second_gl) : gls[sample_index][gl_index]-max_gl);
+    }
   }
 
   // Extract the genotype phasing probability conditioned on the determined sample genotypes
@@ -717,6 +739,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   assert(bp_diffs_.size() == num_reads_);
   std::vector<int> num_aligned_reads(num_samples_, 0), num_reads_with_snps(num_samples_, 0), masked_reads(num_samples_, 0), num_proc_alns(num_samples_, 0);
   std::vector<int> num_reads_with_stutter(num_samples_, 0), num_reads_with_flank_indels(num_samples_, 0);
+  std::vector<int> num_reads_strand_one(num_samples_, 0), num_reads_strand_two(num_samples_, 0);
   std::vector< std::vector<int> > bps_per_sample(num_samples_);
   std::vector< std::vector<double> > log_read_phases(num_samples_), posterior_bps_per_sample(num_samples_);
 
@@ -766,7 +789,13 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     num_aligned_reads[sample_label_[read_index]]++;
 
     // Adjust number of reads with SNP information for each sample
-    num_reads_with_snps[sample_label_[read_index]] += (log_p1_[read_index] != log_p2_[read_index]);
+    if (abs(log_p1_[read_index] - log_p2_[read_index]) > TOLERANCE){
+      num_reads_with_snps[sample_label_[read_index]]++;
+      if (log_p1_[read_index] > log_p2_[read_index])
+	num_reads_strand_one[sample_label_[read_index]]++;
+      else
+	num_reads_strand_two[sample_label_[read_index]]++;
+    }
 
     // Extract the bp difference observed in read from left-alignment
     bps_per_sample[sample_label_[read_index]].push_back(bp_diffs_[read_index]);
@@ -859,7 +888,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   }
 
   // Add FORMAT field
-  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DFILT:DSTUTTER:DFLANKINDEL:PDP:BPDOSE" : "\tGT:GB:Q:DP:DFILT:DSTUTTER:DFLANKINDEL:BPDOSE");
+  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DFILT:DSTUTTER:DFLANKINDEL:PDP:PSNP:BPDOSE:GLDIFF" : "\tGT:GB:Q:DP:DFILT:DSTUTTER:DFLANKINDEL:BPDOSE:GLDIFF");
   if (output_bootstrap_qualities) out << ":BQ";
   if (output_allreads)            out << ":ALLREADS";
   if (output_pallreads)           out << ":PALLREADS";
@@ -897,28 +926,41 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     sample_results[sample_names[i]] = samp_info.str();
 
     if (!haploid_){
-      out << gts[sample_index].first << "|" << gts[sample_index].second                            // Genotype
+      out << gts[sample_index].first << "|" << gts[sample_index].second                             // Genotype
 	  << ":" << allele_bp_diffs[gts[sample_index].first]
-	  << "|" << allele_bp_diffs[gts[sample_index].second]                                      // Base pair differences from reference
-	  << ":" << exp(log_unphased_posteriors[sample_index])                                     // Unphased posterior
-	  << ":" << exp(log_phased_posteriors[sample_index])                                       // Phased posterior
-	  << ":" << num_aligned_reads[sample_index]                                                // Total reads used to genotype (after filtering)
-	  << ":" << num_reads_with_snps[sample_index]                                              // Total reads with SNP information
-	  << ":" << masked_reads[sample_index]                                                     // Total masked reads
-	  << ":" << num_reads_with_stutter[sample_index]                                           // Total reads with a non-zero stutter artifact in ML alignment
-	  << ":" << num_reads_with_flank_indels[sample_index]                                      // Total reads with an indel in flank in ML alignment
-	  << ":" << phase1_reads << "|" << phase2_reads                                            // Reads per allele
-	  << ":" << bp_dosages[sample_index];                                                      // Posterior STR dosage (in base pairs)
+	  << "|" << allele_bp_diffs[gts[sample_index].second]                                       // Base pair differences from reference
+	  << ":" << exp(log_unphased_posteriors[sample_index])                                      // Unphased posterior
+	  << ":" << exp(log_phased_posteriors[sample_index])                                        // Phased posterior
+	  << ":" << num_aligned_reads[sample_index]                                                 // Total reads used to genotype (after filtering)
+	  << ":" << num_reads_with_snps[sample_index]                                               // Total reads with SNP information
+	  << ":" << masked_reads[sample_index]                                                      // Total masked reads
+	  << ":" << num_reads_with_stutter[sample_index]                                            // Total reads with a non-zero stutter artifact in ML alignment
+	  << ":" << num_reads_with_flank_indels[sample_index]                                       // Total reads with an indel in flank in ML alignment
+	  << ":" << phase1_reads << "|" << phase2_reads                                             // Reads per allele
+	  << ":" << num_reads_strand_one[sample_index] << "|" << num_reads_strand_two[sample_index] // Reads with SNPs supporting each haploid genotype
+	  << ":" << bp_dosages[sample_index];                                                       // Posterior STR dosage (in base pairs)
+
+      // Difference in GL between the current and next best genotype
+      if (num_alleles_ == 1)
+	out << ":";
+      else
+	out << gl_diffs[sample_index];
     }
     else {
-      out << gts[sample_index].first                                                               // Genotype
-	  << ":" << allele_bp_diffs[gts[sample_index].first]                                       // Base pair differences from reference
-	  << ":" << exp(log_unphased_posteriors[sample_index])                                     // Unphased posterior
-	  << ":" << num_aligned_reads[sample_index]                                                // Total reads used to genotype (after filtering)
-	  << ":" << masked_reads[sample_index]                                                     // Total masked reads
-	  << ":" << num_reads_with_stutter[sample_index]                                           // Total reads with a non-zero stutter artifact in ML alignment
-	  << ":" << num_reads_with_flank_indels[sample_index]                                      // Total reads with an indel in flank in ML alignment
-	  << ":" << bp_dosages[sample_index];                                                      // Posterior STR dosage (in base pairs)
+      out << gts[sample_index].first                                                                // Genotype
+	  << ":" << allele_bp_diffs[gts[sample_index].first]                                        // Base pair differences from reference
+	  << ":" << exp(log_unphased_posteriors[sample_index])                                      // Unphased posterior
+	  << ":" << num_aligned_reads[sample_index]                                                 // Total reads used to genotype (after filtering)
+	  << ":" << masked_reads[sample_index]                                                      // Total masked reads
+	  << ":" << num_reads_with_stutter[sample_index]                                            // Total reads with a non-zero stutter artifact in ML alignment
+	  << ":" << num_reads_with_flank_indels[sample_index]                                       // Total reads with an indel in flank in ML alignment
+	  << ":" << bp_dosages[sample_index];                                                       // Posterior STR dosage (in base pairs)
+
+      // Difference in GL between the current and next best genotype
+      if (num_alleles_ == 1)
+	out << ":";
+      else
+	out << gl_diffs[sample_index];
     }
 
     if (output_bootstrap_qualities)
