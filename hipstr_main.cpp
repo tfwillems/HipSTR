@@ -21,7 +21,7 @@ bool file_exists(std::string path){
   return (access(path.c_str(), F_OK) != -1);
 }
 
-void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_sclips, int def_max_hclips){
+void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_sclips, int def_max_hclips, int def_max_str_len){
   std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <dir> --regions <region_file.bed> [OPTION]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
@@ -71,6 +71,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "                                      "  << "\t" << " By default, all chromosomes are treated as diploid"                                 << "\n"
 	    << "\t" << "--min-reads     <num_reads>           "  << "\t" << "Minimum total reads required to genotype a locus (Default = " << def_min_reads << ")" << "\n"
 	    << "\t" << "--max-reads     <num_reads>           "  << "\t" << "Skip a locus if it has more than NUM_READS reads (Default = " << def_max_reads << ")" << "\n"
+	    << "\t" << "--max-str-len   <max_bp>              "  << "\t" << "Only genotype STRs in the provided BED file with a length < MAX_BP (Default = " << def_max_str_len << ")" << "\n"
 	    << "\t" << "--bam-samps     <list_of_samples>     "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
 	    << "\t" << "                                      "  << "\t" << "  Assign each read the read group corresponding to its file. By default, "           << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG flag and this is used instead"                           << "\n"
@@ -95,13 +96,14 @@ void parse_command_line_args(int argc, char** argv,
 			     int& use_hap_aligner, int& remove_all_filters, int& remove_pcr_dups, int& bams_from_10x,
 			     int& output_gls, int& output_pls, int& output_all_reads, int& output_pall_reads, std::string& ref_vcf_file,
 			     GenotyperBamProcessor& bam_processor){
-  int def_mdist      = bam_processor.MAX_MATE_DIST;
-  int def_min_reads  = bam_processor.MIN_TOTAL_READS;
-  int def_max_reads  = bam_processor.MAX_TOTAL_READS;
-  int def_max_sclips = bam_processor.MAX_SOFT_CLIPS;
-  int def_max_hclips = bam_processor.MAX_HARD_CLIPS;
+  int def_mdist       = bam_processor.MAX_MATE_DIST;
+  int def_min_reads   = bam_processor.MIN_TOTAL_READS;
+  int def_max_reads   = bam_processor.MAX_TOTAL_READS;
+  int def_max_sclips  = bam_processor.MAX_SOFT_CLIPS;
+  int def_max_hclips  = bam_processor.MAX_HARD_CLIPS;
+  int def_max_str_len = bam_processor.MAX_STR_LENGTH;
   if (argc == 1){
-    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_sclips, def_max_hclips);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_sclips, def_max_hclips, def_max_str_len);
     exit(0);
   }
 
@@ -148,7 +150,7 @@ void parse_command_line_args(int argc, char** argv,
   int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "a:b:c:d:f:g:h:i:j:k:n:o:r:v:m:s:w:", long_options, &option_index);
+    c = getopt_long(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:v:w:x:z:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -222,6 +224,9 @@ void parse_command_line_args(int argc, char** argv,
     case 'w':
       bam_out_file = std::string(optarg);
       break;
+    case 'x':
+      bam_processor.MAX_STR_LENGTH = atoi(optarg);
+      break;
     case 'z':
       filename = std::string(optarg);
       if (!string_ends_with(filename, ".gz"))
@@ -238,7 +243,7 @@ void parse_command_line_args(int argc, char** argv,
   }
 
   if (print_help){
-    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_sclips, def_max_hclips);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_sclips, def_max_hclips, def_max_str_len);
     exit(0);
   }
 }

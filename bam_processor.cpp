@@ -96,6 +96,8 @@ std::string get_str_ref_allele(uint32_t start, uint32_t end, std::string& chrom_
   return uppercase(seq);
 }
 
+
+// TO DO: Track reads from observed from both strands, whether or not they're filtered
 void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, 
 					 std::vector<Region>::iterator region_iter,
 					 std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
@@ -411,6 +413,13 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
 	       << "\t" << "Skipping region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << "\n" << std::endl;
       continue;
     }
+
+    if (region_iter->stop() - region_iter->start() > MAX_STR_LENGTH){
+      logger() << "Skipping region as the reference allele length exceeds the threshold (" << region_iter->stop()-region_iter->start() << " vs " << MAX_STR_LENGTH << ")" << "\n"
+	       << "You can increase this threshold using the --max-str-length option" << std::endl;
+      continue;
+    }
+
     
     // Read FASTA sequence for chromosome 
     if (cur_chrom_id != chrom_id){
