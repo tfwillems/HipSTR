@@ -942,9 +942,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
       // Difference in GL between the current and next best genotype
       if (num_alleles_ == 1)
-	out << ":";
+	out << ":" << ".";
       else
-	out << gl_diffs[sample_index];
+	out << ":" << gl_diffs[sample_index];
     }
     else {
       out << gts[sample_index].first                                                                // Genotype
@@ -958,9 +958,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
       // Difference in GL between the current and next best genotype
       if (num_alleles_ == 1)
-	out << ":";
+	out << ":" << ".";
       else
-	out << gl_diffs[sample_index];
+	out << ":" << gl_diffs[sample_index];
     }
 
     if (output_bootstrap_qualities)
