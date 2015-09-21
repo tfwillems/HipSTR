@@ -49,8 +49,8 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "                                      "  << "\t" << " Option only available when the --len-genotyper flag has not been specified"         << "\n"
 	    << "\t" << "--log <log.txt>                       "  << "\t" << "Output the log information to the provided file. By default, the log will be "       << "\n"
 	    << "\t" << "                                      "  << "\t" << " written to standard err"                                                            << "\n"
-
-	    << "\t" << "--hide-allreads                       "  << "\t" << "Don't output the ALLREADS FORMAT field to the VCF. By default, it will be output"    << "\n"
+	    << "\t" << "--hide-allreads                       "  << "\t" << "Don't output the ALLREADS  FORMAT field to the VCF. By default, it will be output"   << "\n"
+	    << "\t" << "--hide-mallreads                      "  << "\t" << "Don't output the MALLREADS FORMAT field to the VCF. By default, it will be output"   << "\n"
 	    << "\t" << "--hide-pallreads                      "  << "\t" << "Don't output the PALLREADS FORMAT field to the VCF. By default, it will be output"   << "\n"
 	    << "\t" << "--output-gls                          "  << "\t" << "Write genotype likelihoods to VCF (default = False)"                                 << "\n"
 	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to VCF (default = False)"                    << "\n" << "\n"
@@ -94,7 +94,7 @@ void parse_command_line_args(int argc, char** argv,
 			     std::string& fasta_dir,       std::string& region_file,       std::string& snp_vcf_file,        std::string& chrom,
 			     std::string& bam_out_file,    std::string& str_vcf_out_file,  std::string& allele_vcf_out_file, std::string& log_file,
 			     int& use_hap_aligner, int& remove_all_filters, int& remove_pcr_dups, int& bams_from_10x,
-			     int& output_gls, int& output_pls, int& output_all_reads, int& output_pall_reads, std::string& ref_vcf_file,
+			     int& output_gls, int& output_pls, int& output_all_reads, int& output_pall_reads, int& output_mall_reads, std::string& ref_vcf_file,
 			     GenotyperBamProcessor& bam_processor){
   int def_mdist       = bam_processor.MAX_MATE_DIST;
   int def_min_reads   = bam_processor.MIN_TOTAL_READS;
@@ -108,6 +108,7 @@ void parse_command_line_args(int argc, char** argv,
   }
 
   int print_help = 0;
+  int condense_read_fields = 1;
   
   static struct option long_options[] = {
     {"10x-bams",        no_argument, &bams_from_10x, 1},
@@ -118,6 +119,7 @@ void parse_command_line_args(int argc, char** argv,
     {"fasta",           required_argument, 0, 'f'},
     {"bam-samps",       required_argument, 0, 'g'},
     {"bam-lbs",         required_argument, 0, 'q'},
+    {"full-read-fields", no_argument, &condense_read_fields, 0},
     {"min-mapq",        required_argument, 0, 'e'},
     {"min-reads",       required_argument, 0, 'i'},
     {"max-softclips",   required_argument, 0, 'j'},
@@ -127,6 +129,7 @@ void parse_command_line_args(int argc, char** argv,
     {"h",               no_argument, &print_help, 1},
     {"help",            no_argument, &print_help, 1},
     {"hide-allreads",   no_argument, &output_all_reads,   0},
+    {"hide-mallreads",  no_argument, &output_mall_reads,  0},
     {"hide-pallreads",  no_argument, &output_pall_reads,  0},
     {"len-genotyper",   no_argument, &use_hap_aligner,    0},
     {"no-filters",      no_argument, &remove_all_filters, 1},
@@ -246,6 +249,8 @@ void parse_command_line_args(int argc, char** argv,
     print_usage(def_mdist, def_min_reads, def_max_reads, def_max_sclips, def_max_hclips, def_max_str_len);
     exit(0);
   }
+
+  SeqStutterGenotyper::condense_read_count_fields = (condense_read_fields == 0 ? false : true);
 }
 
 int main(int argc, char** argv){
@@ -256,11 +261,12 @@ int main(int argc, char** argv){
   int use_hap_aligner = 1, remove_all_filters = 0, remove_pcr_dups = 1, bams_from_10x = 0;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", log_file = "";
-  int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 1;
+  int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 1, output_mall_reads = 1;
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
 			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, log_file, use_hap_aligner, remove_all_filters, 
-			  remove_pcr_dups, bams_from_10x, output_gls, output_pls, output_all_reads, output_pall_reads, ref_vcf_file, bam_processor);
+			  remove_pcr_dups, bams_from_10x, output_gls, output_pls, output_all_reads, output_pall_reads, output_mall_reads,
+			  ref_vcf_file, bam_processor);
   if (!log_file.empty())
     bam_processor.set_log(log_file);
   if (bams_from_10x){
@@ -271,6 +277,7 @@ int main(int argc, char** argv){
   if (output_pls)             bam_processor.output_pls();
   if (output_all_reads == 0)  bam_processor.hide_all_reads();
   if (output_pall_reads == 0) bam_processor.hide_pall_reads();
+  if (output_mall_reads == 0) bam_processor.hide_mall_reads();
   if (remove_pcr_dups == 0)   bam_processor.allow_pcr_dups();
 
   if (!use_hap_aligner) {

@@ -154,7 +154,7 @@ class SeqStutterGenotyper{
   
   // In the VCF format fields for ALLREADS and MALLREADS, condense the fields into size|count
   // instead of a long comma-separated list of sizes e.g. -2,-2,0,-2,0 will be converted to -2|3;0|2
-  const static bool condense_read_count_fields = true;
+  static bool condense_read_count_fields;
 
   SeqStutterGenotyper(Region& region, bool haploid,
 		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,

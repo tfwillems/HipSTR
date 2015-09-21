@@ -22,6 +22,8 @@
 #include "SeqAlignment/RepeatBlock.h"
 #include "SeqAlignment/STRAlleleExpansion.h"
 
+bool SeqStutterGenotyper::condense_read_count_fields = true;
+
 int max_index(double* vals, unsigned int num_vals){
   int best_index = 0;
   for (unsigned int i = 1; i < num_vals; i++)
