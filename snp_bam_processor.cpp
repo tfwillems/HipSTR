@@ -75,7 +75,7 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
   for (unsigned int i = 0; i < alignments.size(); i++){
     bool sample_phased = false;
     for (unsigned int j = 0; j < alignments[i].size(); j++){
-      sample_phased |=  (log_p1s[i][j] != log_p2s[i][j]);
+      sample_phased |= (log_p1s[i][j] != log_p2s[i][j]);
       phased_reads  += (log_p1s[i][j] != log_p2s[i][j]);
     }
     total_reads    += alignments[i].size();

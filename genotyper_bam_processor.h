@@ -59,6 +59,7 @@ private:
   bool output_pls_;             // Output the PL FORMAT field to the VCF
   bool output_all_reads_;       // Output the ALLREADS  FORMAT field to the VCF
   bool output_pall_reads_;      // Output the PALLREADS FORMAT field to the VCF
+  bool output_mall_reads_;      // Output the MALLREADS FORMAT field to the VCF
 
   std::set<std::string> haploid_chroms_;
 
@@ -96,6 +97,7 @@ public:
     output_pls_            = false;
     output_all_reads_      = true;
     output_pall_reads_     = true;
+    output_mall_reads_     = true;
     total_stutter_time_    = 0;
     locus_stutter_time_    = -1;
     total_genotype_time_   = 0;
@@ -128,6 +130,10 @@ public:
 
   void hide_pall_reads(){
     output_pall_reads_ = false;
+  }
+
+  void hide_mall_reads(){
+    output_mall_reads_ = false;
   }
 
   void add_haploid_chrom(std::string chrom){

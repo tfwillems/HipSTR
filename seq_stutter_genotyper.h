@@ -126,6 +126,10 @@ class SeqStutterGenotyper{
   // the genotypes match the ML genotype
   void compute_bootstrap_qualities(int num_iter, std::vector<double>& bootstrap_qualities);
 
+  // Convert a list of integers into a string with key|count pairs separated by semicolons
+  // eg. -1,0,-1,2,2,1 will be converted into -1|2;0|1;1|1;2|2
+  std::string condense_read_counts(std::vector<int>& read_diffs);
+
   std::set<std::string> expanded_alleles_;
 
   // True iff we only report genotypes for samples with >= 1 read
@@ -147,6 +151,11 @@ class SeqStutterGenotyper{
   double total_aln_trace_time_;
 
  public:
+  
+  // In the VCF format fields for ALLREADS and MALLREADS, condense the fields into size|count
+  // instead of a long comma-separated list of sizes e.g. -2,-2,0,-2,0 will be converted to -2|3;0|2
+  const static bool condense_read_count_fields = true;
+
   SeqStutterGenotyper(Region& region, bool haploid,
 		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 		      std::vector< std::vector<double> >& log_p1, 
@@ -227,7 +236,7 @@ class SeqStutterGenotyper{
 
   void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
 			bool output_bootstrap_qualities, bool output_gls, bool output_pls,
-			bool output_allreads, bool output_pallreads, bool output_viz,
+			bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz,
 			std::vector<int>& read_str_sizes,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 

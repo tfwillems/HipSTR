@@ -452,9 +452,15 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
       << "##FORMAT=<ID=" << "DFILT"       << ",Number=1,Type=Integer,Description=\"" << "Number of reads filtered due to various issues"                << "\">" << "\n"
       << "##FORMAT=<ID=" << "DSTUTTER"    << ",Number=1,Type=Integer,Description=\"" << "Number of reads with a stutter indel in the STR region"        << "\">" << "\n"
       << "##FORMAT=<ID=" << "DFLANKINDEL" << ",Number=1,Type=Integer,Description=\"" << "Number of reads with an indel in the regions flanking the STR" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "BPDOSE"      << ",Number=1,Type=Float,Description=\""   << "Posterior mean base pair difference from reference"            << "\">" << "\n"
-      << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\"" << "Base pair difference observed in each read"                    << "\">" << "\n"
-      << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probs" << "\">" << "\n";
+      << "##FORMAT=<ID=" << "BPDOSE"      << ",Number=1,Type=Float,Description=\""   << "Posterior mean base pair difference from reference"            << "\">" << "\n";
+
+  if (condense_read_count_fields)
+    out << "##FORMAT=<ID=" << "ALLREADS"  << ",Number=1,Type=String,Description=\"" << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n"
+	<< "##FORMAT=<ID=" << "MALLREADS" << ",Number=1,Type=String,Description=\"" << "Maximum likelihood bp diff in each read based on haplotype alignments"   << "\">" << "\n";
+  else
+    out << "##FORMAT=<ID=" << "ALLREADS"  << ",Number=.,Type=Integer,Description=\"" << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n"
+	<< "##FORMAT=<ID=" << "MALLREADS" << ",Number=.,Type=Integer,Description=\"" << "Maximum likelihood bp diff in each read based on haplotype alignments"   << "\">" << "\n";
+  out << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probs"        << "\">" << "\n";
 
   if (output_gls)
     out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\""   << "log-10 genotype likelihoods" << "\">" << "\n";
@@ -649,9 +655,25 @@ void SeqStutterGenotyper::get_optimal_genotypes(std::vector< std::pair<int, int>
         }
 }
 
+std::string SeqStutterGenotyper::condense_read_counts(std::vector<int>& read_diffs){
+  if (read_diffs.size() == 0)
+    return ".";
+  std::map<int, int> diff_counts;
+  for (unsigned int i = 0; i < read_diffs.size(); i++)
+    diff_counts[read_diffs[i]]++;
+  std::stringstream res;
+  for (auto iter = diff_counts.begin(); iter != diff_counts.end(); iter++){
+    if (iter != diff_counts.begin())
+      res << ";";
+    res << iter->first << "|" << iter->second;
+  }
+  return res.str();
+}
+
+
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
 					   bool output_bootstrap_qualities, bool output_gls, bool output_pls,
-					   bool output_allreads, bool output_pallreads, bool output_viz, std::vector<int>& read_str_sizes,
+					   bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, std::vector<int>& read_str_sizes,
 					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
   assert(haplotype_->num_blocks() == 3);
   assert(read_str_sizes.size() == 0);
@@ -740,7 +762,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector<int> num_aligned_reads(num_samples_, 0), num_reads_with_snps(num_samples_, 0), masked_reads(num_samples_, 0), num_proc_alns(num_samples_, 0);
   std::vector<int> num_reads_with_stutter(num_samples_, 0), num_reads_with_flank_indels(num_samples_, 0);
   std::vector<int> num_reads_strand_one(num_samples_, 0), num_reads_strand_two(num_samples_, 0);
-  std::vector< std::vector<int> > bps_per_sample(num_samples_);
+  std::vector< std::vector<int> > bps_per_sample(num_samples_), ml_bps_per_sample(num_samples_);
   std::vector< std::vector<double> > log_read_phases(num_samples_), posterior_bps_per_sample(num_samples_);
 
   assert(max_LL_alns_.size() == 0);
@@ -802,6 +824,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     // Extract the posterior bp differences observed in read from haplotype alignment
     posterior_bps_per_sample[sample_label_[read_index]].push_back(expected_value(read_LL_ptr, allele_bp_diffs));
+
+    // Extract the ML bp difference observed in read based on the ML genotype
+    ml_bps_per_sample[sample_label_[read_index]].push_back(read_str_sizes.back());
 
     read_LL_ptr += num_alleles_;
   }
@@ -892,6 +917,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   if (output_bootstrap_qualities) out << ":BQ";
   if (output_allreads)            out << ":ALLREADS";
   if (output_pallreads)           out << ":PALLREADS";
+  if (output_mallreads)           out << ":MALLREADS";
   if (output_gls)                 out << ":GL";
   if (output_pls)                 out << ":PL";
 
@@ -968,13 +994,17 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     // Add bp diffs from regular left-alignment
     if (output_allreads){
-      if (bps_per_sample[sample_index].size() != 0){
-	out << ":" << bps_per_sample[sample_index][0];
-	for (unsigned int j = 1; j < bps_per_sample[sample_index].size(); j++)
-	  out << "," << bps_per_sample[sample_index][j];
+      if (condense_read_count_fields)
+	out << ":" << condense_read_counts(bps_per_sample[sample_index]);
+      else {
+	if (bps_per_sample[sample_index].size() != 0){
+	  out << ":" << bps_per_sample[sample_index][0];
+	  for (unsigned int j = 1; j < bps_per_sample[sample_index].size(); j++)
+	    out << "," << bps_per_sample[sample_index][j];
+	}
+	else
+	  out << ":" << ".";
       }
-      else
-	out << ":" << ".";
     }
 
     // Expected base pair differences from alignment probabilities
@@ -986,6 +1016,21 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       }
       else
 	out << ":" << ".";
+    }
+
+    // Maximum likelihood base pair differences in each read from alignment probabilites
+    if (output_mallreads){
+      if (condense_read_count_fields)
+	out << ":" << condense_read_counts(ml_bps_per_sample[sample_index]);
+      else {
+	if (ml_bps_per_sample[sample_index].size() != 0){
+	  out << ":" << ml_bps_per_sample[sample_index][0];
+	  for (unsigned int j = 1; j < ml_bps_per_sample[sample_index].size(); j++)
+	    out << "," << ml_bps_per_sample[sample_index][j];
+	}
+	else
+	  out << ":" << ".";
+      }
     }
 
     // Genotype and phred-scaled likelihoods
@@ -1018,7 +1063,7 @@ bool SeqStutterGenotyper::recompute_stutter_model(std::string& chrom_seq, std::o
   // Get the artifact sizes observed in each read
   std::vector<std::string> empty_sample_names;
   std::vector<int> read_str_sizes;
-  write_vcf_record(empty_sample_names, false, chrom_seq, false, false, false, false, false, false, read_str_sizes, std::cerr, std::cerr, logger);
+  write_vcf_record(empty_sample_names, false, chrom_seq, false, false, false, false, false, false, false, read_str_sizes, std::cerr, std::cerr, logger);
   max_LL_alns_.clear(); // Need to clear this data structure for a future call to write_vcf_record to work
   assert(read_str_sizes.size() == num_reads_);
 
