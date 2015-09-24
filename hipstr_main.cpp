@@ -44,9 +44,11 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Output a bgzipped VCF file containing phased STR genotypes"                          << "\n"
 	    << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a bgzipped VCF file containing alleles with strong evidence in the BAMs"      << "\n"
 	    << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n"
-	    << "\t" << "--viz-out       <aln_viz.html.gz>     "  << "\t" << "Output a bgzipped file containing Needleman-Wunsch alignments for each locus"        << "\n"
+	    << "\t" << "--viz-out       <aln_viz.html.gz>     "  << "\t" << "Output a bgzipped file containing haplotype alignments for each locus"               << "\n"
 	    << "\t" << "                                      "  << "\t" << " The resulting file can be readily visualized with VizAln"                           << "\n"
 	    << "\t" << "                                      "  << "\t" << " Option only available when the --len-genotyper flag has not been specified"         << "\n"
+	    << "\t" << "--viz-left-alns                       "  << "\t" << "Output the original left aligned reads to the HTML output in addition to the "       << "\n"
+	    << "\t" << "                                      "  << "\t" << " haplotype alignments. By default, only the latter is output"                        << "\n"
 	    << "\t" << "--log <log.txt>                       "  << "\t" << "Output the log information to the provided file. By default, the log will be "       << "\n"
 	    << "\t" << "                                      "  << "\t" << " written to standard err"                                                            << "\n"
 	    << "\t" << "--hide-allreads                       "  << "\t" << "Don't output the ALLREADS  FORMAT field to the VCF. By default, it will be output"   << "\n"
@@ -109,7 +111,8 @@ void parse_command_line_args(int argc, char** argv,
 
   int print_help = 0;
   int condense_read_fields = 1;
-  
+  int viz_left_alns = 0;
+
   static struct option long_options[] = {
     {"10x-bams",        no_argument, &bams_from_10x, 1},
     {"allele-vcf",      required_argument, 0, 'a'},
@@ -144,6 +147,7 @@ void parse_command_line_args(int argc, char** argv,
     {"stutter-out",     required_argument, 0, 's'},
     {"haploid-chrs",    required_argument, 0, 't'},
     {"bam-out",         required_argument, 0, 'w'},
+    {"viz-left-alns",   no_argument, &viz_left_alns, 1},
     {"viz-out",         required_argument, 0, 'z'},
     {"rem-multimaps",   no_argument, &(bam_processor.REMOVE_MULTIMAPPERS), 1},
     {0, 0, 0, 0}
@@ -234,7 +238,7 @@ void parse_command_line_args(int argc, char** argv,
       filename = std::string(optarg);
       if (!string_ends_with(filename, ".gz"))
 	printErrorAndDie("Path for alignment visualization file must end in .gz as it will be bgzipped");
-      bam_processor.set_output_viz(filename);;
+      bam_processor.set_output_viz(filename);
       break;
     case '?':
       printErrorAndDie("Unrecognized command line option");
@@ -249,7 +253,8 @@ void parse_command_line_args(int argc, char** argv,
     print_usage(def_mdist, def_min_reads, def_max_reads, def_max_sclips, def_max_hclips, def_max_str_len);
     exit(0);
   }
-
+  if (viz_left_alns)
+    bam_processor.visualize_left_alns();
   SeqStutterGenotyper::condense_read_count_fields = (condense_read_fields == 0 ? false : true);
 }
 

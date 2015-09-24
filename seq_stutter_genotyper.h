@@ -237,7 +237,7 @@ class SeqStutterGenotyper{
   void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
 			bool output_bootstrap_qualities, bool output_gls, bool output_pls,
 			bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz,
-			std::vector<int>& read_str_sizes,
+			bool visualize_left_alns, std::vector<int>& read_str_sizes,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 
 

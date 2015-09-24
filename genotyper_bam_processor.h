@@ -72,6 +72,9 @@ private:
   // the stutter analysis will result in a better stutter model
   bool recalc_stutter_model_;
 
+  // If this flag is set, HTML alignments are written for both the haplotype alignments and Needleman-Wunsch left alignments
+  bool viz_left_alns_;
+
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool check_mate_chroms, bool remove_pcr_dups,
 		       bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, check_mate_chroms, remove_pcr_dups){
@@ -81,6 +84,7 @@ public:
     output_viz_            = false;
     read_stutter_models_   = false;
     have_ref_vcf_          = false;
+    viz_left_alns_         = false;
     use_seq_aligner_       = use_seq_aligner;
     haploid_chroms_        = std::set<std::string>();
     num_em_converge_       = 0;
@@ -146,6 +150,10 @@ public:
 
   void use_len_model(){
     use_seq_aligner_ = false;
+  }
+
+  void visualize_left_alns(){
+    viz_left_alns_ = true;
   }
 
   void set_output_viz(std::string& viz_file){

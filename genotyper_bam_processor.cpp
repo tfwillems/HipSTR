@@ -134,7 +134,8 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
       if (output_alleles_){
 	std::vector<std::string> no_samples;
 	std::vector<int> read_str_sizes;
-	seq_genotyper->write_vcf_record(no_samples, false, chrom_seq, false, false, false, false, false, false, false, read_str_sizes, viz_out_, allele_vcf_, logger());
+	seq_genotyper->write_vcf_record(no_samples, false, chrom_seq, false, false, false,
+					false, false, false, false, false, read_str_sizes, viz_out_, allele_vcf_, logger());
       }
 
       if (output_str_gts_){
@@ -150,7 +151,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	    num_genotype_success_++;
 	    std::vector<int> read_str_sizes;
 	    seq_genotyper->write_vcf_record(samples_to_genotype_, true, chrom_seq, output_bstrap_quals_, output_gls_, output_pls_,
-					    output_all_reads_, output_pall_reads_, output_mall_reads_, output_viz_, read_str_sizes, viz_out_, str_vcf_, logger());
+					    output_all_reads_, output_pall_reads_, output_mall_reads_, output_viz_, viz_left_alns_, read_str_sizes, viz_out_, str_vcf_, logger());
 	  }
 	  else
 	    num_genotype_fail_++;

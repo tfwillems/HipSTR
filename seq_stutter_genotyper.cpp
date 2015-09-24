@@ -631,6 +631,8 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
 }
 
 bool SeqStutterGenotyper::use_read(Alignment& max_LL_aln, int num_flank_ins, int num_flank_del){
+  int32_t left_flank_bases  = haplotype_->get_block(1)->start() - max_LL_aln.get_start();
+  int32_t right_flank_bases = max_LL_aln.get_stop() - haplotype_->get_block(2)->start() + 1;
   return true;
 
   printErrorAndDie("Need to rerun calc_sample_posteriors if filtering some reads using use_read");
@@ -675,7 +677,8 @@ std::string SeqStutterGenotyper::condense_read_counts(std::vector<int>& read_dif
 
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
 					   bool output_bootstrap_qualities, bool output_gls, bool output_pls,
-					   bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, std::vector<int>& read_str_sizes,
+					   bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz,
+					   bool visualize_left_alns, std::vector<int>& read_str_sizes,
 					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
   assert(haplotype_->num_blocks() == 3);
   assert(read_str_sizes.size() == 0);
@@ -805,7 +808,8 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       num_reads_with_flank_indels[sample_label_[read_index]]++;
     read_str_sizes.push_back(allele_bp_diffs[best_gt]+stutter_size);
 
-    //max_LL_alns_[idx_1].push_back(alns_[idx_1][idx_2]);
+    if (visualize_left_alns)
+      max_LL_alns_[idx_1].push_back(alns_[idx_1][idx_2]);
     max_LL_alns_[idx_1].push_back(traced_aln);
     total_aln_trace_time_ += (clock() - trace_start)/CLOCKS_PER_SEC;
 
@@ -1065,7 +1069,7 @@ bool SeqStutterGenotyper::recompute_stutter_model(std::string& chrom_seq, std::o
   // Get the artifact sizes observed in each read
   std::vector<std::string> empty_sample_names;
   std::vector<int> read_str_sizes;
-  write_vcf_record(empty_sample_names, false, chrom_seq, false, false, false, false, false, false, false, read_str_sizes, std::cerr, std::cerr, logger);
+  write_vcf_record(empty_sample_names, false, chrom_seq, false, false, false, false, false, false, false, false, read_str_sizes, std::cerr, std::cerr, logger);
   max_LL_alns_.clear(); // Need to clear this data structure for a future call to write_vcf_record to work
   assert(read_str_sizes.size() == num_reads_);
 
