@@ -132,7 +132,7 @@ class SeqStutterGenotyper{
   std::string condense_read_counts(std::vector<int>& read_diffs);
 
   // Filter reads based on their retraced ML alignments
-  void filter_alignments(std::ostream& logger);
+  void filter_alignments(std::ostream& logger, std::vector<int>& masked_reads);
 
   std::set<std::string> expanded_alleles_;
 

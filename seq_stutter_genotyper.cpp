@@ -663,7 +663,10 @@ std::string SeqStutterGenotyper::condense_read_counts(std::vector<int>& read_dif
   return res.str();
 }
 
-void SeqStutterGenotyper::filter_alignments(std::ostream& logger){
+void SeqStutterGenotyper::filter_alignments(std::ostream& logger, std::vector<int>& masked_reads){
+  assert(masked_reads.size() == 0);
+  masked_reads = std::vector<int>(num_samples_, 0);
+
   double filter_start = clock();
   std::vector< std::pair<int, int> > gts;
   get_optimal_genotypes(gts);
@@ -674,6 +677,7 @@ void SeqStutterGenotyper::filter_alignments(std::ostream& logger){
   double* read_LL_ptr = log_aln_probs_;
   for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
     if (seed_positions_[read_index] < 0){
+      masked_reads[sample_label_[read_index]]++;
       read_LL_ptr += num_alleles_;
       num_proc_alns[sample_label_[read_index]]++;
       //read_str_sizes.push_back(-999);
@@ -724,8 +728,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   
 
   // Filter reads with questionable alignments
+  std::vector<int> masked_reads;
   if (true)
-    filter_alignments(logger);
+    filter_alignments(logger, masked_reads);
 
 
   // Extract each sample's posterior base pair dosage, MAP genotype, the associated phased genotype posterior
@@ -801,7 +806,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
   // Extract information about each read and group by sample
   assert(bp_diffs_.size() == num_reads_);
-  std::vector<int> num_aligned_reads(num_samples_, 0), num_reads_with_snps(num_samples_, 0), masked_reads(num_samples_, 0), num_proc_alns(num_samples_, 0);
+  std::vector<int> num_aligned_reads(num_samples_, 0), num_reads_with_snps(num_samples_, 0), num_proc_alns(num_samples_, 0);
   std::vector<int> num_reads_with_stutter(num_samples_, 0), num_reads_with_flank_indels(num_samples_, 0);
   std::vector<int> num_reads_strand_one(num_samples_, 0), num_reads_strand_two(num_samples_, 0);
   std::vector< std::vector<int> > bps_per_sample(num_samples_), ml_bps_per_sample(num_samples_);
@@ -834,14 +839,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     hap_aligner.trace_optimal_aln(alns_[idx_1][idx_2], seed_positions_[read_index], best_gt, &base_quality_, traced_aln, num_flank_ins, num_flank_del, stutter_size);
     num_proc_alns[idx_1]++;
 
-    /*
-    if (!use_read(traced_aln, num_flank_ins, num_flank_del)){
-      masked_reads[idx_1]++;
-      read_LL_ptr += num_alleles_;
-      read_str_sizes.push_back(-999);
-      continue;
-    }
-    */
     if (stutter_size != 0)
       num_reads_with_stutter[sample_label_[read_index]]++;
     if (num_flank_ins != 0 || num_flank_del != 0)
