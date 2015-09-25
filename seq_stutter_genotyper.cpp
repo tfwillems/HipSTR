@@ -42,20 +42,9 @@ void SeqStutterGenotyper::get_uncalled_alleles(std::vector<int>& allele_indices)
       aligned_read[sample_label_[read_index]] = true;
   }
 
-  // Extract each sample's MAP genotype and the associated phased genotype posterior
-  std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
-  std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX);
-  double* log_post_ptr = log_sample_posteriors_;
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-      for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index, ++log_post_ptr){
-        if (*log_post_ptr > log_phased_posteriors[sample_index]){
-          log_phased_posteriors[sample_index] = *log_post_ptr;
-          gts[sample_index] = std::pair<int,int>(index_1, index_2);
-        }
-      }
-    }
-  }
+  // Extract each sample's MAP genotype
+  std::vector< std::pair<int,int> > gts;
+  get_optimal_genotypes(gts);
 
   // Mark all alleles with a call by a valid sample
   std::vector<bool> called(num_alleles_, false);
@@ -639,11 +628,6 @@ bool SeqStutterGenotyper::use_read(Alignment& max_LL_aln, int num_flank_ins, int
     return true;
 
   /*
-  printErrorAndDie("Need to rerun calc_sample_posteriors if filtering some reads using use_read");
-  if (num_flank_ins > 0)
-    return false;
-  if (num_flank_del > 0)
-    return false;
   if (max_LL_aln.num_matched_bases() < 25)
     return false;
   return true;
