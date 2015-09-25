@@ -192,10 +192,11 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     logger() << " Genotyping          = " << locus_genotype_time()       << " seconds\n";
     if (use_seq_aligner_){
       assert(seq_genotyper != NULL);
-      logger() << "\t" << " Left alignment       = "  << seq_genotyper->left_aln_time()  << " seconds\n"
-	       << "\t" << " Haplotype generation = "  << seq_genotyper->hap_build_time() << " seconds\n"
-	       << "\t" << " Haplotype alignment  = "  << seq_genotyper->hap_aln_time()   << " seconds\n"
-	       << "\t" << " Alignment traceback  = "  << seq_genotyper->aln_trace_time() << " seconds\n";
+      logger() << "\t" << " Left alignment       = "  << seq_genotyper->left_aln_time()   << " seconds\n"
+	       << "\t" << " Haplotype generation = "  << seq_genotyper->hap_build_time()  << " seconds\n"
+	       << "\t" << " Haplotype alignment  = "  << seq_genotyper->hap_aln_time()    << " seconds\n"
+	       << "\t" << " Alignment filtering  = "  << seq_genotyper->aln_filter_time() << " seconds\n"
+	       << "\t" << " Alignment traceback  = "  << seq_genotyper->aln_trace_time()  << " seconds\n";
     }
   }
 

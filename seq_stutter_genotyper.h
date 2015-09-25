@@ -61,6 +61,7 @@ class SeqStutterGenotyper{
   int32_t pos_;                      // Position of reported alleles in VCF     
 
   // 0-based seed index for each read
+  // -1 denotes that no seed position was determined for the read
   int* seed_positions_;
 
   // Iterates through reads and then alleles by their indices
@@ -130,6 +131,9 @@ class SeqStutterGenotyper{
   // eg. -1,0,-1,2,2,1 will be converted into -1|2;0|1;1|1;2|2
   std::string condense_read_counts(std::vector<int>& read_diffs);
 
+  // Filter reads based on their retraced ML alignments
+  void filter_alignments(std::ostream& logger);
+
   std::set<std::string> expanded_alleles_;
 
   // True iff we only report genotypes for samples with >= 1 read
@@ -149,6 +153,7 @@ class SeqStutterGenotyper{
   double total_left_aln_time_;
   double total_hap_aln_time_;
   double total_aln_trace_time_;
+  double total_aln_filter_time_;
 
  public:
   
@@ -181,6 +186,7 @@ class SeqStutterGenotyper{
     total_left_aln_time_   = 0;
     total_hap_aln_time_    = 0;
     total_aln_trace_time_  = 0;
+    total_aln_filter_time_ = 0;
 
     // True iff no allele priors are available (for imputation)
     if (ref_vcf == NULL)
@@ -241,10 +247,11 @@ class SeqStutterGenotyper{
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 
 
-  double hap_build_time(){ return total_hap_build_time_; }
-  double left_aln_time() { return total_left_aln_time_;  }
-  double hap_aln_time()  { return total_hap_aln_time_;   }
-  double aln_trace_time(){ return total_aln_trace_time_; }
+  double hap_build_time() { return total_hap_build_time_;  }
+  double left_aln_time()  { return total_left_aln_time_;   }
+  double hap_aln_time()   { return total_hap_aln_time_;    }
+  double aln_trace_time() { return total_aln_trace_time_;  }
+  double aln_filter_time(){ return total_aln_filter_time_; }
 
 
   bool genotype(std::ostream& logger);
