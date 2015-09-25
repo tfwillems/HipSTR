@@ -315,17 +315,6 @@ int main(int argc, char** argv){
     printErrorAndDie("Failed to open one or more BAM files");
   }
 
-  // Open BAM index files, assuming they're the same path with a .bai suffix
-  std::vector<std::string> bam_indexes;
-  for (unsigned int i = 0; i < bam_files.size(); i++){
-    std::string bai_file = bam_files[i] + ".bai";
-    if (!file_exists(bai_file))
-      printErrorAndDie("BAM index file " + bai_file + " does not exist. Please ensure that each BAM has been sorted by position and indexed using samtools");
-    bam_indexes.push_back(bai_file);
-  }
-  if (!reader.OpenIndexes(bam_indexes))
-    printErrorAndDie("Failed to open one or more BAM index files");
-
   // Construct filename->read group map (if one has been specified) and determine the list
   // of samples of interest based on either the specified names or the RG tags in the BAM headers
   std::set<std::string> rg_samples, rg_libs;
@@ -376,7 +365,19 @@ int main(int argc, char** argv){
 			   << rg_libs.size()    << " unique libraries and "
 			   << rg_samples.size() << " unique samples" << std::endl;
   }
-  
+
+
+  // Open BAM index files, assuming they're the same path with a .bai suffix
+  std::vector<std::string> bam_indexes;
+  for (unsigned int i = 0; i < bam_files.size(); i++){
+    std::string bai_file = bam_files[i] + ".bai";
+    if (!file_exists(bai_file))
+      printErrorAndDie("BAM index file " + bai_file + " does not exist. Please ensure that each BAM has been sorted by position and indexed using samtools");
+    bam_indexes.push_back(bai_file);
+  }
+  if (!reader.OpenIndexes(bam_indexes))
+    printErrorAndDie("Failed to open one or more BAM index files");
+
   BamTools::BamWriter bam_writer;
   if (!bam_out_file.empty()){
     BamTools::RefVector ref_vector = reader.GetReferenceData();
