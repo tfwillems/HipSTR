@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <assert.h>
 #include <map>
 #include <sstream>
@@ -8,14 +9,13 @@
 #include "mathops.h"
 #include "stringops.h"
 
-std::string BaseQuality::average_base_qualities(std::vector<const std::string*> qualities){
+std::string BaseQuality::average_base_qualities(const std::vector<const std::string*>& qualities){
   assert(qualities.size() > 0);
 
   // Check that all base quality strings are of the same length
-  for (unsigned int i = 0; i < qualities.size(); i++){
+  for (unsigned int i = 0; i < qualities.size(); i++)
     if (qualities[i]->size() != qualities[0]->size())
       printErrorAndDie("All base quality strings must be of the same length when averaging probabilities");
-  }
 
   // Average raw error probabilities for each base and convert
   // to the closest quality score
@@ -30,6 +30,24 @@ std::string BaseQuality::average_base_qualities(std::vector<const std::string*> 
   return avg_qualities;
 }
 
+std::string BaseQuality::median_base_qualities(const std::vector<const std::string*>& qualities){
+  assert(qualities.size() > 0);
+
+  // Check that all base quality strings are of the same length
+  for (unsigned int i = 0; i < qualities.size(); i++)
+    if (qualities[i]->size() != qualities[0]->size())
+      printErrorAndDie("All base quality strings must be of the same length when averaging probabilities");
+
+  std::string median_qualities('N', qualities[0]->size());
+  for (unsigned int i = 0; i < qualities[0]->size(); i++){
+    std::vector<char> quals;
+    for (unsigned int j = 0; j < qualities.size(); j++)
+      quals.push_back(qualities[i]->at(j));
+    std::sort(quals.begin(), quals.end());
+    median_qualities[i] = quals[quals.size()/2];
+  }
+  return median_qualities;
+}
 
 void printBaseCounts(int* counts, std::ostream& out){
   for (unsigned int i = 0; i < 256; i++)
