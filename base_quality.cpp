@@ -39,13 +39,15 @@ std::string BaseQuality::median_base_qualities(const std::vector<const std::stri
       printErrorAndDie("All base quality strings must be of the same length when averaging probabilities");
 
   std::string median_qualities('N', qualities[0]->size());
+  /*
   for (unsigned int i = 0; i < qualities[0]->size(); i++){
     std::vector<char> quals;
     for (unsigned int j = 0; j < qualities.size(); j++)
-      quals.push_back(qualities[i]->at(j));
+      quals.push_back(qualities[j]->at(i));
     std::sort(quals.begin(), quals.end());
     median_qualities[i] = quals[quals.size()/2];
   }
+  */
   return median_qualities;
 }
 
