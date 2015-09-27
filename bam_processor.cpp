@@ -225,9 +225,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       pass = false;
     }
 
-    if (pass)
-      region_alignments.push_back(alignment);
-
     std::string aln_key = trim_alignment_name(alignment);
     if (pass){
       auto aln_iter = potential_mates.find(aln_key);
@@ -245,6 +242,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	if (add){
 	  paired_str_alns.push_back(alignment);
 	  mate_alns.push_back(aln_iter->second);
+	  region_alignments.push_back(alignment);
 	}
 	potential_mates.erase(aln_iter);
       }
@@ -267,6 +265,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	if (add){
 	  paired_str_alns.push_back(aln_iter->second);
 	  mate_alns.push_back(alignment);
+	  region_alignments.push_back(aln_iter->second);
 	}
 	potential_strs.erase(aln_iter);
       }
@@ -282,13 +281,17 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 
   for (auto aln_iter = potential_strs.begin(); aln_iter != potential_strs.end(); ++aln_iter){
     if (check_unique_mapping_){
-      if (!aln_iter->second.HasTag(ALT_MAP_TAG))
+      if (!aln_iter->second.HasTag(ALT_MAP_TAG)){
 	unpaired_str_alns.push_back(aln_iter->second);
+	region_alignments.push_back(aln_iter->second);
+      }
       else
 	unique_mapping++;
     }
-    else
+    else {
       unpaired_str_alns.push_back(aln_iter->second);
+      region_alignments.push_back(aln_iter->second);
+    }
   }
   potential_strs.clear();
   potential_mates.clear();
