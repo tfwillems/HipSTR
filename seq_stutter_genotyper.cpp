@@ -227,16 +227,12 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
       if (have_prev)
 	have_prev &= alns_[iter->second.first][iter->second.second].get_sequence().size() == alignments[i][j].QueryBases.size();
 
-      have_prev = false;
       if (!have_prev){
 	alns_.back().push_back(Alignment());
 	if (realign(alignments[i][j], chrom_seq, alns_.back().back())){
-	  seq_to_alns[alignments[i][j].QueryBases] = std::pair<int,int>(i, j);
+	  seq_to_alns[alignments[i][j].QueryBases] = std::pair<int,int>(i, alns_[i].size()-1);
 	  alns_.back().back().check_CIGAR_string(alignments[i][j].Name);
 	  seq_to_index[alignments[i][j].QueryBases] = uniq_seq_count;
-	  bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, 
-				       region_->start()-region_->period(), region_->stop()+region_->period(), bp_diff);
-	  bp_diffs_.push_back(got_size ? bp_diff : -999);
 	}
 	else {
 	  // Failed to realign read
@@ -258,9 +254,10 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 	new_aln.set_cigar_list(alns_[iter->second.first][iter->second.second].get_cigar_list());
 	new_aln.check_CIGAR_string(alignments[i][j].Name);
 	alns_.back().push_back(new_aln);
-	bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region_->start()-region_->period(), region_->stop()+region_->period(), bp_diff);
-	bp_diffs_.push_back(got_size ? bp_diff : -999);
       }
+      bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position,
+				   region_->start()-region_->period(), region_->stop()+region_->period(), bp_diff);
+      bp_diffs_.push_back(got_size ? bp_diff : -999);
       log_p1_[read_index]       = log_p1[i][j];
       log_p2_[read_index]       = log_p2[i][j];
       sample_label_[read_index] = i; 
@@ -680,7 +677,6 @@ void SeqStutterGenotyper::filter_alignments(std::ostream& logger, std::vector<in
       masked_reads[sample_label_[read_index]]++;
       read_LL_ptr += num_alleles_;
       num_proc_alns[sample_label_[read_index]]++;
-      //read_str_sizes.push_back(-999);
       continue;
     }
 
@@ -693,8 +689,9 @@ void SeqStutterGenotyper::filter_alignments(std::ostream& logger, std::vector<in
     int idx_1 = sample_label_[read_index], idx_2 = num_proc_alns[sample_label_[read_index]], num_flank_ins, num_flank_del, stutter_size;
     hap_aligner.trace_optimal_aln(alns_[idx_1][idx_2], seed_positions_[read_index], best_gt, &base_quality_, traced_aln, num_flank_ins, num_flank_del, stutter_size);
     num_proc_alns[idx_1]++;
+
+    // Zero out alignment probabilities for filtered reads
     if (!use_read(traced_aln, num_flank_ins, num_flank_del)){
-      // Zero out alignment probabilities
       seed_positions_[read_index] = -2;
       for (unsigned int i = 0; i < haplotype_->num_combs(); ++i)
 	read_LL_ptr[i] = 0;
@@ -708,7 +705,6 @@ void SeqStutterGenotyper::filter_alignments(std::ostream& logger, std::vector<in
   logger << "Filtered " << filt_count << " out of " << filt_count+keep_count << " reads based on their ML alignment tracebacks" << "\n";
   total_aln_filter_time_ = (clock() - filter_start)/CLOCKS_PER_SEC;
 }
-
 
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
 					   bool output_bootstrap_qualities, bool output_gls, bool output_pls,
@@ -726,12 +722,10 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   for (unsigned int i = 0; i < alleles_.size(); i++)
     allele_bp_diffs.push_back((int)alleles_[i].size() - (int)alleles_[0].size());
   
-
   // Filter reads with questionable alignments
   std::vector<int> masked_reads;
   if (true)
     filter_alignments(logger, masked_reads);
-
 
   // Extract each sample's posterior base pair dosage, MAP genotype, the associated phased genotype posterior
   // and the genotype likelihoods
