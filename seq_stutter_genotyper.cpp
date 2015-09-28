@@ -9,6 +9,9 @@
 #include "error.h"
 #include "extract_indels.h"
 #include "mathops.h"
+
+#include "read_pooler.h"
+
 #include "stringops.h"
 #include "vcf_input.h"
 
@@ -206,8 +209,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   double locus_left_aln_time = clock();
   logger << "Left aligning reads..." << std::endl;
   std::map<std::string, std::pair<int,int> > seq_to_alns;
-  std::map<std::string, int> seq_to_index;
-  int read_index = 0, uniq_seq_count = 0, align_fail_count = 0, qual_filt_count = 0;
+  int read_index = 0, align_fail_count = 0, qual_filt_count = 0;
   int bp_diff;
   for (unsigned int i = 0; i < alignments.size(); ++i){
     alns_.push_back(std::vector<Alignment>());
@@ -232,7 +234,6 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 	if (realign(alignments[i][j], chrom_seq, alns_.back().back())){
 	  seq_to_alns[alignments[i][j].QueryBases] = std::pair<int,int>(i, alns_[i].size()-1);
 	  alns_.back().back().check_CIGAR_string(alignments[i][j].Name);
-	  seq_to_index[alignments[i][j].QueryBases] = uniq_seq_count;
 	}
 	else {
 	  // Failed to realign read
@@ -345,9 +346,8 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     log_aln_probs_         = new double[num_reads_*num_alleles_];
     seed_positions_        = new int[num_reads_];
   }
-  else {
+  else
     logger << "WARNING: Unsuccessful initialization. " << std::endl;
-  }
 }
 
 bool SeqStutterGenotyper::genotype(std::ostream& logger){
@@ -364,19 +364,46 @@ bool SeqStutterGenotyper::genotype(std::ostream& logger){
   if (rep_block->min_size() < std::abs(rep_block->get_repeat_info()->max_deletion()))
     return false;
 
-  // Align each read against each candidate haplotype
-  logger << "Aligning reads to each candidate haplotype..." << std::endl;
   init_alignment_model();
   double locus_hap_aln_time = clock();
   HapAligner hap_aligner(haplotype_);
+
   if (pool_identical_seqs_){
-    // TO DO: Add check to see if sequence already encountered
-    // If so, reuse alignment probs(even though qual scores may differ)
-    // Should result in 5-7x speedup
-    // May want to consider averaging quality scores across reads with identical sequences
-    printErrorAndDie("Identical sequence pooling option not yet implemented");
+    // Merge reads with identical sequences into pools
+    logger << "Pooling reads with identical sequences..." << std::endl;
+    std::vector< std::vector<int> > pool_indices(alns_.size());
+    ReadPooler pooler;
+    for (unsigned int i = 0; i < alns_.size(); i++){
+      pool_indices[i].reserve(alns_[i].size());
+      for (unsigned int j = 0; j < alns_[i].size(); j++)
+	pool_indices[i].push_back(pooler.add_alignment(alns_[i][j]));
+    }
+    pooler.pool(base_quality_);
+
+    // Align each pooled read to each haplotype
+    logger << "Aligning pooled reads to each candidate haplotype..." << std::endl;
+    std::vector<Alignment>& pooled_alns = pooler.get_alignments();
+    double* log_pool_aln_probs = new double[pooled_alns.size()*num_alleles_];
+    int* pool_seed_positions   = new int[pooled_alns.size()];
+    hap_aligner.process_reads(pooled_alns, 0, &base_quality_, log_pool_aln_probs, pool_seed_positions);
+
+    // Copy each pool reads's alignment probabilities to the entries for its constituent reads
+    int* seed_ptr       = seed_positions_;
+    double* log_aln_ptr = log_aln_probs_;
+    for (unsigned int i = 0; i < alns_.size(); ++i){
+      for (unsigned int j = 0; j < alns_[i].size(); ++j, ++seed_ptr){
+	int pool_index = pool_indices[i][j];
+	*seed_ptr = pool_seed_positions[pool_index];
+	memcpy(log_aln_ptr, log_pool_aln_probs + num_alleles_*pool_index, num_alleles_*sizeof(double));
+	log_aln_ptr += num_alleles_;
+      }
+    }
+    delete [] log_pool_aln_probs;
+    delete [] pool_seed_positions;
   }
   else {
+    // Align each read against each candidate haplotype
+    logger << "Aligning reads to each candidate haplotype..." << std::endl;
     int read_index = 0;
     for (unsigned int i = 0; i < alns_.size(); i++){
       hap_aligner.process_reads(alns_[i], read_index, &base_quality_, log_aln_probs_, seed_positions_); 
