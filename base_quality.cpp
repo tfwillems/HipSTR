@@ -19,7 +19,7 @@ std::string BaseQuality::average_base_qualities(const std::vector<const std::str
 
   // Average raw error probabilities for each base and convert
   // to the closest quality score
-  std::string avg_qualities('N', qualities[0]->size());
+  std::string avg_qualities(qualities[0]->size(), 'N');
   std::vector<double> log_probs(qualities.size());
   for (unsigned int i = 0; i < qualities[0]->size(); i++){
     for (unsigned int j = 0; j < qualities.size(); j++)
@@ -38,8 +38,7 @@ std::string BaseQuality::median_base_qualities(const std::vector<const std::stri
     if (qualities[i]->size() != qualities[0]->size())
       printErrorAndDie("All base quality strings must be of the same length when averaging probabilities");
 
-  std::string median_qualities('N', qualities[0]->size());
-  /*
+  std::string median_qualities(qualities[0]->size(), 'N');
   for (unsigned int i = 0; i < qualities[0]->size(); i++){
     std::vector<char> quals;
     for (unsigned int j = 0; j < qualities.size(); j++)
@@ -47,7 +46,6 @@ std::string BaseQuality::median_base_qualities(const std::vector<const std::stri
     std::sort(quals.begin(), quals.end());
     median_qualities[i] = quals[quals.size()/2];
   }
-  */
   return median_qualities;
 }
 
