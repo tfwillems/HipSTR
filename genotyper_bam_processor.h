@@ -75,6 +75,10 @@ private:
   // If this flag is set, HTML alignments are written for both the haplotype alignments and Needleman-Wunsch left alignments
   bool viz_left_alns_;
 
+  // If true, the seqeunce-based genotyper will collapse reads with identical sequences
+  // and merge their base quality scores. Results in a large reduction in computation time
+  bool pool_seqs_;
+
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool check_mate_chroms, bool remove_pcr_dups,
 		       bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, check_mate_chroms, remove_pcr_dups){
@@ -85,6 +89,7 @@ public:
     read_stutter_models_   = false;
     have_ref_vcf_          = false;
     viz_left_alns_         = false;
+    pool_seqs_             = false;
     use_seq_aligner_       = use_seq_aligner;
     haploid_chroms_        = std::set<std::string>();
     num_em_converge_       = 0;
@@ -154,6 +159,10 @@ public:
 
   void visualize_left_alns(){
     viz_left_alns_ = true;
+  }
+
+  void pool_sequences(){
+    pool_seqs_ = true;
   }
 
   void set_output_viz(std::string& viz_file){

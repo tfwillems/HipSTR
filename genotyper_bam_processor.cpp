@@ -131,6 +131,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	reference_panel_vcf = &ref_vcf_;
 
       seq_genotyper = new SeqStutterGenotyper(region, haploid, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, reference_panel_vcf, logger());
+      if (pool_seqs_) seq_genotyper->pool_identical_sequences();
       if (output_alleles_){
 	std::vector<std::string> no_samples;
 	std::vector<int> read_str_sizes;
