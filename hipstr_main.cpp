@@ -88,6 +88,9 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "                                      "  << "\t" << "  STR sequence. As a result, it cannot detect homoplasy and all STR alleles output"  << "\n"
 	    << "\t" << "                                      "  << "\t" << "  in the VCF assume that indels are perfect copies of the repeat motif"              << "\n"
 	    << "\t" << "                                      "  << "\t" << "  The length-based approach is very similar to lobSTR's allelotype module"           << "\n"
+	    << "\t" << "--pool-seqs                           "  << "\t" << "Merge reads with identical sequences and combine their base quality scores. These "  << "\n"
+	    << "\t" << "                                      "  << "\t" << "  pooled reads will be aligned using the haplotype aligner instead of the reads"     << "\n"
+	    << "\t" << "                                      "  << "\t" << "  themselves, resulting in a large speedup. Not compatible with --len-genotyper"     << "\n"
 	    << "\n";
 }
   
@@ -111,6 +114,7 @@ void parse_command_line_args(int argc, char** argv,
 
   int print_help = 0;
   int condense_read_fields = 1;
+  int pool_seqs = 0;
   int viz_left_alns = 0;
 
   static struct option long_options[] = {
@@ -139,6 +143,7 @@ void parse_command_line_args(int argc, char** argv,
     {"no-rmdup",        no_argument, &remove_pcr_dups,    0},
     {"output-gls",      no_argument, &output_gls, 1},
     {"output-pls",      no_argument, &output_pls, 1},
+    {"pool-seqs",       no_argument, &pool_seqs,  1},
     {"str-vcf",         required_argument, 0, 'o'},
     {"ref-vcf",         required_argument, 0, 'p'},
     {"regions",         required_argument, 0, 'r'},
@@ -247,6 +252,12 @@ void parse_command_line_args(int argc, char** argv,
       abort();
       break;
     }
+  }
+
+  if (pool_seqs == 1){
+    bam_processor.pool_sequences();
+    if (use_hap_aligner == 0)
+      printErrorAndDie("--pool-seqs option is not compatible with the --len-genotyper option");
   }
 
   if (print_help){
