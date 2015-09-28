@@ -85,6 +85,27 @@ class SeqStutterGenotyper{
   // probabilities. Should result in significant speedup but may introduce genotyping errors
   bool pool_identical_seqs_;
 
+  std::set<std::string> expanded_alleles_;
+
+  // True iff we only report genotypes for samples with >= 1 read
+  // In an imputation-only setting, this should be set to false
+  bool require_one_read_;
+
+  // Reads whose sum of log base quality correct probs < threshold will be removed
+  // Required to avoid instances in which it's more advantageous to have mismatches
+  // because the quality is so low
+  double MIN_SUM_QUAL_LOG_PROB;
+
+  // True iff the underlying marker is haploid
+  bool haploid_;
+
+  // Timing statistics (in seconds)
+  double total_hap_build_time_;
+  double total_left_aln_time_;
+  double total_hap_aln_time_;
+  double total_aln_trace_time_;
+  double total_aln_filter_time_;
+
   /* Combine reads with identical base sequences into a single representative alignment */
   void combine_reads(std::vector<Alignment>& alignments, Alignment& pooled_aln);
 
@@ -133,27 +154,6 @@ class SeqStutterGenotyper{
 
   // Filter reads based on their retraced ML alignments
   void filter_alignments(std::ostream& logger, std::vector<int>& masked_reads);
-
-  std::set<std::string> expanded_alleles_;
-
-  // True iff we only report genotypes for samples with >= 1 read
-  // In an imputation-only setting, this should be set to false
-  bool require_one_read_;
-
-  // Reads whose sum of log base quality correct probs < threshold will be removed
-  // Required to avoid instances in which it's more advantageous to have mismatches
-  // because the quality is so low
-  double MIN_SUM_QUAL_LOG_PROB;
-
-  // True iff the underlying marker is haploid
-  bool haploid_;
-
-  // Timing statistics (in seconds)
-  double total_hap_build_time_;
-  double total_left_aln_time_;
-  double total_hap_aln_time_;
-  double total_aln_trace_time_;
-  double total_aln_filter_time_;
 
  public:
   
