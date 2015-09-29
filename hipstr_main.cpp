@@ -352,7 +352,7 @@ int main(int argc, char** argv){
   }
   else {
     if (!reader.GetHeader().HasReadGroups())
-      printErrorAndDie("Provided BAM files don't contain read groups in the header and the --rgs flag was not specified");
+      printErrorAndDie("Provided BAM files don't contain read groups in the header and the --bam-samps flag was not specified");
 
     BamTools::SamReadGroupDictionary rg_dict = reader.GetHeader().ReadGroups;
     for (auto rg_iter = rg_dict.Begin(); rg_iter != rg_dict.End(); rg_iter++){
