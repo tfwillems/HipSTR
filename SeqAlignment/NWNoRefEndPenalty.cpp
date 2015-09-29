@@ -115,7 +115,7 @@ namespace NWNoRefEndPenalty {
     case 'N':
       return 4;
     default:
-      printErrorAndDie("Invalid character in read");
+      printErrorAndDie("Invalid character '" + std::string(1, c) + "' in read");
     }
     return -1;
   }
