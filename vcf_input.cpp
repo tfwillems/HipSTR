@@ -43,6 +43,8 @@ void read_vcf_alleles(vcflib::VariantCallFile* ref_vcf, Region* region, std::vec
 	success = true;
 	pos     = variant.position-1;
 	alleles.insert(alleles.end(), variant.alleles.begin(), variant.alleles.end());
+	if (alleles.back().compare(".") == 0)
+	  alleles.pop_back();
 	return;
       }
       if (variant.position > region->start()+pad)
