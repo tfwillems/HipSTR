@@ -122,67 +122,70 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   total_stutter_time_ += locus_stutter_time_;
 
   SeqStutterGenotyper* seq_genotyper = NULL;
-  if (stutter_model != NULL) {
-    locus_genotype_time_ = clock();
-    if (use_seq_aligner_){
-      // Use sequence-based genotyper
-      vcflib::VariantCallFile* reference_panel_vcf = NULL;
-      if (have_ref_vcf_)
-	reference_panel_vcf = &ref_vcf_;
+  locus_genotype_time_ = clock();
+  if (output_str_gts_){
+    if (stutter_model != NULL) {
+      if (use_seq_aligner_){
+	// Use sequence-based genotyper
+	vcflib::VariantCallFile* reference_panel_vcf = NULL;
+	if (have_ref_vcf_)
+	  reference_panel_vcf = &ref_vcf_;
 
-      seq_genotyper = new SeqStutterGenotyper(region, haploid, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, reference_panel_vcf, logger());
-      if (pool_seqs_) seq_genotyper->pool_identical_sequences();
-      if (output_alleles_){
-	std::vector<std::string> no_samples;
-	std::vector<int> read_str_sizes;
-	seq_genotyper->write_vcf_record(no_samples, false, chrom_seq, false, false, false,
-					false, false, false, false, false, read_str_sizes, viz_out_, allele_vcf_, logger());
-      }
+	seq_genotyper = new SeqStutterGenotyper(region, haploid, alignments, log_p1s, log_p2s, rg_names, chrom_seq, *stutter_model, reference_panel_vcf, logger());
+	if (pool_seqs_) seq_genotyper->pool_identical_sequences();
+	if (output_alleles_){
+	  std::vector<std::string> no_samples;
+	  std::vector<int> read_str_sizes;
+	  seq_genotyper->write_vcf_record(no_samples, false, chrom_seq, false, false, false,
+					  false, false, false, false, false, read_str_sizes, viz_out_, allele_vcf_, logger());
+	}
 
-      if (output_str_gts_){
-	if (seq_genotyper->genotype(logger())) {
-	  bool pass = true;
+	if (output_str_gts_){
+	  if (seq_genotyper->genotype(logger())) {
+	    bool pass = true;
 
-	  // If appropriate, recalculate the stutter model using the haplotype ML alignments,
-	  //realign the reads and regenotype the samples
-	  if (recalc_stutter_model_)
-	    pass = seq_genotyper->recompute_stutter_model(chrom_seq, logger(), MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
+	    // If appropriate, recalculate the stutter model using the haplotype ML alignments,
+	    // realign the reads and regenotype the samples
+	    if (recalc_stutter_model_)
+	      pass = seq_genotyper->recompute_stutter_model(chrom_seq, logger(), MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
 
-	  if (pass){
-	    num_genotype_success_++;
-	    std::vector<int> read_str_sizes;
-	    seq_genotyper->write_vcf_record(samples_to_genotype_, true, chrom_seq, output_bstrap_quals_, output_gls_, output_pls_,
-					    output_all_reads_, output_pall_reads_, output_mall_reads_, output_viz_, viz_left_alns_, read_str_sizes, viz_out_, str_vcf_, logger());
+	    if (pass){
+	      num_genotype_success_++;
+	      std::vector<int> read_str_sizes;
+	      seq_genotyper->write_vcf_record(samples_to_genotype_, true, chrom_seq, output_bstrap_quals_, output_gls_, output_pls_,
+					      output_all_reads_, output_pall_reads_, output_mall_reads_, output_viz_, viz_left_alns_,
+					      read_str_sizes, viz_out_, str_vcf_, logger());
+	    }
+	    else
+	      num_genotype_fail_++;
 	  }
 	  else
 	    num_genotype_fail_++;
 	}
-	else
-	  num_genotype_fail_++;
       }
-    }
-    else {
-      // Use length-based genotyper
-      if (length_genotyper == NULL){
-	length_genotyper = new EMStutterGenotyper(region.chrom(), region.start(), region.stop(), haploid,
-						  str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
-	length_genotyper->set_stutter_model(*stutter_model);
-      }
-      
-      if (output_str_gts_){
-	bool use_pop_freqs = false;
-	if (length_genotyper->genotype(use_pop_freqs)){
-	  num_genotype_success_++;
-	  if (output_str_gts_)
-	    length_genotyper->write_vcf_record(ref_allele, samples_to_genotype_, output_gls_, output_pls_, output_all_reads_, str_vcf_);
+      else {
+	// Use length-based genotyper
+	if (length_genotyper == NULL){
+	  length_genotyper = new EMStutterGenotyper(region.chrom(), region.start(), region.stop(), haploid,
+						    str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
+	  length_genotyper->set_stutter_model(*stutter_model);
 	}
-	else
-	  num_genotype_fail_++;
+
+	if (output_str_gts_){
+	  bool use_pop_freqs = false;
+	  if (length_genotyper->genotype(use_pop_freqs)){
+	    num_genotype_success_++;
+	    if (output_str_gts_)
+	      length_genotyper->write_vcf_record(ref_allele, samples_to_genotype_, output_gls_, output_pls_, output_all_reads_, str_vcf_);
+	  }
+	  else
+	    num_genotype_fail_++;
+	}
       }
     }
-    locus_genotype_time_  = (clock() - locus_genotype_time_)/CLOCKS_PER_SEC;
-    total_genotype_time_ += locus_genotype_time_;
   }
+  locus_genotype_time_  = (clock() - locus_genotype_time_)/CLOCKS_PER_SEC;
+  total_genotype_time_ += locus_genotype_time_;
 
   logger() << "Locus timing:"                                          << "\n"
 	   << " BAM seek time       = " << locus_bam_seek_time()       << " seconds\n"
@@ -191,7 +194,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	   << " Stutter estimation  = " << locus_stutter_time()        << " seconds\n";
   if (stutter_model != NULL){
     logger() << " Genotyping          = " << locus_genotype_time()       << " seconds\n";
-    if (use_seq_aligner_){
+    if (use_seq_aligner_ && output_str_gts_){
       assert(seq_genotyper != NULL);
       logger() << "\t" << " Left alignment       = "  << seq_genotyper->left_aln_time()   << " seconds\n"
 	       << "\t" << " Haplotype generation = "  << seq_genotyper->hap_build_time()  << " seconds\n"
