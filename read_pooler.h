@@ -26,29 +26,16 @@ class ReadPooler {
     pooled_     = false;
   }
 
-  ~ReadPooler(){ }
-
+  ~ReadPooler(){
+    for (unsigned int i = 0; i < qualities_by_pool_.size(); i++)
+      for (unsigned int j = 0; j < qualities_by_pool_[i].size(); j++)
+	delete qualities_by_pool_[i][j];
+    qualities_by_pool_.clear();
+  }
 
   int32_t num_pools(){ return pool_index_; }
 
-  int32_t add_alignment(Alignment& aln){
-    if (pooled_)
-      printErrorAndDie("Cannot call add_alignment function once pool() function has been invoked.");
-
-    auto pool_iter = seq_to_pool_.find(aln.get_sequence());
-    if (pool_iter == seq_to_pool_.end()){
-      seq_to_pool_[aln.get_sequence()] = pool_index_;
-      pooled_alns_.push_back(Alignment(aln.get_start(), aln.get_stop(), "POOL", "", aln.get_sequence(), aln.get_alignment()));
-      pooled_alns_.back().set_cigar_list(aln.get_cigar_list());
-      qualities_by_pool_.push_back(std::vector<const std::string*>());
-      qualities_by_pool_.back().push_back(&(aln.get_base_qualities()));
-      return pool_index_++;
-    }
-    else{
-      qualities_by_pool_[pool_iter->second].push_back(&(aln.get_base_qualities()));
-      return pool_iter->second;
-    }  
-  }
+  int32_t add_alignment(Alignment& aln);
 
   void pool(BaseQuality& base_quality){
     // For each pooled set of reads, set the base quality at each position to be the median across the set
