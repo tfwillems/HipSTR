@@ -42,11 +42,16 @@ class BamProcessor {
 			     std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 			     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 			     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
-			     BamTools::BamWriter& bam_writer);
+			     BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer);
 
  std::string get_read_group(BamTools::BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping);
 
  std::string trim_alignment_name(BamTools::BamAlignment& aln);
+
+ void modify_and_write_alns(std::vector<BamTools::BamAlignment>& alignments,
+			    std::map<std::string, std::string>& rg_to_sample,
+			    Region& region,
+			    BamTools::BamWriter& writer);
 
  protected:
  BaseQuality base_quality_;
@@ -112,7 +117,8 @@ class BamProcessor {
  void process_regions(BamTools::BamMultiReader& reader,
 		      std::string& region_file, std::string& fasta_dir,
 		      std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
-		      BamTools::BamWriter& bam_writer, std::ostream& out, int32_t max_regions, std::string chrom);
+		      BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer,
+		      std::ostream& out, int32_t max_regions, std::string chrom);
   
  virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
 			    std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
