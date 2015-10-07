@@ -209,7 +209,7 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
     if (head+tail < end_iter->Length)
       new_alignment.add_cigar_element(CigarElement(end_iter->Type, end_iter->Length-head-tail));
     
-
+    /*
     if (alignment.Name.compare("HS2000-1266_147:5:2102:3686:41029") == 0){
       std::cerr << "DEBUG INFO:" << std::endl
 		<< alignment.QueryBases << std::endl
@@ -223,5 +223,6 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
 	std::cerr <<  cigar_iter->Length <<cigar_iter->Type; 
       std::cerr << std::endl;
     }
+    */
     return left_aligned;
 }
