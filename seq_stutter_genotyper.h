@@ -13,6 +13,7 @@
 #include "vcflib/src/Variant.h"
 
 #include "base_quality.h"
+#include "read_pooler.h"
 #include "region.h"
 #include "stutter_model.h"
 #include "vcf_input.h"
@@ -34,8 +35,10 @@ class SeqStutterGenotyper{
   double* log_p1_;                 // Log of SNP phasing likelihoods for each read
   double* log_p2_;
   int* sample_label_;              // Sample index for each read
+  int* pool_index_;                // Pool index for each read
   StutterModel* stutter_model_;
   BaseQuality base_quality_;
+  ReadPooler pooler_;
 
   std::vector<int> bp_diffs_;                  // Base pair difference of each read from reference
   std::vector< std::vector<Alignment> > alns_; // Vector of left-aligned alignments  
@@ -165,7 +168,8 @@ class SeqStutterGenotyper{
 		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 		      std::vector< std::vector<double> >& log_p1, 
 		      std::vector< std::vector<double> >& log_p2, 
-		      std::vector<std::string>& sample_names, std::string& chrom_seq, 
+		      std::vector<std::string>& sample_names, std::string& chrom_seq,
+		      bool pool_identical_seqs,
 		      StutterModel& stutter_model, vcflib::VariantCallFile* ref_vcf, std::ostream& logger){
     assert(alignments.size() == log_p1.size() && alignments.size() == log_p2.size() && alignments.size() == sample_names.size());
     log_p1_                = NULL;
@@ -176,10 +180,11 @@ class SeqStutterGenotyper{
     sample_total_LLs_      = NULL;
     log_allele_priors_     = NULL;
     sample_label_          = NULL;
+    pool_index_            = NULL;
     haplotype_             = NULL;
     MAX_REF_FLANK_LEN      = 30;
     pos_                   = -1;
-    pool_identical_seqs_   = false;
+    pool_identical_seqs_   = pool_identical_seqs;
     MIN_SUM_QUAL_LOG_PROB  = -10;
     haploid_               = haploid;
     total_hap_build_time_  = 0;
@@ -216,6 +221,7 @@ class SeqStutterGenotyper{
     delete [] log_sample_posteriors_;
     delete [] sample_total_LLs_;
     delete [] log_allele_priors_;
+    delete [] pool_index_;
     for (unsigned int i = 0; i < hap_blocks_.size(); i++)
       delete hap_blocks_[i];
     hap_blocks_.clear();
@@ -223,16 +229,6 @@ class SeqStutterGenotyper{
   }
   
   static void write_vcf_header(std::vector<std::string>& sample_names, bool output_gls, bool output_pls, std::ostream& out);
-
-  /*
-   *  When aligning to each haplotype, align each unique sequence instead of each read.
-   *  As quality scores, the genotyper utilizes the average of the base quality scores (raw probabilities) for
-   *  reads with identical sequences. Should result in significant speedup if many reads have the same sequence.
-   *  By default, each read is aligned individually using its own quality scores.
-   */
-  void pool_identical_sequences(){
-    pool_identical_seqs_ = true;
-  }
 
   /*
    *  Returns true iff the read with the associated retraced maximum log-likelihood alignment should be used in genotyping
