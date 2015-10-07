@@ -40,7 +40,9 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "                                      "  << "\t" << "  will be used to learn locus-specific models"                               << "\n" << "\n"
     
 	    << "Optional output parameters:" << "\n"
-	    << "\t" << "--bam-out       <used_reads.bam>      "  << "\t" << "Output a BAM file containing the reads used to genotype each region"                 << "\n"
+	    << "\t" << "--pass-bam      <used_reads.bam>      "  << "\t" << "Output a BAM file containing the reads used to genotype each region"                 << "\n"
+	    << "\t" << "--filt-bam      <filt_reads.bam>      "  << "\t" << "Output a BAM file containing the reads filtered in each region. Each BAM entry"      << "\n"
+	    << "\t" << "                                      "  << "\t" << " has an FT tag specifying the reason for filtering"                                  << "\n"
 	    << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Output a bgzipped VCF file containing phased STR genotypes"                          << "\n"
 	    << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a bgzipped VCF file containing alleles with strong evidence in the BAMs"      << "\n"
 	    << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n"
@@ -95,9 +97,10 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 }
   
 void parse_command_line_args(int argc, char** argv, 
-			     std::string& bamfile_string,  std::string& rg_sample_string,  std::string& rg_lib_string,       std::string& haploid_chr_string,
-			     std::string& fasta_dir,       std::string& region_file,       std::string& snp_vcf_file,        std::string& chrom,
-			     std::string& bam_out_file,    std::string& str_vcf_out_file,  std::string& allele_vcf_out_file, std::string& log_file,
+			     std::string& bamfile_string,    std::string& rg_sample_string,    std::string& rg_lib_string,       std::string& haploid_chr_string,
+			     std::string& fasta_dir,         std::string& region_file,         std::string& snp_vcf_file,        std::string& chrom,
+			     std::string& bam_pass_out_file, std::string& bam_filt_out_file,
+			     std::string& str_vcf_out_file,  std::string& allele_vcf_out_file, std::string& log_file,
 			     int& use_hap_aligner, int& remove_all_filters, int& remove_pcr_dups, int& bams_from_10x,
 			     int& output_gls, int& output_pls, int& output_all_reads, int& output_pall_reads, int& output_mall_reads, std::string& ref_vcf_file,
 			     GenotyperBamProcessor& bam_processor){
@@ -151,7 +154,9 @@ void parse_command_line_args(int argc, char** argv,
     {"stutter-in",      required_argument, 0, 'm'},
     {"stutter-out",     required_argument, 0, 's'},
     {"haploid-chrs",    required_argument, 0, 't'},
-    {"bam-out",         required_argument, 0, 'w'},
+    {"pass-bam",        required_argument, 0, 'w'},
+    {"max-str-len",     required_argument, 0, 'x'},
+    {"filt-bam",        required_argument, 0, 'y'},
     {"viz-left-alns",   no_argument, &viz_left_alns, 1},
     {"viz-out",         required_argument, 0, 'z'},
     {"rem-multimaps",   no_argument, &(bam_processor.REMOVE_MULTIMAPPERS), 1},
@@ -162,7 +167,7 @@ void parse_command_line_args(int argc, char** argv,
   int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:v:w:x:z:", long_options, &option_index);
+    c = getopt_long(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:v:w:x:y:z:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -234,10 +239,13 @@ void parse_command_line_args(int argc, char** argv,
       snp_vcf_file = std::string(optarg);
       break;
     case 'w':
-      bam_out_file = std::string(optarg);
+      bam_pass_out_file = std::string(optarg);
       break;
     case 'x':
       bam_processor.MAX_STR_LENGTH = atoi(optarg);
+      break;
+    case 'y':
+      bam_filt_out_file = std::string(optarg);
       break;
     case 'z':
       filename = std::string(optarg);
@@ -276,11 +284,12 @@ int main(int argc, char** argv){
   
   int use_hap_aligner = 1, remove_all_filters = 0, remove_pcr_dups = 1, bams_from_10x = 0;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
-  std::string bam_out_file="", str_vcf_out_file="", allele_vcf_out_file="", log_file = "";
+  std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", allele_vcf_out_file="", log_file = "";
   int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 1, output_mall_reads = 1;
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
-			  bam_out_file, str_vcf_out_file, allele_vcf_out_file, log_file, use_hap_aligner, remove_all_filters, 
+			  bam_pass_out_file, bam_filt_out_file,
+			  str_vcf_out_file, allele_vcf_out_file, log_file, use_hap_aligner, remove_all_filters,
 			  remove_pcr_dups, bams_from_10x, output_gls, output_pls, output_all_reads, output_pall_reads, output_mall_reads,
 			  ref_vcf_file, bam_processor);
   if (!log_file.empty())
@@ -389,11 +398,17 @@ int main(int argc, char** argv){
   if (!reader.OpenIndexes(bam_indexes))
     printErrorAndDie("Failed to open one or more BAM index files");
 
-  BamTools::BamWriter bam_writer;
-  if (!bam_out_file.empty()){
+  BamTools::BamWriter bam_pass_writer;
+  if (!bam_pass_out_file.empty()){
     BamTools::RefVector ref_vector = reader.GetReferenceData();
-    bool file_open = bam_writer.Open(bam_out_file, reader.GetHeaderText(), ref_vector);
-    if (!file_open) printErrorAndDie("Failed to open output BAM file");
+    bool file_open = bam_pass_writer.Open(bam_pass_out_file, reader.GetHeaderText(), ref_vector);
+    if (!file_open) printErrorAndDie("Failed to open output BAM file for reads used to genotype region");
+  }
+  BamTools::BamWriter bam_filt_writer;
+  if (!bam_filt_out_file.empty()){
+    BamTools::RefVector ref_vector = reader.GetReferenceData();
+    bool file_open = bam_filt_writer.Open(bam_filt_out_file, reader.GetHeaderText(), ref_vector);
+    if (!file_open) printErrorAndDie("Failed to open output BAM file for reads filtered for each region");
   }
 
   if (!ref_vcf_file.empty()){
@@ -444,10 +459,11 @@ int main(int argc, char** argv){
   }
 
   // Run analysis
-  bam_processor.process_regions(reader, region_file, fasta_dir, rg_ids_to_sample, rg_ids_to_library, bam_writer, std::cout, 1000000, chrom);
+  bam_processor.process_regions(reader, region_file, fasta_dir, rg_ids_to_sample, rg_ids_to_library, bam_pass_writer, bam_filt_writer, std::cout, 1000000, chrom);
   bam_processor.finish();
 
-  if (!bam_out_file.empty()) bam_writer.Close();
+  if (!bam_pass_out_file.empty()) bam_pass_writer.Close();
+  if (!bam_filt_out_file.empty()) bam_filt_writer.Close();
   reader.Close();
 
   total_time = (clock() - total_time)/CLOCKS_PER_SEC;
