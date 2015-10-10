@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "AlignmentData.h"
+#include "AlignmentTraceback.h"
 #include "../base_quality.h"
 #include "Haplotype.h"
 
@@ -63,7 +64,7 @@ class HapAligner {
   int calc_seed_base(Alignment& alignment);
 
   void process_read(Alignment& aln, int seed_base, BaseQuality* base_quality, bool retrace_aln,
-		    double* prob_ptr, Alignment& traced_aln, int& num_flank_ins, int& num_flank_del, int& stutter_size);
+		    double* prob_ptr, AlignmentTrace& traced_aln);
 
   void process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality,
 		     double* aln_probs, int* seed_positions);
@@ -72,8 +73,7 @@ class HapAligner {
     Retraces the Alignment's optimal alignment to the provided haplotype.
     Returns the result as a new Alignment relative to the reference haplotype
    */
-  void trace_optimal_aln(Alignment& orig_aln, int seed_base, int best_haplotype, BaseQuality* base_quality,
-			 Alignment& traced_aln, int& num_flank_ins, int& num_flank_del, int& stutter_size);
+  AlignmentTrace* trace_optimal_aln(Alignment& orig_aln, int seed_base, int best_haplotype, BaseQuality* base_quality);
 };
 
 #endif

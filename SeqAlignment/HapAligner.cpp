@@ -311,7 +311,7 @@ int HapAligner::calc_seed_base(Alignment& aln){
 void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality,
 			       double* aln_probs, int* seed_positions){
   int num_flank_ins, num_flank_del, stutter_size;
-  Alignment trace;
+  AlignmentTrace trace(0);
   double* prob_ptr = aln_probs + (init_read_index*fw_haplotype_->num_combs());
   for (unsigned int i = 0; i < alignments.size(); i++){
     int seed_base = calc_seed_base(alignments[i]);
@@ -322,7 +322,7 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
 	*prob_ptr = 0;
     }
     else {
-      process_read(alignments[i], seed_base, base_quality, false, prob_ptr, trace, num_flank_ins, num_flank_del, stutter_size);
+      process_read(alignments[i], seed_base, base_quality, false, prob_ptr, trace);
       prob_ptr += fw_haplotype_->num_combs();
     }
   }
@@ -470,7 +470,7 @@ std::string HapAligner::retrace(Haplotype* haplotype,
 }
 
 void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_quality, bool retrace_aln,
-			      double* prob_ptr, Alignment& traced_aln, int& num_flank_ins, int& num_flank_del, int& stutter_size){
+			      double* prob_ptr, AlignmentTrace& trace){//, int& num_flank_ins, int& num_flank_del, int& stutter_size){
   assert(seed_base != -1);
   assert(aln.get_sequence().size() == aln.get_base_qualities().size());
 
@@ -571,8 +571,8 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	}
 	assert(right_aln.size() - std::count(right_aln.begin(), right_aln.end(), 'D') == base_seq_len-1-seed_base);
 
-	num_flank_ins = l_flank_ins + r_flank_ins;
-	num_flank_del = l_flank_del + r_flank_del;
+	trace.set_num_flank_ins(l_flank_ins + r_flank_ins);
+	trace.set_num_flank_del(l_flank_del + r_flank_del);
 	std::string read_aln_to_hap = left_aln + "M" + right_aln;
 
 	/*
@@ -593,14 +593,14 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	// Only one of the flanks enters the stutter block, so only one can have a non-zero size
 	assert(l_stutter_size == 0 || r_stutter_size == 0);
 	if (l_stutter_size != 0)
-	  stutter_size = l_stutter_size;
+	  trace.set_stutter_size(l_stutter_size);
 	else if (r_stutter_size != 0)
-	  stutter_size = r_stutter_size;
+	  trace.set_stutter_size(r_stutter_size);
 	else
-	  stutter_size = 0;
+	  trace.set_stutter_size(0);
 
 	stitch_alignment_trace(fw_haplotype_->get_block(0)->start(), fw_haplotype_->get_aln_info(),
-			       read_aln_to_hap, max_index, seed_base, aln, traced_aln);
+			       read_aln_to_hap, max_index, seed_base, aln, trace.traced_aln());
       }
     }
   } while (fw_haplotype_->next() && rev_haplotype_->next());
@@ -620,15 +620,15 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
   delete [] r_best_artifact_pos;
 }
 
-void HapAligner::trace_optimal_aln(Alignment& orig_aln, int seed_base, int best_haplotype, BaseQuality* base_quality,
-				   Alignment& traced_aln, int& num_flank_ins, int& num_flank_del, int& stutter_size){
+AlignmentTrace* HapAligner::trace_optimal_aln(Alignment& orig_aln, int seed_base, int best_haplotype, BaseQuality* base_quality){
   fw_haplotype_->go_to(best_haplotype);
   fw_haplotype_->fix();
   rev_haplotype_->go_to(best_haplotype);
   fw_haplotype_->fix();
   double prob;
-  process_read(orig_aln, seed_base, base_quality, true, &prob, traced_aln, num_flank_ins, num_flank_del, stutter_size);
+  AlignmentTrace* trace = new AlignmentTrace(best_haplotype);
+  process_read(orig_aln, seed_base, base_quality, true, &prob, *trace);
   fw_haplotype_->unfix();
   rev_haplotype_->unfix();
+  return trace;
 }
-

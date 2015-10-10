@@ -19,6 +19,7 @@
 #include "vcf_input.h"
 
 #include "SeqAlignment/AlignmentData.h"
+#include "SeqAlignment/AlignmentTraceback.h"
 #include "SeqAlignment/Haplotype.h"
 #include "SeqAlignment/HapBlock.h"
 
@@ -109,11 +110,17 @@ class SeqStutterGenotyper{
   double total_aln_trace_time_;
   double total_aln_filter_time_;
 
+  // Cache of traced back alignments
+  std::map<std::pair<int,int>, AlignmentTrace*> trace_cache_;
+
   /* Combine reads with identical base sequences into a single representative alignment */
   void combine_reads(std::vector<Alignment>& alignments, Alignment& pooled_aln);
 
   /* Compute the alignment probabilites between each read and each haplotype */
   double calc_align_probs();
+
+  /* Initialize the priors required for computed sample genotype posteriors */
+  double init_log_sample_priors(double* log_sample_ptr);
 
   /* Compute the posteriors for each sample using the haplotype probabilites, stutter model and read weights */
   double calc_log_sample_posteriors();  
@@ -145,7 +152,7 @@ class SeqStutterGenotyper{
   void remove_alleles(std::vector<int>& allele_indices);
 
   // Determine the genotype associated with each sample based on the current genotype posteriors
-  void get_optimal_genotypes(std::vector< std::pair<int, int> >& gts);
+  void get_optimal_genotypes(double* log_posterior_ptr, std::vector< std::pair<int, int> >& gts);
 
   // Compute bootstrapped quality scores by resampling reads and determining how frequently
   // the genotypes match the ML genotype
@@ -222,6 +229,9 @@ class SeqStutterGenotyper{
     delete [] sample_total_LLs_;
     delete [] log_allele_priors_;
     delete [] pool_index_;
+    for (auto trace_iter = trace_cache_.begin(); trace_iter != trace_cache_.end(); trace_iter++)
+      delete trace_iter->second;
+    trace_cache_.clear();
     for (unsigned int i = 0; i < hap_blocks_.size(); i++)
       delete hap_blocks_[i];
     hap_blocks_.clear();
@@ -234,7 +244,7 @@ class SeqStutterGenotyper{
    *  Returns true iff the read with the associated retraced maximum log-likelihood alignment should be used in genotyping
    *  Considers factors such as indels in the regions flanking the STR block and the total number of matched bases
    */
-  bool use_read(Alignment& max_LL_aln, int num_flank_ins, int num_flank_del);
+  bool use_read(AlignmentTrace* trace);
 
   void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
 			bool output_bootstrap_qualities, bool output_gls, bool output_pls,
@@ -249,9 +259,7 @@ class SeqStutterGenotyper{
   double aln_trace_time() { return total_aln_trace_time_;  }
   double aln_filter_time(){ return total_aln_filter_time_; }
 
-
   bool genotype(std::ostream& logger);
-
 
   /*
    * Recompute the stutter model using the PCR artifacts obtained from the ML alignments
