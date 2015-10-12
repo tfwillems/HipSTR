@@ -31,10 +31,10 @@ class AlignmentTrace {
   Alignment& traced_aln()     { return trace_vs_ref_;  }
 
 
-  void set_num_flank_ins(int num_ins)     { num_flank_ins_;               }
-  void set_num_flank_del(int num_del)     { num_flank_del_;               }
-  void set_stutter_size(int stutter_size) { stutter_size_ = stutter_size; }
-  void set_hap_aln(std::string& aln)      { hap_aln_ = aln;               }
+  void set_num_flank_ins(int num_ins)     { num_flank_ins_ = num_ins;      }
+  void set_num_flank_del(int num_del)     { num_flank_del_ = num_del;      }
+  void set_stutter_size(int stutter_size) { stutter_size_  = stutter_size; }
+  void set_hap_aln(std::string& aln)      { hap_aln_       = aln;          }
 };
 
 
