@@ -427,20 +427,25 @@ void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_name
   out << "##fileformat=VCFv4.1" << "\n";
 
   // Info field descriptors
-  out << "##INFO=<ID=" << "INFRAME_PGEOM,"  << "Number=1,Type=Float,Description=\""   << "Parameter for in-frame geometric step size distribution"                      << "\">\n"
-      << "##INFO=<ID=" << "INFRAME_UP,"     << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame increase in obs. STR size"        << "\">\n"
-      << "##INFO=<ID=" << "INFRAME_DOWN,"   << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame decrease in obs. STR size"        << "\">\n"
-      << "##INFO=<ID=" << "OUTFRAME_PGEOM," << "Number=1,Type=Float,Description=\""   << "Parameter for out-of-frame geometric step size distribution"                  << "\">\n"
-      << "##INFO=<ID=" << "OUTFRAME_UP,"    << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame increase in obs. STR size"    << "\">\n"
-      << "##INFO=<ID=" << "OUTFRAME_DOWN,"  << "Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame decrease in obs. STR size"    << "\">\n"
-      << "##INFO=<ID=" << "BPDIFFS,"        << "Number=A,Type=Integer,Description=\"" << "Base pair difference of each alternate allele from the reference allele"      << "\">\n"
-      << "##INFO=<ID=" << "START,"          << "Number=1,Type=Integer,Description=\"" << "Inclusive start coodinate for the repetitive portion of the reference allele" << "\">\n"
-      << "##INFO=<ID=" << "END,"            << "Number=1,Type=Integer,Description=\"" << "Inclusive end coordinate for the repetitive portion of the reference allele"  << "\">\n"
-      << "##INFO=<ID=" << "PERIOD,"         << "Number=1,Type=Integer,Description=\"" << "Length of STR motif"                                                          << "\">\n"
-      << "##INFO=<ID=" << "REFAC,"          << "Number=1,Type=Integer,Description=\"" << "Reference allele count"                                                       << "\">\n"
-      << "##INFO=<ID=" << "AC,"             << "Number=A,Type=Integer,Description=\"" << "Alternate allele counts"                                                      << "\">\n"
-      << "##INFO=<ID=" << "NSKIP,"          << "Number=1,Type=Integer,Description=\"" << "Number of samples not genotyped due to various issues"                        << "\">\n"
-      << "##INFO=<ID=" << "NFILT,"          << "Number=1,Type=Integer,Description=\"" << "Number of samples whose genotypes were filtered due to various issues"        << "\">\n";
+  out << "##INFO=<ID=" << "INFRAME_PGEOM"  << ",Number=1,Type=Float,Description=\""   << "Parameter for in-frame geometric step size distribution"                      << "\">\n"
+      << "##INFO=<ID=" << "INFRAME_UP"     << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame increase in obs. STR size"        << "\">\n"
+      << "##INFO=<ID=" << "INFRAME_DOWN"   << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame decrease in obs. STR size"        << "\">\n"
+      << "##INFO=<ID=" << "OUTFRAME_PGEOM" << ",Number=1,Type=Float,Description=\""   << "Parameter for out-of-frame geometric step size distribution"                  << "\">\n"
+      << "##INFO=<ID=" << "OUTFRAME_UP"    << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame increase in obs. STR size"    << "\">\n"
+      << "##INFO=<ID=" << "OUTFRAME_DOWN"  << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame decrease in obs. STR size"    << "\">\n"
+      << "##INFO=<ID=" << "BPDIFFS"        << ",Number=A,Type=Integer,Description=\"" << "Base pair difference of each alternate allele from the reference allele"      << "\">\n"
+      << "##INFO=<ID=" << "START"          << ",Number=1,Type=Integer,Description=\"" << "Inclusive start coodinate for the repetitive portion of the reference allele" << "\">\n"
+      << "##INFO=<ID=" << "END"            << ",Number=1,Type=Integer,Description=\"" << "Inclusive end coordinate for the repetitive portion of the reference allele"  << "\">\n"
+      << "##INFO=<ID=" << "PERIOD"         << ",Number=1,Type=Integer,Description=\"" << "Length of STR motif"                                                          << "\">\n"
+      << "##INFO=<ID=" << "REFAC"          << ",Number=1,Type=Integer,Description=\"" << "Reference allele count"                                                       << "\">\n"
+      << "##INFO=<ID=" << "AC"             << ",Number=A,Type=Integer,Description=\"" << "Alternate allele counts"                                                      << "\">\n"
+      << "##INFO=<ID=" << "NSKIP"          << ",Number=1,Type=Integer,Description=\"" << "Number of samples not genotyped due to various issues"                        << "\">\n"
+      << "##INFO=<ID=" << "NFILT"          << ",Number=1,Type=Integer,Description=\"" << "Number of samples whose genotypes were filtered due to various issues"        << "\">\n"
+      << "##INFO=<ID=" << "DP"             << ",Number=1,Type=Integer,Description=\"" << "Total number of valid reads used to genotype all samples"                     << "\">\n"
+      << "##INFO=<ID=" << "DSNP"           << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with SNP phasing information"                           << "\">\n"
+      << "##INFO=<ID=" << "DFILT"          << ",Number=1,Type=Integer,Description=\"" << "Total number of reads filtered due to various issues"                         << "\">\n"
+      << "##INFO=<ID=" << "DSTUTTER"       << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with a stutter indel in the STR region"                 << "\">\n"
+      << "##INFO=<ID=" << "DFLANKINDEL"    << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with an indel in the regions flanking the STR"          << "\">\n";
 
   // Format field descriptors
   out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""  << "Genotype" << "\">" << "\n"
@@ -704,10 +709,10 @@ void SeqStutterGenotyper::filter_alignments(std::ostream& logger, std::vector<in
     }
     else
       trace = trace_iter->second;
+    num_proc_alns[idx_1]++;
 
     // Zero out alignment probabilities for filtered reads
     if (!use_read(trace)){
-    //if (!use_read(traced_aln, num_flank_ins, num_flank_del)){
       seed_positions_[read_index] = -2;
       for (unsigned int i = 0; i < haplotype_->num_combs(); ++i)
 	read_LL_ptr[i] = 0;
@@ -717,6 +722,7 @@ void SeqStutterGenotyper::filter_alignments(std::ostream& logger, std::vector<in
       keep_count++;
     read_LL_ptr += num_alleles_;
   }
+
   calc_log_sample_posteriors();
   logger << "Filtered " << filt_count << " out of " << filt_count+keep_count << " reads based on their ML alignment tracebacks" << "\n";
   total_aln_filter_time_ = (clock() - filter_start)/CLOCKS_PER_SEC;
@@ -963,6 +969,29 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       out << "," << allele_bp_diffs[i];
     out << ";";
   }
+
+  // Compute INFO field values for DP, DFILT, DSTUTTER and DFLANKINDEL and add them to the VCF
+  int32_t tot_dp = 0, tot_dsnp = 0, tot_dfilt = 0, tot_dstutter = 0, tot_dflankindel = 0;
+  for (unsigned int i = 0; i < sample_names.size(); i++){
+    auto sample_iter = sample_indices_.find(sample_names[i]);
+    if (sample_iter == sample_indices_.end())
+      continue;
+    if (!call_sample_[sample_iter->second])
+      continue;
+
+    int sample_index = sample_iter->second;
+    tot_dp          += num_aligned_reads[sample_index];
+    tot_dsnp        += num_reads_with_snps[sample_index];
+    tot_dfilt       += masked_reads[sample_index];
+    tot_dstutter    += num_reads_with_stutter[sample_index];
+    tot_dflankindel += num_reads_with_flank_indels[sample_index];
+  }
+  out << "DP="          << tot_dp          << ";"
+      << "DSNP="        << tot_dsnp        << ";"
+      << "DFILT="       << tot_dfilt       << ";"
+      << "DSTUTTER="    << tot_dstutter    << ";"
+      << "DFLANKINDEL=" << tot_dflankindel << ";";
+
   // Add allele counts
   out << "REFAC=" << allele_counts[0] << ";";
   if (allele_counts.size() > 1){
