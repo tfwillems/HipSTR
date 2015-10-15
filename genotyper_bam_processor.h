@@ -195,17 +195,17 @@ public:
       printErrorAndDie("Failed to open output file for stutter models");
   }
 
-  void set_output_allele_vcf(std::string& vcf_file){
+  void set_output_allele_vcf(std::string& vcf_file, std::string& full_command){
     output_alleles_ = true;
     allele_vcf_.open(vcf_file.c_str());
     std::vector<std::string> no_samples;
     if (use_seq_aligner_)
-      SeqStutterGenotyper::write_vcf_header(no_samples, output_gls_, output_pls_, allele_vcf_);
+      SeqStutterGenotyper::write_vcf_header(full_command, no_samples, output_gls_, output_pls_, allele_vcf_);
     else
       printErrorAndDie("Cannot output STR allele VCF if --seq-genotyper option has not been specified");
   }
 
-  void set_output_str_vcf(std::string& vcf_file, std::set<std::string>& samples_to_output){
+  void set_output_str_vcf(std::string& vcf_file, std::string& full_command, std::set<std::string>& samples_to_output){
     output_str_gts_ = true;
     str_vcf_.open(vcf_file.c_str());
 
@@ -219,9 +219,9 @@ public:
     
     // Write VCF header
     if (use_seq_aligner_)
-      SeqStutterGenotyper::write_vcf_header(samples_to_genotype_, output_gls_, output_pls_, str_vcf_);
+      SeqStutterGenotyper::write_vcf_header(full_command, samples_to_genotype_, output_gls_, output_pls_, str_vcf_);
     else
-      EMStutterGenotyper::write_vcf_header(samples_to_genotype_, output_gls_, output_pls_, str_vcf_);
+      EMStutterGenotyper::write_vcf_header(full_command, samples_to_genotype_, output_gls_, output_pls_, str_vcf_);
   }
 
   void analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,

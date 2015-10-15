@@ -434,8 +434,9 @@ bool SeqStutterGenotyper::genotype(std::ostream& logger){
   return true;
 }
 
-void SeqStutterGenotyper::write_vcf_header(std::vector<std::string>& sample_names, bool output_gls, bool output_pls, std::ostream& out){
-  out << "##fileformat=VCFv4.1" << "\n";
+void SeqStutterGenotyper::write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, std::ostream& out){
+  out << "##fileformat=VCFv4.1" << "\n"
+      << "##command=" << full_command << "\n";
 
   // Info field descriptors
   out << "##INFO=<ID=" << "INFRAME_PGEOM"  << ",Number=1,Type=Float,Description=\""   << "Parameter for in-frame geometric step size distribution"                      << "\">\n"

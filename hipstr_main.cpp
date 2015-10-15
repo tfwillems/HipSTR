@@ -16,6 +16,7 @@
 #include "genotyper_bam_processor.h"
 #include "seqio.h"
 #include "stringops.h"
+#include "version.h"
 
 bool file_exists(std::string path){
   return (access(path.c_str(), F_OK) != -1);
@@ -279,9 +280,16 @@ void parse_command_line_args(int argc, char** argv,
 
 int main(int argc, char** argv){
   double total_time = clock();
+
+  std::stringstream full_command_ss;
+  full_command_ss << "HipSTR-" << VERSION;
+  for (int i = 1; i < argc; i++)
+    full_command_ss << " " << argv[i];
+  std::string full_command = full_command_ss.str();
+
   bool check_mate_chroms = false;
   GenotyperBamProcessor bam_processor(true, check_mate_chroms, true, true);
-  
+
   int use_hap_aligner = 1, remove_all_filters = 0, remove_pcr_dups = 1, bams_from_10x = 0;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", allele_vcf_out_file="", log_file = "";
@@ -440,12 +448,16 @@ int main(int argc, char** argv){
     bam_processor.set_input_snp_vcf(snp_vcf_file);
   }
 
-  if(!allele_vcf_out_file.empty())
-    bam_processor.set_output_allele_vcf(allele_vcf_out_file);
+  if(!allele_vcf_out_file.empty()){
+    if (!string_ends_with(allele_vcf_out_file, ".gz"))
+      printErrorAndDie("Path for allele VCF output file must end in .gz as it will be bgzipped");
+    bam_processor.set_output_allele_vcf(allele_vcf_out_file, full_command);
+  }
+
   if(!str_vcf_out_file.empty()){
     if (!string_ends_with(str_vcf_out_file, ".gz"))
       printErrorAndDie("Path for STR VCF output file must end in .gz as it will be bgzipped");
-    bam_processor.set_output_str_vcf(str_vcf_out_file, rg_samples);
+    bam_processor.set_output_str_vcf(str_vcf_out_file, full_command, rg_samples);
   }
   
   if (remove_all_filters)
