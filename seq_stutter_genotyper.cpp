@@ -209,6 +209,10 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   std::map<std::string, std::pair<int,int> > seq_to_alns;
   int read_index = 0, align_fail_count = 0, qual_filt_count = 0;
   int bp_diff;
+
+  // Minimum and maximum alignment boundaries
+  int32_t min_start = INT_MAX, max_stop = INT_MIN;
+
   for (unsigned int i = 0; i < alignments.size(); ++i){
     alns_.push_back(std::vector<Alignment>());
     for (unsigned int j = 0; j < alignments[i].size(); ++j, ++read_index){
@@ -232,6 +236,8 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 	if (realign(alignments[i][j], chrom_seq, alns_.back().back())){
 	  seq_to_alns[alignments[i][j].QueryBases] = std::pair<int,int>(i, alns_[i].size()-1);
 	  alns_.back().back().check_CIGAR_string(alignments[i][j].Name);
+	  min_start = std::min(min_start, alns_.back().back().get_start());
+	  max_stop  = std::max(max_stop,  alns_.back().back().get_stop());
 	}
 	else {
 	  // Failed to realign read
@@ -279,7 +285,12 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 
   double locus_hap_build_time = clock();
   std::vector<std::string> vcf_alleles;
-  if (ref_vcf_ != NULL){
+  if (min_start >= region_->start()-5 || max_stop < region_->stop()+5){
+    // No reads extend 5bp upstream and downstream of the STR
+    logger << "Skipping region as no reads extend +- 5bp from the STR boundary" << std::endl;
+    pos_ = -1;
+  }
+  else if (ref_vcf_ != NULL){
     bool success = false;
     if (ref_vcf_->formatTypes.find(PGP_KEY) == ref_vcf_->formatTypes.end()){
       // Read alleles from VCF
