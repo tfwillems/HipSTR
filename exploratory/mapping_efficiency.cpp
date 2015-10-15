@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <getopt.h>
 #include <iostream>
+#include <random>
 #include <string>
 
 #include "../vcflib/src/Variant.h"
