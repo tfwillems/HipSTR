@@ -149,6 +149,10 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   const std::string FILTER_TAG_TYPE = "Z";
 
   while (reader.GetNextAlignment(alignment)){
+    // Stop parsing reads if we've already exceeded the maximum number for downstream analyses
+    if (paired_str_alns.size() > MAX_TOTAL_READS)
+      break;
+
     if (!alignment.IsMapped() || alignment.Position == 0 || alignment.CigarData.size() == 0)
 	continue;
     assert(alignment.CigarData.size() > 0 && alignment.RefID != -1);
@@ -491,12 +495,13 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
       printErrorAndDie("One or more BAM files failed to set the region properly");
     }
     locus_bam_seek_time_  =  (clock() - locus_bam_seek_time_)/CLOCKS_PER_SEC;
-    total_bam_seek_time_ += locus_bam_seek_time_;;
+    total_bam_seek_time_ += locus_bam_seek_time_;
 
     std::vector<std::string> rg_names;
     std::vector< std::vector<BamTools::BamAlignment> > paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg;
     read_and_filter_reads(reader, chrom_seq, region_iter, rg_to_sample, rg_to_library, rg_names,
 			  paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, pass_writer, filt_writer);
+
     if (rem_pcr_dups_)
       remove_pcr_duplicates(base_quality_, use_bam_rgs_, rg_to_library, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, logger());
 

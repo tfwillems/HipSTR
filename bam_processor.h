@@ -83,6 +83,7 @@ class BamProcessor {
    MAX_STR_LENGTH           = 100;
    MIN_SUM_QUAL_LOG_PROB    = -10;
    log_to_file_             = false;
+   MAX_TOTAL_READS          = 25000;
  }
 
  ~BamProcessor(){
@@ -162,6 +163,8 @@ class BamProcessor {
  int REMOVE_READS_WITH_N;
  bool REQUIRE_SPANNING;
  double MIN_SUM_QUAL_LOG_PROB;
+
+ int32_t MAX_TOTAL_READS; // Skip loci where the number of STR reads passing all filters exceeds this limit
 };
 
 
