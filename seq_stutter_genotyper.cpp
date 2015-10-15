@@ -563,7 +563,7 @@ void SeqStutterGenotyper::debug_sample(int sample_index){
   std::cerr << "END OF SAMPLE DEBUGGING..." << std::endl;
 }
 
-double SeqStutterGenotyper::init_log_sample_priors(double* log_sample_ptr){
+void SeqStutterGenotyper::init_log_sample_priors(double* log_sample_ptr){
   if (log_allele_priors_ != NULL)
     memcpy(log_sample_ptr, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
   else {

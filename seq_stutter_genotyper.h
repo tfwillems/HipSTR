@@ -120,7 +120,7 @@ class SeqStutterGenotyper{
   double calc_align_probs();
 
   /* Initialize the priors required for computed sample genotype posteriors */
-  double init_log_sample_priors(double* log_sample_ptr);
+  void init_log_sample_priors(double* log_sample_ptr);
 
   /* Compute the posteriors for each sample using the haplotype probabilites, stutter model and read weights */
   double calc_log_sample_posteriors();  
