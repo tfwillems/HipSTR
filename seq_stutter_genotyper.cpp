@@ -811,6 +811,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	int max_gt = std::max(gts[sample_index].first, gts[sample_index].second);
 	gl_index   = max_gt*(max_gt+1)/2 + min_gt;
       }
+      if (second_gl == -DBL_MAX) second_gl = max_gl;
       gl_diffs.push_back((abs(max_gl-gls[sample_index][gl_index]) < TOLERANCE) ? (max_gl-second_gl) : gls[sample_index][gl_index]-max_gl);
     }
   }
