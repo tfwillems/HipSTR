@@ -23,8 +23,6 @@ class BamProcessor {
                               // For single-end reads, this is only the case if it doesn't have an XA tag
                               // For paired-end reads, the intersection of mapping locations must be unique
 
-  bool require_paired_reads_; // Only utilize paired STR reads to genotype individuals
-
   // Timing statistics (in seconds)
   double total_bam_seek_time_;
   double locus_bam_seek_time_;
@@ -67,11 +65,6 @@ class BamProcessor {
    check_mate_info_         = filter_by_mate;
    check_unique_mapping_    = true;
    rem_pcr_dups_            = remove_pcr_dups;
-
-
-   require_paired_reads_    = true;
-
-
    MAX_MATE_DIST            = 1000;
    MIN_BP_BEFORE_INDEL      = 7;
    MIN_FLANK                = 5;
@@ -79,6 +72,7 @@ class BamProcessor {
    MAXIMAL_END_MATCH_WINDOW = 15;
    REMOVE_MULTIMAPPERS      = 0;
    REQUIRE_SPANNING         = true;
+   REQUIRE_PAIRED_READS     = 0;
    MIN_MAPPING_QUALITY      = 0;
    REMOVE_READS_WITH_N      = 1;
    total_bam_seek_time_     = 0;
@@ -106,6 +100,7 @@ class BamProcessor {
    MAXIMAL_END_MATCH_WINDOW = 0;
    REMOVE_MULTIMAPPERS      = 0;
    REQUIRE_SPANNING         = false;
+   REQUIRE_PAIRED_READS     = 0;
    MIN_MAPPING_QUALITY      = 0;
    REMOVE_READS_WITH_N      = 0;
    MAX_SOFT_CLIPS           = 100000;
@@ -169,9 +164,9 @@ class BamProcessor {
  int REMOVE_MULTIMAPPERS;
  int REMOVE_READS_WITH_N;
  bool REQUIRE_SPANNING;
+ int REQUIRE_PAIRED_READS;     // Only utilize paired STR reads to genotype individuals
  double MIN_SUM_QUAL_LOG_PROB;
-
- int32_t MAX_TOTAL_READS; // Skip loci where the number of STR reads passing all filters exceeds this limit
+ int32_t MAX_TOTAL_READS;      // Skip loci where the number of STR reads passing all filters exceeds this limit
 };
 
 

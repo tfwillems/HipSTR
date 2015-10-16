@@ -66,6 +66,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
 	    << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
 	    << "\t" << "--max-softclips <num_bases>           "  << "\t" << "Remove reads with more than NUM_BASES soft-clipped bases (Default = " << def_max_sclips << ")" << "\n"
+	    << "\t" << "--require-pairs                       "  << "\t" << "Only utilize paired-end reads (Default = False)" << "\n"
 	    << "\t" << "--max-hardclips <num_bases>           "  << "\t" << "Remove reads with more than NUM_BASES hard-clipped bases (Default = " << def_max_hclips << ")" << "\n"
 	    << "\t" << "--min-mapq      <min_qual>            "  << "\t" << "Remove reads with a mapping quality below this threshold (Default = 0)"              << "\n" << "\n"
 
@@ -151,6 +152,7 @@ void parse_command_line_args(int argc, char** argv,
     {"str-vcf",         required_argument, 0, 'o'},
     {"ref-vcf",         required_argument, 0, 'p'},
     {"regions",         required_argument, 0, 'r'},
+    {"require-pairs",   no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 1},
     {"snp-vcf",         required_argument, 0, 'v'},
     {"stutter-in",      required_argument, 0, 'm'},
     {"stutter-out",     required_argument, 0, 's'},
@@ -300,6 +302,7 @@ int main(int argc, char** argv){
 			  str_vcf_out_file, allele_vcf_out_file, log_file, use_hap_aligner, remove_all_filters,
 			  remove_pcr_dups, bams_from_10x, output_gls, output_pls, output_all_reads, output_pall_reads, output_mall_reads,
 			  ref_vcf_file, bam_processor);
+
   if (!log_file.empty())
     bam_processor.set_log(log_file);
   if (bams_from_10x){
