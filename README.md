@@ -110,8 +110,9 @@ This mode is very similar to mode #2, except that we provide an additional VCF f
 HipSTR doesn't currently have multi-threaded support, but there are several options available to accelerate analyses:
 
 1. Analyze each chromosome in parallel using the **--chrom** option. For example, **--chrom chr2** will only genotype the BED regions on chr2
-2. Utilize the length-based genotyper instead of the sequence-based genotyper using the **--len-genotyper** flag. This will vastly accelerate analyses, but it only considers the sizes of indels in reads independently. As a result, it is incapable of determining the exact sequence of an STR and is susceptible to alignment errors
-3. If you have hundreds of BAM files, we recommend that you merge them into a more manageable number (10-100) using the `samtools merge` command. Large numbers of BAMs can lead to slow disk IO and poor performance
+2. Pool reads with identical sequences using the **--pool-seqs** option. This will cause HipSTR to combine base quality scores across identical sequences and align each unique sequence instead of each unique read. If you're analyzing large population datasets, this may result in a 5-10x speedup
+3. Utilize the length-based genotyper instead of the sequence-based genotyper using the **--len-genotyper** flag. This will vastly accelerate analyses, but it only considers the sizes of indels in reads independently. As a result, it is incapable of determining the exact sequence of an STR and is susceptible to alignment errors
+4. If you have hundreds of BAM files, we recommend that you merge them into a more manageable number (10-100) using the `samtools merge` command. Large numbers of BAMs can lead to slow disk IO and poor performance
 
 ## Call Filtering
 
