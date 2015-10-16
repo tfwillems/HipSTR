@@ -343,6 +343,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     }
   }
 
+  int32_t num_filt_unpaired_reads = 0;
   for (auto aln_iter = potential_strs.begin(); aln_iter != potential_strs.end(); ++aln_iter){
     if (check_unique_mapping_){
       if (!aln_iter->second.HasTag(ALT_MAP_TAG)){
@@ -358,8 +359,12 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       }
     }
     else {
-      unpaired_str_alns.push_back(aln_iter->second);
-      region_alignments.push_back(aln_iter->second);
+      if (require_paired_reads_)
+	num_filt_unpaired_reads++;
+      else {
+	unpaired_str_alns.push_back(aln_iter->second);
+	region_alignments.push_back(aln_iter->second);
+      }
     }
   }
   potential_strs.clear();
@@ -384,6 +389,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	   << "\n\t" << low_qual_score   << " had low base quality scores";
   if (check_unique_mapping_)
     logger() << "\n\t" << unique_mapping << " did not have a unique mapping";
+  if (require_paired_reads_)
+    logger() << "\n\t" << num_filt_unpaired_reads << " did not have a mate pair";
   logger() << "\n" << region_alignments.size() << " PASSED ALL FILTERS" << "\n" << std::endl;
     
   // Output the reads passing all filters to a BAM file (if requested)

@@ -23,6 +23,8 @@ class BamProcessor {
                               // For single-end reads, this is only the case if it doesn't have an XA tag
                               // For paired-end reads, the intersection of mapping locations must be unique
 
+  bool require_paired_reads_; // Only utilize paired STR reads to genotype individuals
+
   // Timing statistics (in seconds)
   double total_bam_seek_time_;
   double locus_bam_seek_time_;
@@ -65,6 +67,11 @@ class BamProcessor {
    check_mate_info_         = filter_by_mate;
    check_unique_mapping_    = true;
    rem_pcr_dups_            = remove_pcr_dups;
+
+
+   require_paired_reads_    = true;
+
+
    MAX_MATE_DIST            = 1000;
    MIN_BP_BEFORE_INDEL      = 7;
    MIN_FLANK                = 5;
