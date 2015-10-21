@@ -223,8 +223,15 @@ BPDIFFS        | Base pair difference of each alternate allele from the referenc
 START          | Inclusive start coodinate for the repetitive portion of the reference allele
 END            | Inclusive end coordinate for the repetitive portion of the reference allele
 PERIOD         | Length of STR motif
+REFAC          | Reference allele count
 AC             | Alternate allele counts
 NSKIP          | Number of samples not genotyped due to various issues
+NFILT          | Number of samples that were originally genotyped but have since been filtered
+DP             | Total number of reads used to genotype all samples
+DSNP           | Total number of reads with SNP information
+DFILT          | Total number of reads filtered due to various reasons
+DSTUTTER       | Total number of reads with a stutter indel in the STR region
+DFLANKINDEL    | Total number of reads with an indel in the regions flanking the STR
 
 #### FORMAT fields
 *FORMAT* fields contain information about the genotype for each sample at the locus. In addition to the most probable phased genotype (*GT*), HipSTR reports information about the posterior likelihood of this genotype (*PQ*) and its unphased analog (*Q*). HipSTR also reports the expected base pair difference from the reference for the genotype by marginalizing over all genotype probabilities (*BPDOSE*), a value that may be useful in association studies. 
@@ -235,14 +242,22 @@ GT        | Genotype
 GB        | Base pair differences of genotype from reference
 Q         | Posterior probability of unphased genotype
 PQ        | Posterior probability of phased genotype
-DP        | Read depth
+DP        | Number of valid reads used for sample's genotype
 DSNP      | Number of reads with SNP phasing information
 PDP       | Fractional reads supporting each haploid genotype
+BQ        | Bootstrapped quality score
+GLDIFF    | Difference in likelihood between the reported and next best genotypes
+DSNP      | Total number of reads with SNP information
+DFILT     | Number of reads filtered due to various issues
+DSTUTTER  | Number of reads with a stutter indel in the STR region
+DFLANKINDEL | Number of reads with an indel in the regions flanking the STR
 BPDOSE    | Posterior mean base pair difference from reference
-ALLREADS  | Base pair difference observed in each read
+ALLREADS  | Base pair difference observed in each read's Needleman-Wunsch alignment
+MALLREADS | Maximum likelihood bp diff in each read based on haplotype alignments
 PALLREADS | Expected base pair diff in each read based on haplotype alignment probs
 GL        | log-10 genotype likelihoods
 PL        | Phred-scaled genotype likelihoods
+
 
 <a id="stutter-file"></a>
 ### Stutter model
