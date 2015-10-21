@@ -111,7 +111,7 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
 		  
 	// Boundary conditions for leftmost base in read
 	match_matrix[matrix_index]    = (seq_0[0] == hap_char ? base_log_correct[0] : base_log_wrong[0]);
-	insert_matrix[matrix_index]   = base_log_correct[0];
+	insert_matrix[matrix_index]   = (haplotype_index == stutter_R+1 ? IMPOSSIBLE : base_log_correct[0]);
 	deletion_matrix[matrix_index] = (haplotype_index == stutter_R+1 ? IMPOSSIBLE :
 					 fast_log_sum_exp(deletion_matrix[matrix_index-seq_len]+LOG_DEL_TO_DEL, match_matrix[matrix_index-seq_len]+LOG_DEL_TO_MATCH));
 	matrix_index++;
