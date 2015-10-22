@@ -228,7 +228,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	filter.append("NOT_SPANNING");
       }
       // Ignore read if it has insufficient flanking bases on either side of the STR
-      if (pass && (alignment.Position > (region_iter->start()-MIN_FLANK) || alignment.GetEndPosition() < (region_iter->stop()+MIN_FLANK))){
+      if (pass && (MIN_FLANK > 0) && (alignment.Position > (region_iter->start()-MIN_FLANK) || alignment.GetEndPosition() < (region_iter->stop()+MIN_FLANK))){
 	flank_len++;
 	pass = false;
 	filter.append("FLANK_LEN");
