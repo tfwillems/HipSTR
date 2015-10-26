@@ -55,7 +55,7 @@ double align_pcr_insertion_reverse(int block_len,                const char*   b
 
   // Remaining configurations all have same likelihood so count all of them
   if (base_seq_len < block_len+D)
-    log_probs.push_back(log(block_len+i)+log_prob);
+    log_probs.push_back(int_log(block_len+i)+log_prob);
 
   // Convert to raw probabilities, add, take the log while avoiding underflow
   return fast_log_sum_exp(log_probs);
@@ -87,7 +87,7 @@ double align_pcr_deletion_reverse(int block_len,                const char*   bl
 
   // Remaining configurations all have same likelihood so count all of them
   if (base_seq_len < block_len+D)
-    log_probs.push_back(log(block_len+D-base_seq_len)+log_prob);
+    log_probs.push_back(int_log(block_len+D-base_seq_len)+log_prob);
 
   // Convert to raw probabilities, add, take the log while avoiding underflow
   return fast_log_sum_exp(log_probs);

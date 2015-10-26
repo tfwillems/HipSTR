@@ -24,7 +24,7 @@ std::string BaseQuality::average_base_qualities(const std::vector<const std::str
   for (unsigned int i = 0; i < qualities[0]->size(); i++){
     for (unsigned int j = 0; j < qualities.size(); j++)
       log_probs[j] = log_prob_error(qualities[j]->at(i));
-    double log_mean_prob = log_sum_exp(log_probs) - log(qualities.size());
+    double log_mean_prob = log_sum_exp(log_probs) - int_log(qualities.size());
     avg_qualities[i]     = closest_char(log_mean_prob);
   }
   return avg_qualities;

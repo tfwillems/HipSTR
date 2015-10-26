@@ -10,6 +10,9 @@ extern const double LOG_ONE_HALF;
 extern const double TOLERANCE;
 extern const double LOG_E_BASE_10;
 
+void precompute_integer_logs();
+
+double int_log(int val);
 
 double sum(double* begin, double* end);
 

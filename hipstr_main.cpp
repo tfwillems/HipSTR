@@ -282,6 +282,7 @@ void parse_command_line_args(int argc, char** argv,
 
 int main(int argc, char** argv){
   double total_time = clock();
+  precompute_integer_logs(); // Calculate and cache log of integers from 1->999
 
   std::stringstream full_command_ss;
   full_command_ss << "HipSTR-" << VERSION;
@@ -465,6 +466,22 @@ int main(int argc, char** argv){
   
   if (remove_all_filters)
     bam_processor.remove_all_filters();
+
+
+
+  /*
+  // Temporary to experiment with recalling after constructing haplotypes
+  bam_processor.MIN_BP_BEFORE_INDEL      = 0;
+  bam_processor.MIN_FLANK                = 0;
+  bam_processor.MIN_READ_END_MATCH       = 0;
+  bam_processor.MAXIMAL_END_MATCH_WINDOW = 0;
+  bam_processor.REQUIRE_SPANNING         = false;
+
+  // Experiment #2
+  bam_processor.REQUIRE_SPANNING = true;
+  */
+
+
 
   if (!hap_chr_string.empty()){
     std::vector<std::string> haploid_chroms;

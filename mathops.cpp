@@ -8,6 +8,16 @@ const double LOG_ONE_HALF  = log(0.5);
 const double TOLERANCE     = 1e-10;
 const double LOG_E_BASE_10 = 0.4342944819;
 
+double INT_LOGS[10000];
+
+void precompute_integer_logs(){
+  INT_LOGS[0] = -1000;
+  for (unsigned int i = 1; i < 1000; i++)
+    INT_LOGS[i] = log(i);
+}
+
+double int_log(int val){ return INT_LOGS[val]; }
+
 double sum(double* begin, double* end){
   double total = 0.0;
   for (double* iter = begin; iter != end; iter++)

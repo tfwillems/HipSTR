@@ -116,7 +116,7 @@ void EMStutterGenotyper::recalc_stutter_model(){
 	  else {
 	    if (bp_diff % motif_len_ != 0){
 	      int eff_diff = bp_diff - bp_diff/motif_len_; // Effective stutter bp difference (excludes unit changes)
-	      out_log_diffs.push_back(log_gt_posterior + *log_phase_ptr + log(abs(eff_diff)));
+	      out_log_diffs.push_back(log_gt_posterior + *log_phase_ptr + int_log(abs(eff_diff)));
 	      if (bp_diff > 0)
 		out_log_up.push_back(log_gt_posterior + *log_phase_ptr);
 	      else
@@ -124,7 +124,7 @@ void EMStutterGenotyper::recalc_stutter_model(){
  	    }
 	    else {
 	      int eff_diff = bp_diff/motif_len_; // Effective stutter repeat difference
-	      in_log_diffs.push_back(log_gt_posterior + *log_phase_ptr + log(abs(eff_diff)));
+	      in_log_diffs.push_back(log_gt_posterior + *log_phase_ptr + int_log(abs(eff_diff)));
 	      if (bp_diff > 0)
 		in_log_up.push_back(log_gt_posterior + *log_phase_ptr);
 	      else
@@ -180,11 +180,11 @@ double EMStutterGenotyper::recalc_log_sample_posteriors(bool use_pop_freqs){
       // iii) Total prior is n*2/(n(n+1)) + n(n-1)*1/(n(n+1)) = 2/(n+1) + (n-1)/(n+1) = 1
 
       // Set all elements to het prior
-      double log_hetz_prior = -log(num_alleles_) - log(num_alleles_+1);
+      double log_hetz_prior = -int_log(num_alleles_) - int_log(num_alleles_+1);
       std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), log_hetz_prior);
 
       // Fix homozygotes
-      double log_homoz_prior = log(2) - log(num_alleles_) - log(num_alleles_+1);
+      double log_homoz_prior = int_log(2) - int_log(num_alleles_) - int_log(num_alleles_+1);
       for (unsigned int i = 0; i < num_alleles_; i++){
 	double* LL_ptr = log_sample_posteriors_ + i*num_alleles_*num_samples_ + i*num_samples_;
 	std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
@@ -195,7 +195,7 @@ double EMStutterGenotyper::recalc_log_sample_posteriors(bool use_pop_freqs){
       std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), -DBL_MAX/2);
 
       // Fix homozygotes using a uniform prior
-      double log_homoz_prior = -log(num_alleles_);
+      double log_homoz_prior = -int_log(num_alleles_);
       for (unsigned int i = 0; i < num_alleles_; i++){
         double* LL_ptr = log_sample_posteriors_ + i*num_alleles_*num_samples_ + i*num_samples_;
 	std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
