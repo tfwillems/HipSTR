@@ -25,7 +25,7 @@ double align_pcr_insertion_reverse(int block_len,                const char*   b
 				   int& best_ins_pos){
   assert(D > 0 && base_seq_len <= block_len+D && D%period == 0);
   std::vector<double> log_probs; log_probs.reserve(block_len+1);
-  double log_prior = log(1.0/(block_len+1));
+  double log_prior = -int_log(block_len+1);
 
   // Compute probability for i = 0
   double log_prob = log_prior;
@@ -67,7 +67,7 @@ double align_pcr_deletion_reverse(int block_len,                const char*   bl
 				  int& best_del_pos){
   assert(D < 0 && block_len+D >= 0 && base_seq_len <= block_len+D);
   std::vector<double> log_probs; log_probs.reserve(block_len+D+1);
-  double log_prior = log(1.0/(block_len+D+1));
+  double log_prior = -int_log(block_len+D+1);
 
   // Compute probability for i = 0
   double log_prob = log_prior;
