@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "HapBlock.h"
+#include "../stringops.h"
 
 void HapBlock::calc_homopolymer_lengths(){
   for (unsigned int i = 0; i <= alt_seqs_.size(); ++i){
@@ -15,24 +16,20 @@ void HapBlock::calc_homopolymer_lengths(){
       count    = (seq[j-1] == seq[j] ? count + 1 : 0);
       llens[j] = count;
     }
-    l_homopolymer_lens.push_back(llens);
+    l_homopolymer_lens_.push_back(llens);
 
     rlens[seq.size()-1] = 0;
     for (int j = seq.size()-2; j >= 0; j--){
       count    = (seq[j+1] == seq[j] ? count + 1: 0);
       rlens[j] = count;
     }
-    r_homopolymer_lens.push_back(rlens);
+    r_homopolymer_lens_.push_back(rlens);
   }
 }
 
 
 bool compareStringLength(const std::string& s1, const std::string& s2){
   return s1.size() < s2.size();
-}
-
-void HapBlock::order_alternates_by_length(){
-  std::sort(alt_seqs_.begin(), alt_seqs_.end(), compareStringLength);
 }
 
 void HapBlock::print(std::ostream& out){

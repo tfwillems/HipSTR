@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "../error.h"
+#include "../stringops.h"
 #include "RepeatStutterInfo.h"
 
 class HapBlock {
@@ -21,8 +22,9 @@ class HapBlock {
   int min_size_;
   int max_size_;
 
-  std::vector<int*> l_homopolymer_lens;
-  std::vector<int*> r_homopolymer_lens;
+  std::vector<int*> l_homopolymer_lens_;
+  std::vector<int*> r_homopolymer_lens_;
+  std::vector<int>  suffix_matches_;
 
   void calc_homopolymer_lengths();
 
@@ -34,15 +36,17 @@ class HapBlock {
     min_size_ = (int)ref_seq.size();
     max_size_ = (int)ref_seq.size();
     alt_seqs_ = std::vector<std::string>();
+    suffix_matches_ = std::vector<int>();
+    suffix_matches_.push_back(0);
   }
 
   virtual ~HapBlock() {
-    for (unsigned int i = 0; i < l_homopolymer_lens.size(); i++)
-      delete [] l_homopolymer_lens[i];
-    for (unsigned int i = 0; i < r_homopolymer_lens.size(); i++)
-      delete [] r_homopolymer_lens[i];
-    l_homopolymer_lens.clear();
-    r_homopolymer_lens.clear();
+    for (unsigned int i = 0; i < l_homopolymer_lens_.size(); i++)
+      delete [] l_homopolymer_lens_[i];
+    for (unsigned int i = 0; i < r_homopolymer_lens_.size(); i++)
+      delete [] r_homopolymer_lens_[i];
+    l_homopolymer_lens_.clear();
+    r_homopolymer_lens_.clear();
   }
 
   virtual RepeatStutterInfo* get_repeat_info() {
@@ -57,13 +61,16 @@ class HapBlock {
     alt_seqs_.push_back(alt);
     min_size_ = std::min(min_size_, (int)alt.size());
     max_size_ = std::max(max_size_, (int)alt.size());
+    if (alt_seqs_.size() == 1)
+      suffix_matches_.push_back(length_suffix_match(ref_seq_, alt));
+    else
+      suffix_matches_.push_back(length_suffix_match(alt_seqs_[alt_seqs_.size()-2], alt));
   }
 
   int min_size() const { return min_size_; }
   int max_size() const { return max_size_; }
 
   void print(std::ostream& out);
-  void order_alternates_by_length();
 
   int size(int index) const {
     if (index == 0)
@@ -83,14 +90,19 @@ class HapBlock {
       throw std::out_of_range("Index out of bounds in HapBlock::get_seq()");
   }
 
+  inline int suffix_match_len(unsigned int seq_index){
+    assert(seq_index < suffix_matches_.size());
+    return suffix_matches_[seq_index];
+  }
+
   inline unsigned int left_homopolymer_len(unsigned int seq_index, int base_index) {
-    assert(seq_index < l_homopolymer_lens.size());
-    return l_homopolymer_lens[seq_index][base_index];
+    assert(seq_index < l_homopolymer_lens_.size());
+    return l_homopolymer_lens_[seq_index][base_index];
   }
 
   inline unsigned int right_homopolymer_len(unsigned int seq_index, int base_index) {
-    assert(seq_index < r_homopolymer_lens.size());
-    return r_homopolymer_lens[seq_index][base_index];
+    assert(seq_index < r_homopolymer_lens_.size());
+    return r_homopolymer_lens_[seq_index][base_index];
   }
   
   void initialize();
