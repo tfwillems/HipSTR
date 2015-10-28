@@ -13,4 +13,6 @@ bool string_ends_with(std::string& s, std::string suffix);
 
 bool stringLengthLT(const std::string& s1, const std::string& s2);
 
+int length_suffix_match(std::string& s1, std::string& s2);
+
 #endif

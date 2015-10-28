@@ -29,3 +29,15 @@ bool string_ends_with(std::string& s, std::string suffix){
 bool stringLengthLT(const std::string& s1, const std::string& s2){
   return s1.size() < s2.size();
 }
+
+int length_suffix_match(std::string& s1, std::string& s2){
+  auto iter_1 = s1.rbegin();
+  auto iter_2 = s2.rbegin();
+  int num_matches = 0;
+  for (; iter_1 != s1.rend() && iter_2 != s2.rend(); ++iter_1, ++iter_2){
+    if (*iter_1 != *iter_2)
+      break;
+    num_matches++;
+  }
+  return num_matches;
+}
