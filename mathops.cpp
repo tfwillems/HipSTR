@@ -12,7 +12,7 @@ double INT_LOGS[10000];
 
 void precompute_integer_logs(){
   INT_LOGS[0] = -1000;
-  for (unsigned int i = 1; i < 1000; i++)
+  for (unsigned int i = 1; i < 10000; i++)
     INT_LOGS[i] = log(i);
 }
 
