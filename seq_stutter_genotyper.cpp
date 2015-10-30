@@ -574,11 +574,11 @@ void SeqStutterGenotyper::init_log_sample_priors(double* log_sample_ptr){
       // iii) Total prior is n*2/(n(n+1)) + n(n-1)*1/(n(n+1)) = 2/(n+1) + (n-1)/(n+1) = 1
 
       // Set all elements to het prior
-      double log_hetz_prior = -log(num_alleles_) - log(num_alleles_+1);
+      double log_hetz_prior = -int_log(num_alleles_) - int_log(num_alleles_+1);
       std::fill(log_sample_ptr, log_sample_ptr+(num_alleles_*num_alleles_*num_samples_), log_hetz_prior);
 
       // Fix homozygotes
-      double log_homoz_prior = log(2) - log(num_alleles_) - log(num_alleles_+1);
+      double log_homoz_prior = int_log(2) - int_log(num_alleles_) - int_log(num_alleles_+1);
       for (unsigned int i = 0; i < num_alleles_; i++){
 	double* LL_ptr = log_sample_ptr + i*num_alleles_*num_samples_ + i*num_samples_;
 	std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
@@ -589,7 +589,7 @@ void SeqStutterGenotyper::init_log_sample_priors(double* log_sample_ptr){
       std::fill(log_sample_ptr, log_sample_ptr+(num_alleles_*num_alleles_*num_samples_), -DBL_MAX/2);
 
       // Fix homozygotes using a uniform prior
-      double log_homoz_prior = -log(num_alleles_);
+      double log_homoz_prior = -int_log(num_alleles_);
       for (unsigned int i = 0; i < num_alleles_; i++){
 	double* LL_ptr = log_sample_ptr + i*num_alleles_*num_samples_ + i*num_samples_;
 	std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
@@ -651,12 +651,16 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
 }
 
 bool SeqStutterGenotyper::use_read(AlignmentTrace* trace){
-  return true;
-
   /*
-  int32_t left_flank_bases  = haplotype_->get_block(1)->start() - max_LL_aln.get_start();
-  int32_t right_flank_bases = max_LL_aln.get_stop() - haplotype_->get_block(2)->start() + 1;
+  // Temporary to explore filtering out non-spanning reads
+  if (true){
+    if (trace->traced_aln().get_start() > region_->start())
+      return false;
+    if (trace->traced_aln().get_stop() < region_->stop())
+      return false;
+  }
   */
+  return true;
 }
 
 void SeqStutterGenotyper::get_optimal_genotypes(double* log_posterior_ptr, std::vector< std::pair<int, int> >& gts){
@@ -729,6 +733,7 @@ void SeqStutterGenotyper::filter_alignments(std::ostream& logger, std::vector<in
       for (unsigned int i = 0; i < haplotype_->num_combs(); ++i)
 	read_LL_ptr[i] = 0;
       filt_count++;
+      masked_reads[sample_label_[read_index]]++;
     }
     else
       keep_count++;
