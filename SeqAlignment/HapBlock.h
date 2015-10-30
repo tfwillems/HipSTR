@@ -13,6 +13,8 @@
 #include "../stringops.h"
 #include "RepeatStutterInfo.h"
 
+#include "StutterAlignerClass.h"
+
 class HapBlock {
  protected:
   std::string ref_seq_;
@@ -49,9 +51,8 @@ class HapBlock {
     r_homopolymer_lens_.clear();
   }
 
-  virtual RepeatStutterInfo* get_repeat_info() {
-    return NULL;
-  }
+  virtual RepeatStutterInfo* get_repeat_info()                    { return NULL; }
+  virtual StutterAlignerClass* get_stutter_aligner(int seq_index) { return NULL; }
 
   int32_t start()   const { return start_; }
   int32_t end()     const { return end_;   }
