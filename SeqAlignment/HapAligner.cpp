@@ -11,6 +11,8 @@
 #include "../mathops.h"
 #include "RepeatBlock.h"
 #include "StutterAligner.h"
+#include "StutterAlignerClass.h"
+
 
 // Minimum distance of a seed base from an indel, mismatch or a repetitive region
 const int32_t MIN_SEED_DIST = 5;
@@ -63,9 +65,43 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
       matrix_index                  = seq_len*(haplotype_index+block_len-1);  // Index into matrix for rightmost character in stutter block (column = 0)
       int num_stutter_artifacts     = (rep_info->max_insertion()-rep_info->max_deletion())/period + 1;
       const char* end_block_seq_arr = block_seq.c_str() + (block_seq.size()-1);
+      StutterAlignerClass* stutter_aligner = haplotype->get_block(block_index)->get_stutter_aligner(block_option);
+
+      /*
+      // Precompute all match probabilites
+      std::vector< std::vector<int> > suffix_match_probs(seq_len, std::vector<int>());
+      for (int j = 0; j < seq_len; ++j){
+	int min_index = std::max(-1, j-block_len);
+	suffix_match_probs[j].reserve(j-min_index);
+	double total  = 0;
+	int ref_index = block_len-1;
+	for (int k = j; k > min_index; --k, --ref_index){
+	  total += (seq_0[k] == block_seq[ref_index] ? base_log_correct[k] : base_log_wrong[k]);
+	  suffix_match_probs[j].push_back(total);
+	}
+      }
+      */
 
       std::vector<double> block_probs(num_stutter_artifacts); // Reuse in each iteration to avoid reallocation penalty
-      for (int j = 0; j < seq_len; ++j, ++matrix_index){
+      //std::vector<double> stutter_log_probs; stutter_log_probs.reserve(block_len+1); // Supply to stutter aligner to avoid reallocation penalty
+      int j = 0;
+
+      // If this haplotype and its predecessor have a suffix match that exceeds the maximum
+      // haplotype bases used for a subset of the read position, we can reuse the match probabilities
+      // for those positions as they're identical
+      if (haplotype->last_changed() != -1){
+	int suffix_match_length = haplotype->get_block(block_index)->suffix_match_len(block_option);
+	int old_matrix_index    = seq_len*(haplotype_index+haplotype->get_block(block_index)->get_seq(block_option-1).size()-1);
+	int num_copies          = std::min(seq_len, suffix_match_length + rep_info->max_deletion());
+	for (; j < num_copies; ++j, ++matrix_index, ++old_matrix_index){
+	  match_matrix[matrix_index]    = match_matrix[old_matrix_index];
+	  insert_matrix[matrix_index]   = IMPOSSIBLE;
+	  deletion_matrix[matrix_index] = IMPOSSIBLE;
+	  // NOTE: No need to update artifact size and position as they're unchanged from last iteration
+	}
+      }
+
+      for (; j < seq_len; ++j, ++matrix_index){
 	// Consider valid range of insertions and deletions, including no stutter artifact
 	int art_idx    = 0;
 	double best_LL = IMPOSSIBLE;
@@ -73,8 +109,13 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
 	for (int artifact_size = rep_info->max_deletion(); artifact_size <= rep_info->max_insertion(); artifact_size += period){
 	  int art_pos          = -1;
 	  int base_len         = std::min(block_len+artifact_size, j+1);
-	  double prob          = align_stutter_region_reverse(block_len, end_block_seq_arr, base_len, seq_0+j, base_log_wrong+j, base_log_correct+j, !haplotype->reversed(),
-							      artifact_size, period, art_pos);
+	  double prob          = stutter_aligner->align_stutter_region_reverse(base_len, seq_0+j, base_log_wrong+j, base_log_correct+j, artifact_size, art_pos);
+
+	  /*
+	  double prob          = align_stutter_region_reverse(block_len, end_block_seq_arr, base_len, seq_0+j, base_log_wrong+j, base_log_correct+j,
+							      !haplotype->reversed(), artifact_size, period, art_pos, stutter_log_probs);
+	  */
+
 	  double pre_prob      = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
 	  block_probs[art_idx] = rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob;
 	  if (block_probs[art_idx] > best_LL){
@@ -84,6 +125,7 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
 	  }
 	  art_idx++;
 	}
+
 	match_matrix[matrix_index]    = fast_log_sum_exp(block_probs);
 	insert_matrix[matrix_index]   = IMPOSSIBLE;
 	deletion_matrix[matrix_index] = IMPOSSIBLE;
@@ -164,7 +206,7 @@ double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base,
   for (int block_index = 0; block_index < fw_haplotype_->num_blocks(); block_index++)
     if (fw_haplotype_->get_block(block_index)->get_repeat_info() == NULL)
       num_seeds += fw_haplotype_->get_seq(block_index).size();
-  double SEED_LOG_MATCH_PRIOR = -log(num_seeds);
+  double SEED_LOG_MATCH_PRIOR = -int_log(num_seeds);
   
   double max_LL;
   std::vector<double> log_probs;
