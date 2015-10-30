@@ -10,7 +10,6 @@
 #include "HapBlock.h"
 #include "../mathops.h"
 #include "RepeatBlock.h"
-#include "StutterAligner.h"
 #include "StutterAlignerClass.h"
 
 
@@ -110,12 +109,6 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
 	  int art_pos          = -1;
 	  int base_len         = std::min(block_len+artifact_size, j+1);
 	  double prob          = stutter_aligner->align_stutter_region_reverse(base_len, seq_0+j, base_log_wrong+j, base_log_correct+j, artifact_size, art_pos);
-
-	  /*
-	  double prob          = align_stutter_region_reverse(block_len, end_block_seq_arr, base_len, seq_0+j, base_log_wrong+j, base_log_correct+j,
-							      !haplotype->reversed(), artifact_size, period, art_pos, stutter_log_probs);
-	  */
-
 	  double pre_prob      = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
 	  block_probs[art_idx] = rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob;
 	  if (block_probs[art_idx] > best_LL){

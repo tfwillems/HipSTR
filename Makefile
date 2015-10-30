@@ -11,7 +11,7 @@ CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX -pthread
 SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp bam_processor.cpp extract_indels.cpp mathops.cpp pcr_duplicates.cpp fastahack/Fasta.cpp fastahack/split.cpp
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
 SRC_HIPSTR  = hipstr_main.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp vcf_input.cpp read_pooler.cpp version.cpp
-SRC_SEQALN  = SeqAlignment/AlignmentData.cpp SeqAlignment/HapAligner.cpp SeqAlignment/RepeatStutterInfo.cpp SeqAlignment/AlignmentModel.cpp SeqAlignment/AlignmentOps.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NWNoRefEndPenalty.cpp SeqAlignment/Haplotype.cpp SeqAlignment/RepeatBlock.cpp SeqAlignment/StutterAligner.cpp SeqAlignment/HaplotypeGenerator.cpp SeqAlignment/STRAlleleExpansion.cpp SeqAlignment/HTMLCreator.cpp SeqAlignment/AlignmentViz.cpp SeqAlignment/AlignmentTraceback.cpp
+SRC_SEQALN  = SeqAlignment/AlignmentData.cpp SeqAlignment/HapAligner.cpp SeqAlignment/RepeatStutterInfo.cpp SeqAlignment/AlignmentModel.cpp SeqAlignment/AlignmentOps.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NWNoRefEndPenalty.cpp SeqAlignment/Haplotype.cpp SeqAlignment/RepeatBlock.cpp SeqAlignment/HaplotypeGenerator.cpp SeqAlignment/STRAlleleExpansion.cpp SeqAlignment/HTMLCreator.cpp SeqAlignment/AlignmentViz.cpp SeqAlignment/AlignmentTraceback.cpp SeqAlignment/StutterAlignerClass.cpp
 SRC_RNASEQ  = exploratory/filter_rnaseq.cpp exploratory/exon_info.cpp
 
 # For each CPP file, generate an object file
@@ -31,7 +31,7 @@ VCFLIB_LIB        = vcflib/libvcflib.a
 PHASED_BEAGLE_JAR = PhasedBEAGLE/PhasedBEAGLE.jar
 
 .PHONY: all
-all: version BamSieve HipSTR test/allele_expansion_test test/snp_tree_test test/vcf_snp_tree_test test/hap_aligner_test test/stutter_aligner_test test/fast_ops_test test/base_qual_test test/read_vcf_alleles_test test/read_vcf_priors_test test/haplotype_test $(PHASED_BEAGLE_JAR) exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
+all: version BamSieve HipSTR test/allele_expansion_test test/base_qual_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test $(PHASED_BEAGLE_JAR) exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
 
 version:
 	git describe --abbrev=7 --dirty --always --tags | awk '{print "#include \"version.h\""; print "const std::string VERSION = \""$$0"\";"}' > version.cpp
@@ -39,7 +39,7 @@ version:
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
 clean:
-	rm -f *.o *.d BamSieve HipSTR test/snp_tree_test test/vcf_snp_tree_test test/haplotype_test test/hap_aligner_test test/stutter_aligner_test test/read_vcf_priors_test test/read_vcf_alleles_test test/em_stutter_test SeqAlignment/*.o ${PHASED_BEAGLE_JAR} exploratory/RNASeq exploratory/Clipper exploratory/Mapper exploratory/10X
+	rm -f *.o *.d BamSieve HipSTR test/allele_expansion_test test/base_qual_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test SeqAlignment/*.o ${PHASED_BEAGLE_JAR} exploratory/RNASeq exploratory/Clipper exploratory/Mapper exploratory/10X
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -65,17 +65,20 @@ HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(OBJ_SEQALN)
 exploratory/RNASeq: $(OBJ_COMMON) $(OBJ_RNASEQ) $(BAMTOOLS_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
+test/allele_expansion_test: test/allele_expansion_test.cpp SeqAlignment/STRAlleleExpansion.cpp zalgorithm.cpp error.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
 test/base_qual_test: test/base_quality_test.cpp base_quality.cpp error.cpp mathops.cpp $(BAMTOOLS_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/haplotype_test: test/haplotype_test.cpp SeqAlignment/Haplotype.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NWNoRefEndPenalty.cpp SeqAlignment/RepeatBlock.cpp error.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
-
-test/allele_expansion_test: test/allele_expansion_test.cpp SeqAlignment/STRAlleleExpansion.cpp zalgorithm.cpp error.cpp
+test/haplotype_test: test/haplotype_test.cpp SeqAlignment/Haplotype.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NWNoRefEndPenalty.cpp SeqAlignment/RepeatBlock.cpp error.cpp stringops.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/em_stutter_test: test/em_stutter_test.cpp em_stutter_genotyper.cpp genotyper_bam_processor.cpp error.cpp mathops.cpp stringops.cpp stutter_model.cpp $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+test/fast_ops_test: test/fast_ops_test.cpp mathops.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
 test/read_vcf_alleles_test: test/read_vcf_alleles_test.cpp error.cpp region.cpp vcf_input.cpp $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
@@ -89,14 +92,6 @@ test/snp_tree_test: snp_tree.cpp error.cpp test/snp_tree_test.cpp $(VCFLIB_LIB)
 test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp error.cpp snp_tree.cpp $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/hap_aligner_test: test/hap_aligner_test.cpp error.cpp SeqAlignment/AlignmentData.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
-
-test/stutter_aligner_test: test/stutter_aligner_test.cpp SeqAlignment/StutterAligner.cpp mathops.cpp error.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
-
-test/fast_ops_test: test/fast_ops_test.cpp mathops.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
 exploratory/Clipper: exploratory/count_trimmed_bases.cpp error.cpp zalgorithm.cpp $(BAMTOOLS_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
