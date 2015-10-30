@@ -42,7 +42,6 @@ class ReadPooler {
     assert(pooled_alns_.size() == qualities_by_pool_.size());
     for (unsigned int i = 0; i < pooled_alns_.size(); i++)
       pooled_alns_[i].set_base_qualities(base_quality.median_base_qualities(qualities_by_pool_[i]));
-    qualities_by_pool_.clear();
     pooled_ = true;
   }
 
