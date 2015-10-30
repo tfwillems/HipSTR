@@ -9,22 +9,22 @@
 #include "../mathops.h"
 #include "StutterAligner.h"
 
-double align_no_artifact_reverse(int block_len,                const char*   block_seq,
-				 int base_seq_len,             const char*   base_seq,
-				 const double* base_log_wrong, const double* base_log_correct){
+double align_no_artifact_reverse(const int block_len,                const char*   block_seq,
+				 const int base_seq_len,             const char*   base_seq,
+				 const double* base_log_wrong,       const double* base_log_correct){
   double log_prob = 0.0;
   for (int i = 0; i < base_seq_len; i++)
     log_prob += (block_seq[-i] == base_seq[-i] ? base_log_correct[-i] : base_log_wrong[-i]);
   return log_prob;
 }
 
-double align_pcr_insertion_reverse(int block_len,                const char*   block_seq,
-				   int base_seq_len,             const char*   base_seq,
-				   const double* base_log_wrong, const double* base_log_correct,
-				   bool left_align, int D, int period,
-				   int& best_ins_pos){
+double align_pcr_insertion_reverse(const int block_len,                const char*   block_seq,
+				   const int base_seq_len,             const char*   base_seq,
+				   const double* base_log_wrong,       const double* base_log_correct,
+				   const bool left_align, const int D, const int period,
+				   int& best_ins_pos, std::vector<double>& log_probs){
   assert(D > 0 && base_seq_len <= block_len+D && D%period == 0);
-  std::vector<double> log_probs; log_probs.reserve(block_len+1);
+  log_probs.clear();
   double log_prior = -int_log(block_len+1);
 
   // Compute probability for i = 0
@@ -61,12 +61,13 @@ double align_pcr_insertion_reverse(int block_len,                const char*   b
   return fast_log_sum_exp(log_probs);
 }
 
-double align_pcr_deletion_reverse(int block_len,                const char*   block_seq,
-				  int base_seq_len,             const char*   base_seq,
-				  const double* base_log_wrong, const double* base_log_correct, bool left_align, int D,
-				  int& best_del_pos){
+double align_pcr_deletion_reverse(const int block_len,                const char*   block_seq,
+				  const int base_seq_len,             const char*   base_seq,
+				  const double* base_log_wrong,       const double* base_log_correct,
+				  const bool left_align,              const int D,
+				  int& best_del_pos, std::vector<double>& log_probs){
   assert(D < 0 && block_len+D >= 0 && base_seq_len <= block_len+D);
-  std::vector<double> log_probs; log_probs.reserve(block_len+D+1);
+  log_probs.clear();
   double log_prior = -int_log(block_len+D+1);
 
   // Compute probability for i = 0
@@ -78,8 +79,10 @@ double align_pcr_deletion_reverse(int block_len,                const char*   bl
 
   // Compute for all other i's, reusing previous result to accelerate computation
   for (int i = 0; i > -base_seq_len; i--){
-    log_prob    -= (block_seq[i+D] == base_seq[i] ? base_log_correct[i] : base_log_wrong[i]);
-    log_prob    += (block_seq[i]   == base_seq[i] ? base_log_correct[i] : base_log_wrong[i]);
+    if (block_seq[i+D] != block_seq[i]){
+      log_prob    -= (block_seq[i+D] == base_seq[i] ? base_log_correct[i] : base_log_wrong[i]);
+      log_prob    += (block_seq[i]   == base_seq[i] ? base_log_correct[i] : base_log_wrong[i]);
+    }
     log_probs.push_back(log_prob);
     if (log_prob > log_probs[best_del_pos] || (left_align && (log_prob == log_probs[best_del_pos])))
       best_del_pos = log_probs.size()-1;
@@ -93,16 +96,16 @@ double align_pcr_deletion_reverse(int block_len,                const char*   bl
   return fast_log_sum_exp(log_probs);
 }
 
-double align_stutter_region_reverse(int block_len,                const char*   block_seq,
-				    int base_seq_len,             const char*   base_seq,
-				    const double* base_log_wrong, const double* base_log_correct,
-				    bool left_align, int D, int period,
-				    int& best_pos){
+double align_stutter_region_reverse(const int block_len,                const char*   block_seq,
+				    const int base_seq_len,             const char*   base_seq,
+				    const double* base_log_wrong,       const double* base_log_correct,
+				    const bool left_align, const int D, const int period,
+				    int& best_pos, std::vector<double>& log_probs){
   best_pos = -1;
   if (D == 0)
     return align_no_artifact_reverse(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct);
   else if (D > 0)
-    return align_pcr_insertion_reverse(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct, left_align, D, period, best_pos);
+    return align_pcr_insertion_reverse(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct, left_align, D, period, best_pos, log_probs);
   else
-    return align_pcr_deletion_reverse(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct, left_align, D, best_pos);
+    return align_pcr_deletion_reverse(block_len, block_seq, base_seq_len, base_seq, base_log_wrong, base_log_correct, left_align, D, best_pos, log_probs);
 }
