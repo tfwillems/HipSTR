@@ -138,16 +138,16 @@ void EMStutterGenotyper::recalc_stutter_model(){
   }
 
   // Compute new parameter estimates
-  double in_log_total_up     = log_sum_exp(in_log_up);
-  double in_log_total_down   = log_sum_exp(in_log_down);
-  double in_log_total_eq     = log_sum_exp(in_log_eq);
-  double in_log_total_diffs  = log_sum_exp(in_log_diffs);
-  double out_log_total_up    = log_sum_exp(out_log_up);
-  double out_log_total_down  = log_sum_exp(out_log_down);
-  double out_log_total_diffs = log_sum_exp(out_log_diffs);
-  double out_log_total       = log_sum_exp(out_log_total_up, out_log_total_down);
-  double in_pgeom_hat        = exp(log_sum_exp(in_log_total_up, in_log_total_down) - in_log_total_diffs);
-  double out_pgeom_hat       = exp(out_log_total - out_log_total_diffs);
+  double in_log_total_up     = fast_log_sum_exp(in_log_up);
+  double in_log_total_down   = fast_log_sum_exp(in_log_down);
+  double in_log_total_eq     = fast_log_sum_exp(in_log_eq);
+  double in_log_total_diffs  = fast_log_sum_exp(in_log_diffs);
+  double out_log_total_up    = fast_log_sum_exp(out_log_up);
+  double out_log_total_down  = fast_log_sum_exp(out_log_down);
+  double out_log_total_diffs = fast_log_sum_exp(out_log_diffs);
+  double out_log_total       = fast_log_sum_exp(out_log_total_up, out_log_total_down);
+  double in_pgeom_hat        = std::min(0.999, exp(log_sum_exp(in_log_total_up, in_log_total_down) - in_log_total_diffs));
+  double out_pgeom_hat       = std::min(0.999, exp(out_log_total - out_log_total_diffs));
   double log_total           = log_sum_exp(log_sum_exp(in_log_total_up, in_log_total_down, in_log_total_eq), out_log_total);
   double in_pup_hat          = exp(in_log_total_up    - log_total);
   double in_pdown_hat        = exp(in_log_total_down  - log_total);
@@ -217,8 +217,10 @@ double EMStutterGenotyper::recalc_log_sample_posteriors(bool use_pop_freqs){
       }
 
       for (int read_index = 0; read_index < num_reads_; ++read_index){
-	LL_ptr[sample_label_[read_index]] += log_sum_exp(LOG_ONE_HALF + log_p1_[read_index]+stutter_model_->log_stutter_pmf(len_1, bps_per_allele_[allele_index_[read_index]]), 
-							 LOG_ONE_HALF + log_p2_[read_index]+stutter_model_->log_stutter_pmf(len_2, bps_per_allele_[allele_index_[read_index]]));
+	LL_ptr[sample_label_[read_index]] += std::min(0.0,
+						      fast_log_sum_exp(
+						       LOG_ONE_HALF + log_p1_[read_index]+stutter_model_->log_stutter_pmf(len_1, bps_per_allele_[allele_index_[read_index]]),
+						       LOG_ONE_HALF + log_p2_[read_index]+stutter_model_->log_stutter_pmf(len_2, bps_per_allele_[allele_index_[read_index]])));
 	assert(LL_ptr[sample_label_[read_index]] <= TOLERANCE);
       }
       // Update the per-sample maximum LLs
