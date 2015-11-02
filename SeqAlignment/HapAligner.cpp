@@ -82,7 +82,6 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
       */
 
       std::vector<double> block_probs(num_stutter_artifacts); // Reuse in each iteration to avoid reallocation penalty
-      //std::vector<double> stutter_log_probs; stutter_log_probs.reserve(block_len+1); // Supply to stutter aligner to avoid reallocation penalty
       int j = 0;
 
       // If this haplotype and its predecessor have a suffix match that exceeds the maximum

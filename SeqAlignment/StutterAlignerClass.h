@@ -6,7 +6,6 @@
 
 #include "RepeatStutterInfo.h"
 
-
 class StutterAlignerClass {
  private:
   std::vector<double> log_probs_;

@@ -9,7 +9,6 @@
 #include "../mathops.h"
 #include "StutterAlignerClass.h"
 
-
 double StutterAlignerClass::align_no_artifact_reverse(const int base_seq_len,       const char*   base_seq,
 						      const double* base_log_wrong, const double* base_log_correct){
   double log_prob = 0.0;
@@ -17,7 +16,6 @@ double StutterAlignerClass::align_no_artifact_reverse(const int base_seq_len,   
     log_prob += (block_seq_[-i] == base_seq[-i] ? base_log_correct[-i] : base_log_wrong[-i]);
   return log_prob;
 }
-
 
 double StutterAlignerClass::align_pcr_insertion_reverse(const int base_seq_len,       const char*   base_seq,
 							const double* base_log_wrong, const double* base_log_correct, const int D,
@@ -71,7 +69,6 @@ double StutterAlignerClass::align_pcr_insertion_reverse(const int base_seq_len, 
   return fast_log_sum_exp(log_probs_);
 }
 
-
 double StutterAlignerClass::align_pcr_deletion_reverse(const int base_seq_len,       const char*   base_seq,
 						       const double* base_log_wrong, const double* base_log_correct, const int D,
 						       int& best_del_pos){
@@ -108,7 +105,6 @@ double StutterAlignerClass::align_pcr_deletion_reverse(const int base_seq_len,  
   }
 
   // Remaining configurations all have same likelihood so count all of them
-  //if (base_seq_len < block_len_+D){
   if(-i < block_len_+D)
     log_probs_.push_back(int_log(block_len_+D+i)+log_prob);
 
