@@ -79,8 +79,8 @@ class BamProcessor {
    locus_bam_seek_time_     = -1;
    total_read_filter_time_  = 0;
    locus_read_filter_time_  = -1;
-   MAX_SOFT_CLIPS           = 100000;
-   MAX_HARD_CLIPS           = 100000;
+   MAX_SOFT_CLIPS           = 1000;
+   MAX_HARD_CLIPS           = 1000;
    MAX_STR_LENGTH           = 100;
    MIN_SUM_QUAL_LOG_PROB    = -10;
    log_to_file_             = false;
@@ -90,22 +90,6 @@ class BamProcessor {
  ~BamProcessor(){
    if (log_to_file_)
      log_.close();
- }
-
- void remove_all_filters(){
-   check_unique_mapping_    = false;
-   MIN_BP_BEFORE_INDEL      = 0;
-   MIN_FLANK                = 0;
-   MIN_READ_END_MATCH       = 0;
-   MAXIMAL_END_MATCH_WINDOW = 0;
-   REMOVE_MULTIMAPPERS      = 0;
-   REQUIRE_SPANNING         = false;
-   REQUIRE_PAIRED_READS     = 0;
-   MIN_MAPPING_QUALITY      = 0;
-   REMOVE_READS_WITH_N      = 0;
-   MAX_SOFT_CLIPS           = 100000;
-   MAX_HARD_CLIPS           = 100000;
-   MAX_STR_LENGTH           = 100000;
  }
 
  double total_bam_seek_time()    { return total_bam_seek_time_;    }
@@ -161,13 +145,12 @@ class BamProcessor {
  int32_t MAX_SOFT_CLIPS;
  int32_t MAX_HARD_CLIPS;
  int32_t MAX_STR_LENGTH;
- int REMOVE_MULTIMAPPERS;
- int REMOVE_READS_WITH_N;
- bool REQUIRE_SPANNING;
- int REQUIRE_PAIRED_READS;     // Only utilize paired STR reads to genotype individuals
- double MIN_SUM_QUAL_LOG_PROB;
- int32_t MAX_TOTAL_READS;      // Skip loci where the number of STR reads passing all filters exceeds this limit
+ int     REMOVE_MULTIMAPPERS;
+ int     REMOVE_READS_WITH_N;
+ bool    REQUIRE_SPANNING;
+ int     REQUIRE_PAIRED_READS;  // Only utilize paired STR reads to genotype individuals
+ double  MIN_SUM_QUAL_LOG_PROB;
+ int32_t MAX_TOTAL_READS;       // Skip loci where the number of STR reads passing all filters exceeds this limit
 };
-
 
 #endif

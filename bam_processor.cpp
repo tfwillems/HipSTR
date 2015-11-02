@@ -518,4 +518,3 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
   if (fasta_ref != NULL)
     delete fasta_ref;
 }
-
