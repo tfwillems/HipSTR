@@ -27,8 +27,9 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
   if (have_snp_vcf_){
     std::vector<SNPTree*> snp_trees;
     std::map<std::string, unsigned int> sample_indices;      
-    if(create_snp_trees(region.chrom(), (region.start() > MAX_MATE_DIST ? region.start()-MAX_MATE_DIST : 1), 
-			region.stop()+MAX_MATE_DIST, phased_snp_vcf_, sample_indices, snp_trees, logger())){
+    if(create_snp_trees(region.chrom(), (region.start() > MAX_MATE_DIST ? region.start()-MAX_MATE_DIST : 1), region.stop()+MAX_MATE_DIST,
+			(region.start() > 15 ? region.start()-15 : 1), region.stop()+15,
+			phased_snp_vcf_, sample_indices, snp_trees, logger())){
       got_snp_info = true;
       std::set<std::string> bad_samples, good_samples;
       for (unsigned int i = 0; i < paired_strs_by_rg.size(); ++i){

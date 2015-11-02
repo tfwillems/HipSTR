@@ -17,7 +17,11 @@ bool is_biallelic_snp(vcflib::Variant& variant){
   return true;
 }
 
-bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vcflib::VariantCallFile& variant_file,
+bool in_region(vcflib::Variant& variant, uint32_t region_start, uint32_t region_end){
+  return variant.position >= region_start && variant.position <= region_end;
+}
+
+bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, uint32_t skip_start, uint32_t skip_stop, vcflib::VariantCallFile& variant_file,
                       std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees, std::ostream& logger){
   logger << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
@@ -40,10 +44,11 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, vc
   uint32_t locus_count = 0, skip_count = 0;
   while(variant_file.getNextVariant(variant)){
     //if (locus_count % 1000 == 0)   std::cout << "\rProcessing locus #" << locus_count << " (skipped " << skip_count << ") at position " << variant.position << std::flush;
-    if(!is_biallelic_snp(variant)){
+    if (!is_biallelic_snp(variant) || in_region(variant, skip_start, skip_stop)){
       skip_count++;
       continue;
     }
+
     ++locus_count;
     for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
       std::string gts = variant.getGenotype(*sample_iter);
