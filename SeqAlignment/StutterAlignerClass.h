@@ -28,7 +28,7 @@ class StutterAlignerClass {
 
   int* num_upstream_matches(std::string& seq, int period){
     int* match_lengths = new int[seq.size()];
-    for (unsigned int i = 0; i < period; i++)
+    for (unsigned int i = 0; i < std::min(period, (int)seq.size()); i++)
       match_lengths[i] = 0;
     for (unsigned int i = period; i < seq.size(); i++)
       match_lengths[i] = (seq[i-period] != seq[i] ? 0 : 1 + match_lengths[i-1]);
