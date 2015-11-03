@@ -23,7 +23,7 @@ bool file_exists(std::string path){
 }
 
 void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_sclips, int def_max_hclips, int def_max_str_len){
-  std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <dir> --regions <region_file.bed> [OPTION]" << "\n" << "\n"
+  std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <dir> --regions <region_file.bed> [OPTIONS]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
 	    << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of BAM files"                                                   << "\n"
@@ -32,7 +32,9 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                         << "\n" << "\n"
     
 	    << "Optional input parameters:" << "\n"
-	    << "\t" << "--ref-vcf    <str_ref_panel.vcf.gz>   "  << "\t" << "Bgzipped input VCF file containing STR (and possibly SNP) genotypes for a ref panel" << "\n" 
+	    << "\t" << "--ref-vcf    <str_ref_panel.vcf.gz>   "  << "\t" << "Bgzipped input VCF file containing a reference panel of STR genotypes"               << "\n"
+	    << "\t" << "                                      "  << "\t" << " For each locus, alleles in the VCF will be used as candidate STR variants instead"  << "\n"
+	    << "\t" << "                                      "  << "\t" << " of trying to identify candidates from the BAMs (default)"                           << "\n"
 	    << "\t" << "                                      "  << "\t" << " This option is not available when the --len-genotyper option has been specified"    << "\n"
 	    << "\t" << "--snp-vcf    <phased_snps.vcf.gz>     "  << "\t" << "Bgzipped input VCF file containing phased SNP genotypes for the samples"             << "\n" 
 	    << "\t" << "                                      "  << "\t" << " that are going to be genotyped. These SNPs will be used to physically phase any "   << "\n"
@@ -41,19 +43,20 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "                                      "  << "\t" << "  will be used to learn locus-specific models"                               << "\n" << "\n"
     
 	    << "Optional output parameters:" << "\n"
-	    << "\t" << "--pass-bam      <used_reads.bam>      "  << "\t" << "Output a BAM file containing the reads used to genotype each region"                 << "\n"
-	    << "\t" << "--filt-bam      <filt_reads.bam>      "  << "\t" << "Output a BAM file containing the reads filtered in each region. Each BAM entry"      << "\n"
-	    << "\t" << "                                      "  << "\t" << " has an FT tag specifying the reason for filtering"                                  << "\n"
-	    << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Output a bgzipped VCF file containing phased STR genotypes"                          << "\n"
-	    << "\t" << "--allele-vcf    <str_alleles.vcf>     "  << "\t" << "Output a bgzipped VCF file containing alleles with strong evidence in the BAMs"      << "\n"
+	    << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Output a bgzipped VCF file containing STR genotypes"                                 << "\n"
+	    << "\t" << "                                      "  << "\t" << " NOTE: If you don't specify this option, no genotyping will be performed"            << "\n"
+	    << "\t" << "--allele-vcf    <str_alleles.vcf.gz>  "  << "\t" << "Output a bgzipped VCF file containing alleles with strong evidence in the BAMs"      << "\n"
 	    << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n"
+	    << "\t" << "--log <log.txt>                       "  << "\t" << "Output the log information to the provided file. By default, the log will be "       << "\n"
+	    << "\t" << "                                      "  << "\t" << " written to standard err"                                                            << "\n"
 	    << "\t" << "--viz-out       <aln_viz.html.gz>     "  << "\t" << "Output a bgzipped file containing haplotype alignments for each locus"               << "\n"
 	    << "\t" << "                                      "  << "\t" << " The resulting file can be readily visualized with VizAln"                           << "\n"
 	    << "\t" << "                                      "  << "\t" << " Option only available when the --len-genotyper flag has not been specified"         << "\n"
 	    << "\t" << "--viz-left-alns                       "  << "\t" << "Output the original left aligned reads to the HTML output in addition to the "       << "\n"
 	    << "\t" << "                                      "  << "\t" << " haplotype alignments. By default, only the latter is output"                        << "\n"
-	    << "\t" << "--log <log.txt>                       "  << "\t" << "Output the log information to the provided file. By default, the log will be "       << "\n"
-	    << "\t" << "                                      "  << "\t" << " written to standard err"                                                            << "\n"
+	    << "\t" << "--pass-bam      <used_reads.bam>      "  << "\t" << "Output a BAM file containing the reads used to genotype each region"                 << "\n"
+	    << "\t" << "--filt-bam      <filt_reads.bam>      "  << "\t" << "Output a BAM file containing the reads filtered in each region. Each BAM entry"      << "\n"
+	    << "\t" << "                                      "  << "\t" << " has an FT tag specifying the reason for filtering"                                  << "\n"
 	    << "\t" << "--hide-allreads                       "  << "\t" << "Don't output the ALLREADS  FORMAT field to the VCF. By default, it will be output"   << "\n"
 	    << "\t" << "--hide-mallreads                      "  << "\t" << "Don't output the MALLREADS FORMAT field to the VCF. By default, it will be output"   << "\n"
 	    << "\t" << "--hide-pallreads                      "  << "\t" << "Don't output the PALLREADS FORMAT field to the VCF. By default, it will be output"   << "\n"
@@ -61,10 +64,8 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to VCF (default = False)"                    << "\n" << "\n"
 
 	    << "Optional read filtering parameters:" << "\n"
-	    << "\t" << "--no-filters                          "  << "\t" << "Don't filter any putative STR reads"                                                 << "\n"
 	    << "\t" << "--no-rmdup                            "  << "\t" << "Don't remove PCR duplicates. By default, they'll be removed"                         << "\n"
 	    << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
-	    << "\t" << "--rem-multimaps                       "  << "\t" << "Remove reads that map to multiple locations (Default = False)"                       << "\n"
 	    << "\t" << "--max-softclips <num_bases>           "  << "\t" << "Remove reads with more than NUM_BASES soft-clipped bases (Default = " << def_max_sclips << ")" << "\n"
 	    << "\t" << "--require-pairs                       "  << "\t" << "Only utilize paired-end reads (Default = False)" << "\n"
 	    << "\t" << "--max-hardclips <num_bases>           "  << "\t" << "Remove reads with more than NUM_BASES hard-clipped bases (Default = " << def_max_hclips << ")" << "\n"
@@ -92,9 +93,9 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "                                      "  << "\t" << "  STR sequence. As a result, it cannot detect homoplasy and all STR alleles output"  << "\n"
 	    << "\t" << "                                      "  << "\t" << "  in the VCF assume that indels are perfect copies of the repeat motif"              << "\n"
 	    << "\t" << "                                      "  << "\t" << "  The length-based approach is very similar to lobSTR's allelotype module"           << "\n"
-	    << "\t" << "--pool-seqs                           "  << "\t" << "Merge reads with identical sequences and combine their base quality scores. These "  << "\n"
-	    << "\t" << "                                      "  << "\t" << "  pooled reads will be aligned using the haplotype aligner instead of the reads"     << "\n"
-	    << "\t" << "                                      "  << "\t" << "  themselves, resulting in a large speedup. Not compatible with --len-genotyper"     << "\n"
+	    << "\t" << "--no-pool-seqs                        "  << "\t" << "Do not merge reads with identical sequences and combine their base quality scores."  << "\n"
+	    << "\t" << "                                      "  << "\t" << "  By default, pooled reads will be aligned using the haplotype aligner instead"      << "\n"
+	    << "\t" << "                                      "  << "\t" << "  of the reads themselves, resulting in a large speedup."                            << "\n"
 	    << "\n";
 }
   
@@ -103,7 +104,7 @@ void parse_command_line_args(int argc, char** argv,
 			     std::string& fasta_dir,         std::string& region_file,         std::string& snp_vcf_file,        std::string& chrom,
 			     std::string& bam_pass_out_file, std::string& bam_filt_out_file,
 			     std::string& str_vcf_out_file,  std::string& allele_vcf_out_file, std::string& log_file,
-			     int& use_hap_aligner, int& remove_all_filters, int& remove_pcr_dups, int& bams_from_10x,
+			     int& use_hap_aligner,           int& remove_pcr_dups,             int& bams_from_10x,
 			     int& output_gls, int& output_pls, int& output_all_reads, int& output_pall_reads, int& output_mall_reads, std::string& ref_vcf_file,
 			     GenotyperBamProcessor& bam_processor){
   int def_mdist       = bam_processor.MAX_MATE_DIST;
@@ -117,10 +118,10 @@ void parse_command_line_args(int argc, char** argv,
     exit(0);
   }
 
-  int print_help = 0;
+  int print_help           = 0;
   int condense_read_fields = 1;
-  int pool_seqs = 0;
-  int viz_left_alns = 0;
+  int pool_seqs            = 1;
+  int viz_left_alns        = 0;
 
   static struct option long_options[] = {
     {"10x-bams",        no_argument, &bams_from_10x, 1},
@@ -144,11 +145,10 @@ void parse_command_line_args(int argc, char** argv,
     {"hide-mallreads",  no_argument, &output_mall_reads,  0},
     {"hide-pallreads",  no_argument, &output_pall_reads,  0},
     {"len-genotyper",   no_argument, &use_hap_aligner,    0},
-    {"no-filters",      no_argument, &remove_all_filters, 1},
     {"no-rmdup",        no_argument, &remove_pcr_dups,    0},
     {"output-gls",      no_argument, &output_gls, 1},
     {"output-pls",      no_argument, &output_pls, 1},
-    {"pool-seqs",       no_argument, &pool_seqs,  1},
+    {"no-pool-seqs",    no_argument, &pool_seqs,  0},
     {"str-vcf",         required_argument, 0, 'o'},
     {"ref-vcf",         required_argument, 0, 'p'},
     {"regions",         required_argument, 0, 'r'},
@@ -162,7 +162,6 @@ void parse_command_line_args(int argc, char** argv,
     {"filt-bam",        required_argument, 0, 'y'},
     {"viz-left-alns",   no_argument, &viz_left_alns, 1},
     {"viz-out",         required_argument, 0, 'z'},
-    {"rem-multimaps",   no_argument, &(bam_processor.REMOVE_MULTIMAPPERS), 1},
     {0, 0, 0, 0}
   };
 
@@ -265,12 +264,8 @@ void parse_command_line_args(int argc, char** argv,
     }
   }
 
-  if (pool_seqs == 1){
+  if (pool_seqs == 1)
     bam_processor.pool_sequences();
-    if (use_hap_aligner == 0)
-      printErrorAndDie("--pool-seqs option is not compatible with the --len-genotyper option");
-  }
-
   if (print_help){
     print_usage(def_mdist, def_min_reads, def_max_reads, def_max_sclips, def_max_hclips, def_max_str_len);
     exit(0);
@@ -282,7 +277,7 @@ void parse_command_line_args(int argc, char** argv,
 
 int main(int argc, char** argv){
   double total_time = clock();
-  precompute_integer_logs(); // Calculate and cache log of integers from 1->999
+  precompute_integer_logs(); // Calculate and cache log of integers from 1 -> 999
 
   std::stringstream full_command_ss;
   full_command_ss << "HipSTR-" << VERSION;
@@ -293,14 +288,14 @@ int main(int argc, char** argv){
   bool check_mate_chroms = false;
   GenotyperBamProcessor bam_processor(true, check_mate_chroms, true, true);
 
-  int use_hap_aligner = 1, remove_all_filters = 0, remove_pcr_dups = 1, bams_from_10x = 0;
+  int use_hap_aligner = 1, remove_pcr_dups = 1, bams_from_10x = 0;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", allele_vcf_out_file="", log_file = "";
   int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 1, output_mall_reads = 1;
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
 			  bam_pass_out_file, bam_filt_out_file,
-			  str_vcf_out_file, allele_vcf_out_file, log_file, use_hap_aligner, remove_all_filters,
+			  str_vcf_out_file, allele_vcf_out_file, log_file, use_hap_aligner,
 			  remove_pcr_dups, bams_from_10x, output_gls, output_pls, output_all_reads, output_pall_reads, output_mall_reads,
 			  ref_vcf_file, bam_processor);
 
@@ -463,11 +458,6 @@ int main(int argc, char** argv){
       printErrorAndDie("Path for STR VCF output file must end in .gz as it will be bgzipped");
     bam_processor.set_output_str_vcf(str_vcf_out_file, full_command, rg_samples);
   }
-  
-  if (remove_all_filters)
-    bam_processor.remove_all_filters();
-
-
 
   /*
   // Temporary to experiment with recalling after constructing haplotypes
@@ -480,8 +470,6 @@ int main(int argc, char** argv){
   // Experiment #2
   bam_processor.REQUIRE_SPANNING = true;
   */
-
-
 
   if (!hap_chr_string.empty()){
     std::vector<std::string> haploid_chroms;
