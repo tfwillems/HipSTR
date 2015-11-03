@@ -110,9 +110,8 @@ This mode is very similar to mode #2, except that we provide an additional VCF f
 HipSTR doesn't currently have multi-threaded support, but there are several options available to accelerate analyses:
 
 1. Analyze each chromosome in parallel using the **--chrom** option. For example, **--chrom chr2** will only genotype the BED regions on chr2
-2. Pool reads with identical sequences using the **--pool-seqs** option. This will cause HipSTR to combine base quality scores across identical sequences and align each unique sequence instead of each unique read. If you're analyzing large population datasets, this may result in a 5-10x speedup
-3. Utilize the length-based genotyper instead of the sequence-based genotyper using the **--len-genotyper** flag. This will vastly accelerate analyses, but it only considers the sizes of indels in reads independently. As a result, it is incapable of determining the exact sequence of an STR and is susceptible to alignment errors
-4. If you have hundreds of BAM files, we recommend that you merge them into a more manageable number (10-100) using the `samtools merge` command. Large numbers of BAMs can lead to slow disk IO and poor performance
+2. Utilize the length-based genotyper instead of the sequence-based genotyper using the **--len-genotyper** flag. This will vastly accelerate analyses, but it only considers the sizes of indels in reads independently. As a result, it is incapable of determining the exact sequence of an STR and is susceptible to alignment errors
+3. If you have hundreds of BAM files, we recommend that you merge them into a more manageable number (10-100) using the `samtools merge` command. Large numbers of BAMs can lead to slow disk IO and poor performance
 
 ## Call Filtering
 
@@ -131,7 +130,7 @@ This list is comprised of the most useful and frequently used additional options
 <a id="aln-viz"></a>
 ## Alignment Visualization
 When deciphering and inspecting STR calls, it's extremely useful to visualize the supporting reads. HipSTR facilitates this through the **--viz-out** option, which writes a bgzipped file containing alignments for each call that can be readily visualized using the **VizAln** command included in HipSTR main directory. If you're interested in visualizing alignments, you first need to index the file using tabix. 
-For example, if you ran HipSTR with the option `--viz-out alns.html.gz`, you should use the command 
+For example, if you ran HipSTR with the option `--viz-out aln.html.gz`, you should use the command
 ```
 tabix -p bed aln.html.gz
 ```
@@ -155,12 +154,12 @@ NOTE: Because the **--viz-out** file can become fairly large if you're genotypin
 <a id="bams"></a>
 ### BAM files
 HipSTR requires [BAM](https://samtools.github.io/hts-specs/SAMv1.pdf) files produced by any indel-sensitive aligner. These files must have been sorted by position using the `samtools sort` command and then indexed using `samtools index`. To associate a read with its sample of interest, HipSTR uses read group information in the BAM header lines. These *@RG* lines must contain an *ID* field, an *LB* field indicating the library and an *SM* field indicating the sample. For example, if a BAM contained the following header line 
-> @RG     ID:lobSTR;RUN1 LB:ERR044603        SM:HG01914
+> @RG     ID:RUN1 LB:ERR12345        SM:SAMPLE789
 
 an alignment with the RG tag 
-> RG:Z:lobSTR;RUN1
+> RG:Z:RUN1
 
-will be associated with sample *HG01914* and library *ERR044603*. In this manner, HipSTR can analyze BAMs containing more than one sample and/or more than one library and can handle BAMs in which a single sample's reads are spread across multiple files. 
+will be associated with sample *SAMPLE789* and library *ERR12345*. In this manner, HipSTR can analyze BAMs containing more than one sample and/or more than one library and can handle BAMs in which a single sample's reads are spread across multiple files. 
 
 Alternatively, if your BAM files lack *RG* information, you can use the **--bam-samps** and **-bam-lbs** flags to specify the sample and library associated with each BAM. In this setting, however, a BAM can only contain a single library and a single read group. For example, the command
 ```
