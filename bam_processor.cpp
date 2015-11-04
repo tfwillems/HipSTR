@@ -136,7 +136,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   std::vector<BamTools::BamAlignment> region_alignments, filtered_alignments;
   int32_t read_count = 0;
   int32_t not_spanning = 0; // Counts for filters that are always applied
-  int32_t insert_size = 0, mapping_quality = 0, flank_len = 0; // Counts for filters that are user-controlled
+  int32_t mapping_quality = 0, flank_len = 0; // Counts for filters that are user-controlled
   int32_t bp_before_indel = 0, end_match_window = 0, num_end_matches = 0, read_has_N = 0, hard_clip = 0, soft_clip = 0, split_alignment = 0, low_qual_score = 0;
   int32_t unique_mapping = 0;
   BamTools::BamAlignment alignment;
@@ -162,12 +162,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       std::string filter = "";
       read_count++;
 
-      // Ignore read if its mate pair distance exceeds the threshold
-      if (pass && abs(alignment.InsertSize) > MAX_MATE_DIST){
-	insert_size++;
-	pass = false;
-	filter.append("INSERT_SIZE");
-      }
       // Ignore chimeric alignments
       if (pass && alignment.HasTag("SA")){
 	split_alignment++;
@@ -185,6 +179,13 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	mapping_quality++;
 	pass = false;
 	filter.append("LOW_MAPQ");
+      }
+      // Ignore reads with a very low overall base quality score
+      // Want to avoid situations in which it's more advantageous to have misalignments b/c the scores are so low
+      if (pass && base_quality_.sum_log_prob_correct(alignment.Qualities) < MIN_SUM_QUAL_LOG_PROB){
+	low_qual_score++;
+	pass = false;
+	filter.append("LOW_BASE_QUALS");
       }
       // Ignore reads with too many clipped bases
       int num_hard_clips, num_soft_clips;
@@ -237,13 +238,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	  pass = false;
 	  filter.append("NUM_END_MATCHES");
 	}
-      }
-      // Ignore reads with a very low overall base quality score
-      // Want to avoid situations in which it's more advantageous to have misalignments b/c the scores are so low
-      if (pass && base_quality_.sum_log_prob_correct(alignment.Qualities) < MIN_SUM_QUAL_LOG_PROB){
-	low_qual_score++;
-	pass = false;
-	filter.append("LOW_BASE_QUALS");
       }
 
       if (pass){
@@ -349,18 +343,17 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   logger() << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads" << std::endl;
   
   logger() << read_count << " reads overlapped region, of which "
-	   << "\n\t" << insert_size      << " failed the insert size filter"
 	   << "\n\t" << split_alignment  << " had an SA (split alignment) BAM tag"
 	   << "\n\t" << read_has_N       << " had an 'N' base call"
 	   << "\n\t" << mapping_quality  << " had too low of a mapping quality"
+	   << "\n\t" << low_qual_score   << " had low base quality scores"
 	   << "\n\t" << hard_clip        << " had too many hard clipped bases"
 	   << "\n\t" << soft_clip        << " had too many soft clipped bases"
 	   << "\n\t" << not_spanning     << " did not span the STR"
 	   << "\n\t" << flank_len        << " had too bps in one or more flanks"
 	   << "\n\t" << bp_before_indel  << " had too few bp before the first indel"
 	   << "\n\t" << end_match_window << " did not have the maximal number of end matches within the specified window"
-	   << "\n\t" << num_end_matches  << " had too few bp matches along the ends"
-	   << "\n\t" << low_qual_score   << " had low base quality scores";
+	   << "\n\t" << num_end_matches  << " had too few bp matches along the ends";
   if (check_unique_mapping_)
     logger() << "\n\t" << unique_mapping << " did not have a unique mapping";
   if (REQUIRE_PAIRED_READS)
