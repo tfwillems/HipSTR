@@ -43,7 +43,7 @@ private:
 
 
 public:
- SNPBamProcessor(bool use_bam_rgs, bool check_mate_chroms, bool remove_pcr_dups):BamProcessor(use_bam_rgs, check_mate_chroms, remove_pcr_dups){
+ SNPBamProcessor(bool use_bam_rgs, bool remove_pcr_dups):BamProcessor(use_bam_rgs, remove_pcr_dups){
     have_snp_vcf_    = false;
     match_count_     = 0;
     mismatch_count_  = 0;

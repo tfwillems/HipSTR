@@ -17,7 +17,6 @@
 class BamProcessor {
  private:
   bool use_bam_rgs_;
-  bool check_mate_info_;
   bool rem_pcr_dups_;
   bool check_unique_mapping_; // Check that a read maps uniquely based on the BAM information
                               // For single-end reads, this is only the case if it doesn't have an XA tag
@@ -60,9 +59,8 @@ class BamProcessor {
  std::ofstream log_;
 
   public:
- BamProcessor(bool use_bam_rgs, bool filter_by_mate, bool remove_pcr_dups){
+ BamProcessor(bool use_bam_rgs, bool remove_pcr_dups){
    use_bam_rgs_             = use_bam_rgs;
-   check_mate_info_         = filter_by_mate;
    check_unique_mapping_    = true;
    rem_pcr_dups_            = remove_pcr_dups;
    MAX_MATE_DIST            = 1000;
@@ -70,7 +68,6 @@ class BamProcessor {
    MIN_FLANK                = 5;
    MIN_READ_END_MATCH       = 10;
    MAXIMAL_END_MATCH_WINDOW = 15;
-   REMOVE_MULTIMAPPERS      = 0;
    REQUIRE_SPANNING         = true;
    REQUIRE_PAIRED_READS     = 0;
    MIN_MAPPING_QUALITY      = 0;
@@ -145,7 +142,6 @@ class BamProcessor {
  int32_t MAX_SOFT_CLIPS;
  int32_t MAX_HARD_CLIPS;
  int32_t MAX_STR_LENGTH;
- int     REMOVE_MULTIMAPPERS;
  int     REMOVE_READS_WITH_N;
  bool    REQUIRE_SPANNING;
  int     REQUIRE_PAIRED_READS;  // Only utilize paired STR reads to genotype individuals

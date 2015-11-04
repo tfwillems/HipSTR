@@ -83,8 +83,7 @@ private:
   ProcessTimer process_timer_;
 
 public:
- GenotyperBamProcessor(bool use_bam_rgs, bool check_mate_chroms, bool remove_pcr_dups,
-		       bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, check_mate_chroms, remove_pcr_dups){
+ GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups, bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
     output_stutter_models_ = false;
     output_alleles_        = false;
     output_str_gts_        = false;
@@ -127,44 +126,18 @@ public:
   double total_genotype_time() { return total_genotype_time_; }
   double locus_genotype_time() { return locus_genotype_time_; }
 
-  void output_gls(){
-    output_gls_ = true;
-  }
-
-  void output_pls(){
-    output_pls_ = true;
-  }
-
-  void hide_all_reads(){
-    output_all_reads_ = false;
-  }
-
-  void hide_pall_reads(){
-    output_pall_reads_ = false;
-  }
-
-  void hide_mall_reads(){
-    output_mall_reads_ = false;
-  }
+  void output_gls()         { output_gls_ = true;         }
+  void output_pls()         { output_pls_ = true;         }
+  void hide_all_reads()     { output_all_reads_ = false;  }
+  void hide_pall_reads()    { output_pall_reads_ = false; }
+  void hide_mall_reads()    { output_mall_reads_ = false; }
+  void use_seq_aligner()    { use_seq_aligner_ = true;    }
+  void use_len_model()      { use_seq_aligner_ = false;   }
+  void visualize_left_alns(){ viz_left_alns_ = true;      }
+  void pool_sequences()     { pool_seqs_ = true;          }
 
   void add_haploid_chrom(std::string chrom){
     haploid_chroms_.insert(chrom);
-  }
-
-  void use_seq_aligner(){
-    use_seq_aligner_ = true;
-  }
-
-  void use_len_model(){
-    use_seq_aligner_ = false;
-  }
-
-  void visualize_left_alns(){
-    viz_left_alns_ = true;
-  }
-
-  void pool_sequences(){
-    pool_seqs_ = true;
   }
 
   void set_output_viz(std::string& viz_file){
@@ -264,7 +237,5 @@ public:
   double FRAC_LL_CONVERGE; // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
   int32_t MIN_TOTAL_READS; // Minimum total reads required to genotype locus
 };
-
-
 
 #endif

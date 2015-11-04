@@ -285,9 +285,7 @@ int main(int argc, char** argv){
     full_command_ss << " " << argv[i];
   std::string full_command = full_command_ss.str();
 
-  bool check_mate_chroms = false;
-  GenotyperBamProcessor bam_processor(true, check_mate_chroms, true, true);
-
+  GenotyperBamProcessor bam_processor(true, true, true);
   int use_hap_aligner = 1, remove_pcr_dups = 1, bams_from_10x = 0;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", allele_vcf_out_file="", log_file = "";
@@ -319,8 +317,7 @@ int main(int argc, char** argv){
     //if (!viz_out_file.empty())
     //printErrorAndDie("--viz-out option is not compatible with the --len-genotyper option");
   }
-    
-  
+
   if (bamfile_string.empty())
     printErrorAndDie("--bams option required");
   else if (region_file.empty())

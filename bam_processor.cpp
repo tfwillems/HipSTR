@@ -96,7 +96,6 @@ std::string get_str_ref_allele(uint32_t start, uint32_t end, std::string& chrom_
   return uppercase(seq);
 }
 
-
 void BamProcessor::modify_and_write_alns(std::vector<BamTools::BamAlignment>& alignments,
 					 std::map<std::string, std::string>& rg_to_sample,
 					 Region& region,
@@ -136,8 +135,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 
   std::vector<BamTools::BamAlignment> region_alignments, filtered_alignments;
   int32_t read_count = 0;
-  int32_t diff_chrom_mate = 0, unmapped_mate = 0, not_spanning = 0; // Counts for filters that are always applied
-  int32_t insert_size = 0, multimapped = 0, mapping_quality = 0, flank_len = 0; // Counts for filters that are user-controlled
+  int32_t not_spanning = 0; // Counts for filters that are always applied
+  int32_t insert_size = 0, mapping_quality = 0, flank_len = 0; // Counts for filters that are user-controlled
   int32_t bp_before_indel = 0, end_match_window = 0, num_end_matches = 0, read_has_N = 0, hard_clip = 0, soft_clip = 0, split_alignment = 0, low_qual_score = 0;
   int32_t unique_mapping = 0;
   BamTools::BamAlignment alignment;
@@ -163,32 +162,11 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       std::string filter = "";
       read_count++;
 
-      if (check_mate_info_){
-	// Ignore read if its mate pair chromosome doesn't match
-	if (pass && alignment.RefID != alignment.MateRefID){
-	  diff_chrom_mate++;
-	  pass = false;
-	  filter.append("MATE_DIFF_CHROM");
-	}
-	// Ignore read if its mate pair is unmapped
-	// TO DO: Check that insert size != 0 ?
-	if (pass && (!alignment.IsMateMapped() || alignment.MatePosition == 0)){
-	  unmapped_mate++;
-	  pass = false;
-	  filter.append("MATE_UNMAPPED");
-	}
-      }
       // Ignore read if its mate pair distance exceeds the threshold
       if (pass && abs(alignment.InsertSize) > MAX_MATE_DIST){
 	insert_size++;
 	pass = false;
 	filter.append("INSERT_SIZE");
-      }
-      // Ignore read if multimapper and filter specified
-      if (pass && REMOVE_MULTIMAPPERS && alignment.HasTag("XA")){
-	multimapped++;
-	pass = false;
-	filter.append("MULTIMAPPED");
       }
       // Ignore chimeric alignments
       if (pass && alignment.HasTag("SA")){
@@ -371,10 +349,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   logger() << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads" << std::endl;
   
   logger() << read_count << " reads overlapped region, of which "
-	   << "\n\t" << diff_chrom_mate  << " had mates on a different chromosome"
-	   << "\n\t" << unmapped_mate    << " had unmapped mates"
 	   << "\n\t" << insert_size      << " failed the insert size filter"
-	   << "\n\t" << multimapped      << " were removed due to multimapping"
 	   << "\n\t" << split_alignment  << " had an SA (split alignment) BAM tag"
 	   << "\n\t" << read_has_N       << " had an 'N' base call"
 	   << "\n\t" << mapping_quality  << " had too low of a mapping quality"
