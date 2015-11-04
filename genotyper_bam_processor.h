@@ -10,8 +10,8 @@
 #include "bamtools/include/api/BamAlignment.h"
 #include "vcflib/src/Variant.h"
 #include "bgzf_streams.h"
-
 #include "em_stutter_genotyper.h"
+#include "process_timer.h"
 #include "region.h"
 #include "seq_stutter_genotyper.h"
 #include "snp_bam_processor.h"
@@ -78,6 +78,9 @@ private:
   // If true, the seqeunce-based genotyper will collapse reads with identical sequences
   // and merge their base quality scores. Results in a large reduction in computation time
   bool pool_seqs_;
+
+  // Simple object to track total times consumed by various processes
+  ProcessTimer process_timer_;
 
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool check_mate_chroms, bool remove_pcr_dups,
@@ -240,6 +243,19 @@ public:
 
     log("Stutter model training succeeded for " + std::to_string(num_em_converge_) + " out of " + std::to_string(num_em_converge_+num_em_fail_) + " loci");
     log("Genotyping succeeded for " + std::to_string(num_genotype_success_) + " out of " + std::to_string(num_genotype_success_+num_genotype_fail_) + " loci");
+
+    logger() << "Approximate timing breakdown" << "\n"
+             << " BAM seek time       = " << total_bam_seek_time()       << " seconds\n"
+             << " Read filtering      = " << total_read_filter_time()    << " seconds\n"
+             << " SNP info extraction = " << total_snp_phase_info_time() << " seconds\n"
+             << " Stutter estimation  = " << total_stutter_time()        << " seconds\n"
+             << " Genotyping          = " << total_genotype_time()       << " seconds\n";
+    if (use_seq_aligner_ && output_str_gts_)
+      logger() << "\t" << " Left alignment       = "  << process_timer_.get_total_time("Left alignment")        << " seconds\n"
+               << "\t" << " Haplotype generation = "  << process_timer_.get_total_time("Haplotype generation")  << " seconds\n"
+               << "\t" << " Haplotype alignment  = "  << process_timer_.get_total_time("Haplotype alignment")   << " seconds\n"
+               << "\t" << " Alignment filtering  = "  << process_timer_.get_total_time("Alignment filtering")   << " seconds\n"
+               << "\t" << " Alignment traceback  = "  << process_timer_.get_total_time("Alignment traceback")   << " seconds\n";
   }
 
   // EM parameters for length-based stutter learning
