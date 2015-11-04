@@ -135,10 +135,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 
   std::vector<BamTools::BamAlignment> region_alignments, filtered_alignments;
   int32_t read_count = 0;
-  int32_t not_spanning = 0; // Counts for filters that are always applied
-  int32_t mapping_quality = 0, flank_len = 0; // Counts for filters that are user-controlled
+  int32_t not_spanning = 0, mapping_quality = 0, flank_len = 0, unique_mapping = 0;
   int32_t bp_before_indel = 0, end_match_window = 0, num_end_matches = 0, read_has_N = 0, hard_clip = 0, soft_clip = 0, split_alignment = 0, low_qual_score = 0;
-  int32_t unique_mapping = 0;
   BamTools::BamAlignment alignment;
 
   const BamTools::RefVector& ref_vector = reader.GetReferenceData();
@@ -245,14 +243,12 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	auto aln_iter = potential_mates.find(aln_key);
 	if (aln_iter != potential_mates.end()){
 	  bool add = true;
-	  if (check_unique_mapping_){
-	    std::vector< std::pair<std::string, int32_t> > p_1, p_2;
-	    get_valid_pairings(alignment, aln_iter->second, ref_vector, p_1, p_2);
-	    if (p_1.size() != 1 || p_1[0].second != alignment.Position){
-	      unique_mapping++;
-	      add = false;
-	      filter.append("NO_UNIQUE_MAPPING");
-	    }
+	  std::vector< std::pair<std::string, int32_t> > p_1, p_2;
+	  get_valid_pairings(alignment, aln_iter->second, ref_vector, p_1, p_2);
+	  if (p_1.size() != 1 || p_1[0].second != alignment.Position){
+	    unique_mapping++;
+	    add = false;
+	    filter.append("NO_UNIQUE_MAPPING");
 	  }
 
 	  if (add){
@@ -283,13 +279,11 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       auto aln_iter = potential_strs.find(aln_key);
       if (aln_iter != potential_strs.end()){
 	bool add = true;
-	if (check_unique_mapping_){
-	  std::vector< std::pair<std::string, int32_t> > p_1, p_2;
-          get_valid_pairings(alignment, aln_iter->second, ref_vector, p_1, p_2);
-          if (p_2.size() != 1 || p_2[0].second != aln_iter->second.Position){
-            add = false;
-            unique_mapping++;
-          }
+	std::vector< std::pair<std::string, int32_t> > p_1, p_2;
+	get_valid_pairings(alignment, aln_iter->second, ref_vector, p_1, p_2);
+	if (p_2.size() != 1 || p_2[0].second != aln_iter->second.Position){
+	  add = false;
+	  unique_mapping++;
 	}
 
 	if (add){
@@ -318,12 +312,11 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   int32_t num_filt_unpaired_reads = 0;
   for (auto aln_iter = potential_strs.begin(); aln_iter != potential_strs.end(); ++aln_iter){
     std::string filter = "";
-    if (check_unique_mapping_ && aln_iter->second.HasTag(ALT_MAP_TAG)){
-	unique_mapping++;
-	filter = "NO_UNIQUE_MAPPING";
+    if (aln_iter->second.HasTag(ALT_MAP_TAG)){
+      unique_mapping++;
+      filter = "NO_UNIQUE_MAPPING";
     }
-
-    if (REQUIRE_PAIRED_READS){
+    else if (REQUIRE_PAIRED_READS){
       num_filt_unpaired_reads++;
       filter = "NO_MATE_PAIR";
     }
@@ -338,8 +331,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	printErrorAndDie("Failed to add filter tag to alignment");
     }
   }
-  potential_strs.clear();
-  potential_mates.clear();
+  potential_strs.clear(); potential_mates.clear();
   logger() << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads" << std::endl;
   
   logger() << read_count << " reads overlapped region, of which "
@@ -353,9 +345,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	   << "\n\t" << flank_len        << " had too bps in one or more flanks"
 	   << "\n\t" << bp_before_indel  << " had too few bp before the first indel"
 	   << "\n\t" << end_match_window << " did not have the maximal number of end matches within the specified window"
-	   << "\n\t" << num_end_matches  << " had too few bp matches along the ends";
-  if (check_unique_mapping_)
-    logger() << "\n\t" << unique_mapping << " did not have a unique mapping";
+	   << "\n\t" << num_end_matches  << " had too few bp matches along the ends"
+	   << "\n\t" << unique_mapping   << " did not have a unique mapping";
   if (REQUIRE_PAIRED_READS)
     logger() << "\n\t" << num_filt_unpaired_reads << " did not have a mate pair";
   logger() << "\n" << region_alignments.size() << " PASSED ALL FILTERS" << "\n" << std::endl;

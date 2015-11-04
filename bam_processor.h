@@ -18,9 +18,6 @@ class BamProcessor {
  private:
   bool use_bam_rgs_;
   bool rem_pcr_dups_;
-  bool check_unique_mapping_; // Check that a read maps uniquely based on the BAM information
-                              // For single-end reads, this is only the case if it doesn't have an XA tag
-                              // For paired-end reads, the intersection of mapping locations must be unique
 
   // Timing statistics (in seconds)
   double total_bam_seek_time_;
@@ -61,7 +58,6 @@ class BamProcessor {
   public:
  BamProcessor(bool use_bam_rgs, bool remove_pcr_dups){
    use_bam_rgs_             = use_bam_rgs;
-   check_unique_mapping_    = true;
    rem_pcr_dups_            = remove_pcr_dups;
    MAX_MATE_DIST            = 1000;
    MIN_BP_BEFORE_INDEL      = 7;
