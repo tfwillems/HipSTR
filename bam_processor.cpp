@@ -141,7 +141,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 
   const BamTools::RefVector& ref_vector = reader.GetReferenceData();
   std::vector<BamTools::BamAlignment> paired_str_alns, mate_alns, unpaired_str_alns;
-  std::map<std::string, BamTools::BamAlignment> potential_strs, potential_mates;
+  std::map<std::string, std::pair<bool, BamTools::BamAlignment> > potential_strs;
+  std::map<std::string, BamTools::BamAlignment> potential_mates;
   const std::string FILTER_TAG_NAME = "FT";
   const std::string FILTER_TAG_TYPE = "Z";
 
@@ -156,108 +157,103 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 
     // Only apply tests to putative STR reads that overlap the STR region
     if (alignment.Position < region_iter->stop() && alignment.GetEndPosition() >= region_iter->start()){
-      bool pass = true;
+      bool pass_one = false, pass_two = false;
       std::string filter = "";
       read_count++;
 
       // Ignore chimeric alignments
-      if (pass && alignment.HasTag("SA")){
+      if (alignment.HasTag("SA")){
 	split_alignment++;
-	pass = false;
 	filter.append("HAS_SA_TAG");
       }
       // Ignore reads with N bases
-      if (pass && REMOVE_READS_WITH_N && (alignment.QueryBases.find('N') != std::string::npos)){
+      else if (REMOVE_READS_WITH_N && (alignment.QueryBases.find('N') != std::string::npos)){
 	read_has_N++;
-	pass = false;
 	filter.append("HAS_N_BASES");
       }
       // Ignore read if its mapping quality is too low
-      if (pass && MIN_MAPPING_QUALITY > alignment.MapQuality){
+      else if (MIN_MAPPING_QUALITY > alignment.MapQuality){
 	mapping_quality++;
-	pass = false;
 	filter.append("LOW_MAPQ");
       }
       // Ignore reads with a very low overall base quality score
       // Want to avoid situations in which it's more advantageous to have misalignments b/c the scores are so low
-      if (pass && base_quality_.sum_log_prob_correct(alignment.Qualities) < MIN_SUM_QUAL_LOG_PROB){
+      else if (base_quality_.sum_log_prob_correct(alignment.Qualities) < MIN_SUM_QUAL_LOG_PROB){
 	low_qual_score++;
-	pass = false;
 	filter.append("LOW_BASE_QUALS");
       }
-      // Ignore reads with too many clipped bases
-      int num_hard_clips, num_soft_clips;
-      AlignmentFilters::GetNumClippedBases(alignment, num_hard_clips, num_soft_clips);
-      if (pass && num_hard_clips > MAX_HARD_CLIPS){
-	hard_clip++;
-	pass = false;
-	filter.append("NUM_HCLIPS");
-      }
-      if (pass && num_soft_clips > MAX_SOFT_CLIPS){
-	soft_clip++;
-	pass = false;
-	filter.append("NUM_SCLIPS");
-      }
-      // Ignore read if it does not span the STR
-      if (pass && REQUIRE_SPANNING && (alignment.Position > region_iter->start() || alignment.GetEndPosition() < region_iter->stop())){
-	not_spanning++;
-	pass = false;
-	filter.append("NOT_SPANNING");
-      }
-      // Ignore read if it has insufficient flanking bases on either side of the STR
-      if (pass && (MIN_FLANK > 0) && (alignment.Position > (region_iter->start()-MIN_FLANK) || alignment.GetEndPosition() < (region_iter->stop()+MIN_FLANK))){
-	flank_len++;
-	pass = false;
-	filter.append("FLANK_LEN");
-      }
-      // Ignore read if there is an indel within the first MIN_BP_BEFORE_INDEL bps from each end
-      if (pass && MIN_BP_BEFORE_INDEL > 0){
-	std::pair<int, int> num_bps = AlignmentFilters::GetEndDistToIndel(alignment);
-	if ((num_bps.first != -1 && num_bps.first < MIN_BP_BEFORE_INDEL) || (num_bps.second != -1 && num_bps.second < MIN_BP_BEFORE_INDEL)){
-	  bp_before_indel++;
-	  pass = false;
-	  filter.append("BP_BEFORE_INDEL");
+      else
+	pass_one = true;
+
+      if (pass_one){
+	// Ignore reads with too many clipped bases
+	int num_hard_clips, num_soft_clips;
+	AlignmentFilters::GetNumClippedBases(alignment, num_hard_clips, num_soft_clips);
+	if (num_hard_clips > MAX_HARD_CLIPS){
+	  hard_clip++;
+	  filter.append("NUM_HCLIPS");
 	}
-      }
-      // Ignore read if there is another location within MAXIMAL_END_MATCH_WINDOW bp for which it has a longer end match
-      if (pass && MAXIMAL_END_MATCH_WINDOW > 0){
-	bool maximum_end_matches = AlignmentFilters::HasLargestEndMatches(alignment, chrom_seq, 0, MAXIMAL_END_MATCH_WINDOW, MAXIMAL_END_MATCH_WINDOW);
-	if (!maximum_end_matches){
-	  end_match_window++;
-	  pass = false;
-	  filter.append("END_MATCHES_NOT_MAXIMAL");
+	else if (num_soft_clips > MAX_SOFT_CLIPS){
+	  soft_clip++;
+	  filter.append("NUM_SCLIPS");
 	}
-      }
-      // Ignore read if it doesn't match perfectly for at least MIN_READ_END_MATCH bases on each end
-      if (pass && MIN_READ_END_MATCH > 0){
-	std::pair<int,int> match_lens = AlignmentFilters::GetNumEndMatches(alignment, chrom_seq, 0);
-	if (match_lens.first < MIN_READ_END_MATCH || match_lens.second < MIN_READ_END_MATCH){
-	  num_end_matches++;
-	  pass = false;
-	  filter.append("NUM_END_MATCHES");
+	// Ignore read if it does not span the STR
+	else if (REQUIRE_SPANNING && (alignment.Position > region_iter->start() || alignment.GetEndPosition() < region_iter->stop())){
+	  not_spanning++;
+	  filter.append("NOT_SPANNING");
+	}
+	// Ignore read if it has insufficient flanking bases on either side of the STR
+	else if ((MIN_FLANK > 0) && (alignment.Position > (region_iter->start()-MIN_FLANK) || alignment.GetEndPosition() < (region_iter->stop()+MIN_FLANK))){
+	  flank_len++;
+	  filter.append("FLANK_LEN");
+	}
+	else
+	  pass_two = true;
+
+	// Ignore read if there is another location within MAXIMAL_END_MATCH_WINDOW bp for which it has a longer end match
+	if (pass_two && MAXIMAL_END_MATCH_WINDOW > 0){
+	  bool maximum_end_matches = AlignmentFilters::HasLargestEndMatches(alignment, chrom_seq, 0, MAXIMAL_END_MATCH_WINDOW, MAXIMAL_END_MATCH_WINDOW);
+	  if (!maximum_end_matches){
+	    end_match_window++;
+	    pass_two = false;
+	    filter.append("END_MATCHES_NOT_MAXIMAL");
+	  }
+	}
+	// Ignore read if it doesn't match perfectly for at least MIN_READ_END_MATCH bases on each end
+	if (pass_two && MIN_READ_END_MATCH > 0){
+	  std::pair<int,int> match_lens = AlignmentFilters::GetNumEndMatches(alignment, chrom_seq, 0);
+	  if (match_lens.first < MIN_READ_END_MATCH || match_lens.second < MIN_READ_END_MATCH){
+	    num_end_matches++;
+	    pass_two = false;
+	    filter.append("NUM_END_MATCHES");
+	  }
+	}
+	// Ignore read if there is an indel within the first MIN_BP_BEFORE_INDEL bps from each end
+	if (pass_two && MIN_BP_BEFORE_INDEL > 0){
+	  std::pair<int, int> num_bps = AlignmentFilters::GetEndDistToIndel(alignment);
+	  if ((num_bps.first != -1 && num_bps.first < MIN_BP_BEFORE_INDEL) || (num_bps.second != -1 && num_bps.second < MIN_BP_BEFORE_INDEL)){
+	    bp_before_indel++;
+	    pass_two = false;
+	    filter.append("BP_BEFORE_INDEL");
+	  }
 	}
       }
 
+      bool pass = pass_one && pass_two;
       if (pass){
 	std::string aln_key = trim_alignment_name(alignment);
 	auto aln_iter = potential_mates.find(aln_key);
 	if (aln_iter != potential_mates.end()){
-	  bool add = true;
 	  std::vector< std::pair<std::string, int32_t> > p_1, p_2;
 	  get_valid_pairings(alignment, aln_iter->second, ref_vector, p_1, p_2);
-	  if (p_1.size() != 1 || p_1[0].second != alignment.Position){
-	    unique_mapping++;
-	    add = false;
-	    filter.append("NO_UNIQUE_MAPPING");
-	  }
-
-	  if (add){
+	  if (p_1.size() == 1 && p_1[0].second == alignment.Position){
 	    paired_str_alns.push_back(alignment);
 	    mate_alns.push_back(aln_iter->second);
 	    region_alignments.push_back(alignment);
 	  }
 	  else {
-	    assert(!filter.empty());
+	    unique_mapping++;
+	    filter.append("NO_UNIQUE_MAPPING");
 	    filtered_alignments.push_back(alignment);
 	    if(!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
 	      printErrorAndDie("Failed to add filter tag to alignment");
@@ -265,7 +261,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	  potential_mates.erase(aln_iter);
 	}
 	else
-	  potential_strs.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
+	  potential_strs.insert(std::pair<std::string, std::pair<bool, BamTools::BamAlignment> >(aln_key, std::pair<bool, BamTools::BamAlignment>(pass_two, alignment)));
       }
       else {
 	assert(!filter.empty());
@@ -278,22 +274,17 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       std::string aln_key = trim_alignment_name(alignment);
       auto aln_iter = potential_strs.find(aln_key);
       if (aln_iter != potential_strs.end()){
-	bool add = true;
 	std::vector< std::pair<std::string, int32_t> > p_1, p_2;
-	get_valid_pairings(alignment, aln_iter->second, ref_vector, p_1, p_2);
-	if (p_2.size() != 1 || p_2[0].second != aln_iter->second.Position){
-	  add = false;
-	  unique_mapping++;
-	}
-
-	if (add){
-	  paired_str_alns.push_back(aln_iter->second);
+	get_valid_pairings(alignment, aln_iter->second.second, ref_vector, p_1, p_2);
+	if (p_2.size() == 1 && p_2[0].second == aln_iter->second.second.Position){
+	  paired_str_alns.push_back(aln_iter->second.second);
 	  mate_alns.push_back(alignment);
-	  region_alignments.push_back(aln_iter->second);
+	  region_alignments.push_back(aln_iter->second.second);
 	}
 	else {
+	  unique_mapping++;
 	  std::string filter = "NO_UNIQUE_MAPPING";
-	  filtered_alignments.push_back(aln_iter->second);
+	  filtered_alignments.push_back(aln_iter->second.second);
 	  if (!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
 	    printErrorAndDie("Failed to add filter tag to alignment");
 	}
@@ -312,7 +303,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   int32_t num_filt_unpaired_reads = 0;
   for (auto aln_iter = potential_strs.begin(); aln_iter != potential_strs.end(); ++aln_iter){
     std::string filter = "";
-    if (aln_iter->second.HasTag(ALT_MAP_TAG)){
+    if (aln_iter->second.second.HasTag(ALT_MAP_TAG)){
       unique_mapping++;
       filter = "NO_UNIQUE_MAPPING";
     }
@@ -322,11 +313,11 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     }
 
     if (filter.empty()){
-      unpaired_str_alns.push_back(aln_iter->second);
-      region_alignments.push_back(aln_iter->second);
+      unpaired_str_alns.push_back(aln_iter->second.second);
+      region_alignments.push_back(aln_iter->second.second);
     }
     else {
-      filtered_alignments.push_back(aln_iter->second);
+      filtered_alignments.push_back(aln_iter->second.second);
       if(!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
 	printErrorAndDie("Failed to add filter tag to alignment");
     }
