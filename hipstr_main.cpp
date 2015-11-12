@@ -96,6 +96,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--no-pool-seqs                        "  << "\t" << "Do not merge reads with identical sequences and combine their base quality scores."  << "\n"
 	    << "\t" << "                                      "  << "\t" << "  By default, pooled reads will be aligned using the haplotype aligner instead"      << "\n"
 	    << "\t" << "                                      "  << "\t" << "  of the reads themselves, resulting in a large speedup."                            << "\n"
+	    << "\t" << "--version                             "  << "\t" << "Print HipSTR version and exit"                                                       << "\n"  
 	    << "\n";
 }
   
@@ -122,6 +123,7 @@ void parse_command_line_args(int argc, char** argv,
   int condense_read_fields = 1;
   int pool_seqs            = 1;
   int viz_left_alns        = 0;
+  int print_version        = 0;
 
   static struct option long_options[] = {
     {"10x-bams",        no_argument, &bams_from_10x, 1},
@@ -149,6 +151,7 @@ void parse_command_line_args(int argc, char** argv,
     {"output-gls",      no_argument, &output_gls, 1},
     {"output-pls",      no_argument, &output_pls, 1},
     {"no-pool-seqs",    no_argument, &pool_seqs,  0},
+    {"version",         no_argument, &print_version, 1},
     {"str-vcf",         required_argument, 0, 'o'},
     {"ref-vcf",         required_argument, 0, 'p'},
     {"regions",         required_argument, 0, 'r'},
@@ -264,6 +267,10 @@ void parse_command_line_args(int argc, char** argv,
     }
   }
 
+  if (print_version == 1){
+    std::cerr << "HipSTR version " << VERSION << std::endl;
+    exit(0);
+  }
   if (pool_seqs == 1)
     bam_processor.pool_sequences();
   if (print_help){
