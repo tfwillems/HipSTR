@@ -13,8 +13,29 @@
 #include "pcr_duplicates.h"
 #include "seqio.h"
 #include "stringops.h"
+#include "SeqAlignment/AlignmentOps.h"
 
 const std::string ALT_MAP_TAG = "XA";
+
+
+const std::string BamProcessor::PASSES_FILTERS_TAG_NAME = "PF";
+const std::string BamProcessor::PASSES_FILTERS_TAG_TYPE = "c";
+const int8_t BamProcessor::PASSES_FILTERS_TRUE     = 1;
+const int8_t BamProcessor::PASSES_FILTERS_FALSE    = 0;
+
+void BamProcessor::add_passes_filters_tag(BamTools::BamAlignment& aln, bool passes){
+  if (aln.HasTag(PASSES_FILTERS_TAG_NAME))
+    aln.RemoveTag(PASSES_FILTERS_TAG_NAME);
+  if(!aln.AddTag(PASSES_FILTERS_TAG_NAME, PASSES_FILTERS_TAG_TYPE, (passes ? PASSES_FILTERS_TRUE : PASSES_FILTERS_FALSE)))
+    printErrorAndDie("Failed to add passes filters tag to BAM alignment");
+}
+
+bool BamProcessor::passes_filters(BamTools::BamAlignment& aln){
+  int8_t passes;
+  if (!aln.GetTag(PASSES_FILTERS_TAG_NAME, passes))
+    printErrorAndDie("Failed to extract passes filters tag from BAM alignment");
+  return passes == PASSES_FILTERS_TRUE;
+}
 
 void BamProcessor::extract_mappings(BamTools::BamAlignment& aln, const BamTools::RefVector& ref_vector,
 				    std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs){
@@ -157,7 +178,9 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 
     // Only apply tests to putative STR reads that overlap the STR region
     if (alignment.Position < region_iter->stop() && alignment.GetEndPosition() >= region_iter->start()){
-      bool pass_one = false, pass_two = false;
+      bool pass_one = false; // Denotes if read passed first set of simpler filters
+      bool pass_two = false; // Denotes if read passed sceond set of additional filters
+                             // Meant to signify if reads that pass first set should be used to generate haplotypes
       std::string filter = "";
       read_count++;
 
@@ -182,6 +205,11 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	low_qual_score++;
 	filter.append("LOW_BASE_QUALS");
       }
+      // Ignore read if it does not span the STR
+      else if (REQUIRE_SPANNING && (alignment.Position > region_iter->start() || alignment.GetEndPosition() < region_iter->stop())){
+	not_spanning++;
+	filter.append("NOT_SPANNING");
+      }
       else
 	pass_one = true;
 
@@ -196,11 +224,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	else if (num_soft_clips > MAX_SOFT_CLIPS){
 	  soft_clip++;
 	  filter.append("NUM_SCLIPS");
-	}
-	// Ignore read if it does not span the STR
-	else if (REQUIRE_SPANNING && (alignment.Position > region_iter->start() || alignment.GetEndPosition() < region_iter->stop())){
-	  not_spanning++;
-	  filter.append("NOT_SPANNING");
 	}
 	// Ignore read if it has insufficient flanking bases on either side of the STR
 	else if ((MIN_FLANK > 0) && (alignment.Position > (region_iter->start()-MIN_FLANK) || alignment.GetEndPosition() < (region_iter->stop()+MIN_FLANK))){
@@ -239,7 +262,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	}
       }
 
-      bool pass = pass_one && pass_two;
+      bool pass = pass_one;
       if (pass){
 	std::string aln_key = trim_alignment_name(alignment);
 	auto aln_iter = potential_mates.find(aln_key);
@@ -250,6 +273,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	    paired_str_alns.push_back(alignment);
 	    mate_alns.push_back(aln_iter->second);
 	    region_alignments.push_back(alignment);
+	    add_passes_filters_tag(paired_str_alns.back(), pass_two);
 	  }
 	  else {
 	    unique_mapping++;
@@ -280,6 +304,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	  paired_str_alns.push_back(aln_iter->second.second);
 	  mate_alns.push_back(alignment);
 	  region_alignments.push_back(aln_iter->second.second);
+	  add_passes_filters_tag(paired_str_alns.back(), aln_iter->second.first);
 	}
 	else {
 	  unique_mapping++;
@@ -315,6 +340,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     if (filter.empty()){
       unpaired_str_alns.push_back(aln_iter->second.second);
       region_alignments.push_back(aln_iter->second.second);
+      add_passes_filters_tag(unpaired_str_alns.back(), aln_iter->second.first);
     }
     else {
       filtered_alignments.push_back(aln_iter->second.second);
@@ -330,9 +356,9 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	   << "\n\t" << read_has_N       << " had an 'N' base call"
 	   << "\n\t" << mapping_quality  << " had too low of a mapping quality"
 	   << "\n\t" << low_qual_score   << " had low base quality scores"
+	   << "\n\t" << not_spanning     << " did not span the STR"
 	   << "\n\t" << hard_clip        << " had too many hard clipped bases"
 	   << "\n\t" << soft_clip        << " had too many soft clipped bases"
-	   << "\n\t" << not_spanning     << " did not span the STR"
 	   << "\n\t" << flank_len        << " had too bps in one or more flanks"
 	   << "\n\t" << bp_before_indel  << " had too few bp before the first indel"
 	   << "\n\t" << end_match_window << " did not have the maximal number of end matches within the specified window"

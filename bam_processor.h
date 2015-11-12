@@ -129,6 +129,15 @@ class BamProcessor {
    return (log_to_file_ ? log_ : std::cerr);
  }
 
+ static void add_passes_filters_tag(BamTools::BamAlignment& aln, bool passes);
+
+ static bool passes_filters(BamTools::BamAlignment& aln);
+
+ static const std::string PASSES_FILTERS_TAG_NAME;
+ static const std::string PASSES_FILTERS_TAG_TYPE;
+ static const int8_t      PASSES_FILTERS_TRUE;
+ static const int8_t      PASSES_FILTERS_FALSE;
+
  int32_t MAX_MATE_DIST;
  int32_t MIN_BP_BEFORE_INDEL;
  int32_t MIN_FLANK;
