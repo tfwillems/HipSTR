@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include "seq_stutter_genotyper.h"
+#include "bam_processor.h"
 #include "em_stutter_genotyper.h"
 #include "error.h"
 #include "extract_indels.h"
@@ -215,6 +216,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 
   for (unsigned int i = 0; i < alignments.size(); ++i){
     alns_.push_back(std::vector<Alignment>());
+    use_for_haps_.push_back(std::vector<bool>());
     for (unsigned int j = 0; j < alignments[i].size(); ++j, ++read_index){
       // Ignore/remove reads with a very low overall base quality score
       // Want to avoid situations in which it's more advantageous to have misalignments
@@ -231,11 +233,13 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
       if (have_prev)
 	have_prev &= alns_[iter->second.first][iter->second.second].get_sequence().size() == alignments[i][j].QueryBases.size();
 
+      bool use_in_haplotype_gen = BamProcessor::passes_filters(alignments[i][j]);
       if (!have_prev){
 	alns_.back().push_back(Alignment());
 	if (realign(alignments[i][j], chrom_seq, alns_.back().back())){
 	  seq_to_alns[alignments[i][j].QueryBases] = std::pair<int,int>(i, alns_[i].size()-1);
 	  alns_.back().back().check_CIGAR_string(alignments[i][j].Name);
+	  use_for_haps_.back().push_back(use_in_haplotype_gen);
 	  min_start = std::min(min_start, alns_.back().back().get_start());
 	  max_stop  = std::max(max_stop,  alns_.back().back().get_stop());
 	}
@@ -259,6 +263,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 	new_aln.set_cigar_list(alns_[iter->second.first][iter->second.second].get_cigar_list());
 	new_aln.check_CIGAR_string(alignments[i][j].Name);
 	alns_.back().push_back(new_aln);
+	use_for_haps_.back().push_back(use_in_haplotype_gen);
       }
       bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position,
 				   region_->start()-region_->period(), region_->stop()+region_->period(), bp_diff);
@@ -327,8 +332,18 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   else {
     // Generate putative haplotypes and determine the number of alleles
     logger << "Generating putative haplotypes..." << std::endl;
-    haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, alns_, vcf_alleles, stutter_model_,
+
+
+
+    // Select only those alignments marked as good for haplotype generation
+    std::vector< std::vector<Alignment> > gen_hap_alns(alns_.size());
+    for (unsigned int i = 0; i < alns_.size(); i++)
+      for (unsigned int j = 0; j < alns_[i].size(); j++)
+	if (use_for_haps_[i][j])
+	  gen_hap_alns[i].push_back(alns_[i][j]);
+    haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, gen_hap_alns, vcf_alleles, stutter_model_,
 				      alleles_from_bams_, hap_blocks_, call_sample_, logger);
+    call_sample_ =  std::vector<bool>(num_samples_, true); // Ignore these flags (for now)
     num_alleles_ = haplotype_->num_combs();
     assert(call_sample_.size() == num_samples_);
 
