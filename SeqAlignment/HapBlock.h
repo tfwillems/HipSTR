@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <iostream>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -19,6 +20,7 @@ class HapBlock {
  protected:
   std::string ref_seq_;
   std::vector<std::string> alt_seqs_;
+  std::set<std::string> seq_set_;
   int32_t start_;  // Start of region (inclusive)
   int32_t end_;    // End   of region (not inclusive)
   int min_size_;
@@ -40,6 +42,7 @@ class HapBlock {
     alt_seqs_ = std::vector<std::string>();
     suffix_matches_ = std::vector<int>();
     suffix_matches_.push_back(0);
+    seq_set_.insert(ref_seq);
   }
 
   virtual ~HapBlock() {
@@ -57,6 +60,9 @@ class HapBlock {
   int32_t start()   const { return start_; }
   int32_t end()     const { return end_;   }
   int num_options() const { return 1 + alt_seqs_.size(); }
+  int min_size()    const { return min_size_; }
+  int max_size()    const { return max_size_; }
+  bool contains(const std::string& seq) const { return seq_set_.find(seq) != seq_set_.end(); }
 
   virtual void add_alternate(std::string& alt) {
     alt_seqs_.push_back(alt);
@@ -66,10 +72,8 @@ class HapBlock {
       suffix_matches_.push_back(length_suffix_match(ref_seq_, alt));
     else
       suffix_matches_.push_back(length_suffix_match(alt_seqs_[alt_seqs_.size()-2], alt));
+    seq_set_.insert(alt);
   }
-
-  int min_size() const { return min_size_; }
-  int max_size() const { return max_size_; }
 
   void print(std::ostream& out);
 
@@ -96,12 +100,12 @@ class HapBlock {
     return suffix_matches_[seq_index];
   }
 
-  inline unsigned int left_homopolymer_len(unsigned int seq_index, int base_index) {
+  inline unsigned int left_homopolymer_len(unsigned int seq_index, int base_index){
     assert(seq_index < l_homopolymer_lens_.size());
     return l_homopolymer_lens_[seq_index][base_index];
   }
 
-  inline unsigned int right_homopolymer_len(unsigned int seq_index, int base_index) {
+  inline unsigned int right_homopolymer_len(unsigned int seq_index, int base_index){
     assert(seq_index < r_homopolymer_lens_.size());
     return r_homopolymer_lens_[seq_index][base_index];
   }
