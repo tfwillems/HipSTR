@@ -13,6 +13,8 @@ class AlignmentTrace {
   int num_flank_ins_;      // Number of inserted base pairs in sequences flanking the STR
   int num_flank_del_;      // Number of deleted base pairs in sequences flanking the STR
   int stutter_size_;       // Size of stutter artifact in STR block
+  std::string str_seq_;    // Sequence in STR region
+
 
  public:
   AlignmentTrace(int gt){
@@ -21,6 +23,7 @@ class AlignmentTrace {
     num_flank_ins_ = -1;
     num_flank_del_ = -1;
     stutter_size_  = -999;
+    str_seq_       = "";
   }
 
   int gt_index()              { return gt_;            }
@@ -29,12 +32,13 @@ class AlignmentTrace {
   int stutter_size()          { return stutter_size_;  }
   std::string& hap_aln()      { return hap_aln_;       }
   Alignment& traced_aln()     { return trace_vs_ref_;  }
-
+  std::string& str_seq()      { return str_seq_;       }
 
   void set_num_flank_ins(int num_ins)     { num_flank_ins_ = num_ins;      }
   void set_num_flank_del(int num_del)     { num_flank_del_ = num_del;      }
   void set_stutter_size(int stutter_size) { stutter_size_  = stutter_size; }
   void set_hap_aln(std::string& aln)      { hap_aln_       = aln;          }
+  void set_str_seq(std::string& seq)      { str_seq_       = seq;          }
 };
 
 
