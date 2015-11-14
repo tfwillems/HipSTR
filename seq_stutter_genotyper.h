@@ -109,7 +109,6 @@ class SeqStutterGenotyper{
   double total_left_aln_time_;
   double total_hap_aln_time_;
   double total_aln_trace_time_;
-  double total_aln_filter_time_;
 
   // Cache of traced back alignments
   std::map<std::pair<int,int>, AlignmentTrace*> trace_cache_;
@@ -163,8 +162,16 @@ class SeqStutterGenotyper{
   // eg. -1,0,-1,2,2,1 will be converted into -1|2;0|1;1|1;2|2
   std::string condense_read_counts(std::vector<int>& read_diffs);
 
+  // Retrace the alignment for each read and store the associated pointers in the provided vector
+  // Reads which were unaligned will have a NULL pointer
+  void retrace_alignments(std::ostream& logger, std::vector<AlignmentTrace*>& traced_alns);
+
   // Filter reads based on their retraced ML alignments
   void filter_alignments(std::ostream& logger, std::vector<int>& masked_reads);
+
+  // Identify additional candidate STR alleles using the sequences observed
+  // in reads with stutter artifacts
+  void get_stutter_candidate_alleles(std::ostream& logger, std::vector<std::string>& candidate_seqs);
 
  public:
   
@@ -199,7 +206,6 @@ class SeqStutterGenotyper{
     total_left_aln_time_   = 0;
     total_hap_aln_time_    = 0;
     total_aln_trace_time_  = 0;
-    total_aln_filter_time_ = 0;
 
     // True iff no allele priors are available (for imputation)
     if (ref_vcf == NULL)
@@ -258,7 +264,6 @@ class SeqStutterGenotyper{
   double left_aln_time()  { return total_left_aln_time_;   }
   double hap_aln_time()   { return total_hap_aln_time_;    }
   double aln_trace_time() { return total_aln_trace_time_;  }
-  double aln_filter_time(){ return total_aln_filter_time_; }
 
   bool genotype(std::ostream& logger);
 
