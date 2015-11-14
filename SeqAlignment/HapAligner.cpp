@@ -614,12 +614,12 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	  assert(r_flank_ins != -1 && r_flank_del != -1);
 	}
 	assert(right_aln.size() - std::count(right_aln.begin(), right_aln.end(), 'D') == base_seq_len-1-seed_base);
+	assert(l_str_seq.empty() || r_str_seq.empty());
 
 	trace.set_num_flank_ins(l_flank_ins + r_flank_ins);
 	trace.set_num_flank_del(l_flank_del + r_flank_del);
 	std::string read_aln_to_hap = left_aln + "M" + right_aln;
-
-	assert(l_str_seq.empty() || r_str_seq.empty());
+	trace.set_hap_aln(read_aln_to_hap);
 	trace.set_str_seq(!l_str_seq.empty() ? l_str_seq : r_str_seq);
 
 	// Only one of the flanks enters the stutter block, so only one can have a non-zero size
