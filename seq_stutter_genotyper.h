@@ -173,6 +173,9 @@ class SeqStutterGenotyper{
   // in reads with stutter artifacts
   void get_stutter_candidate_alleles(std::ostream& logger, std::vector<std::string>& candidate_seqs);
 
+  // Align each read to each of the candidate alleles, and store the results in the provided arrays
+  void calc_hap_aln_probs(Haplotype* haplotype, double* log_aln_probs, int* seed_positions);
+
  public:
   
   // In the VCF format fields for ALLREADS and MALLREADS, condense the fields into size|count

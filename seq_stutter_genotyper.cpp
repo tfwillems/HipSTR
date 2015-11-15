@@ -174,7 +174,6 @@ bool SeqStutterGenotyper::expand_haplotype(std::ostream& logger){
   HapBlock* str_block = new RepeatBlock(hap_blocks_[1]->start(), hap_blocks_[1]->end(), hap_blocks_[1]->get_seq(0), region_->period(), stutter_model_);
   for (unsigned int i = 1; i < final_str_seqs.size(); i++)
     str_block->add_alternate(final_str_seqs[i]);
-  str_block->initialize();
   
   // Reconstruct the haplotype
   delete haplotype_;
@@ -373,6 +372,41 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     logger << "WARNING: Unsuccessful initialization. " << std::endl;
 }
 
+void SeqStutterGenotyper::calc_hap_aln_probs(Haplotype* haplotype, double* log_aln_probs, int* seed_positions){
+  double locus_hap_aln_time = clock();
+  HapAligner hap_aligner(haplotype);
+
+  if (pool_identical_seqs_){
+    // Align each pooled read to each haplotype
+    std::vector<Alignment>& pooled_alns = pooler_.get_alignments();
+    int num_alleles            = haplotype->num_combs();
+    double* log_pool_aln_probs = new double[pooled_alns.size()*num_alleles];
+    int* pool_seed_positions   = new int[pooled_alns.size()];
+    hap_aligner.process_reads(pooled_alns, 0, &base_quality_, log_pool_aln_probs, pool_seed_positions);
+
+    // Copy each pool's alignment probabilities to the entries for its constituent reads
+    double* log_aln_ptr = log_aln_probs;
+    for (unsigned int i = 0; i < num_reads_; i++){
+      seed_positions[i] = pool_seed_positions[pool_index_[i]];
+      memcpy(log_aln_ptr, log_pool_aln_probs + num_alleles*pool_index_[i], num_alleles*sizeof(double));
+      log_aln_ptr += num_alleles;
+    }
+
+    delete [] log_pool_aln_probs;
+    delete [] pool_seed_positions;
+  }
+  else {
+    // Align each read against each candidate haplotype
+    int read_index = 0;
+    for (unsigned int i = 0; i < alns_.size(); i++){
+      hap_aligner.process_reads(alns_[i], read_index, &base_quality_, log_aln_probs, seed_positions);
+      read_index += alns_[i].size();
+    }
+  }
+  locus_hap_aln_time   = (clock() - locus_hap_aln_time)/CLOCKS_PER_SEC;
+  total_hap_aln_time_ += locus_hap_aln_time;
+}
+
 bool SeqStutterGenotyper::genotype(std::ostream& logger){
   // Unsuccessful initialization. May be due to
   // 1) Failing to find the corresponding allele priors in the VCF (if one has been provided)
@@ -388,50 +422,28 @@ bool SeqStutterGenotyper::genotype(std::ostream& logger){
     return false;
 
   init_alignment_model();
-  double locus_hap_aln_time = clock();
-  HapAligner hap_aligner(haplotype_);
-
   if (pool_identical_seqs_){
-    // Merge reads with identical sequences into pools
     logger << "Pooling reads with identical sequences..." << std::endl;
     pooler_.pool(base_quality_);
+  }
 
-    // Align each pooled read to each haplotype
-    logger << "Aligning pooled reads to each candidate haplotype..." << std::endl;
-    std::vector<Alignment>& pooled_alns = pooler_.get_alignments();
-    double* log_pool_aln_probs = new double[pooled_alns.size()*num_alleles_];
-    int* pool_seed_positions   = new int[pooled_alns.size()];
-    hap_aligner.process_reads(pooled_alns, 0, &base_quality_, log_pool_aln_probs, pool_seed_positions);
+  // Align each read to each candidate haplotype and store them in the provided arrays
+  logger << "Aligning reads to each candidate haplotype..." << std::endl;
+  calc_hap_aln_probs(haplotype_, log_aln_probs_, seed_positions_);
+  calc_log_sample_posteriors();
 
-    // Copy each pool's alignment probabilities to the entries for its constituent reads
-    double* log_aln_ptr = log_aln_probs_;
-    for (unsigned int i = 0; i < num_reads_; i++){
-      seed_positions_[i] = pool_seed_positions[pool_index_[i]];
-      memcpy(log_aln_ptr, log_pool_aln_probs + num_alleles_*pool_index_[i], num_alleles_*sizeof(double));
-      log_aln_ptr += num_alleles_;
-    }
-
-    delete [] log_pool_aln_probs;
-    delete [] pool_seed_positions;
-
-    calc_log_sample_posteriors();
+  if (false){
     std::vector<std::string> stutter_candidate_seqs;
     get_stutter_candidate_alleles(logger, stutter_candidate_seqs);
-  }
-  else {
-    // Align each read against each candidate haplotype
-    logger << "Aligning reads to each candidate haplotype..." << std::endl;
-    int read_index = 0;
-    for (unsigned int i = 0; i < alns_.size(); i++){
-      hap_aligner.process_reads(alns_[i], read_index, &base_quality_, log_aln_probs_, seed_positions_); 
-      read_index += alns_[i].size();
-    }  
-  }
-  locus_hap_aln_time   = (clock() - locus_hap_aln_time)/CLOCKS_PER_SEC;
-  total_hap_aln_time_ += locus_hap_aln_time;
 
-  logger << "Genotyping samples..." << std::endl;
-  calc_log_sample_posteriors();
+    // TO DO
+    // Check if there are any stutter alleles
+    // Ensure that they're big enough for stutter model
+    // Construct new haplotype and add alleles to other haplotype
+    // Align to new stutter haplotypes
+    // Recalculate alleles (after reordering?)
+    // Resolve issue related to caching tracebacks and removing alleles
+  }
 
   //debug_sample(sample_indices_["NA12878"]);
 
@@ -445,6 +457,8 @@ bool SeqStutterGenotyper::genotype(std::ostream& logger){
     }
   }
   
+  if (ref_vcf_ != NULL)
+    pos_ += 1;
   return true;
 }
 
