@@ -492,10 +492,6 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
   blocks.push_back(new HapBlock(rep_region_end, max_stop, uppercase(chrom_seq.substr(rep_region_end, max_stop-rep_region_end))));  // Ref sequence following STRs
   for (unsigned int j = 1; j < str_seqs.size(); j++)
     blocks[1]->add_alternate(str_seqs[j]);
-
-  // Initialize each block's data structures, namely the homopolymer length information
-  for (unsigned int i = 0; i < blocks.size(); i++)
-    blocks[i]->initialize();
  
   logger << "Constructing haplotype" << std::endl;
   Haplotype* haplotype = new Haplotype(blocks);
@@ -523,10 +519,6 @@ Haplotype* generate_haplotype(int32_t pos, Region& str_region, int32_t max_ref_f
   blocks.push_back(new HapBlock(rep_region_end, max_stop, uppercase(chrom_seq.substr(rep_region_end, max_stop-rep_region_end))));    // Ref sequence following STRs
   for (unsigned int j = 1; j < vcf_alleles.size(); j++)
     blocks[1]->add_alternate(vcf_alleles[j]);
-
-  // Initialize each block's data structures, namely the homopolymer length information
-  for (unsigned int i = 0; i < blocks.size(); i++)
-    blocks[i]->initialize();
 
   logger << "Constructing haplotype" << std::endl;
   Haplotype* haplotype = new Haplotype(blocks);

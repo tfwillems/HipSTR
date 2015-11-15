@@ -50,7 +50,6 @@ class RepeatBlock : public HapBlock {
 	std::reverse(alt.begin(), alt.end());
 	rev_block->add_alternate(alt);
       }
-      rev_block->initialize();
       return rev_block;
     }
 
@@ -59,11 +58,9 @@ class RepeatBlock : public HapBlock {
       assert(bad_alleles.find(0) == bad_alleles.end());
 
       RepeatBlock* new_block = new RepeatBlock(start_, end_, ref_seq_, repeat_info_->get_period(), repeat_info_->get_stutter_model(), reversed_);
-      for (unsigned int i = 0; i < alt_seqs_.size(); i++){
+      for (unsigned int i = 0; i < alt_seqs_.size(); i++)
 	if (bad_alleles.find(i+1) == bad_alleles.end())
 	  new_block->add_alternate(alt_seqs_[i]);
-      }
-      new_block->initialize();
       return new_block;
     }
 };

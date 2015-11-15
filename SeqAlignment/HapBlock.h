@@ -30,7 +30,8 @@ class HapBlock {
   std::vector<int*> r_homopolymer_lens_;
   std::vector<int>  suffix_matches_;
 
-  void calc_homopolymer_lengths();
+  // Compute the homopolymer lengths and store them in the resulting vectors
+  void calc_homopolymer_lengths(std::string& seq, std::vector<int*>& llen_vec, std::vector<int*>& rlen_vec);
 
  public:
   HapBlock(int32_t start, int32_t end, std::string ref_seq) {
@@ -43,6 +44,7 @@ class HapBlock {
     suffix_matches_ = std::vector<int>();
     suffix_matches_.push_back(0);
     seq_set_.insert(ref_seq);
+    calc_homopolymer_lengths(ref_seq, l_homopolymer_lens_, r_homopolymer_lens_);
   }
 
   virtual ~HapBlock() {
@@ -73,6 +75,7 @@ class HapBlock {
     else
       suffix_matches_.push_back(length_suffix_match(alt_seqs_[alt_seqs_.size()-2], alt));
     seq_set_.insert(alt);
+    calc_homopolymer_lengths(alt, l_homopolymer_lens_, r_homopolymer_lens_);
   }
 
   void print(std::ostream& out);
@@ -110,8 +113,6 @@ class HapBlock {
     return r_homopolymer_lens_[seq_index][base_index];
   }
   
-  void initialize();
-
   virtual HapBlock* reverse(){
     std::string rev_ref_seq = ref_seq_;
     std::reverse(rev_ref_seq.begin(), rev_ref_seq.end());
@@ -121,7 +122,6 @@ class HapBlock {
       std::reverse(alt.begin(), alt.end());
       rev_block->add_alternate(alt);
     }
-    rev_block->initialize();
     return rev_block;
   }
 };
