@@ -124,6 +124,15 @@ class HapBlock {
     }
     return rev_block;
   }
+
+  int index_of(const std::string& seq){
+    if (seq.compare(ref_seq_) == 0)
+      return 0;
+    for (unsigned int i = 0; i < alt_seqs_.size(); i++)
+      if (seq.compare(alt_seqs_[i]) == 0)
+	return i+1;
+    printErrorAndDie("Sequence not contained in haplotype block");
+  }
 };
 
 #endif
