@@ -141,7 +141,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	}
 
 	if (output_str_gts_){
-	  if (seq_genotyper->genotype(logger())) {
+	  if (seq_genotyper->genotype(chrom_seq, logger())) {
 	    bool pass = true;
 
 	    // If appropriate, recalculate the stutter model using the haplotype ML alignments,

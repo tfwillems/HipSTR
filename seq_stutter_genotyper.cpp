@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <random>
+#include <string>
 #include <sstream>
 #include <time.h>
 
@@ -75,9 +76,16 @@ void SeqStutterGenotyper::remove_alleles(std::vector<int>& allele_indices){
 
   int fixed_num_alleles = num_alleles_ - allele_indices.size();
   std::vector<std::string> fixed_alleles;
-  for (unsigned int i = 0; i < alleles_.size(); i++)
-    if (keep_allele[i])
+  std::vector<int> allele_mapping;
+  int keep_count = 0;
+  for (unsigned int i = 0; i < alleles_.size(); i++){
+    if (keep_allele[i]){
       fixed_alleles.push_back(alleles_[i]);
+      allele_mapping.push_back(keep_count++);
+    }
+    else
+      allele_mapping.push_back(-1);
+  }
   
   // Fix read alignment probability array
   double* fixed_log_aln_probs = new double[fixed_num_alleles*num_reads_];
@@ -107,6 +115,14 @@ void SeqStutterGenotyper::remove_alleles(std::vector<int>& allele_indices){
   hap_blocks_[1] = new_str_block;
   haplotype_     = new Haplotype(hap_blocks_);
 
+  // Fix alignment traceback cache (as allele indices have changed)
+  std::map<std::pair<int,int>, AlignmentTrace*> new_trace_cache;
+  for (auto cache_iter = trace_cache_.begin(); cache_iter != trace_cache_.end(); cache_iter++){
+    int new_allele_index = allele_mapping[cache_iter->first.second];
+    if (new_allele_index != -1)
+      new_trace_cache[std::pair<int,int>(cache_iter->first.first, new_allele_index)] = cache_iter->second;
+  }
+  trace_cache_ = new_trace_cache;
 
   // TO DO: Consider reshrinking allele bounds as in the get_alleles function
 
@@ -407,7 +423,96 @@ void SeqStutterGenotyper::calc_hap_aln_probs(Haplotype* haplotype, double* log_a
   total_hap_aln_time_ += locus_hap_aln_time;
 }
 
-bool SeqStutterGenotyper::genotype(std::ostream& logger){
+bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::string& chrom_seq, std::ostream& logger){
+  // Look for candidate alleles present in stutter artifacts
+  std::vector<std::string> stutter_seqs;
+  get_stutter_candidate_alleles(logger, stutter_seqs);
+  while (stutter_seqs.size() != 0){
+    std::sort(stutter_seqs.begin(), stutter_seqs.end(), stringLengthLT);
+    RepeatBlock* rep_block = (RepeatBlock *)haplotype_->get_block(1);
+    if (stutter_seqs[0].size() < std::abs(rep_block->get_repeat_info()->max_deletion()))
+      return false;
+
+    // Construct a new haplotype containing only stutter alleles and align each read to it
+    std::vector<HapBlock*> blocks;
+    blocks.push_back(hap_blocks_[0]);
+    blocks.push_back(new RepeatBlock(hap_blocks_[1]->start(), hap_blocks_[1]->end(), stutter_seqs[0], region_->period(), stutter_model_));
+    blocks.push_back(hap_blocks_[2]);
+    for (unsigned int i = 1; i < stutter_seqs.size(); i++)
+      blocks[1]->add_alternate(stutter_seqs[i]);
+    Haplotype* haplotype      = new Haplotype(blocks);
+    double* new_log_aln_probs = new double[num_reads_*stutter_seqs.size()];
+    calc_hap_aln_probs(haplotype, new_log_aln_probs, seed_positions_);
+    delete blocks[1];
+    delete haplotype;
+
+    // Create a new sorted list of alleles and an STR haplotype block with all alleles
+    std::vector<std::string> str_seqs;
+    for (unsigned int i = 0; i < haplotype_->get_block(1)->num_options(); i++)
+      str_seqs.push_back(haplotype_->get_block(1)->get_seq(i));
+    for (unsigned int i = 0; i < stutter_seqs.size(); i++)
+      str_seqs.push_back(stutter_seqs[i]);
+    std::sort(str_seqs.begin()+1, str_seqs.end(), stringLengthLT);
+    HapBlock* str_block = new RepeatBlock(hap_blocks_[1]->start(), hap_blocks_[1]->end(), hap_blocks_[1]->get_seq(0), region_->period(), stutter_model_);
+    for (unsigned int i = 1; i < str_seqs.size(); i++)
+      str_block->add_alternate(str_seqs[i]);
+
+    // Determine the mapping from each allele to its new index
+    std::vector<int> original_indices, stutter_indices;
+    for (unsigned int i = 0; i < num_alleles_; i++)
+      original_indices.push_back(str_block->index_of(hap_blocks_[1]->get_seq(i)));
+    for (unsigned int i = 0; i < stutter_seqs.size(); i++)
+      stutter_indices.push_back(str_block->index_of(stutter_seqs[i]));
+
+    // Combine alignment probabilities by copying them to their new indices
+    int total_alleles            = num_alleles_ + stutter_seqs.size();
+    double* fixed_log_aln_probs  = new double[total_alleles*num_reads_];
+    double* log_aln_ptr_original = log_aln_probs_;
+    double* log_aln_ptr_stutter  = new_log_aln_probs;
+    double* log_aln_ptr_all      = fixed_log_aln_probs;
+    for (unsigned int i = 0; i < num_reads_; ++i){
+      for (unsigned int j = 0; j < num_alleles_; ++j, ++log_aln_ptr_original)
+	log_aln_ptr_all[original_indices[j]] = *log_aln_ptr_original;
+      for (unsigned int j = 0; j < stutter_seqs.size(); ++j, ++log_aln_ptr_stutter)
+	log_aln_ptr_all[stutter_indices[j]] = *log_aln_ptr_stutter;
+      log_aln_ptr_all += total_alleles;
+    }
+    delete [] log_aln_probs_;
+    delete [] new_log_aln_probs;
+    log_aln_probs_ = fixed_log_aln_probs;
+
+    // Fix the trace cache indexing
+    std::map<std::pair<int,int>, AlignmentTrace*> new_trace_cache;
+    for (auto cache_iter = trace_cache_.begin(); cache_iter != trace_cache_.end(); cache_iter++){
+      int new_allele_index = original_indices[cache_iter->first.second];
+      new_trace_cache[std::pair<int,int>(cache_iter->first.first, new_allele_index)] = cache_iter->second;
+    }
+    trace_cache_ = new_trace_cache;
+
+    // Construct a haplotype that includes all the alleles
+    delete haplotype_;
+    delete hap_blocks_[1];
+    num_alleles_   = total_alleles;
+    hap_blocks_[1] = str_block;
+    haplotype_     = new Haplotype(hap_blocks_);
+
+    // Reextract the allele info
+    alleles_.clear();
+    get_alleles(chrom_seq, alleles_);
+
+    // Reallocate and recompute genotype posteriors
+    delete [] log_sample_posteriors_;
+    log_sample_posteriors_ = new double[num_alleles_*num_alleles_*num_samples_];
+    calc_log_sample_posteriors();
+
+    stutter_seqs.clear();
+    get_stutter_candidate_alleles(logger, stutter_seqs);
+  }
+  return true;
+}
+
+
+bool SeqStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger){
   // Unsuccessful initialization. May be due to
   // 1) Failing to find the corresponding allele priors in the VCF (if one has been provided)
   // 2) Large deletion extending past STR
@@ -432,20 +537,11 @@ bool SeqStutterGenotyper::genotype(std::ostream& logger){
   calc_hap_aln_probs(haplotype_, log_aln_probs_, seed_positions_);
   calc_log_sample_posteriors();
 
-  if (false){
-    std::vector<std::string> stutter_candidate_seqs;
-    get_stutter_candidate_alleles(logger, stutter_candidate_seqs);
-
-    // TO DO
-    // Check if there are any stutter alleles
-    // Ensure that they're big enough for stutter model
-    // Construct new haplotype and add alleles to other haplotype
-    // Align to new stutter haplotypes
-    // Recalculate alleles (after reordering?)
-    // Resolve issue related to caching tracebacks and removing alleles
+  // Look for additional alleles in stutter artifacts and align to them (if necessary)
+  if (ref_vcf_ == NULL){
+    if(!id_and_align_to_stutter_alleles(chrom_seq, logger))
+      return false;
   }
-
-  //debug_sample(sample_indices_["NA12878"]);
 
   // Remove alleles with no MAP genotype calls and recompute the posteriors
   if (log_allele_priors_ == NULL){
@@ -718,7 +814,6 @@ std::string SeqStutterGenotyper::condense_read_counts(std::vector<int>& read_dif
   return res.str();
 }
 
-
 void SeqStutterGenotyper::filter_alignments(std::ostream& logger, std::vector<int>& masked_reads){
   assert(masked_reads.size() == 0);
   masked_reads = std::vector<int>(num_samples_, 0);
@@ -794,8 +889,6 @@ void SeqStutterGenotyper::retrace_alignments(std::ostream& logger, std::vector<A
 }
 
 void SeqStutterGenotyper::get_stutter_candidate_alleles(std::ostream& logger, std::vector<std::string>& candidate_seqs){
-  return;
-
   assert(candidate_seqs.size() == 0);
   std::vector<AlignmentTrace*> traced_alns;
   retrace_alignments(logger, traced_alns);
@@ -868,8 +961,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   
   // Filter reads with questionable alignments
   std::vector<int> masked_reads;
-  if (true)
-    filter_alignments(logger, masked_reads);
+  filter_alignments(logger, masked_reads);
 
   // Extract each sample's posterior base pair dosage, MAP genotype, the associated phased genotype posterior
   // and the genotype likelihoods
@@ -1302,7 +1394,7 @@ bool SeqStutterGenotyper::recompute_stutter_model(std::string& chrom_seq, std::o
     assert(haplotype_->num_blocks() == 3);
     assert(haplotype_->get_block(1)->get_repeat_info() != NULL);
     ((RepeatBlock*)(haplotype_->get_block(1)))->get_repeat_info()->set_stutter_model(stutter_model_);
-    return genotype(logger);
+    return genotype(chrom_seq, logger);
   }
   else {
     logger << "Retraining stutter model training failed for locus " << region_->chrom() << ":" << region_->start() << "-" << region_->stop() << std::endl;

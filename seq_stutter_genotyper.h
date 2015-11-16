@@ -176,6 +176,11 @@ class SeqStutterGenotyper{
   // Align each read to each of the candidate alleles, and store the results in the provided arrays
   void calc_hap_aln_probs(Haplotype* haplotype, double* log_aln_probs, int* seed_positions);
 
+  // Identify alleles present in stutter artifacts
+  // Align each read to these alleles and incorporate these alignment probabilities and
+  // alleles into the relevant data structures
+  bool id_and_align_to_stutter_alleles(std::string& chrom_seq, std::ostream& logger);
+
  public:
   
   // In the VCF format fields for ALLREADS and MALLREADS, condense the fields into size|count
@@ -268,7 +273,7 @@ class SeqStutterGenotyper{
   double hap_aln_time()   { return total_hap_aln_time_;    }
   double aln_trace_time() { return total_aln_trace_time_;  }
 
-  bool genotype(std::ostream& logger);
+  bool genotype(std::string& chrom_seq, std::ostream& logger);
 
   /*
    * Recompute the stutter model using the PCR artifacts obtained from the ML alignments
