@@ -208,21 +208,6 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
       printErrorAndDie("Can't trim CIGAR character as the trim amount exceeds the CIGAR's length");
     if (head+tail < end_iter->Length)
       new_alignment.add_cigar_element(CigarElement(end_iter->Type, end_iter->Length-head-tail));
-    
-    /*
-    if (alignment.Name.compare("HS2000-1266_147:5:2102:3686:41029") == 0){
-      std::cerr << "DEBUG INFO:" << std::endl
-		<< alignment.QueryBases << std::endl
-		<< num_head_sclips << " " << num_back_sclips << " " << num_lead << " " << num_trail << std::endl
-		<< read_seq << std::endl
-		<< read_al << std::endl
-		<< ref_al  << std::endl
-		<< start_position << " " << end_position << std::endl
-		<< left_aligned << std::endl;
-      for (std::vector<BamTools::CigarOp>::iterator cigar_iter = cigar_list.begin(); cigar_iter != cigar_list.end(); cigar_iter++)
-	std::cerr <<  cigar_iter->Length <<cigar_iter->Type; 
-      std::cerr << std::endl;
-    }
-    */
+
     return left_aligned;
 }
