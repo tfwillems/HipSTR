@@ -124,8 +124,6 @@ void SeqStutterGenotyper::remove_alleles(std::vector<int>& allele_indices){
   }
   trace_cache_ = new_trace_cache;
 
-  // TO DO: Consider reshrinking allele bounds as in the get_alleles function
-
   // Resize and recalculate genotype posterior array
   delete [] log_sample_posteriors_;
   log_sample_posteriors_ = new double[fixed_num_alleles*fixed_num_alleles*num_samples_];
@@ -603,10 +601,12 @@ void SeqStutterGenotyper::write_vcf_header(std::string& full_command, std::vecto
 
   if (condense_read_count_fields)
     out << "##FORMAT=<ID=" << "ALLREADS"  << ",Number=1,Type=String,Description=\"" << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n"
-	<< "##FORMAT=<ID=" << "MALLREADS" << ",Number=1,Type=String,Description=\"" << "Maximum likelihood bp diff in each read based on haplotype alignments"   << "\">" << "\n";
+	<< "##FORMAT=<ID=" << "MALLREADS" << ",Number=1,Type=String,Description=\""
+	<< "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs" << "\">" << "\n";
   else
     out << "##FORMAT=<ID=" << "ALLREADS"  << ",Number=.,Type=Integer,Description=\"" << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n"
-	<< "##FORMAT=<ID=" << "MALLREADS" << ",Number=.,Type=Integer,Description=\"" << "Maximum likelihood bp diff in each read based on haplotype alignments"   << "\">" << "\n";
+	<< "##FORMAT=<ID=" << "MALLREADS" << ",Number=.,Type=Integer,Description=\""
+	<< "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs" << "\">" << "\n";
   out << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probs"        << "\">" << "\n";
 
   if (output_gls)
@@ -1108,8 +1108,11 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     // Extract the posterior bp differences observed in read from haplotype alignment
     posterior_bps_per_sample[sample_label_[read_index]].push_back(expected_value(read_LL_ptr, allele_bp_diffs));
 
-    // Extract the ML bp difference observed in read based on the ML genotype
-    ml_bps_per_sample[sample_label_[read_index]].push_back(read_str_sizes.back());
+    // Extract the ML bp difference observed in read based on the ML genotype,
+    // but only for reads that span the original repeat region by 5 bp
+    if (trace->traced_aln().get_start() < (region_->start() > 4 ? region_->start()-4 : 0))
+      if (trace->traced_aln().get_stop() > region_->stop() + 4)
+	ml_bps_per_sample[sample_label_[read_index]].push_back(read_str_sizes.back());
 
     read_LL_ptr += num_alleles_;
   }
