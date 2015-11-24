@@ -31,9 +31,9 @@ void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t
     if (!chrom_limit.empty() && chrom.compare(chrom_limit) != 0)
       continue;
     if (iss >> name)
-      regions.push_back(Region(chrom, start, stop, period, name));
+      regions.push_back(Region(chrom, start-1, stop, period, name));
     else
-      regions.push_back(Region(chrom, start, stop, period));
+      regions.push_back(Region(chrom, start-1, stop, period));
   }
   input.close();
   logger << "Region file contains " << regions.size() << " regions" << std::endl;

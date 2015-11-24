@@ -360,7 +360,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     assert(call_sample_.size() == num_samples_);
 
     // Reconstruct haplotype after looking for additional alleles
-    if(expand_haplotype(logger))
+    if(true)//expand_haplotype(logger))
       get_alleles(chrom_seq, alleles_); // Extract full STR sequence for each allele using annotated repeat region and the haplotype above
     else
       pos_ = -1;
@@ -1178,11 +1178,11 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       << "OUTFRAME_PGEOM="  << stutter_model_->get_parameter(false, 'P') << ";" 
       << "OUTFRAME_UP="     << stutter_model_->get_parameter(false, 'U') << ";" 
       << "OUTFRAME_DOWN="   << stutter_model_->get_parameter(false, 'D') << ";"
-      << "START="           << region_->start()  << ";"
-      << "END="             << region_->stop()   << ";"
-      << "PERIOD="          << region_->period() << ";"
-      << "NSKIP="           << skip_count        << ";"
-      << "NFILT="           << filt_count        << ";";
+      << "START="           << region_->start()+1 << ";"
+      << "END="             << region_->stop()    << ";"
+      << "PERIOD="          << region_->period()  << ";"
+      << "NSKIP="           << skip_count         << ";"
+      << "NFILT="           << filt_count         << ";";
   if (num_alleles_ > 1){
     out << "BPDIFFS=" << allele_bp_diffs[1];
     for (unsigned int i = 2; i < num_alleles_; i++)
