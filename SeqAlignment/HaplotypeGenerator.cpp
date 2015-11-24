@@ -421,7 +421,8 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
   int nfail         = std::max(num_ext_del, std::max(num_flank_del, num_flank_ins));
 
   // Recheck deletions after expanding the STR window
-  if(1.0*nfail/alignments.size() <= MAX_FRAC_SAMPLE_DEL_FAIL){
+  // TO DO: Remove true as we're experimenting with accuracy w/o expanding haplotype bounds
+  if(true || 1.0*nfail/alignments.size() <= MAX_FRAC_SAMPLE_DEL_FAIL){
     logger << "PASS SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << num_ext_del
 	    << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
   }
