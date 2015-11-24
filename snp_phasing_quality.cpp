@@ -66,7 +66,6 @@ void extract_bases_and_qualities(BamTools::BamAlignment& aln, std::vector<SNP>& 
 }
 
 void add_log_phasing_probs(BamTools::BamAlignment& aln, SNPTree* tree, BaseQuality& base_qualities,
-			   //double& log_p1, double& log_p2, int& match_count, int& mismatch_count){
 			   double& log_p1, double& log_p2, int32_t& p1_match_count, int32_t& p2_match_count, int32_t& mismatch_count){
   std::vector<SNP> snps;  
   // NOTE: GetEndPosition() returns a non-inclusive position. Use -1 to only find SNPs overlapped by read

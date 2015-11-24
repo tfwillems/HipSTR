@@ -12,7 +12,6 @@ void extract_bases_and_qualities(BamTools::BamAlignment& aln, std::vector<SNP>& 
 				 std::vector<char>& bases,  std::vector<char>& quals);
 
 void add_log_phasing_probs(BamTools::BamAlignment& aln, SNPTree* tree, BaseQuality& base_qualities, 
-			   //double& log_p1, double& log_p2, int& match_count, int& mismatch_count);
 			   double& log_p1, double& log_p2, int32_t& p1_match_count, int32_t& p2_match_count, int32_t& mismatch_count);
 
 void calc_het_snp_factors(std::vector<BamTools::BamAlignment>& str_reads, std::vector<BamTools::BamAlignment>& mate_reads, 
