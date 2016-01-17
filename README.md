@@ -141,7 +141,7 @@ You could then visualize the calls for sample *ERR218433* at locus *chr1 5163963
 ./VizAln aln.html.gz chr1 51639636 ERR218433
 ```
 This command will automatically open a rendering of the alignments in your browser and might look something like:
-![Read more words!](https://github.com/tfwillems/HipSTR/blob/master/examples/example_viz.png)
+![Read more words!](https://raw.githubusercontent.com/tfwillems/HipSTR/master/examples/example_viz.png)
 The top bar represents the reference sequence and the red text indicates the name of the sample and its associated call at the locus. The remaining rows indicate the alignment for each read used in genotyping. In this particular example, 7 reads have a *4bp deletion*, 9 reads have a *8bp deletion* and 1 read has a *12bp deletion*. The solitary *12bp deletion* is likely the result of PCR stutter and HipSTR therefore genotypes this sample as *-4 | -8*
 
 If we wanted to inspect all calls for the same locus, we could  use the command 
