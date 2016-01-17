@@ -141,7 +141,7 @@ You could then visualize the calls for sample *ERR218433* at locus *chr1 5163963
 ./VizAln aln.html.gz chr1 51639636 ERR218433
 ```
 This command will automatically open a rendering of the alignments in your browser and might look something like:
-![Read more words!](examples/example_viz.png)
+![Read more words!](https://github.com/tfwillems/HipSTR/blob/master/examples/example_viz.png)
 The top bar represents the reference sequence and the red text indicates the name of the sample and its associated call at the locus. The remaining rows indicate the alignment for each read used in genotyping. In this particular example, 7 reads have a *4bp deletion*, 9 reads have a *8bp deletion* and 1 read has a *12bp deletion*. The solitary *12bp deletion* is likely the result of PCR stutter and HipSTR therefore genotypes this sample as *-4 | -8*
 
 If we wanted to inspect all calls for the same locus, we could  use the command 
@@ -194,7 +194,7 @@ chr1    | 13784267    | 13784306    | 4 | 10 | GATA27E01
 chr1    | 18789523    | 18789555    | 3 | 11 | ATA008
 chr2    | 32079410    | 32079469    | 4 | 15 | AGAT117
 chr17    | 38994441    | 38994492    | 4 | 12 | GATA25A04
-chr17    | 5529940    | 55299992    | 4 | 13 | AAT245
+chr17    | 55299940    | 55299992    | 4 | 13 | AAT245
 
 For humans, we've provided a *BED* file containing STR loci for hg19 at [FILL ME IN](www.google.com)
 
@@ -275,7 +275,7 @@ chr1   | 13784267    | 13784306 | 0.95  | 0.05  | 0.01  | 0.9   | 0.01  | 0.001
 chr1   | 18789523    | 18789555 | 0.8   | 0.01  | 0.05  | 0.9   | 0.001 | 0.001
 chr2   | 32079410    | 32079469 | 0.9   | 0.01  | 0.01  | 0.9   | 0.001 | 0.001
 chr17  | 38994441    | 38994492 | 0.9   | 0.001 | 0.001 | 0.9   | 0.001 | 0.001 
-chr17  | 5529940     | 55299992 | 0.95  | 0.01  | 0.01  | 0.9   | 0.001 | 0.001
+chr17  | 55299940    | 55299992 | 0.95  | 0.01  | 0.01  | 0.9   | 0.001 | 0.001
 
 **NOTE: The table header is for descriptive purposes. The stutter file should not have a header**
 
