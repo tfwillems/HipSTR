@@ -3,6 +3,18 @@
 
 #### Author: Thomas Willems <twillems@mit.edu>
 #### License: GNU v2
+
+[Introduction](#introduction)  
+[Installation](#installation)  
+[Quick Start](#quick-start)  
+[In-depth Usage](#in-depth-usage)  
+[STR imputation](#str-imputation)  
+[Speed](#speed)  
+[Call Filtering](#call-filtering)  
+[Additional Usage Options](#additional-usage-options)  
+[File Formats](#file-formats)
+
+
 ## Introduction
 Short tandem repeats [(STRs)](http://en.wikipedia.org/wiki/Microsatellite) are highly repetitive genomic sequences comprised of repeated copies of an underlying motif. Prevalent in most organisms' genomes, STRs are of particular interest because they mutate much more rapidly than most other genomic elements. As a result, they're extremely informative for genomic identification, ancestry inference and genealogy.
 
@@ -49,7 +61,7 @@ For each region in *str_regions.bed*, **HipSTR** will:
 2. Use the stutter model and haplotype-based alignment algorithm to genotype each individual
 3. Output the resulting STR genotypes to *str_calls.vcf.gz*, a [bgzipped] (http://www.htslib.org/doc/tabix.html) [VCF](#str-vcf) file. This VCF will contain calls for each sample in any of the BAM files' read groups. 
 
-## In-depth usage
+## In-depth Usage
 **HipSTR** has a variety of usage options designed to accomodate scenarios in which the sequencing data varies in terms of the number of samples and the coverage. Most scenarios will fall into one of the following categories:
 
 1. 200 or more low-coverage (~5x) samples
