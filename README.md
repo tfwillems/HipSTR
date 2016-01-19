@@ -139,17 +139,18 @@ Although **HipSTR** mitigates many of the most common sources of STR genotyping 
 ```
     python scripts/filter_vcf.py    --vcf                   diploid_hipstr_calls.vcf.gz
                                     --min-call-qual         0.9
-                                    --max-call-flank-indel  0.075
+                                    --max-call-flank-indel  0.15
                                     --max-call-stutter      0.15
-                                    --max-loc-flank-indel   0.075
-                                    --max-loc-stutter       0.15
     
     python scripts/filter_haploid_vcf.py    --vcf                   haploid_str_calls.vcf.gz
                                             --min-call-qual         0.9
-                                            --max-call-flank-indel  0.075
+                                            --max-call-flank-indel  0.15
                                             --max-call-stutter      0.15
-                                            --max-loc-flank-indel   0.075
-                                            --max-loc-stutter       0.15
+```
+The resulting VCF, which is printed to the standard output stream, will omit calls on a sample-by-sample basis in which any of the following conditions are met: i) the posterior < 90%, ii) more than 15% of reads have a flank indel or iii) more than 15% of reads have a stutter artifact. Calls for samples failing these criteria will be replaced with a "." missing symbol as per the VCF specification. For more filtering options, type either
+```
+    python scripts/filter_vcf.py -h
+    python scripts/filter_haploid_vcf.py -h
 ```
 
 
