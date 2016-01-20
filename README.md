@@ -6,7 +6,8 @@
 [Installation](#installation)  
 [Quick Start](#quick-start)  
 [In-depth Usage](#in-depth-usage)  
-[STR imputation](#str-imputation)  
+[Imputation](#imputation)   
+[Phasing](#phasing)   
 [Speed](#speed)  
 [Call Filtering](#call-filtering)  
 [Additional Usage Options](#additional-usage-options)  
@@ -114,7 +115,12 @@ This mode is very similar to mode #2, except that we provide an additional VCF f
 ```
 
 
-### STR imputation
+### Imputation
+
+### Phasing
+HipSTR utilizes phased SNP haplotypes to phase the resulting STR genotypes. To do so, it looks for pairs of reads in which the STR-containing read or its mate pair overlap a samples's heterozygous SNP. In these instances, the quality score for the overlapping base can be used to determine the likelihood that the read came from each haplotype. Alternatively, when this information is not available, we assign the read an equal likelihood of coming from either strand. These likelihoods are incorporated into the HipSTR genotyping model which outputs phased genotypes.  The quality of a phasing is reflected in the *PQ* FORMAT field, which provides the posterior probability of each sample's phased genotype. For homozygous genotypes, this value will always equal the *Q* FORMAT field as a phasing is irrelevant. However, for heterozygous genotypes, if *PQ ~ Q*, it indicates that one of the two phasings is much more favorable. Alterneatively, Iif none of a sample's reads overlap heterozygous SNPs, both phasings will be equally probable and *PQ ~ Q/2*.The schematic below outlines the concepts beyond HipSTR's physical phasing model:
+
+![Phasing schematic!](https://raw.githubusercontent.com/tfwillems/HipSTR/master/img/phasing.png)
 
 ## Speed
 HipSTR doesn't currently have multi-threaded support, but there are several options available to accelerate analyses:
