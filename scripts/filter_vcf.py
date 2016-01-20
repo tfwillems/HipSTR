@@ -15,8 +15,6 @@ def filter_call(sample, filters):
           elif min(1.0*d_1/d_2, 1.0*d_2/d_1) < filters.ALLELE_RATIO:
                return "Allele ratio"
           elif filters.FLANK_INDEL_FRAC < 1 and 1.0*sample['DFLANKINDEL']/sample['DP'] > filters.FLANK_INDEL_FRAC:
-               #print(sample.site)
-               #print(1.0*sample['DFLANKINDEL']/sample['DP'], sample)
                return "Flank indels"
           elif filters.STUTTER_FRAC < 1 and 1.0*sample['DSTUTTER']/sample['DP'] > filters.STUTTER_FRAC:
                return "Stutter fraction"
@@ -119,9 +117,13 @@ def main():
                   allele_indices[i] = filt_num_alleles
                   filt_num_alleles += 1
 
-          new_samples = []
-          num_filt    = 0
-          num_kept    = 0
+          new_samples       = []
+          num_filt          = 0
+          num_kept          = 0
+          total_dp          = 0
+          total_dfilt       = 0
+          total_dstutter    = 0
+          total_dflankindel = 0
           for sample in record:
                if sample['GT'] is None:
                     new_samples.append(sample)
@@ -141,6 +143,11 @@ def main():
                             sampdat.append(new_gt)
                         else:
                             sampdat.append(sample[key])
+
+                    total_dp          += sample['DP']
+                    total_dfilt       += sample['DFILT']
+                    total_dstutter    += sample['DSTUTTER']
+                    total_dflankindel += sample['DFLANKINDEL']
 
                call = vcf.model._Call(record, sample.sample, samp_fmt(*sampdat))
                new_samples.append(call)
@@ -163,6 +170,11 @@ def main():
           if 'NFILT' in record.INFO:
                record.INFO['NFILT'] += num_filt
 
+          record.INFO['DP']          = total_dp
+          record.INFO['DFILT']       = total_dfilt
+          record.INFO['DSTUTTER']    = total_dstutter
+          record.INFO['DFLANKINDEL'] = total_dflankindel
+
           # Recompute and set INFO fields
           if 'BPDIFFS' in record.INFO:
               if len(new_alleles) == 1:
@@ -177,7 +189,6 @@ def main():
                   record.INFO['AC'] = filter(lambda x: x != 0, allele_counts[1:])
                   
           vcf_writer.write_record(record)
-     #print(total_counts)
 
 if __name__ == "__main__":
     main()
