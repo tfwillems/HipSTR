@@ -22,7 +22,6 @@
 #include "SeqAlignment/HapAligner.h"
 #include "SeqAlignment/RepeatStutterInfo.h"
 #include "SeqAlignment/RepeatBlock.h"
-#include "SeqAlignment/STRAlleleExpansion.h"
 
 bool SeqStutterGenotyper::condense_read_count_fields = true;
 
@@ -146,58 +145,6 @@ void SeqStutterGenotyper::combine_reads(std::vector<Alignment>& alignments, Alig
   std::string mean_base_quals = base_quality_.average_base_qualities(qual_ptrs);
   assert(mean_base_quals.size() == alignments[0].get_sequence().size());
   pooled_aln.set_base_qualities(mean_base_quals);
-}
-
-bool SeqStutterGenotyper::expand_haplotype(std::ostream& logger){
-  assert(haplotype_->num_blocks() == 3);
-  std::vector< std::vector<std::string> > read_seqs(alns_.size());
-  for (unsigned int i = 0; i < alns_.size(); ++i){
-    read_seqs.push_back(std::vector<std::string>());
-    for (unsigned int j = 0; j < alns_[i].size(); ++j)
-      read_seqs[i].push_back(alns_[i][j].get_sequence());
-  }
-
-  // Check that the flanking sequences are sufficiently large to support the operations
-  if (std::min(haplotype_->get_block(0)->get_seq(0).size(),  haplotype_->get_block(2)->get_seq(0).size()) <= 5)
-    return false;
-
-  // Identify additional candidate STR alleles
-  int flank_match = 5;
-  std::vector<std::string> str_seqs;
-  std::string lflank = haplotype_->get_block(0)->get_seq(0).substr(haplotype_->get_block(0)->get_seq(0).size()-flank_match, flank_match);
-  std::string rflank = haplotype_->get_block(2)->get_seq(0).substr(0, flank_match);
-  for (unsigned int i = 0; i < haplotype_->get_block(1)->num_options(); i++)
-    str_seqs.push_back(lflank + haplotype_->get_block(1)->get_seq(i) + rflank);
-  std::set<std::string> new_str_seqs;
-  get_candidates(str_seqs, read_seqs, region_->period(), new_str_seqs, logger);
-
-  // Extract actual STR sequences from existing haplotype and new alleles
-  std::vector<std::string> final_str_seqs;
-  for (unsigned int i = 0; i < haplotype_->get_block(1)->num_options(); i++)
-    final_str_seqs.push_back(haplotype_->get_block(1)->get_seq(i));
-  for (auto iter = new_str_seqs.begin(); iter != new_str_seqs.end(); iter++){
-    if (iter->substr(0, flank_match).compare(lflank) == 0 && iter->substr(iter->size()-flank_match, flank_match).compare(rflank) == 0){
-      std::string seq = iter->substr(flank_match, iter->size()-2*flank_match);
-      final_str_seqs.push_back(seq);
-      expanded_alleles_.insert(seq);
-    }
-  }
-  std::sort(final_str_seqs.begin()+1, final_str_seqs.end(), stringLengthLT);
-  
-  // Construct the new STR block
-  HapBlock* str_block = new RepeatBlock(hap_blocks_[1]->start(), hap_blocks_[1]->end(), hap_blocks_[1]->get_seq(0), region_->period(), stutter_model_);
-  for (unsigned int i = 1; i < final_str_seqs.size(); i++)
-    str_block->add_alternate(final_str_seqs[i]);
-  
-  // Reconstruct the haplotype
-  delete haplotype_;
-  delete hap_blocks_[1];
-  hap_blocks_[1] = str_block;
-  haplotype_     = new Haplotype(hap_blocks_);
-  num_alleles_   = haplotype_->num_combs();
-  logger << "Haplotype after additional allele identification:" << std::endl;
-  haplotype_->print_block_structure(30, 100, logger);
-  return true;
 }
 
 void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> >& alignments, 

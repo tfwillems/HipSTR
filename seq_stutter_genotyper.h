@@ -137,11 +137,6 @@ class SeqStutterGenotyper{
 
   void debug_sample(int sample_index);
   
-  // Attempt to identify additional haplotypes given all alignments and the current
-  // haplotype structure. Modifies the underlying haplotype and haplotype blocks accordingly
-  // Returns true iff the expansion procedure was fully executed (does not mean that more alleles were found)
-  bool expand_haplotype(std::ostream& logger);
-
   // Identify a list of alleles that aren't the MAP genotype for any sample
   // Doesn't include the reference allele (index = 0)
   void get_uncalled_alleles(std::vector<int>& allele_indices);
