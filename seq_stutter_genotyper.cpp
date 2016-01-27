@@ -1094,10 +1094,8 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
   if (print_info){
     logger << "Allele counts" << std::endl;
-    for (unsigned int i = 0; i < alleles_.size(); i++){
-      bool expanded = (expanded_alleles_.find(haplotype_->get_block(1)->get_seq(i)) != expanded_alleles_.end());
-      logger << alleles_[i] << " " << allele_counts[i] << " " << expanded << std::endl;
-    }
+    for (unsigned int i = 0; i < alleles_.size(); i++)
+      logger << alleles_[i] << " " << allele_counts[i] <<  std::endl;
     logger << std::endl;
   }
 

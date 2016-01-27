@@ -90,8 +90,6 @@ class SeqStutterGenotyper{
   // probabilities. Should result in significant speedup but may introduce genotyping errors
   bool pool_identical_seqs_;
 
-  std::set<std::string> expanded_alleles_;
-
   // True iff we only report genotypes for samples with >= 1 read
   // In an imputation-only setting, this should be set to false
   bool require_one_read_;
