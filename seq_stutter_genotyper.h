@@ -94,11 +94,6 @@ class SeqStutterGenotyper{
   // In an imputation-only setting, this should be set to false
   bool require_one_read_;
 
-  // Reads whose sum of log base quality correct probs < threshold will be removed
-  // Required to avoid instances in which it's more advantageous to have mismatches
-  // because the quality is so low
-  double MIN_SUM_QUAL_LOG_PROB;
-
   // True iff the underlying marker is haploid
   bool haploid_;
 
@@ -201,7 +196,6 @@ class SeqStutterGenotyper{
     MAX_REF_FLANK_LEN      = 30;
     pos_                   = -1;
     pool_identical_seqs_   = pool_identical_seqs;
-    MIN_SUM_QUAL_LOG_PROB  = -10;
     haploid_               = haploid;
     total_hap_build_time_  = 0;
     total_left_aln_time_   = 0;

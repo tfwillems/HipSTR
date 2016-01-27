@@ -177,16 +177,6 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     alns_.push_back(std::vector<Alignment>());
     use_for_haps_.push_back(std::vector<bool>());
     for (unsigned int j = 0; j < alignments[i].size(); ++j, ++read_index){
-      // Ignore/remove reads with a very low overall base quality score
-      // Want to avoid situations in which it's more advantageous to have misalignments
-      // b/c the scores are so low
-      if (base_quality_.sum_log_prob_correct(alignments[i][j].Qualities) < MIN_SUM_QUAL_LOG_PROB){
-	qual_filt_count++;
-	num_reads_--;
-	read_index--;
-	continue;
-      }
-
       auto iter      = seq_to_alns.find(alignments[i][j].QueryBases);
       bool have_prev = (iter != seq_to_alns.end());
       if (have_prev)
