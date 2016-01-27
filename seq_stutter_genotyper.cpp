@@ -234,11 +234,6 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     logger << "Filtered " << qual_filt_count << " reads due to low overall base qualities." << std::endl
 	   << "If this value is high (>1% of reads), there may be an issue to with the base quality score encoding" << std::endl;
 
-  // Replace base quality scores for 'N' bases with minimum quality score
-  for (unsigned int i = 0; i < alns_.size(); ++i)
-    for (unsigned int j = 0; j < alns_[i].size(); ++j)
-      alns_[i][j].fix_N_base_qualities(base_quality_);
-
   double locus_hap_build_time = clock();
   std::vector<std::string> vcf_alleles;
   if (min_start >= region_->start()-5 || max_stop < region_->stop()+5){
@@ -660,6 +655,7 @@ void SeqStutterGenotyper::init_log_sample_priors(double* log_sample_ptr){
 }
 
 double SeqStutterGenotyper::calc_log_sample_posteriors(std::vector<int>& read_weights){
+  double posterior_time = clock();
   assert(read_weights.size() == num_reads_);
   std::vector<double> sample_max_LLs(num_samples_, -DBL_MAX);
   double* sample_LL_ptr = log_sample_posteriors_;
@@ -703,6 +699,8 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(std::vector<int>& read_we
       for (int sample_index = 0; sample_index < num_samples_; ++sample_index, ++sample_LL_ptr)
 	*sample_LL_ptr -= sample_total_LLs_[sample_index];
 
+  posterior_time         = (clock() - posterior_time)/CLOCKS_PER_SEC;
+  total_posterior_time_ += posterior_time;
   return total_LL;
 }
 
@@ -1415,6 +1413,7 @@ void SeqStutterGenotyper::compute_bootstrap_qualities(int num_iter, std::vector<
 
   delete [] bstrap_LLs;
   delete [] read_gt_LLs;
-  double bootstrap_time = (clock() - bootstrap_start)/CLOCKS_PER_SEC;
+  double bootstrap_time  = (clock() - bootstrap_start)/CLOCKS_PER_SEC;
+  total_bootstrap_time_ += bootstrap_time;
   //std::cerr << "Bootstrapping time = " << bootstrap_time << std::endl;
 }

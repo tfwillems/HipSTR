@@ -224,10 +224,12 @@ public:
              << " Stutter estimation  = " << total_stutter_time()        << " seconds\n"
              << " Genotyping          = " << total_genotype_time()       << " seconds\n";
     if (use_seq_aligner_ && output_str_gts_)
-      logger() << "\t" << " Left alignment       = "  << process_timer_.get_total_time("Left alignment")        << " seconds\n"
-               << "\t" << " Haplotype generation = "  << process_timer_.get_total_time("Haplotype generation")  << " seconds\n"
-               << "\t" << " Haplotype alignment  = "  << process_timer_.get_total_time("Haplotype alignment")   << " seconds\n"
-               << "\t" << " Alignment traceback  = "  << process_timer_.get_total_time("Alignment traceback")   << " seconds\n";
+      logger() << "\t" << " Left alignment        = "  << process_timer_.get_total_time("Left alignment")        << " seconds\n"
+               << "\t" << " Haplotype generation  = "  << process_timer_.get_total_time("Haplotype generation")  << " seconds\n"
+               << "\t" << " Haplotype alignment   = "  << process_timer_.get_total_time("Haplotype alignment")   << " seconds\n"
+	       << "\t" << " Posterior computation = "  << process_timer_.get_total_time("Posterior computation") << " seconds\n"
+               << "\t" << " Alignment traceback   = "  << process_timer_.get_total_time("Alignment traceback")   << " seconds\n"
+	       << "\t" << " Bootstrap computation = "  << process_timer_.get_total_time("Bootstrap computation") << " seconds\n";
   }
 
   // EM parameters for length-based stutter learning

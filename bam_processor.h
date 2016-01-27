@@ -67,7 +67,6 @@ class BamProcessor {
    REQUIRE_SPANNING         = true;
    REQUIRE_PAIRED_READS     = 0;
    MIN_MAPPING_QUALITY      = 0;
-   REMOVE_READS_WITH_N      = 1;
    total_bam_seek_time_     = 0;
    locus_bam_seek_time_     = -1;
    total_read_filter_time_  = 0;
@@ -147,7 +146,6 @@ class BamProcessor {
  int32_t MAX_SOFT_CLIPS;
  int32_t MAX_HARD_CLIPS;
  int32_t MAX_STR_LENGTH;
- int     REMOVE_READS_WITH_N;
  bool    REQUIRE_SPANNING;
  int     REQUIRE_PAIRED_READS;  // Only utilize paired STR reads to genotype individuals
  double  MIN_SUM_QUAL_LOG_PROB;

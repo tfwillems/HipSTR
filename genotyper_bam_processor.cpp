@@ -196,15 +196,19 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     logger() << " Genotyping          = " << locus_genotype_time()       << " seconds\n";
     if (use_seq_aligner_ && output_str_gts_){
       assert(seq_genotyper != NULL);
-      logger() << "\t" << " Left alignment       = "  << seq_genotyper->left_aln_time()   << " seconds\n"
-	       << "\t" << " Haplotype generation = "  << seq_genotyper->hap_build_time()  << " seconds\n"
-	       << "\t" << " Haplotype alignment  = "  << seq_genotyper->hap_aln_time()    << " seconds\n"
-	       << "\t" << " Alignment traceback  = "  << seq_genotyper->aln_trace_time()  << " seconds\n";
+      logger() << "\t" << " Left alignment        = "  << seq_genotyper->left_aln_time()   << " seconds\n"
+	       << "\t" << " Haplotype generation  = "  << seq_genotyper->hap_build_time()  << " seconds\n"
+	       << "\t" << " Haplotype alignment   = "  << seq_genotyper->hap_aln_time()    << " seconds\n"
+	       << "\t" << " Posterior computation = "  << seq_genotyper->posterior_time()  << " seconds\n"
+	       << "\t" << " Alignment traceback   = "  << seq_genotyper->aln_trace_time()  << " seconds\n"
+	       << "\t" << " Bootstrap computation = "  << seq_genotyper->bootstrap_time()  << " seconds\n";
 
-      process_timer_.add_time("Left alignment",       seq_genotyper->left_aln_time());
-      process_timer_.add_time("Haplotype generation", seq_genotyper->hap_build_time());
-      process_timer_.add_time("Haplotype alignment",  seq_genotyper->hap_aln_time());
-      process_timer_.add_time("Alignment traceback",  seq_genotyper->aln_trace_time());
+      process_timer_.add_time("Left alignment",        seq_genotyper->left_aln_time());
+      process_timer_.add_time("Haplotype generation",  seq_genotyper->hap_build_time());
+      process_timer_.add_time("Haplotype alignment",   seq_genotyper->hap_aln_time());
+      process_timer_.add_time("Posterior computation", seq_genotyper->posterior_time());
+      process_timer_.add_time("Alignment traceback",   seq_genotyper->aln_trace_time());
+      process_timer_.add_time("Bootstrap computation", seq_genotyper->bootstrap_time());
     }
   }
 

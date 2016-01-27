@@ -463,18 +463,6 @@ int main(int argc, char** argv){
     bam_processor.set_output_str_vcf(str_vcf_out_file, full_command, rg_samples);
   }
 
-  /*
-  // Temporary to experiment with recalling after constructing haplotypes
-  bam_processor.MIN_BP_BEFORE_INDEL      = 0;
-  bam_processor.MIN_FLANK                = 0;
-  bam_processor.MIN_READ_END_MATCH       = 0;
-  bam_processor.MAXIMAL_END_MATCH_WINDOW = 0;
-  bam_processor.REQUIRE_SPANNING         = false;
-
-  // Experiment #2
-  bam_processor.REQUIRE_SPANNING = true;
-  */
-
   if (!hap_chr_string.empty()){
     std::vector<std::string> haploid_chroms;
     split_by_delim(hap_chr_string, ',', haploid_chroms);

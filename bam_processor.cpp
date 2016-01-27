@@ -190,7 +190,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	filter.append("HAS_SA_TAG");
       }
       // Ignore reads with N bases
-      else if (REMOVE_READS_WITH_N && (alignment.QueryBases.find('N') != std::string::npos)){
+      else if (alignment.QueryBases.find('N') != std::string::npos){
 	read_has_N++;
 	filter.append("HAS_N_BASES");
       }

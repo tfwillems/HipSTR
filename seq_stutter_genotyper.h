@@ -101,7 +101,9 @@ class SeqStutterGenotyper{
   double total_hap_build_time_;
   double total_left_aln_time_;
   double total_hap_aln_time_;
+  double total_posterior_time_;
   double total_aln_trace_time_;
+  double total_bootstrap_time_;
 
   // Cache of traced back alignments
   std::map<std::pair<int,int>, AlignmentTrace*> trace_cache_;
@@ -201,6 +203,8 @@ class SeqStutterGenotyper{
     total_left_aln_time_   = 0;
     total_hap_aln_time_    = 0;
     total_aln_trace_time_  = 0;
+    total_posterior_time_  = 0;
+    total_bootstrap_time_  = 0;
 
     // True iff no allele priors are available (for imputation)
     if (ref_vcf == NULL)
@@ -258,7 +262,9 @@ class SeqStutterGenotyper{
   double hap_build_time() { return total_hap_build_time_;  }
   double left_aln_time()  { return total_left_aln_time_;   }
   double hap_aln_time()   { return total_hap_aln_time_;    }
+  double posterior_time() { return total_posterior_time_;  }
   double aln_trace_time() { return total_aln_trace_time_;  }
+  double bootstrap_time() { return total_bootstrap_time_;  }
 
   bool genotype(std::string& chrom_seq, std::ostream& logger);
 
