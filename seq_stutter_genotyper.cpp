@@ -1344,6 +1344,7 @@ bool SeqStutterGenotyper::recompute_stutter_model(std::string& chrom_seq, std::o
     // Replace the stutter model in the repeat block
     assert(haplotype_->num_blocks() == 3);
     assert(haplotype_->get_block(1)->get_repeat_info() != NULL);
+    trace_cache_.clear();
     ((RepeatBlock*)(haplotype_->get_block(1)))->get_repeat_info()->set_stutter_model(stutter_model_);
     return genotype(chrom_seq, logger);
   }
