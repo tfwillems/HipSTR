@@ -306,11 +306,8 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     num_alleles_ = haplotype_->num_combs();
     assert(call_sample_.size() == num_samples_);
 
-    // Reconstruct haplotype after looking for additional alleles
-    if(true)//expand_haplotype(logger))
-      get_alleles(chrom_seq, alleles_); // Extract full STR sequence for each allele using annotated repeat region and the haplotype above
-    else
-      pos_ = -1;
+    // Extract full STR sequence for each allele using annotated repeat region and the haplotype above
+    get_alleles(chrom_seq, alleles_);
   }
   locus_hap_build_time  = (clock() - locus_hap_build_time)/CLOCKS_PER_SEC;
   total_hap_build_time_ += locus_hap_build_time;
@@ -371,6 +368,8 @@ void SeqStutterGenotyper::calc_hap_aln_probs(Haplotype* haplotype, double* log_a
 }
 
 bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::string& chrom_seq, std::ostream& logger){
+  assert(haplotype_->num_blocks() == 3);
+
   // Look for candidate alleles present in stutter artifacts
   std::vector<std::string> stutter_seqs;
   get_stutter_candidate_alleles(logger, stutter_seqs);
