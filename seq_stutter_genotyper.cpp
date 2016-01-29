@@ -837,16 +837,20 @@ void SeqStutterGenotyper::get_stutter_candidate_alleles(std::ostream& logger, st
     if (traced_alns[read_index] == NULL)
       continue;
     AlignmentTrace* trace = traced_alns[read_index];
-    if (trace->traced_aln().get_start() < (str_block->start() > 5 ? str_block->start() - 5 : 0)){
-      if (trace->traced_aln().get_stop() > str_block->end() + 5){
+    if (trace->traced_aln().get_start() < str_block->start()){
+      if (trace->traced_aln().get_stop() > str_block->end()){
 	if (trace->stutter_size() != 0)
 	  sample_stutter_counts[sample_label_[read_index]][trace->str_seq()]++;
-
-	// TO DO: Only use reads with no flanking indels
-
 	sample_counts[sample_label_[read_index]]++;
       }
     }
+
+    /*
+    // TO DO: Experiment with non-spanning stutter identification
+    if (trace->stutter_size() != 0)
+      sample_stutter_counts[sample_label_[read_index]][trace->full_str_seq()]++;
+    sample_counts[sample_label_[read_index]]++;
+    */
   }
 
   std::set<std::string> candidate_set;
