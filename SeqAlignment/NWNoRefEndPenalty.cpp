@@ -185,12 +185,20 @@ namespace NWNoRefEndPenalty {
     float s1, s2, s3;
     int c;
 
+    std::vector<int> ref_base_ints, read_base_ints;
+    ref_base_ints.reserve(L1); read_base_ints.reserve(L2);
+    for (unsigned int i = 0; i < refseq.size(); i++)
+      ref_base_ints[i] = base_to_int(refseq[i]);
+    for (unsigned int i = 0; i < readseq.size(); i++)
+      read_base_ints[i] = base_to_int(readseq[i]);
+
     // Fill in the 3 matrices using dynamic programming
     for (int i = 1; i <= L2; i++){
+      read_base = read_base_ints[i-1];
+
       for (int j = 1; j <= L1; j++){
 	nindex    = i*(L1+1)+j;
-	ref_base  = base_to_int(refseq[j-1]);
-	read_base = base_to_int(readseq[i-1]);
+	ref_base  = ref_base_ints[j-1];
 
 	// Update M matrix (examine (i-1, j-1))
 	oindex          = (i-1)*(L1+1)+(j-1);
@@ -448,13 +456,21 @@ namespace NWNoRefEndPenalty {
     int c;
     IndelTracker t1, t2, t3;
 
+    std::vector<int> ref_base_ints, read_base_ints;
+    ref_base_ints.reserve(L1); read_base_ints.reserve(L2);
+    for (unsigned int i = 0; i < refseq.size(); i++)
+      ref_base_ints[i] = base_to_int(refseq[i]);
+    for (unsigned int i = 0; i < readseq.size(); i++)
+      read_base_ints[i] = base_to_int(readseq[i]);
+
     // Fill in requested subsection of the 3 matrices using dynamic programming
     for (int i = 1; i <= L2; i++){
+      read_base = read_base_ints[i-1];
+
       for (int j = start_col; j <= end_col; j++){
 	nindex    = i*(L1+1)+j;
 	ntindex   = j-start_col+1;
-	ref_base  = base_to_int(refseq[j-1]);
-	read_base = base_to_int(readseq[i-1]);
+	ref_base  = ref_base_ints[j-1];
 
 	// Update M matrix (examine (i-1, j-1))
 	oindex          = (i-1)*(L1+1)+(j-1);
@@ -620,14 +636,16 @@ namespace NWNoRefEndPenalty {
     if (num_indels > IndelTracker::max_indels())
       return false;
 
-    // Recalculate portion of matrices corresponding to optimal alignment
-    // using dynamic programming that tracks indel locations
-    left_align_helper(M, Iref, Iread, traceM, traceIref, traceIread,
-    		      ref_seq, read_seq, start_col, best_col, num_indels);
+    if (num_indels > 0){
+      // Recalculate portion of matrices corresponding to optimal alignment
+      // using dynamic programming that tracks indel locations
+      left_align_helper(M, Iref, Iread, traceM, traceIref, traceIread,
+			ref_seq, read_seq, start_col, best_col, num_indels);
 
-    // Construct the alignment strings and CIGAR string using the fixed matrices
-    traceAlignment(best_col, best_type, L1, L2, traceM, traceIref, traceIread,
-		   ref_seq, read_seq, ref_seq_al, read_seq_al, cigar_list);
+      // Construct the alignment strings and CIGAR string using the fixed matrices
+      traceAlignment(best_col, best_type, L1, L2, traceM, traceIref, traceIread,
+		     ref_seq, read_seq, ref_seq_al, read_seq_al, cigar_list);
+    }
     return true;
   }
 }
