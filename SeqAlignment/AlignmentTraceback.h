@@ -4,18 +4,19 @@
 #include <string>
 
 #include "AlignmentData.h"
+#include "Haplotype.h"
 
 class AlignmentTrace {
  private:
-  std::string hap_aln_;    // Alignment string for read against its genotype's haplotype
-  Alignment trace_vs_ref_; // Alignment trace relative to the reference allele
-  int gt_;                 // Index for genotype against which the alignment was originally traced
-  int num_flank_ins_;      // Number of inserted base pairs in sequences flanking the STR
-  int num_flank_del_;      // Number of deleted base pairs in sequences flanking the STR
-  int stutter_size_;       // Size of stutter artifact in STR block
-  std::string str_seq_;    // Sequence in STR region
-
-
+  std::string hap_aln_;      // Alignment string for read against its genotype's haplotype
+  Alignment trace_vs_ref_;   // Alignment trace relative to the reference allele
+  int gt_;                   // Index for genotype against which the alignment was originally traced
+  int num_flank_ins_;        // Number of inserted base pairs in sequences flanking the STR
+  int num_flank_del_;        // Number of deleted base pairs in sequences flanking the STR
+  int stutter_size_;         // Size of stutter artifact in STR block
+  std::string str_seq_;      // Sequence in STR region
+  std::string full_str_seq_; // Hypothetical sequence in STR region if the read fully spanned the stutter block
+                             //  Identical to str_seq if read spans STR region
  public:
   AlignmentTrace(int gt){
     gt_            = gt;
@@ -33,12 +34,14 @@ class AlignmentTrace {
   std::string& hap_aln()      { return hap_aln_;       }
   Alignment& traced_aln()     { return trace_vs_ref_;  }
   std::string& str_seq()      { return str_seq_;       }
+  std::string& full_str_seq() { return full_str_seq_;  }
 
   void set_num_flank_ins(int num_ins)     { num_flank_ins_ = num_ins;      }
   void set_num_flank_del(int num_del)     { num_flank_del_ = num_del;      }
   void set_stutter_size(int stutter_size) { stutter_size_  = stutter_size; }
   void set_hap_aln(std::string& aln)      { hap_aln_       = aln;          }
   void set_str_seq(std::string& seq)      { str_seq_       = seq;          }
+  void set_full_str_seq(std::string& seq) { full_str_seq_  = seq;          }
 };
 
 
