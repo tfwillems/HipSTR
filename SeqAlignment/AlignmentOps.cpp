@@ -3,11 +3,7 @@
 #include "NWNoRefEndPenalty.h"
 #include "../stringops.h"
 
-extern const std::string START_TAG  = "XS";
-extern const std::string STOP_TAG   = "XE";
-extern const std::string RG_TAG     = "RG";
 extern const std::string SAMPLE_TAG = "SN";
-extern const std::string MOTIF_TAG  = "XR";
 extern const int ALIGN_WINDOW_WIDTH = 75;
 
 

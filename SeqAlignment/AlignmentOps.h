@@ -8,11 +8,7 @@
 #include "AlignmentData.h"
 
 
-extern const std::string START_TAG;
-extern const std::string STOP_TAG;
-extern const std::string RG_TAG;
 extern const std::string SAMPLE_TAG;
-extern const std::string MOTIF_TAG;
 extern const int ALIGN_WINDOW_WIDTH;
 
 bool compareAlignments(const BamTools::BamAlignment& alignment_1, const BamTools::BamAlignment& alignment_2);
