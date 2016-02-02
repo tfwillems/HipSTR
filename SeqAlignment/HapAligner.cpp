@@ -362,29 +362,30 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
 }
 
 
+const double TRACE_LL_TOL = 0.001;
 inline int triple_min_index(double v1, double v2, double v3){
-  if (v1 > v2)
-    return (v1 > v3 ? 0 : 2);
+  if (v1 > v2+TRACE_LL_TOL)
+    return (v1 > v3+TRACE_LL_TOL ? 0 : 2);
   else
-    return (v2 > v3 ? 1 : 2);
+    return (v2 > v3+TRACE_LL_TOL ? 1 : 2);
 }
 
 inline int pair_min_index(double v1, double v2){
-  if (v1 > v2)
+  if (v1 > v2+TRACE_LL_TOL)
     return 0;
   else
     return 1;
 }
 
 inline int rev_triple_min_index(double v1, double v2, double v3){
-  if (v3 > v2)
-    return (v3 > v1 ? 2 : 0);
+  if (v3 > v2+TRACE_LL_TOL)
+    return (v3 > v1+TRACE_LL_TOL ? 2 : 0);
   else
-    return (v2 > v1 ? 1 : 0);
+    return (v2 > v1+TRACE_LL_TOL ? 1 : 0);
 }
 
 inline int rev_pair_min_index(double v1, double v2){
-  if (v2 > v1)
+  if (v2 > v1+TRACE_LL_TOL)
     return 1;
   else
     return 0;

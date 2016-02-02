@@ -132,6 +132,7 @@ class HapBlock {
       if (seq.compare(alt_seqs_[i]) == 0)
 	return i+1;
     printErrorAndDie("Sequence not contained in haplotype block");
+    return -1;
   }
 };
 
