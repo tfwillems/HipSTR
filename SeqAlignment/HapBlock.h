@@ -116,7 +116,7 @@ class HapBlock {
   virtual HapBlock* reverse(){
     std::string rev_ref_seq = ref_seq_;
     std::reverse(rev_ref_seq.begin(), rev_ref_seq.end());
-    HapBlock* rev_block = new HapBlock(end_, start_, rev_ref_seq);
+    HapBlock* rev_block = new HapBlock(end_-1, start_-1, rev_ref_seq);
     for (unsigned int i = 0; i < alt_seqs_.size(); i++) {
       std::string alt = alt_seqs_[i];
       std::reverse(alt.begin(), alt.end());
