@@ -15,8 +15,9 @@
 #include "stringops.h"
 #include "SeqAlignment/AlignmentOps.h"
 
-const std::string ALT_MAP_TAG = "XA";
-
+const std::string ALT_MAP_TAG           = "XA";
+const std::string PRIMARY_ALN_SCORE_TAG = "AS";
+const std::string SUBOPT_ALN_SCORE_TAG  = "XS";
 
 const std::string BamProcessor::PASSES_FILTERS_TAG_NAME = "PF";
 const std::string BamProcessor::PASSES_FILTERS_TAG_TYPE = "c";
@@ -64,6 +65,19 @@ void BamProcessor::get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::B
   assert(p1.size() == 0 && p2.size() == 0);
   if (aln_1.RefID == -1 || aln_2.RefID == -1)
     return;
+
+  // BWA-MEM sometimes doesn't report the alternate alignment tag if there are too may available options
+  // When this is the case, we should check that the mate pair has a decent score relative to the suboptimal score
+  // Otherwise, we may be including mismapped reads
+  if (!aln_2.HasTag(ALT_MAP_TAG)){
+    int primary_score, subopt_score, mate_primary_score, mate_subopt_score;
+    if(!GetIntBamTag(aln_1, PRIMARY_ALN_SCORE_TAG, &primary_score))      printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
+    if(!GetIntBamTag(aln_1, SUBOPT_ALN_SCORE_TAG,  &subopt_score))       printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
+    if(!GetIntBamTag(aln_2, PRIMARY_ALN_SCORE_TAG, &mate_primary_score)) printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
+    if(!GetIntBamTag(aln_2, SUBOPT_ALN_SCORE_TAG,  &mate_subopt_score))  printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
+    if (mate_primary_score - mate_subopt_score < 10)
+      return;
+  }
 
   std::vector< std::pair<std::string, int32_t> > pairs_1, pairs_2;
   extract_mappings(aln_1, ref_vector, pairs_1);
@@ -299,8 +313,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       auto aln_iter = potential_strs.find(aln_key);
       if (aln_iter != potential_strs.end()){
 	std::vector< std::pair<std::string, int32_t> > p_1, p_2;
-	get_valid_pairings(alignment, aln_iter->second.second, ref_vector, p_1, p_2);
-	if (p_2.size() == 1 && p_2[0].second == aln_iter->second.second.Position){
+	get_valid_pairings(aln_iter->second.second, alignment, ref_vector, p_1, p_2);
+	if (p_1.size() == 1 && p_1[0].second == aln_iter->second.second.Position){
 	  paired_str_alns.push_back(aln_iter->second.second);
 	  mate_alns.push_back(alignment);
 	  region_alignments.push_back(aln_iter->second.second);
