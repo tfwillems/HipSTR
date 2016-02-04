@@ -171,6 +171,9 @@ class SeqStutterGenotyper{
   // alleles into the relevant data structures
   bool id_and_align_to_stutter_alleles(std::string& chrom_seq, std::ostream& logger);
 
+  // Exploratory function related to identifying indels in the flanking sequences
+  void analyze_flank_indels(std::ostream& logger);
+
  public:
   
   // In the VCF format fields for ALLREADS and MALLREADS, condense the fields into size|count

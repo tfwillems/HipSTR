@@ -883,6 +883,44 @@ void SeqStutterGenotyper::get_stutter_candidate_alleles(std::ostream& logger, st
     logger << "\t" << candidate_seqs[i] << "\n";
 }
 
+void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
+  std::vector<AlignmentTrace*> traced_alns;
+  retrace_alignments(logger, traced_alns);
+  std::vector<int> sample_counts(num_samples_, 0);
+  std::vector< std::map<std::pair<int,int>, int> > sample_flank_indel_counts(num_samples_);
+
+  HapBlock* str_block = haplotype_->get_block(1);
+  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
+    if (traced_alns[read_index] == NULL)
+      continue;
+    AlignmentTrace* trace = traced_alns[read_index];
+
+    if (trace->stutter_size() == 0){
+      bool use = false;
+      use     |= (trace->flank_ins_size() == 0 && trace->flank_del_size() != 0);
+      use     |= (trace->flank_ins_size() != 0 && trace->flank_del_size() == 0);
+      use     &= (trace->flank_indel_data().size() == 1);
+      if (use)
+	sample_flank_indel_counts[sample_label_[read_index]][trace->flank_indel_data()[0]]++;
+    }
+    sample_counts[sample_label_[read_index]]++;
+  }
+
+  std::map< std::pair<int,int>, int>  candidate_set;
+  for (unsigned int i = 0; i < num_samples_; i++)
+    for (auto indel_iter = sample_flank_indel_counts[i].begin(); indel_iter != sample_flank_indel_counts[i].end(); indel_iter++)
+      if (indel_iter->second >= 2 && 1.0*indel_iter->second/sample_counts[i] >= 0.15)
+	  candidate_set[indel_iter->first]++;
+
+  if (candidate_set.size() != 0){
+    for (auto candidate_iter = candidate_set.begin(); candidate_iter != candidate_set.end(); candidate_iter++){
+      std::cerr << region_->chrom() << "\t" << pos_ << "\t" << (region_->name().empty() ? "." : region_->name()) << " ";
+      std::cerr << candidate_iter->first.first << " " << candidate_iter->first.second << " " << candidate_iter->second << std::endl;
+    }
+  }
+}
+
+
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
 					   bool output_bootstrap_qualities, bool output_gls, bool output_pls,
 					   bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz,
@@ -890,6 +928,8 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
   assert(haplotype_->num_blocks() == 3);
   assert(read_str_sizes.size() == 0);
+
+  //analyze_flank_indels(logger);
 
   if(log_allele_priors_ != NULL)
     assert(!output_gls && !output_pls); // These fields only make sense in the context of MLE estimation, not MAP estimation
@@ -1019,7 +1059,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     if (trace->stutter_size() != 0)
       num_reads_with_stutter[sample_label_[read_index]]++;
-    if (trace->num_flank_ins() != 0 || trace->num_flank_del() != 0)
+    if (trace->flank_ins_size() != 0 || trace->flank_del_size() != 0)
       num_reads_with_flank_indels[sample_label_[read_index]]++;
     read_str_sizes.push_back(allele_bp_diffs[best_gt]+trace->stutter_size());
 
