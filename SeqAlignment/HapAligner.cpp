@@ -128,21 +128,18 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
       haplotype_index  += block_len;
     }
     else {
-      // Handle normal  n-> n-1 transitions while preventing sequencing indels from extending into preceding stutter blocks
-      int coord_index = (block_index == 0 ? 1 : 0);
-      char prev_char  = ' ';
-      int homopolymer_len;
+      // Handle normal n -> n-1 transitions while preventing sequencing indels from extending into preceding stutter blocks
+      int coord_index      = (block_index == 0 ? 1 : 0);
+      int homopolymer_len  = haplotype->homopolymer_length(block_index, std::max(0, coord_index-1));
 
       for (; coord_index < block_seq.size(); ++coord_index, ++haplotype_index){
 	assert(matrix_index == seq_len*haplotype_index);
 	char hap_char = block_seq[coord_index];
 	
-	// Update the homopolymer tract length whenever we encounter a new character
-	if (hap_char != prev_char){
-	  prev_char       = hap_char;
-	  homopolymer_len = std::min(MAX_HOMOP_LEN, haplotype->homopolymer_length(block_index, coord_index));
-	}
-		  
+	// Update the homopolymer tract length
+	homopolymer_len = std::min(MAX_HOMOP_LEN, std::max(haplotype->homopolymer_length(block_index, coord_index),
+							   haplotype->homopolymer_length(block_index, std::max(0, coord_index-1))));
+
 	// Boundary conditions for leftmost base in read
 	match_matrix[matrix_index]    = (seq_0[0] == hap_char ? base_log_correct[0] : base_log_wrong[0]);
 	insert_matrix[matrix_index]   = (haplotype_index == stutter_R+1 ? IMPOSSIBLE : base_log_correct[0]);
@@ -204,9 +201,7 @@ double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base,
   std::vector<double> log_probs;
   // Left flank entirely outside of haplotype window, seed aligned with 0   
   log_probs.push_back(SEED_LOG_MATCH_PRIOR + (seed_char == fw_haplotype_->get_first_char() ? log_seed_correct: log_seed_wrong)
-		      + l_prob
-		      + LOG_MATCH_TO_MATCH[fw_haplotype_->homopolymer_length(0, 0)]
-		      + r_match_matrix[rflank_len*(hapsize-1)-1]);
+		      + l_prob + r_match_matrix[rflank_len*(hapsize-1)-1]);
   max_index = 0;
   max_LL    = log_probs[0];
 
@@ -214,9 +209,7 @@ double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base,
   int last_block = fw_haplotype_->num_blocks()-1;
   int char_index = fw_haplotype_->get_seq(last_block).size()-1;
   log_probs.push_back(SEED_LOG_MATCH_PRIOR + (seed_char == fw_haplotype_->get_last_char() ? log_seed_correct: log_seed_wrong)
-		      + r_prob
-		      + LOG_MATCH_TO_MATCH[fw_haplotype_->homopolymer_length(last_block, char_index)]
-		      + l_match_matrix[lflank_len*(hapsize-1)-1]);
+		      + r_prob + l_match_matrix[lflank_len*(hapsize-1)-1]);
   if (log_probs[1] > max_LL){
     max_index = fw_haplotype_->cur_size()-1;
     max_LL    = log_probs[1];
@@ -242,19 +235,10 @@ double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base,
       continue;
     }
     else {
-      char prev_char  = ' ';
-      int homopolymer_len;
       int coord_index     = (block_index == 0 ? 1 : 0); // Avoid situation where seed is aligned with first base
       int end_coord_index = (block_index == fw_haplotype_->num_blocks()-1 ? block_seq.size()-1 : block_seq.size()); // Avoid situation where seed is aligned with last base
       for (; coord_index < end_coord_index; ++coord_index, ++hap_index){
-	if (block_seq[coord_index] != prev_char){
-          prev_char       = block_seq[coord_index];
-          homopolymer_len = std::min(MAX_HOMOP_LEN, fw_haplotype_->homopolymer_length(block_index, coord_index));
-        }
-
-	log_probs.push_back(SEED_LOG_MATCH_PRIOR + (seed_char == block_seq[coord_index] ? log_seed_correct : log_seed_wrong)
-			    + LOG_MATCH_TO_MATCH[homopolymer_len] + *l_match_ptr
-			    + LOG_MATCH_TO_MATCH[homopolymer_len] + *r_match_ptr);
+	log_probs.push_back(SEED_LOG_MATCH_PRIOR + (seed_char == block_seq[coord_index] ? log_seed_correct : log_seed_wrong) + *l_match_ptr + *r_match_ptr);
 	if (log_probs.back() > max_LL){
 	  max_index = hap_index;
 	  max_LL    = log_probs.back();
@@ -361,20 +345,12 @@ void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read
   }
 }
 
-
 const double TRACE_LL_TOL = 0.001;
 inline int triple_min_index(double v1, double v2, double v3){
   if (v1 > v2+TRACE_LL_TOL)
     return (v1 > v3+TRACE_LL_TOL ? 0 : 2);
   else
     return (v2 > v3+TRACE_LL_TOL ? 1 : 2);
-}
-
-inline int pair_min_index(double v1, double v2){
-  if (v1 > v2+TRACE_LL_TOL)
-    return 0;
-  else
-    return 1;
 }
 
 inline int rev_triple_min_index(double v1, double v2, double v3){
@@ -384,18 +360,15 @@ inline int rev_triple_min_index(double v1, double v2, double v3){
     return (v2 > v1+TRACE_LL_TOL ? 1 : 0);
 }
 
-inline int rev_pair_min_index(double v1, double v2){
-  if (v2 > v1+TRACE_LL_TOL)
-    return 1;
-  else
-    return 0;
-}
+inline int     pair_min_index(double v1, double v2){ return (v1 > v2+TRACE_LL_TOL ? 0 : 1); }
+inline int rev_pair_min_index(double v1, double v2){ return (v2 > v1+TRACE_LL_TOL ? 1 : 0); }
 
 std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
-				int seq_len, int block_index, int base_index, int matrix_index,
+				  int seq_len, int block_index, int base_index, int matrix_inde
 				double* match_matrix, double* insert_matrix, double* deletion_matrix, int* best_artifact_size, int* best_artifact_pos,
-				int& flank_ins_size, int& flank_del_size, int& stutter_size, std::string& str_seq, std::string& full_str_seq, bool right_to_left){
-  const int MATCH = 0, DEL = 1, INS = 2; // Types of matrices
+				int& flank_ins_size, int& flank_del_size, int& stutter_size, std::string& str_seq,
+				std::string& full_str_seq, std::vector< std::pair<int,int> >& flank_indel_data, bool right_to_left){
+  const int MATCH = 0, DEL = 1, INS = 2, NONE = -1; // Types of matrices
   int seq_index   = seq_len-1;
   int matrix_type = MATCH;
   flank_ins_size  = 0;
@@ -459,15 +432,39 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
       }
     }
     else {
-      int homopolymer_len;
-      char prev_char        = ' ';
-      std::string block_seq = haplotype->get_seq(block_index);
+      int homopolymer_len     = haplotype->homopolymer_length(block_index, std::max(0, base_index-1));
+      int prev_matrix_type    = NONE;
+      std::string block_seq   = haplotype->get_seq(block_index);
+      int32_t pos             = haplotype->get_block(block_index)->start() + (haplotype->reversed() ? -base_index : base_index);
+      const int32_t increment = (haplotype->reversed() ? 1 : -1);
+      int32_t indel_seq_index, indel_position;
+
+      // Retrace flanks while tracking any indels that occur
+      // Indels are ultimately reported as (position, size) tuples, where position is the left-most
+      // start coordinate and sizes are +/- for insertions and deletions, respectively
       while (base_index >= 0 && seq_index >= 0){
-	// Update the homopolymer tract length whenever we encounter a new character
-	char hap_char = block_seq[base_index];
-        if (hap_char != prev_char){
-          prev_char       = hap_char;
-          homopolymer_len = std::min(MAX_HOMOP_LEN, haplotype->homopolymer_length(block_index, base_index));
+	// Update the homopolymer tract length
+	homopolymer_len = std::min(MAX_HOMOP_LEN, std::max(haplotype->homopolymer_length(block_index, base_index),
+							   haplotype->homopolymer_length(block_index, std::max(0, base_index-1))));
+
+	if (matrix_type != prev_matrix_type){
+	  // Record any processed indels
+	  if (prev_matrix_type == DEL){
+	    int del_size = (haplotype->reversed() ? pos - indel_position : indel_position - pos);
+	    if (haplotype->reversed())
+	      flank_indel_data.push_back(std::pair<int,int>(indel_position, indel_position - pos));
+	    else
+	      flank_indel_data.push_back(std::pair<int,int>(pos+1, pos - indel_position));
+	  }
+	  else if (prev_matrix_type == INS)
+	    flank_indel_data.push_back(std::pair<int,int>(indel_position + (haplotype->reversed() ? 0 : 1), indel_seq_index - seq_index));
+
+	  // Initialize fields for indels that just began
+	  if (matrix_type == DEL || matrix_type == INS){
+	    indel_seq_index = seq_index;
+	    indel_position  = pos;
+	  }
+	  prev_matrix_type = matrix_type;
         }
 
 	// Extract alignment character for current base and update indices
@@ -476,11 +473,13 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
 	  aln_ss << "M";
 	  seq_index--;
 	  base_index--;
+	  pos += increment;
 	  break;
 	case DEL:
 	  flank_del_size++;
 	  aln_ss << "D";
 	  base_index--;
+	  pos += increment;
 	  break;
 	case INS:
 	  flank_ins_size++;
@@ -614,6 +613,7 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	// Retrace sequence to left of seed (if appropriate)
 	assert(max_index >= 0 && max_index < fw_haplotype_->cur_size());
 	int fw_seed_block, fw_seed_coord, l_flank_ins = -1, l_flank_del = -1, l_stutter_size = 0;
+	std::vector< std::pair<int,int> > flank_indel_data;
 	fw_haplotype_->get_coordinates(max_index, fw_seed_block, fw_seed_coord);
 	assert(fw_seed_block != 1);
 	int l_matrix_index = seed_base*max_index - 1;
@@ -626,11 +626,11 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	  if (fw_seed_coord == 0){
 	    int prev_block_size = fw_haplotype_->get_seq(fw_seed_block-1).size();
 	    left_aln = retrace(fw_haplotype_, base_seq, seed_base, fw_seed_block-1, prev_block_size-1, l_matrix_index, l_match_matrix, l_insert_matrix, l_deletion_matrix,
-			       l_best_artifact_size, l_best_artifact_pos, l_flank_ins, l_flank_del, l_stutter_size, l_str_seq, l_full_str_seq, true);
+			       l_best_artifact_size, l_best_artifact_pos, l_flank_ins, l_flank_del, l_stutter_size, l_str_seq, l_full_str_seq, flank_indel_data, true);
 	  }
 	  else
 	    left_aln = retrace(fw_haplotype_, base_seq, seed_base, fw_seed_block, fw_seed_coord-1, l_matrix_index, l_match_matrix, l_insert_matrix, l_deletion_matrix,
-			       l_best_artifact_size, l_best_artifact_pos, l_flank_ins, l_flank_del, l_stutter_size, l_str_seq, l_full_str_seq, true);
+			       l_best_artifact_size, l_best_artifact_pos, l_flank_ins, l_flank_del, l_stutter_size, l_str_seq, l_full_str_seq, flank_indel_data, true);
 	  assert(l_flank_ins != -1 && l_flank_del != -1);
 	}
 	std::reverse(left_aln.begin(), left_aln.end());   // Alignment is backwards for left flank
@@ -655,19 +655,19 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	    int prev_block_size = rev_haplotype_->get_seq(rev_seed_block-1).size();
 	    right_aln = retrace(rev_haplotype_, rev_rseq.c_str(), base_seq_len-1-seed_base, rev_seed_block-1, prev_block_size-1, r_matrix_index, r_match_matrix,
 				r_insert_matrix, r_deletion_matrix, r_best_artifact_size, r_best_artifact_pos, r_flank_ins, r_flank_del,
-				r_stutter_size, r_str_seq, r_full_str_seq, false);
+				r_stutter_size, r_str_seq, r_full_str_seq, flank_indel_data, false);
 	  }
 	  else
 	    right_aln = retrace(rev_haplotype_, rev_rseq.c_str(), base_seq_len-1-seed_base, rev_seed_block, rev_seed_coord-1, r_matrix_index, r_match_matrix,
 				r_insert_matrix, r_deletion_matrix, r_best_artifact_size, r_best_artifact_pos, r_flank_ins, r_flank_del,
-				r_stutter_size, r_str_seq, r_full_str_seq, false);
+				r_stutter_size, r_str_seq, r_full_str_seq, flank_indel_data, false);
 	  assert(r_flank_ins != -1 && r_flank_del != -1);
 	}
 	assert(right_aln.size() - std::count(right_aln.begin(), right_aln.end(), 'D') == base_seq_len-1-seed_base);
 	assert(l_str_seq.empty() || r_str_seq.empty());
 
-	trace.set_num_flank_ins(l_flank_ins + r_flank_ins);
-	trace.set_num_flank_del(l_flank_del + r_flank_del);
+	trace.set_flank_ins_size(l_flank_ins + r_flank_ins);
+	trace.set_flank_del_size(l_flank_del + r_flank_del);
 	std::string read_aln_to_hap = left_aln + "M" + right_aln;
 	trace.set_hap_aln(read_aln_to_hap);
 	trace.set_str_seq(!l_str_seq.empty() ? l_str_seq : r_str_seq);
@@ -676,6 +676,7 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	// Only one of the flanks enters the stutter block, so only one can have a non-zero size
 	assert(l_stutter_size == 0 || r_stutter_size == 0);
 	trace.set_stutter_size(l_stutter_size+r_stutter_size);
+	trace.set_flank_indel_data(flank_indel_data);
 
 	stitch_alignment_trace(fw_haplotype_->get_block(0)->start(), fw_haplotype_->get_aln_info(),
 			       read_aln_to_hap, max_index, seed_base, aln, trace.traced_aln());
