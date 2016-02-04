@@ -1,0 +1,61 @@
+#!/bin/bash
+#
+
+if [ "$#" -eq 5 ]; then
+    # Make sure tabix is installed
+    hash tabix 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires tabix. Please check that it's appropriately installed"; exit 1; }
+
+    # Make sure python is installed
+    hash python 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires python. Please check that it's appropriately installed"; exit 1; }
+
+    # Makre sure the required python packages are installed
+    python -c "from svglib.svglib import svg2rlg" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the svglib python package. Please check that it's appropriately installed"; exit 1; }
+    python -c "from reportlab.graphics import renderPDF" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the reportlab python package. Please check that it's appropriately installed"; exit 1; }
+
+    # Make sure the file exists
+    if [ ! -e $1 ]
+	then
+	cat <<msg
+ERROR: Alignment file $1 does not exist
+msg
+	exit 1
+    fi
+
+    # Make sure the file ends in .gz
+    if [ ! ${1: -3} == ".gz" ]
+    then
+	cat <<usage
+ERROR: The alignment file must be bgzipped (and end in .gz)
+usage
+	exit 1
+    fi
+
+    # Make sure the tabix index exists
+    if [ ! -e $1.tbi ]
+	then
+	cat<<msg 
+ERROR: No .tbi file for alignment file. Index using the following command: 
+tabix -p bed $1
+msg
+	exit 1
+    fi
+
+
+    parent_path=$( cd "$(dirname "${BASH_SOURCE}")" ; pwd -P )
+    chrom=$2
+    start=$3
+    stop=`expr $start + 100`
+    sample=$4
+    f=$5
+    tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | cut -f 1-4 --complement | ${parent_path}/html_alns_to_pdf.py $f
+
+    rm $f.svg
+    open $f.pdf
+else
+    cat <<usage
+Usage: VizAlnPdf alns.html.gz chrom start sample out
+           Generate a PDF containing a sample's alignments at an STR locus
+           Requires tabix and a bgzipped file with a corresponding .tbi index
+           Writes the results to out.pdf and opens the resulting PDF
+usage
+fi
