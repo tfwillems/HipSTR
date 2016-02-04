@@ -2,6 +2,7 @@
 #define ALIGNMENT_TRACEBACK_H_
 
 #include <string>
+#include <vector>
 
 #include "AlignmentData.h"
 #include "Haplotype.h"
@@ -11,37 +12,41 @@ class AlignmentTrace {
   std::string hap_aln_;      // Alignment string for read against its genotype's haplotype
   Alignment trace_vs_ref_;   // Alignment trace relative to the reference allele
   int gt_;                   // Index for genotype against which the alignment was originally traced
-  int num_flank_ins_;        // Number of inserted base pairs in sequences flanking the STR
-  int num_flank_del_;        // Number of deleted base pairs in sequences flanking the STR
+  int flank_ins_size_;       // Number of inserted base pairs in sequences flanking the STR (positive)
+  int flank_del_size_;       // Number of deleted base pairs in sequences flanking the STR (positive)
   int stutter_size_;         // Size of stutter artifact in STR block
   std::string str_seq_;      // Sequence in STR region
   std::string full_str_seq_; // Hypothetical sequence in STR region if the read fully spanned the stutter block
-                             //  Identical to str_seq if read spans STR region
+                             // Identical to str_seq if read spans STR region
+  std::vector< std::pair<int,int> > flank_indel_data_;
+
  public:
   AlignmentTrace(int gt){
-    gt_            = gt;
-    hap_aln_       = "";
-    num_flank_ins_ = -1;
-    num_flank_del_ = -1;
-    stutter_size_  = -999;
-    str_seq_       = "";
+    gt_             = gt;
+    hap_aln_        = "";
+    flank_ins_size_ = -1;
+    flank_del_size_ = -1;
+    stutter_size_   = -999;
+    str_seq_        = "";
   }
 
-  int gt_index()              { return gt_;            }
-  int num_flank_ins()         { return num_flank_ins_; }
-  int num_flank_del()         { return num_flank_del_; }
-  int stutter_size()          { return stutter_size_;  }
-  std::string& hap_aln()      { return hap_aln_;       }
-  Alignment& traced_aln()     { return trace_vs_ref_;  }
-  std::string& str_seq()      { return str_seq_;       }
-  std::string& full_str_seq() { return full_str_seq_;  }
+  int gt_index()              { return gt_;             }
+  int flank_ins_size()        { return flank_ins_size_; }
+  int flank_del_size()        { return flank_del_size_; }
+  int stutter_size()          { return stutter_size_;   }
+  std::string& hap_aln()      { return hap_aln_;        }
+  Alignment& traced_aln()     { return trace_vs_ref_;   }
+  std::string& str_seq()      { return str_seq_;        }
+  std::string& full_str_seq() { return full_str_seq_;   }
+  std::vector< std::pair<int,int> >& flank_indel_data() { return flank_indel_data_; }
 
-  void set_num_flank_ins(int num_ins)     { num_flank_ins_ = num_ins;      }
-  void set_num_flank_del(int num_del)     { num_flank_del_ = num_del;      }
-  void set_stutter_size(int stutter_size) { stutter_size_  = stutter_size; }
-  void set_hap_aln(std::string& aln)      { hap_aln_       = aln;          }
-  void set_str_seq(std::string& seq)      { str_seq_       = seq;          }
-  void set_full_str_seq(std::string& seq) { full_str_seq_  = seq;          }
+  void set_flank_ins_size(int num_ins_bp) { flank_ins_size_ = num_ins_bp;   }
+  void set_flank_del_size(int num_del_bp) { flank_del_size_ = num_del_bp;   }
+  void set_stutter_size(int stutter_size) { stutter_size_   = stutter_size; }
+  void set_hap_aln(std::string& aln)      { hap_aln_        = aln;          }
+  void set_str_seq(std::string& seq)      { str_seq_        = seq;          }
+  void set_full_str_seq(std::string& seq) { full_str_seq_   = seq;          }
+  void set_flank_indel_data(std::vector< std::pair<int,int> >& data){ flank_indel_data_ = data; }
 };
 
 
