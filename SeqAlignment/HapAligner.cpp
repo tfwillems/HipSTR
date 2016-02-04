@@ -364,7 +364,7 @@ inline int     pair_min_index(double v1, double v2){ return (v1 > v2+TRACE_LL_TO
 inline int rev_pair_min_index(double v1, double v2){ return (v2 > v1+TRACE_LL_TOL ? 1 : 0); }
 
 std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
-				  int seq_len, int block_index, int base_index, int matrix_inde
+				int seq_len, int block_index, int base_index, int matrix_index,
 				double* match_matrix, double* insert_matrix, double* deletion_matrix, int* best_artifact_size, int* best_artifact_pos,
 				int& flank_ins_size, int& flank_del_size, int& stutter_size, std::string& str_seq,
 				std::string& full_str_seq, std::vector< std::pair<int,int> >& flank_indel_data, bool right_to_left){
