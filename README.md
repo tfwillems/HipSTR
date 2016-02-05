@@ -193,6 +193,12 @@ If we wanted to inspect all calls for the same locus, we could  use the command
 ```
 ./VizAln aln.html.gz chr1 51639636
 ```
+To facilitate rendering these images for publications, we've also created a similar script that converts
+these alignments into a PDF. This script can only be applied to one sample at a time, but the image above
+can be generated in a file alignments.pdf as follows:
+```
+./VizAlnPdf aln.html.gz chr1 51639636 ERR218433 alignments
+```
 NOTE: Because the **--viz-out** file can become fairly large if you're genotyping thousands of loci or thousands of samples, in some scenarios it may be best to rerun HipSTR using this option on the subset of loci in which you're interested.
 
 ## File Formats
