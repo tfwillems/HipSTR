@@ -44,7 +44,7 @@ text_colors  = {"locustd":"black", "Atd":"purple",   "Ctd":"blue",     "Gtd":"gr
 
 fill_colors  = {"locustd":"N/A",   "Atd":"white",    "Ctd":"white",    "Gtd":"white",     "Ttd":"white", "vtd":"white", "-td":"white",
                 "Areftd":"purple", "Creftd":"blue",  "Greftd":"green", "Treftd":"orange", "vreftd":"gray",
-                "areftd":"purple", "creftd":"blue",  "greftd":"green", "treftd":"orange", "snptd": "gold", "inserttd": "red"}
+                "areftd":"purple", "creftd":"blue",  "greftd":"green", "treftd":"orange", "snptd": "#ffd700", "inserttd": "red"}
 
 class FilteredPDFOutputter(HTMLParser):
     def __init__(self, skip_columns, left_trim, num_lines, num_columns, output_file):
@@ -166,6 +166,8 @@ def main():
     bad_cols = set()
     for key, vals in parser.counts.items():
         if len(vals) == 1 and "*" in vals:
+            bad_cols.add(key)
+        elif len(vals) == 2 and "*" in vals and " " in vals:
             bad_cols.add(key)
 
     if nlines != 1:
