@@ -187,6 +187,8 @@ def main():
                   record.INFO.pop("AC", None)
               else:
                   record.INFO['AC'] = filter(lambda x: x != 0, allele_counts[1:])
+          if 'AN' in record.INFO:
+               record.INFO['AN'] = sum(allele_counts)
                   
           vcf_writer.write_record(record)
 

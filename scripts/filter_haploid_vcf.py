@@ -35,10 +35,6 @@ def read_sample_set(input_file):
      return samples
 
 def main():
-
-
-
-
      parser = argparse.ArgumentParser()
      parser.add_argument("--vcf",                  help="Input VCF",                                          type=str,    required=True,                  dest="VCF")
      parser.add_argument("--stats",                help="Write filter statistics to the provided file",       type=str,    required=False,  default=None,  dest="STATS")
@@ -259,6 +255,8 @@ def main():
                   record.INFO.pop("AC", None)
               else:
                   record.INFO['AC'] = filter(lambda x: x != 0, allele_counts[1:])
+          if 'AN' in record.INFO:
+               record.INFO['AN'] = sum(allele_counts)
 
           # Recompute DP and other read depth info fields
           record.INFO['DP']          = total_dp
