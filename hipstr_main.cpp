@@ -57,11 +57,13 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--pass-bam      <used_reads.bam>      "  << "\t" << "Output a BAM file containing the reads used to genotype each region"                 << "\n"
 	    << "\t" << "--filt-bam      <filt_reads.bam>      "  << "\t" << "Output a BAM file containing the reads filtered in each region. Each BAM entry"      << "\n"
 	    << "\t" << "                                      "  << "\t" << " has an FT tag specifying the reason for filtering"                                  << "\n"
+	    << "\t" << "--max-flank-indel <max_flank_frac>    "  << "\t" << "Don't output genotypes for a sample if the fraction of reads containing an indel"    << "\n"
+	    << "\t" << "                                      "  << "\t" << " in the sequence flanking the STR is greater than MAX_FLANK_FRAC (Default = 1.0) "   << "\n"
 	    << "\t" << "--hide-allreads                       "  << "\t" << "Don't output the ALLREADS  FORMAT field to the VCF. By default, it will be output"   << "\n"
 	    << "\t" << "--hide-mallreads                      "  << "\t" << "Don't output the MALLREADS FORMAT field to the VCF. By default, it will be output"   << "\n"
 	    << "\t" << "--hide-pallreads                      "  << "\t" << "Don't output the PALLREADS FORMAT field to the VCF. By default, it will be output"   << "\n"
-	    << "\t" << "--output-gls                          "  << "\t" << "Write genotype likelihoods to VCF (default = False)"                                 << "\n"
-	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to VCF (default = False)"                    << "\n" << "\n"
+	    << "\t" << "--output-gls                          "  << "\t" << "Write genotype likelihoods to VCF (Default = False)"                                 << "\n"
+	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to VCF (Default = False)"                    << "\n" << "\n"
 
 	    << "Optional read filtering parameters:" << "\n"
 	    << "\t" << "--no-rmdup                            "  << "\t" << "Don't remove PCR duplicates. By default, they'll be removed"                         << "\n"
@@ -152,6 +154,7 @@ void parse_command_line_args(int argc, char** argv,
     {"output-pls",      no_argument, &output_pls, 1},
     {"no-pool-seqs",    no_argument, &pool_seqs,  0},
     {"version",         no_argument, &print_version, 1},
+    {"max-flank-indel", required_argument, 0, 'F'},
     {"str-vcf",         required_argument, 0, 'o'},
     {"ref-vcf",         required_argument, 0, 'p'},
     {"regions",         required_argument, 0, 'r'},
@@ -257,6 +260,9 @@ void parse_command_line_args(int argc, char** argv,
       if (!string_ends_with(filename, ".gz"))
 	printErrorAndDie("Path for alignment visualization file must end in .gz as it will be bgzipped");
       bam_processor.set_output_viz(filename);
+      break;
+    case 'F':
+      bam_processor.set_max_flank_indel_frac(atof(optarg));
       break;
     case '?':
       printErrorAndDie("Unrecognized command line option");

@@ -60,6 +60,8 @@ private:
   bool output_all_reads_;       // Output the ALLREADS  FORMAT field to the VCF
   bool output_pall_reads_;      // Output the PALLREADS FORMAT field to the VCF
   bool output_mall_reads_;      // Output the MALLREADS FORMAT field to the VCF
+  float max_flank_indel_frac_;  // Only output genotypes if the fraction of a sample's reads with
+                                // indels in the flank is less than this threshold
 
   std::set<std::string> haploid_chroms_;
 
@@ -81,6 +83,7 @@ private:
 
   // Simple object to track total times consumed by various processes
   ProcessTimer process_timer_;
+
 
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups, bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
@@ -112,6 +115,7 @@ public:
     locus_stutter_time_    = -1;
     total_genotype_time_   = 0;
     locus_genotype_time_   = -1;
+    max_flank_indel_frac_  = 1.0;
     recalc_stutter_model_  = false;
   }
 
@@ -138,6 +142,10 @@ public:
 
   void add_haploid_chrom(std::string chrom){
     haploid_chroms_.insert(chrom);
+  }
+
+  void set_max_flank_indel_frac(float frac){
+    max_flank_indel_frac_ = frac;
   }
 
   void set_output_viz(std::string& viz_file){

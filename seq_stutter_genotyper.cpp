@@ -498,12 +498,13 @@ void SeqStutterGenotyper::write_vcf_header(std::string& full_command, std::vecto
       << "##INFO=<ID=" << "INFRAME_UP"     << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame increase in obs. STR size"        << "\">\n"
       << "##INFO=<ID=" << "INFRAME_DOWN"   << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame decrease in obs. STR size"        << "\">\n"
       << "##INFO=<ID=" << "OUTFRAME_PGEOM" << ",Number=1,Type=Float,Description=\""   << "Parameter for out-of-frame geometric step size distribution"                  << "\">\n"
-      << "##INFO=<ID=" << "OUTFRAME_UP"    << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame increase in obs. STR size"    << "\">\n"
-      << "##INFO=<ID=" << "OUTFRAME_DOWN"  << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame decrease in obs. STR size"    << "\">\n"
+      << "##INFO=<ID=" << "OUTFRAME_UP"    << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame increase in read's STR size"  << "\">\n"
+      << "##INFO=<ID=" << "OUTFRAME_DOWN"  << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame decrease in read's STR size"  << "\">\n"
       << "##INFO=<ID=" << "BPDIFFS"        << ",Number=A,Type=Integer,Description=\"" << "Base pair difference of each alternate allele from the reference allele"      << "\">\n"
       << "##INFO=<ID=" << "START"          << ",Number=1,Type=Integer,Description=\"" << "Inclusive start coodinate for the repetitive portion of the reference allele" << "\">\n"
       << "##INFO=<ID=" << "END"            << ",Number=1,Type=Integer,Description=\"" << "Inclusive end coordinate for the repetitive portion of the reference allele"  << "\">\n"
       << "##INFO=<ID=" << "PERIOD"         << ",Number=1,Type=Integer,Description=\"" << "Length of STR motif"                                                          << "\">\n"
+      << "##INFO=<ID=" << "AN"             << ",Number=1,Type=Integer,Description=\"" << "Total number of alleles in called genotypes"                                  << "\">\n"
       << "##INFO=<ID=" << "REFAC"          << ",Number=1,Type=Integer,Description=\"" << "Reference allele count"                                                       << "\">\n"
       << "##INFO=<ID=" << "AC"             << ",Number=A,Type=Integer,Description=\"" << "Alternate allele counts"                                                      << "\">\n"
       << "##INFO=<ID=" << "NSKIP"          << ",Number=1,Type=Integer,Description=\"" << "Number of samples not genotyped due to various issues"                        << "\">\n"
@@ -922,7 +923,7 @@ void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
 
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
 					   bool output_bootstrap_qualities, bool output_gls, bool output_pls,
-					   bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz,
+					   bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac,
 					   bool visualize_left_alns, std::vector<int>& read_str_sizes,
 					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
   assert(haplotype_->num_blocks() == 3);
@@ -997,20 +998,17 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     }
   }
 
-  // Extract the genotype phasing probability conditioned on the determined sample genotypes
-  std::vector<double> log_unphased_posteriors, phase_probs;
+  // Extract the total posterior for the unphased genotype
+  std::vector<double> log_unphased_posteriors;
   for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++){
     int gt_a = gts[sample_index].first, gt_b = gts[sample_index].second;
-    if (gt_a == gt_b){
+    if (gt_a == gt_b)
       log_unphased_posteriors.push_back(log_phased_posteriors[sample_index]);
-      phase_probs.push_back(1.0);
-    }
     else {
       double log_p1  = log_phased_posteriors[sample_index];
       double log_p2  = log_sample_posteriors_[gt_b*num_alleles_*num_samples_ + gt_a*num_samples_ + sample_index];
       double log_tot = log_sum_exp(log_p1, log_p2);
       log_unphased_posteriors.push_back(log_tot);
-      phase_probs.push_back(exp(log_p1-log_tot));
     }
   }
 
@@ -1103,20 +1101,27 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   // Compute allele counts for samples of interest
   std::set<std::string> samples_of_interest(sample_names.begin(), sample_names.end());
   std::vector<int> allele_counts(num_alleles_);
-  int sample_index = 0, skip_count = 0, filt_count = 0;
+  int sample_index = 0, skip_count = 0, filt_count = 0, allele_number = 0;
   for (auto gt_iter = gts.begin(); gt_iter != gts.end(); ++gt_iter, ++sample_index){
     if (samples_of_interest.find(sample_names_[sample_index]) == samples_of_interest.end())
       continue;
     if (require_one_read_ && num_aligned_reads[sample_index] == 0)
       continue;
+    if (num_aligned_reads[sample_index] > 0 &&
+        (num_reads_with_flank_indels[sample_index] > max_flank_indel_frac*num_aligned_reads[sample_index])){
+      filt_count++;
+      continue;
+    }
     if (call_sample_[sample_index]) {
       if (haploid_){
 	assert(gt_iter->first == gt_iter->second);
 	allele_counts[gt_iter->first]++;
+	allele_number++;
       }
       else {
 	allele_counts[gt_iter->first]++;
 	allele_counts[gt_iter->second]++;
+	allele_number += 2;
       }
     }
     else
@@ -1173,6 +1178,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       continue;
     if (!call_sample_[sample_iter->second])
       continue;
+    if (num_aligned_reads[sample_iter->second] > 0 &&
+	(num_reads_with_flank_indels[sample_iter->second] > num_aligned_reads[sample_iter->second]*max_flank_indel_frac))
+      continue;
 
     int sample_index = sample_iter->second;
     tot_dp          += num_aligned_reads[sample_index];
@@ -1188,7 +1196,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       << "DFLANKINDEL=" << tot_dflankindel << ";";
 
   // Add allele counts
-  out << "REFAC=" << allele_counts[0] << ";";
+  out << "AN=" << allele_number << ";" << "REFAC=" << allele_counts[0] << ";";
   if (allele_counts.size() > 1){
     out << "AC=";
     for (unsigned int i = 1; i < allele_counts.size()-1; i++)
@@ -1226,6 +1234,14 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       out << ".";
       continue;
     }
+
+    // Don't report genotype for a sample if it exceeds the flank indel fraction
+    if (num_aligned_reads[sample_iter->second] > 0 &&
+	(num_reads_with_flank_indels[sample_iter->second] > num_aligned_reads[sample_iter->second]*max_flank_indel_frac)){
+      out << ".";
+      continue;
+    }
+
     
     int sample_index    = sample_iter->second;
     double phase1_reads = (num_aligned_reads[sample_index] == 0 ? 0 : exp(log_sum_exp(log_read_phases[sample_index])));
@@ -1349,7 +1365,7 @@ bool SeqStutterGenotyper::recompute_stutter_model(std::string& chrom_seq, std::o
   // Get the artifact sizes observed in each read
   std::vector<std::string> empty_sample_names;
   std::vector<int> read_str_sizes;
-  write_vcf_record(empty_sample_names, false, chrom_seq, false, false, false, false, false, false, false, false, read_str_sizes, std::cerr, std::cerr, logger);
+  write_vcf_record(empty_sample_names, false, chrom_seq, false, false, false, false, false, false, false, 1.0, false, read_str_sizes, std::cerr, std::cerr, logger);
   max_LL_alns_.clear(); // Need to clear this data structure for a future call to write_vcf_record to work
   assert(read_str_sizes.size() == num_reads_);
 
