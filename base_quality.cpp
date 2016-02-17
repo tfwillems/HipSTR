@@ -82,7 +82,7 @@ void BaseQuality::deduce_quality_encodings(BamTools::BamMultiReader& reader){
   int Illumina_18_count = 0, Illumina_15_count = 0, Illumina_13_count = 0, invalid_count = 0;
   for (auto count_iter = qual_counts.begin(); count_iter != qual_counts.end(); count_iter++){
     int* count_ptr = count_iter->second;
-    char min_qual, max_qual;
+    char min_qual  = '}', max_qual = '!';
 
     // Determine minimum and maximum observed quality scores
     for (int i = 0; i < 256; i++){

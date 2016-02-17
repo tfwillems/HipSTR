@@ -70,7 +70,7 @@ class Alignment {
   inline void set_sample(std::string sample) { sample_ = sample; }
 
   void check_CIGAR_string(std::string& name){
-    int num = 0;
+    unsigned int num = 0;
     for (std::vector<CigarElement>::const_iterator iter = cigar_list_.begin(); iter != cigar_list_.end(); iter++)
       if (iter->get_type() != 'D' && iter->get_type() != 'H')
 	num += iter->get_num();
@@ -80,7 +80,7 @@ class Alignment {
 		<< sequence_  << std::endl
 		<< alignment_ << std::endl
 		<< getCigarString() << std::endl;
-      assert(num == sequence_.size());
+      assert(false);
     }
   }
   

@@ -122,7 +122,7 @@ class EMStutterGenotyper {
     sample_total_LLs_          = new double[num_samples_];
 
     // Iterate through all reads and store the relevant information
-    int read_index = 0;
+    unsigned int read_index = 0;
     for (unsigned int i = 0; i < num_bps.size(); i++){
       reads_per_sample_.push_back(num_bps[i].size());
       for (unsigned int j = 0; j < num_bps[i].size(); ++j, ++read_index){

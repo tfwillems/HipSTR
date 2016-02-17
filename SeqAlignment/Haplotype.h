@@ -107,16 +107,6 @@ class Haplotype {
 			     int max_other_len, 
 			     std::ostream& out);
 
-  void print_padded(std::ostream& out) {
-    for (int i = 0; i < num_blocks(); i++) {
-      const std::string& seq = get_seq(i);
-      out << seq;
-      for (int j = 0; j < blocks_[i]->max_size()+1-seq.size(); j++)
-	out << " ";
-    }
-    out << std::endl;
-  }
-
   // Prevent haplotype from being changed using next()
   void fix()  { fixed_ = true;  }
   void unfix(){ fixed_ = false; }

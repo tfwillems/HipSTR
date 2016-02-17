@@ -48,13 +48,6 @@ class ReadPooler {
   std::vector<Alignment>& get_alignments(){
     return pooled_alns_;
   }
-
-  Alignment& get_alignment(int32_t pool_index){
-    assert(pool_index < pooled_alns_.size() && pool_index >= 0);
-    if(!pooled_)
-      printErrorAndDie("Cannot retrive pooled alignments before invoking pool() function");
-    return pooled_alns_[pool_index];
-  }
 };
 
 #endif
