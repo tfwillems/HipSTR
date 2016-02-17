@@ -12,8 +12,8 @@ Copyright (C) 2014 Thomas Willems <twillems@mit.edu>
 
 
 namespace ZAlgorithm{
-  void suffix_helper(const std::string& s1, const std::string& s2, int s2_left, int s2_right,
-		     std::vector<int>& s1_matches, std::vector<int>& num_matches){
+  static void suffix_helper(const std::string& s1, const std::string& s2, int s2_left, int s2_right,
+			    std::vector<int>& s1_matches, std::vector<int>& num_matches){
     num_matches  = std::vector<int>(s2_right - s2_left + 1, -1);
     int leftmost = s2_right+1, right_index = s2_right+1;
     for (int i = s2_right; i >= s2_left; i--){
@@ -50,8 +50,8 @@ namespace ZAlgorithm{
     }
   }
 
-  void prefix_helper(const std::string& s1, const std::string& s2, int s2_left, int s2_right,
-		     std::vector<int>& s1_matches, std::vector<int>& num_matches, int offset){
+  static void prefix_helper(const std::string& s1, const std::string& s2, int s2_left, int s2_right,
+			    std::vector<int>& s1_matches, std::vector<int>& num_matches, int offset){
     num_matches = std::vector<int>(s2_right-s2_left+1+offset, -1);
     int rightmost = -1, left_index = -1;
     for (int i = s2_left; i <= s2_right; i++){

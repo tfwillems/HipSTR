@@ -63,7 +63,6 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
       int prev_row_index            = seq_len*(haplotype_index-1);            // Index into matrix for haplotype character preceding stutter block (column = 0) 
       matrix_index                  = seq_len*(haplotype_index+block_len-1);  // Index into matrix for rightmost character in stutter block (column = 0)
       int num_stutter_artifacts     = (rep_info->max_insertion()-rep_info->max_deletion())/period + 1;
-      const char* end_block_seq_arr = block_seq.c_str() + (block_seq.size()-1);
       StutterAlignerClass* stutter_aligner = haplotype->get_block(block_index)->get_stutter_aligner(block_option);
 
       /*
@@ -206,8 +205,6 @@ double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base,
   max_LL    = log_probs[0];
 
   // Right flank entirely outside of haplotype window, seed aligned with n-1
-  int last_block = fw_haplotype_->num_blocks()-1;
-  int char_index = fw_haplotype_->get_seq(last_block).size()-1;
   log_probs.push_back(SEED_LOG_MATCH_PRIOR + (seed_char == fw_haplotype_->get_last_char() ? log_seed_correct: log_seed_wrong)
 		      + r_prob + l_match_matrix[lflank_len*(hapsize-1)-1]);
   if (log_probs[1] > max_LL){
@@ -450,7 +447,6 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
 	if (matrix_type != prev_matrix_type){
 	  // Record any processed indels
 	  if (prev_matrix_type == DEL){
-	    int del_size = (haplotype->reversed() ? pos - indel_position : indel_position - pos);
 	    if (haplotype->reversed())
 	      flank_indel_data.push_back(std::pair<int,int>(indel_position, indel_position - pos));
 	    else

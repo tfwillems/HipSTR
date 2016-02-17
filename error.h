@@ -3,6 +3,6 @@
 
 #include <string>
 
-void printErrorAndDie(std::string message);
+void printErrorAndDie(std::string message) __attribute__ ((noreturn));
 
 #endif

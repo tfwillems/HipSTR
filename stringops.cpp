@@ -15,8 +15,8 @@ void split_by_delim(const std::string &s, char delim,
 
 std::string uppercase(std::string str){
   std::stringstream res;
-  for (unsigned int i = 0; i < str.size(); i++)
-    res << (char)toupper(str[i]);
+  for (size_t i = 0; i < str.size(); i++)
+    res << static_cast<char>(toupper(str[i]));
   return res.str();
 }
 

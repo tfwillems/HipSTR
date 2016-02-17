@@ -72,15 +72,15 @@ void remove_pcr_duplicates(BaseQuality& base_quality, bool use_bam_rgs,
 			   std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg, std::ostream& logger){
   int32_t dup_count = 0;
   assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
-  for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){
+  for (size_t i = 0; i < paired_strs_by_rg.size(); i++){
     assert(paired_strs_by_rg[i].size() == mate_pairs_by_rg[i].size());
 
     std::vector<ReadPair> read_pairs;
-    for (unsigned int j = 0; j < paired_strs_by_rg[i].size(); j++){
+    for (size_t j = 0; j < paired_strs_by_rg[i].size(); j++){
       std::string library = use_bam_rgs ? get_library(paired_strs_by_rg[i][j], rg_to_library): rg_to_library[paired_strs_by_rg[i][j].Filename];
       read_pairs.push_back(ReadPair(paired_strs_by_rg[i][j], mate_pairs_by_rg[i][j], library));
     }
-    for (unsigned int j = 0; j < unpaired_strs_by_rg[i].size(); j++){
+    for (size_t j = 0; j < unpaired_strs_by_rg[i].size(); j++){
       std::string library = use_bam_rgs ? get_library(unpaired_strs_by_rg[i][j], rg_to_library): rg_to_library[unpaired_strs_by_rg[i][j].Filename];
       read_pairs.push_back(ReadPair(unpaired_strs_by_rg[i][j], library));
     }
@@ -91,8 +91,8 @@ void remove_pcr_duplicates(BaseQuality& base_quality, bool use_bam_rgs,
     unpaired_strs_by_rg[i].clear();
     if (read_pairs.size() == 0)
       continue;
-    int best_index = 0;
-    for (unsigned int j = 1; j < read_pairs.size(); j++){
+    size_t best_index = 0;
+    for (size_t j = 1; j < read_pairs.size(); j++){
       if (read_pairs[j].duplicate(read_pairs[best_index])){
 	dup_count++;
 	// Update index if new pair's STR read has a higher total base quality

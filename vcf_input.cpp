@@ -106,8 +106,8 @@ double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Reg
   alleles.insert(alleles.end(), variant.alleles.begin(), variant.alleles.end());
   
   // Allocate allele prior storage
-  int num_samples = sample_indices.size();
-  int num_alleles = variant.alleles.size();
+  size_t num_samples  = sample_indices.size();
+  size_t num_alleles  = variant.alleles.size();
   double* log_allele_priors = new double[num_alleles*num_alleles*num_samples];
 
   // Initialize array with what is equivalent to log of uniform prior
@@ -115,18 +115,18 @@ double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Reg
   std::fill(log_allele_priors, log_allele_priors+(num_alleles*num_alleles*num_samples), -2*log(num_alleles));
 
   // Extract priors for each sample
-  int sample_count = 0;
+  size_t sample_count = 0;
   std::vector<double> gp_probs; gp_probs.reserve(num_alleles*num_alleles);
   for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
     if (sample_indices.find(*sample_iter) == sample_indices.end())
       continue;
     int sample_index = sample_indices.find(*sample_iter)->second;
     got_priors[sample_index] = true;
-    int gp_index     = 0;
+    size_t gp_index  = 0;
     double total     = 0.0;
 
-    for (unsigned int i = 0; i < num_alleles; ++i){
-      for (unsigned int j = 0; j < num_alleles; ++j, ++gp_index){
+    for (size_t i = 0; i < num_alleles; ++i){
+      for (size_t j = 0; j < num_alleles; ++j, ++gp_index){
 	// NOTE: We'd like to use the getSampleValueFloat method from vcflib, but it doesn't work if the number of 
 	// fields isn't equal to the number of alleles.Instead, have to use this ugly internal hack
 	double prob = std::stod(variant.samples[*sample_iter][PGP_KEY].at(gp_index));
@@ -138,8 +138,8 @@ double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Reg
     // Normalize and log-transform priors and store at appropriate index
     gp_index = 0;
     double* log_prior_ptr = log_allele_priors + sample_index;
-    for (unsigned int i = 0; i < num_alleles; ++i){
-      for (unsigned int j = 0; j < num_alleles; ++j, ++gp_index){
+    for (size_t i = 0; i < num_alleles; ++i){
+      for (size_t j = 0; j < num_alleles; ++j, ++gp_index){
 	*log_prior_ptr = log(gp_probs[gp_index]/total);
 	log_prior_ptr += num_samples;
       }

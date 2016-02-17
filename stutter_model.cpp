@@ -19,7 +19,6 @@ double StutterModel::get_parameter(bool in_frame, char parameter){
       return in_frame ? in_geom_ : out_geom_;
   default:
     printErrorAndDie("Invalid such stutter model parameter requested");
-    return -1.0;
   }
 }
 

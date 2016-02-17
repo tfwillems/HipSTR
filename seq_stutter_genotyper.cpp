@@ -889,7 +889,6 @@ void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
   std::vector<int> sample_counts(num_samples_, 0);
   std::vector< std::map<std::pair<int,int>, int> > sample_flank_indel_counts(num_samples_);
 
-  HapBlock* str_block = haplotype_->get_block(1);
   for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
     if (traced_alns[read_index] == NULL)
       continue;
