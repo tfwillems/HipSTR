@@ -130,10 +130,6 @@ class Alignment {
   inline const std::string& get_alignment()                const { return alignment_;      }
   inline const std::vector<CigarElement>& get_cigar_list() const { return cigar_list_;     }
 
-  void get_deletion_boundaries(std::vector<int32_t>& starts, std::vector<int32_t>& stops) const;
-
-  void get_insertion_positions(std::vector<int32_t>& positions, std::vector<int32_t>& sizes) const;
-
   std::string getCigarString() const {
     std::stringstream cigar_str;
     for (auto iter = cigar_list_.begin(); iter != cigar_list_.end(); iter++)
