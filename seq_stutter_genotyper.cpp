@@ -133,7 +133,6 @@ void SeqStutterGenotyper::combine_reads(std::vector<Alignment>& alignments, Alig
   assert(alignments.size() > 0);
   pooled_aln.set_start(alignments[0].get_start());
   pooled_aln.set_stop(alignments[0].get_stop());
-  pooled_aln.set_sample("");
   pooled_aln.set_sequence(alignments[0].get_sequence());
   pooled_aln.set_alignment(alignments[0].get_alignment());
   pooled_aln.set_cigar_list(alignments[0].get_cigar_list());
@@ -208,9 +207,8 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 	// Soft-clipping is problematic because it complicates base quality extration (but not really that much)
 	Alignment& prev_aln = alns_[iter->second.first][iter->second.second];
 	assert(prev_aln.get_sequence().size() == alignments[i][j].QueryBases.size());
-	std::string sample; alignments[i][j].GetTag(SAMPLE_TAG, sample);
 	std::string bases = uppercase(alignments[i][j].QueryBases);
-	Alignment new_aln(prev_aln.get_start(), prev_aln.get_stop(), sample, alignments[i][j].Qualities, bases, prev_aln.get_alignment());
+	Alignment new_aln(prev_aln.get_start(), prev_aln.get_stop(), alignments[i][j].Qualities, bases, prev_aln.get_alignment());
 	new_aln.set_cigar_list(alns_[iter->second.first][iter->second.second].get_cigar_list());
 	new_aln.check_CIGAR_string(alignments[i][j].Name);
 	alns_.back().push_back(new_aln);

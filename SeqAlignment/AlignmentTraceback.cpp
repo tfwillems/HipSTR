@@ -141,6 +141,6 @@ void stitch_alignment_trace(int32_t hap_start, const std::string& hap_aln_to_ref
     }
   }
 
-  new_aln = Alignment(start, stop, orig_aln.get_sample(), orig_aln.get_base_qualities(), orig_aln.get_sequence(), aln_ss.str());
+  new_aln = Alignment(start, stop, orig_aln.get_base_qualities(), orig_aln.get_sequence(), aln_ss.str());
   new_aln.set_cigar_list(cigar_list);
 }

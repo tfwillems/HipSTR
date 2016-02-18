@@ -30,7 +30,6 @@ class Alignment {
  private:
   int32_t start_;
   int32_t stop_;
-  std::string sample_;
   std::vector<CigarElement> cigar_list_;
   std::string base_qualities_;
   std::string sequence_;
@@ -38,13 +37,11 @@ class Alignment {
 
  public:
   Alignment(int32_t start, int32_t stop,
-	    const std::string& sample,
 	    const std::string& base_qualities,
 	    const std::string& sequence,
 	    const std::string& alignment){
     start_          = start; 
     stop_           = stop;
-    sample_         = sample; 
     base_qualities_ = base_qualities;
     sequence_       = sequence;
     alignment_      = alignment;
@@ -54,7 +51,6 @@ class Alignment {
   Alignment(){
     start_          = 0; 
     stop_           = -1;
-    sample_         = ""; 
     base_qualities_ = "";
     sequence_       = "";
     alignment_      = "";
@@ -63,11 +59,8 @@ class Alignment {
 
   inline int32_t get_start()             const { return start_;  }
   inline int32_t get_stop()              const { return stop_;   }
-  inline std::string get_sample()        const { return sample_; }
-
-  inline void set_start(int32_t start)       { start_ = start;   }
-  inline void set_stop(int32_t stop)         { stop_  = stop;    }
-  inline void set_sample(std::string sample) { sample_ = sample; }
+  inline void set_start(int32_t start)         { start_ = start; }
+  inline void set_stop(int32_t stop)           { stop_  = stop;  }
 
   void check_CIGAR_string(std::string& name){
     unsigned int num = 0;
@@ -148,10 +141,5 @@ class Alignment {
     return cigar_str.str();
   }
 };
-
-
-bool compareAl(const Alignment& alignment_1, const Alignment& alignment_2);
-
-void sortAlignments(std::vector<Alignment>& alignments);
 
 #endif
