@@ -18,17 +18,6 @@ const double MIN_FRAC_STRONG_SAMPLE  = 0.2;
 const double MIN_READS_STRONG_SAMPLE = 2;
 const double MIN_STRONG_SAMPLES      = 1;
 
-// Maximum ratio of the number of deletions that extend into a stutter block
-// for a given sample to the total number of reads for that sample
-// Samples exceeding this threshold will not be genotyped
-// If a lot of samples fail this cutoff, it's likely an indication of poor locus quality
-const double MAX_BLOCK_DEL_TO_READS_RATIO = 0.05;
-
-// Maximum fraction of samples for which a deletion can extend into the STR block
-// If more samples have one such deletion, we'll retry to rebuild the STR region
-// using a large padding window
-const double MAX_FRAC_SAMPLE_DEL_FAIL = 0.01; 
-
 void trim(int32_t left_padding, int32_t right_padding, int ideal_min_length, int32_t& rep_region_start, int32_t& rep_region_end, std::vector<std::string>& sequences){
   int min_len = INT_MAX;
   for (unsigned int i = 0; i < sequences.size(); i++)
@@ -271,116 +260,6 @@ void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, i
   trim(left_padding, right_padding, ideal_min_length, rep_region_start, rep_region_end, sequences); 
 }
 
-
-int check_flanking_insertions(std::vector< std::vector<Alignment> >& alignments, int32_t start, int32_t end,
-			      int32_t& min_ins_pos, int32_t& max_ins_pos, std::vector<bool>& call_sample){
-  assert(call_sample.size() == 0);
-  int sample_fail_count = 0;
-  min_ins_pos = (start+end)/2;
-  max_ins_pos = (start+end)/2;
-  std::vector<int> ins_positions, ins_sizes;
-  for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++){
-    bool sample_fail = false;
-    for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++)
-      aln_iter->get_insertion_positions(ins_positions, ins_sizes);
-    for (unsigned int i = 0; i < ins_positions.size(); i++){
-      if (ins_positions[i] < start){
-	sample_fail = true;
-	min_ins_pos = std::min(min_ins_pos, ins_positions[i]);
-      }
-      if (ins_positions[i] > end){
-	sample_fail = true;
-	max_ins_pos = std::max(max_ins_pos, ins_positions[i]);
-      }
-    }
-    ins_positions.clear(); ins_sizes.clear();
-    sample_fail_count += sample_fail;
-    call_sample.push_back(!sample_fail);
-  }
-  return sample_fail_count;
-}
-
-int check_flanking_deletions(std::vector< std::vector<Alignment> >& alignments, int32_t start, int32_t end,
-			     int32_t& min_del_start, int32_t& max_del_stop, std::vector<bool>& call_sample){
-  assert(call_sample.size() == 0);
-  int sample_fail_count = 0; // Number of samples with 1 or more non-enclosed deletions 
-  min_del_start = (start+end)/2;
-  max_del_stop  = (start+end)/2;
-
-  // Extract deletion coordinates
-  std::vector<int32_t> del_starts, del_ends;
-  for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++){
-    bool sample_fail = false;
-    for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++)
-      aln_iter->get_deletion_boundaries(del_starts, del_ends);
-    assert(del_starts.size() == del_ends.size());
-    for (unsigned i = 0; i < del_starts.size(); i++){
-      bool fail = false;
-      if (del_starts[i] <= start){
-        fail = true;
-        min_del_start = std::min(min_del_start, del_starts[i]);
-      }
-      if (del_ends[i] >= end){
-        fail = true;
-        max_del_stop = std::max(max_del_stop, del_ends[i]);
-      }
-      sample_fail |= fail;
-    }
-    del_starts.clear(); del_ends.clear();
-    sample_fail_count += sample_fail;
-    call_sample.push_back(!sample_fail);
-  }
-  return sample_fail_count;
-}
-
-
-
-int check_deletion_bounds(std::vector< std::vector<Alignment> >& alignments, int32_t start, int32_t end,
-			  int32_t& min_del_start, int32_t& max_del_stop, std::vector<bool>& call_sample){
-  assert(call_sample.size() == 0);
-  int sample_fail_count = 0; // Number of samples that fail the deletion bound frequency threshold
-  min_del_start = (start+end)/2;
-  max_del_stop  = (start+end)/2;
-
-  // Extract deletion coordinates
-  std::vector<int32_t> del_starts, del_ends;
-  for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++){
-    int bad_deletions = 0;
-    for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++)
-      aln_iter->get_deletion_boundaries(del_starts, del_ends);
-
-    // Check that they all are contained within the region or outside the region
-    int32_t min_start = (start+end)/2, max_stop = (start+end)/2;
-    assert(del_starts.size() == del_ends.size());
-    for (unsigned i = 0; i < del_starts.size(); i++){
-      bool fail = false;
-      if (del_starts[i] <= start && del_ends[i] >= start){
-	fail      = true;
-	min_start = std::min(min_start, del_starts[i]);
-      }
-      if (del_starts[i] <= end && del_ends[i] >= end){
-	fail     = true;
-	max_stop = std::max(max_stop, del_ends[i]);
-      }
-      bad_deletions += fail;
-    }
-
-    if (1.0*bad_deletions/vec_iter->size() > MAX_BLOCK_DEL_TO_READS_RATIO){
-      sample_fail_count++;
-      call_sample.push_back(false);
-      min_del_start = std::min(min_del_start, min_start);
-      max_del_stop  = std::max(max_del_stop,  max_stop);
-    }
-    else
-      call_sample.push_back(true);
-    del_starts.clear(); del_ends.clear();
-  }
-  return sample_fail_count;
-}
-
-// Major remaining sources of error
-// Candidate allele not identified. Should we consider adding repeat copies +2-3 units?
-
 Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std::string& chrom_seq,
 			      std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles,
 			      StutterModel* stutter_model, bool search_bams_for_alleles,
@@ -409,59 +288,6 @@ Haplotype* generate_haplotype(Region& str_region, int32_t max_ref_flank_len, std
   int32_t rep_region_end   = str_region.stop() + right_padding;
   std::string ref_seq      = uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start));
   int ideal_min_length     = 3*str_region.period(); // Would ideally have at least 3 repeat units in each allele after trimming
-
-  // TO DO: Use frequency of deletions not contained within window to 
-  //   i) Identify problematic regions
-  //  ii) Retry with increased window padding?
-  int32_t min_del_start, max_del_stop, flank_del_start, flank_del_stop, min_ins_pos, max_ins_pos;
-  std::vector<bool> flank_del_call_sample, flank_ins_call_sample;
-  int num_ext_del   = check_deletion_bounds(alignments,     rep_region_start, rep_region_end, min_del_start,   max_del_stop,   call_sample);
-  int num_flank_del = check_flanking_deletions(alignments,  rep_region_start, rep_region_end, flank_del_start, flank_del_stop, flank_del_call_sample);
-  int num_flank_ins = check_flanking_insertions(alignments, rep_region_start, rep_region_end, min_ins_pos,     max_ins_pos,    flank_ins_call_sample);
-  int nfail         = std::max(num_ext_del, std::max(num_flank_del, num_flank_ins));
-
-  // Recheck deletions after expanding the STR window
-  // TO DO: Remove true as we're experimenting with accuracy w/o expanding haplotype bounds
-  if(true || 1.0*nfail/alignments.size() <= MAX_FRAC_SAMPLE_DEL_FAIL){
-    logger << "PASS SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << num_ext_del
-	    << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
-  }
-  else {
-    logger << "FAIL SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << num_ext_del
-	   << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
-
-    int32_t min_s = std::min(min_del_start, std::min(flank_del_start, min_ins_pos));
-    int32_t max_e = std::max(max_del_stop,  std::max(flank_del_stop,  max_ins_pos));
-
-    call_sample.clear();
-    flank_del_call_sample.clear();
-    flank_ins_call_sample.clear();
-    rep_region_start  = std::min(rep_region_start, std::max(rep_region_start-10, min_s-5));
-    rep_region_end    = std::max(rep_region_end,   std::min(rep_region_end+10,   max_e+5));
-    left_padding      = str_region.start() - rep_region_start;
-    right_padding     = rep_region_end     - str_region.stop();
-    ref_seq           = uppercase(chrom_seq.substr(rep_region_start, rep_region_end-rep_region_start));
-    num_ext_del       = check_deletion_bounds(alignments,    rep_region_start,  rep_region_end, min_del_start, max_del_stop, call_sample);
-    num_flank_del     = check_flanking_deletions(alignments,  rep_region_start, rep_region_end, flank_del_start, flank_del_stop, flank_del_call_sample);
-    num_flank_ins     = check_flanking_insertions(alignments, rep_region_start, rep_region_end, min_ins_pos, max_ins_pos, flank_ins_call_sample);
-    
-      /*
-      if(1.0*sample_fail_count/alignments.size() <= MAX_FRAC_SAMPLE_DEL_FAIL){
-	logger << "REDONE_PASS SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count
-		  << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
-      }
-      else {
-	logger << "REDONE_FAIL SAMPLE DEL STATS: " << rep_region_start << "\t" << rep_region_end << "\t" << sample_fail_count
-		  << "\t" << min_del_start << "\t" << max_del_stop << "\t" << std::endl;
-      }
-      */
-  }
-
-  /*
-  logger << "# Flank deletions = " << num_flank_del << ", # Flank insertions = " << num_flank_ins << std::endl;
-  for (unsigned int i = 0; i < call_sample.size(); i++)
-    call_sample[i] = call_sample[i] && flank_del_call_sample[i] && flank_ins_call_sample[i];
-  */
 
   // Trim boundaries so that the reference flanks aren't too long
   if (rep_region_start > max_ref_flank_len)
