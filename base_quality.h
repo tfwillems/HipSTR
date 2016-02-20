@@ -88,8 +88,6 @@ class BaseQuality {
     return index + MIN_BASE_QUALITY;
   }
 
-  std::string average_base_qualities(const std::vector<const std::string*>& base_qualities);
-
   std::string median_base_qualities(const std::vector<const std::string*>& qualities);
 
   void deduce_quality_encodings(BamTools::BamMultiReader& reader);

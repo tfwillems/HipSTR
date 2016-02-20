@@ -5,7 +5,7 @@
 ## Default compilation flags.
 ## Override with:
 ##   make CXXFLAGS=XXXXX
-CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX -pthread
+CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX -pthread -pedantic #-Wunreachable-code -Weverything
 
 ## Source code files, add new files to this list
 SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp extract_indels.cpp mathops.cpp pcr_duplicates.cpp fastahack/Fasta.cpp fastahack/split.cpp
@@ -31,7 +31,7 @@ VCFLIB_LIB        = vcflib/libvcflib.a
 PHASED_BEAGLE_JAR = PhasedBEAGLE/PhasedBEAGLE.jar
 
 .PHONY: all
-all: version BamSieve HipSTR test/base_qual_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test $(PHASED_BEAGLE_JAR) exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
+all: version BamSieve HipSTR test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test $(PHASED_BEAGLE_JAR) exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
 	rm version.cpp
 	touch version.cpp
 
@@ -41,7 +41,7 @@ version:
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
 clean:
-	rm -f *.o *.d BamSieve HipSTR test/allele_expansion_test test/base_qual_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test SeqAlignment/*.o ${PHASED_BEAGLE_JAR} exploratory/RNASeq exploratory/Clipper exploratory/Mapper exploratory/10X
+	rm -f *.o *.d BamSieve HipSTR test/allele_expansion_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test SeqAlignment/*.o ${PHASED_BEAGLE_JAR} exploratory/RNASeq exploratory/Clipper exploratory/Mapper exploratory/10X
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -65,9 +65,6 @@ HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(OBJ_SEQALN)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 exploratory/RNASeq: $(OBJ_COMMON) $(OBJ_RNASEQ) $(BAMTOOLS_LIB)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
-
-test/base_qual_test: test/base_quality_test.cpp base_quality.cpp error.cpp mathops.cpp $(BAMTOOLS_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/haplotype_test: test/haplotype_test.cpp SeqAlignment/Haplotype.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NWNoRefEndPenalty.cpp SeqAlignment/RepeatBlock.cpp error.cpp stringops.cpp
