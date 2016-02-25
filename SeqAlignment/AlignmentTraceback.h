@@ -18,14 +18,14 @@ class AlignmentTrace {
   std::string str_seq_;      // Sequence in STR region
   std::string full_str_seq_; // Hypothetical sequence in STR region if the read fully spanned the stutter block
                              // Identical to str_seq if read spans STR region
-  std::vector< std::pair<int,int> > flank_indel_data_;
+  std::vector< std::pair<int32_t,int32_t> > flank_indel_data_;
 
  public:
   AlignmentTrace(int gt){
     gt_             = gt;
     hap_aln_        = "";
-    flank_ins_size_ = -1;
-    flank_del_size_ = -1;
+    flank_ins_size_ = 0;
+    flank_del_size_ = 0;
     stutter_size_   = -999;
     str_seq_        = "";
   }
@@ -38,15 +38,15 @@ class AlignmentTrace {
   Alignment& traced_aln()     { return trace_vs_ref_;   }
   std::string& str_seq()      { return str_seq_;        }
   std::string& full_str_seq() { return full_str_seq_;   }
-  std::vector< std::pair<int,int> >& flank_indel_data() { return flank_indel_data_; }
+  std::vector< std::pair<int32_t,int32_t> >& flank_indel_data() { return flank_indel_data_; }
 
-  void set_flank_ins_size(int num_ins_bp) { flank_ins_size_ = num_ins_bp;   }
-  void set_flank_del_size(int num_del_bp) { flank_del_size_ = num_del_bp;   }
+  void add_flank_indel(std::pair<int32_t, int32_t> indel){ flank_indel_data_.push_back(indel); }
+  void inc_flank_ins()                    { flank_ins_size_++;      }
+  void inc_flank_del()                    { flank_del_size_++;      }
   void set_stutter_size(int stutter_size) { stutter_size_   = stutter_size; }
   void set_hap_aln(std::string& aln)      { hap_aln_        = aln;          }
   void set_str_seq(std::string& seq)      { str_seq_        = seq;          }
   void set_full_str_seq(std::string& seq) { full_str_seq_   = seq;          }
-  void set_flank_indel_data(std::vector< std::pair<int,int> >& data){ flank_indel_data_ = data; }
 };
 
 
