@@ -65,21 +65,6 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
       int num_stutter_artifacts     = (rep_info->max_insertion()-rep_info->max_deletion())/period + 1;
       StutterAlignerClass* stutter_aligner = haplotype->get_block(block_index)->get_stutter_aligner(block_option);
 
-      /*
-      // Precompute all match probabilites
-      std::vector< std::vector<int> > suffix_match_probs(seq_len, std::vector<int>());
-      for (int j = 0; j < seq_len; ++j){
-	int min_index = std::max(-1, j-block_len);
-	suffix_match_probs[j].reserve(j-min_index);
-	double total  = 0;
-	int ref_index = block_len-1;
-	for (int k = j; k > min_index; --k, --ref_index){
-	  total += (seq_0[k] == block_seq[ref_index] ? base_log_correct[k] : base_log_wrong[k]);
-	  suffix_match_probs[j].push_back(total);
-	}
-      }
-      */
-
       std::vector<double> block_probs(num_stutter_artifacts); // Reuse in each iteration to avoid reallocation penalty
       int j = 0;
 
@@ -325,7 +310,7 @@ int HapAligner::calc_seed_base(Alignment& aln){
 
 void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality,
 			       double* aln_probs, int* seed_positions){
-  AlignmentTrace trace(0);
+  AlignmentTrace trace(fw_haplotype_->num_blocks());
   double* prob_ptr = aln_probs + (init_read_index*fw_haplotype_->num_combs());
   for (unsigned int i = 0; i < alignments.size(); i++){
     int seed_base = calc_seed_base(alignments[i]);
@@ -363,16 +348,16 @@ inline int rev_pair_min_index(double v1, double v2){ return (v2 > v1+TRACE_LL_TO
 std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
 				int seq_len, int block_index, int base_index, int matrix_index,
 				double* match_matrix, double* insert_matrix, double* deletion_matrix, int* best_artifact_size, int* best_artifact_pos,
-				AlignmentTrace& trace, int& stutter_size, std::string& str_seq, std::string& full_str_seq, bool right_to_left){
+				AlignmentTrace& trace){
   const int MATCH = 0, DEL = 1, INS = 2, NONE = -1; // Types of matrices
   int seq_index   = seq_len-1;
   int matrix_type = MATCH;
-  std::stringstream aln_ss, str_ss, full_str_ss;
+  std::stringstream aln_ss;
 
   int (*pair_index_fn)(double, double);
   int (*triple_index_fn)(double, double, double);
 
-  if (right_to_left){
+  if (!haplotype->reversed()){
     pair_index_fn    = &pair_min_index;
     triple_index_fn  = &triple_min_index;
   }
@@ -384,9 +369,10 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
   while (block_index >= 0){
     bool stutter_block = haplotype->get_block(block_index)->get_repeat_info() != NULL;
     if (stutter_block){
+      std::stringstream str_ss, full_str_ss;
       const std::string& block_seq = haplotype->get_seq(block_index);
-      int block_len = block_seq.size();
-      stutter_size  = best_artifact_size[seq_index];
+      int block_len    = block_seq.size();
+      int stutter_size = best_artifact_size[seq_index];
       assert(matrix_type == MATCH && base_index+1 == block_len);
       int i = 0;
       for (; i < std::min(seq_index+1, best_artifact_pos[seq_index]); i++){
@@ -407,7 +393,7 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
 	str_ss      << read_seq[seq_index-i];
 	full_str_ss << read_seq[seq_index-i];
       }
-      str_seq = str_ss.str();
+      std::string str_seq = str_ss.str();
 
       // Add the non-spanned stutter block bases to generate what would be the full STR sequence if the read were longer
       // NOTE: Some weird edge case behavior can arise here if there's a stutter indel that's not spanned by the read.
@@ -415,7 +401,19 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
       int block_seq_index = std::min(block_len-1, block_len-1+best_artifact_size[seq_index]-i);
       while (block_seq_index >= 0)
 	full_str_ss << block_seq[block_seq_index--];
-      full_str_seq = full_str_ss.str();
+      std::string full_str_seq = full_str_ss.str();
+
+      // Add STR data to trace instance
+      if (haplotype->reversed()){
+	// Alignment for sequence to right of seed. Block indexes are reversed, but alignment is correct
+	trace.add_str_data(haplotype->num_blocks()-1-block_index, stutter_size, str_seq, full_str_seq);
+      }
+      else {
+	// Alignment for sequence to left of seed. Block indexes are correct, but alignment is reversed
+	std::reverse(str_seq.begin(), str_seq.end());
+	std::reverse(full_str_seq.begin(), full_str_seq.end());
+	trace.add_str_data(block_index, stutter_size, str_seq, full_str_seq);
+      }
 
       if (block_len + best_artifact_size[seq_index] >= seq_index+1)
 	return aln_ss.str(); // Sequence doesn't span stutter block
@@ -605,63 +603,50 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
       if (retrace_aln){
 	// Retrace sequence to left of seed (if appropriate)
 	assert(max_index >= 0 && max_index < fw_haplotype_->cur_size());
-	int fw_seed_block, fw_seed_coord, l_stutter_size = 0;
+	int fw_seed_block, fw_seed_coord;
 	fw_haplotype_->get_coordinates(max_index, fw_seed_block, fw_seed_coord);
 	assert(fw_seed_block != 1);
 	int l_matrix_index = seed_base*max_index - 1;
-	std::string left_aln, l_full_str_seq = "", l_str_seq = "";
+	std::string left_aln;
 	if (max_index == 0)
 	  left_aln = std::string(seed_base, 'S'); // Soft clip read to left of seed as it extends beyond haplotype. Don't retrace
 	else {
 	  if (fw_seed_coord == 0){
 	    int prev_block_size = fw_haplotype_->get_seq(fw_seed_block-1).size();
 	    left_aln = retrace(fw_haplotype_, base_seq, seed_base, fw_seed_block-1, prev_block_size-1, l_matrix_index, l_match_matrix, l_insert_matrix, l_deletion_matrix,
-			       l_best_artifact_size, l_best_artifact_pos, trace,
-			       l_stutter_size, l_str_seq, l_full_str_seq, true);
+			       l_best_artifact_size, l_best_artifact_pos, trace);
 	  }
 	  else
 	    left_aln = retrace(fw_haplotype_, base_seq, seed_base, fw_seed_block, fw_seed_coord-1, l_matrix_index, l_match_matrix, l_insert_matrix, l_deletion_matrix,
-			       l_best_artifact_size, l_best_artifact_pos, trace,
-			       l_stutter_size, l_str_seq, l_full_str_seq, true);
+			       l_best_artifact_size, l_best_artifact_pos, trace);
 	}
 	std::reverse(left_aln.begin(), left_aln.end());   // Alignment is backwards for left flank
-	std::reverse(l_str_seq.begin(), l_str_seq.end());
-	std::reverse(l_full_str_seq.begin(), l_full_str_seq.end());
 	assert(left_aln.size() - std::count(left_aln.begin(), left_aln.end(), 'D') == seed_base);
 
 	// Retrace sequence to right of seed (if appropriate)
 	int rev_max_index = fw_haplotype_->cur_size()-1-max_index;
 	assert(rev_max_index >= 0 && rev_max_index < rev_haplotype_->cur_size());
-	int rev_seed_block, rev_seed_coord, r_stutter_size = 0;
+	int rev_seed_block, rev_seed_coord;
 	rev_haplotype_->get_coordinates(rev_max_index, rev_seed_block, rev_seed_coord);
 	assert(rev_seed_block != -1);
 	int r_matrix_index = (base_seq_len-1-seed_base)*rev_max_index - 1;
-	std::string right_aln, r_full_str_seq = "", r_str_seq = "";
+	std::string right_aln;
 	if (rev_max_index == 0)
 	  right_aln = std::string(base_seq_len-1-seed_base, 'S'); // Soft clip read to right of seed as it extends beyond haplotype. Don't retrace
 	else {
 	  if (rev_seed_coord == 0){
 	    int prev_block_size = rev_haplotype_->get_seq(rev_seed_block-1).size();
 	    right_aln = retrace(rev_haplotype_, rev_rseq.c_str(), base_seq_len-1-seed_base, rev_seed_block-1, prev_block_size-1, r_matrix_index, r_match_matrix,
-				r_insert_matrix, r_deletion_matrix, r_best_artifact_size, r_best_artifact_pos, trace,
-				r_stutter_size, r_str_seq, r_full_str_seq, false);
+				r_insert_matrix, r_deletion_matrix, r_best_artifact_size, r_best_artifact_pos, trace);
 	  }
 	  else
 	    right_aln = retrace(rev_haplotype_, rev_rseq.c_str(), base_seq_len-1-seed_base, rev_seed_block, rev_seed_coord-1, r_matrix_index, r_match_matrix,
-				r_insert_matrix, r_deletion_matrix, r_best_artifact_size, r_best_artifact_pos, trace,
-				r_stutter_size, r_str_seq, r_full_str_seq, false);
+				r_insert_matrix, r_deletion_matrix, r_best_artifact_size, r_best_artifact_pos, trace);
 	}
 	assert(right_aln.size() - std::count(right_aln.begin(), right_aln.end(), 'D') == base_seq_len-1-seed_base);
-	assert(l_str_seq.empty() || r_str_seq.empty());
 
 	std::string read_aln_to_hap = left_aln + "M" + right_aln;
 	trace.set_hap_aln(read_aln_to_hap);
-	trace.set_str_seq(!l_str_seq.empty() ? l_str_seq : r_str_seq);
-	trace.set_full_str_seq(!l_full_str_seq.empty() ? l_full_str_seq : r_full_str_seq);
-
-	// Only one of the flanks enters the stutter block, so only one can have a non-zero size
-	assert(l_stutter_size == 0 || r_stutter_size == 0);
-	trace.set_stutter_size(l_stutter_size+r_stutter_size);
 
 	stitch_alignment_trace(fw_haplotype_->get_block(0)->start(), fw_haplotype_->get_aln_info(),
 			       read_aln_to_hap, max_index, seed_base, aln, trace.traced_aln());
@@ -690,7 +675,7 @@ AlignmentTrace* HapAligner::trace_optimal_aln(Alignment& orig_aln, int seed_base
   rev_haplotype_->go_to(best_haplotype);
   fw_haplotype_->fix();
   double prob;
-  AlignmentTrace* trace = new AlignmentTrace(best_haplotype);
+  AlignmentTrace* trace = new AlignmentTrace(fw_haplotype_->num_blocks());
   process_read(orig_aln, seed_base, base_quality, true, &prob, *trace);
   fw_haplotype_->unfix();
   rev_haplotype_->unfix();

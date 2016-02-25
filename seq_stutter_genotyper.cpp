@@ -805,31 +805,36 @@ void SeqStutterGenotyper::retrace_alignments(std::ostream& logger, std::vector<A
 
 void SeqStutterGenotyper::get_stutter_candidate_alleles(std::ostream& logger, std::vector<std::string>& candidate_seqs){
   assert(candidate_seqs.size() == 0);
+
+  // Get the index for the STR haplotype block and check that only one block exists
+  // TO DO: We need to modify this function to accomodate multiple STR blocks, but for now, let's just die
+  int str_block_index = -1;
+  for (int i = 0; i < haplotype_->num_blocks(); ++i)
+    if (haplotype_->get_block(i)->get_repeat_info() != NULL){
+      assert(str_block_index == -1);
+      str_block_index = i;
+    }
+  assert(str_block_index != -1);
+
+
   std::vector<AlignmentTrace*> traced_alns;
   retrace_alignments(logger, traced_alns);
 
   std::vector<int> sample_counts(num_samples_, 0);
   std::vector< std::map<std::string, int> > sample_stutter_counts(num_samples_);
 
-  HapBlock* str_block = haplotype_->get_block(1);
+  HapBlock* str_block = haplotype_->get_block(str_block_index);
   for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
     if (traced_alns[read_index] == NULL)
       continue;
     AlignmentTrace* trace = traced_alns[read_index];
     if (trace->traced_aln().get_start() < str_block->start()){
       if (trace->traced_aln().get_stop() > str_block->end()){
-	if (trace->stutter_size() != 0)
-	  sample_stutter_counts[sample_label_[read_index]][trace->str_seq()]++;
+	if (trace->stutter_size(str_block_index) != 0)
+	  sample_stutter_counts[sample_label_[read_index]][trace->str_seq(str_block_index)]++;
 	sample_counts[sample_label_[read_index]]++;
       }
     }
-
-    /*
-    // TO DO: Experiment with non-spanning stutter identification
-    if (trace->stutter_size() != 0)
-      sample_stutter_counts[sample_label_[read_index]][trace->full_str_seq()]++;
-    sample_counts[sample_label_[read_index]]++;
-    */
   }
 
   std::set<std::string> candidate_set;
@@ -839,23 +844,6 @@ void SeqStutterGenotyper::get_stutter_candidate_alleles(std::ostream& logger, st
 	if (seq_iter->second >= 2 && 1.0*seq_iter->second/sample_counts[i] >= 0.15)
 	  candidate_set.insert(seq_iter->first);
   candidate_seqs = std::vector<std::string>(candidate_set.begin(), candidate_set.end());
-
-  /*
-  // Temporary for getting read information supporting new alleles
-  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
-    if (traced_alns[read_index] == NULL)
-      continue;
-    AlignmentTrace* trace = traced_alns[read_index];
-    if (trace->traced_aln().get_start() < (str_block->start() > 5 ? str_block->start() - 5 : 0))
-      if (trace->traced_aln().get_stop() > str_block->end() + 5)
-        if (trace->stutter_size() != 0)
-	  if (candidate_set.find(trace->str_seq()) != candidate_set.end())
-	    logger << sample_label_[read_index] << " " << trace->gt_index() << " " << trace->stutter_size() << " " << "\n"
-		   << trace->str_seq() << "\n"
-		   << trace->traced_aln().get_sequence() << "\n"
-		   << trace->hap_aln() << std::endl << std::endl;
-  }
-  */
 
   logger << "Identified " << candidate_seqs.size() << " additional candidate alleles from stutter artifacts" << "\n";
   for (unsigned int i = 0; i < candidate_seqs.size(); i++)
@@ -873,7 +861,7 @@ void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
       continue;
     AlignmentTrace* trace = traced_alns[read_index];
 
-    if (trace->stutter_size() == 0){
+    if (!trace->has_stutter()){
       bool use = false;
       use     |= (trace->flank_ins_size() == 0 && trace->flank_del_size() != 0);
       use     |= (trace->flank_ins_size() != 0 && trace->flank_del_size() == 0);
@@ -1034,11 +1022,11 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       trace = trace_iter->second;
     num_proc_alns[idx_1]++;
 
-    if (trace->stutter_size() != 0)
+    if (trace->has_stutter())
       num_reads_with_stutter[sample_label_[read_index]]++;
     if (trace->flank_ins_size() != 0 || trace->flank_del_size() != 0)
       num_reads_with_flank_indels[sample_label_[read_index]]++;
-    read_str_sizes.push_back(allele_bp_diffs[best_gt]+trace->stutter_size());
+    read_str_sizes.push_back(allele_bp_diffs[best_gt]+trace->total_stutter_size());
 
     if (visualize_left_alns)
       max_LL_alns_[idx_1].push_back(alns_[idx_1][idx_2]);

@@ -42,7 +42,7 @@ class HapAligner {
   std::string retrace(Haplotype* haplotype, const char* read_seq,
 		      int seq_len, int block_index, int base_index, int matrix_index, double* l_match_matrix,
 		      double* l_insert_matrix, double* l_deletion_matrix, int* best_artifact_size, int* best_artifact_pos,
-		      AlignmentTrace& trace, int& stutter_size, std::string& str_seq, std::string& full_str_seq, bool right_to_left);
+		      AlignmentTrace& trace);
 
  public:
   HapAligner(Haplotype* haplotype){
