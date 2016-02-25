@@ -223,8 +223,8 @@ void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, i
       if (iter->second >= MIN_STRONG_SAMPLES){
 	auto iter_1 = sample_counts.find(iter->first);
 	auto iter_2 = read_counts.find(iter->first);
-	logger << "Strong   stats: " << iter->first << " " << iter->second << " " << iter_1->second/alignments.size()
-	       << " " << iter_2->second << " " << iter_2->second*1.0/tot_reads << std::endl;
+	//logger << "Strong   stats: " << iter->first << " " << iter->second << " " << iter_1->second/alignments.size()
+	//       << " " << iter_2->second << " " << iter_2->second*1.0/tot_reads << std::endl;
 	sample_counts.erase(iter_1);
 	read_counts.erase(iter_2);
 	sequences.push_back(iter->first);
@@ -236,8 +236,8 @@ void generate_candidate_str_seqs(std::string& ref_seq, std::string& chrom_seq, i
     // Identify additional alleles satisfying thresholds
     for (auto iter = sample_counts.begin(); iter != sample_counts.end(); iter++){
       if (iter->second > MIN_FRAC_SAMPLES*tot_samples || read_counts[iter->first] > MIN_FRAC_READS*tot_reads){
-	logger << "Sequence stats: " << iter->first << " " << iter->first.size() << " "
-	       << iter->second*1.0/tot_samples << " " << read_counts[iter->first] << " " << read_counts[iter->first]*1.0/tot_reads << std::endl;
+	//logger << "Sequence stats: " << iter->first << " " << iter->first.size() << " "
+	//       << iter->second*1.0/tot_samples << " " << read_counts[iter->first] << " " << read_counts[iter->first]*1.0/tot_reads << std::endl;
 	sequences.push_back(iter->first);
 	if (ref_index == -1 && (iter->first.compare(ref_seq) == 0))
 	  ref_index = sequences.size()-1;
