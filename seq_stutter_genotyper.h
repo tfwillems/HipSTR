@@ -108,9 +108,6 @@ class SeqStutterGenotyper{
   // Cache of traced back alignments
   std::map<std::pair<int,int>, AlignmentTrace*> trace_cache_;
 
-  /* Combine reads with identical base sequences into a single representative alignment */
-  void combine_reads(std::vector<Alignment>& alignments, Alignment& pooled_aln);
-
   /* Compute the alignment probabilites between each read and each haplotype */
   double calc_align_probs();
 

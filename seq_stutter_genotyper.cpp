@@ -129,23 +129,6 @@ void SeqStutterGenotyper::remove_alleles(std::vector<int>& allele_indices){
   calc_log_sample_posteriors();
 }
 
-void SeqStutterGenotyper::combine_reads(std::vector<Alignment>& alignments, Alignment& pooled_aln){
-  assert(alignments.size() > 0);
-  pooled_aln.set_start(alignments[0].get_start());
-  pooled_aln.set_stop(alignments[0].get_stop());
-  pooled_aln.set_sequence(alignments[0].get_sequence());
-  pooled_aln.set_alignment(alignments[0].get_alignment());
-  pooled_aln.set_cigar_list(alignments[0].get_cigar_list());
-
-  // Utilize mean base quality scores for pooled alignment
-  std::vector<const std::string*> qual_ptrs;
-  for (unsigned int i = 0; i < alignments.size(); i++)
-    qual_ptrs.push_back(&(alignments[i].get_base_qualities()));
-  std::string mean_base_quals = base_quality_.average_base_qualities(qual_ptrs);
-  assert(mean_base_quals.size() == alignments[0].get_sequence().size());
-  pooled_aln.set_base_qualities(mean_base_quals);
-}
-
 void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> >& alignments, 
 			       std::vector< std::vector<double> >& log_p1, 
 			       std::vector< std::vector<double> >& log_p2,
@@ -166,7 +149,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   double locus_left_aln_time = clock();
   logger << "Left aligning reads..." << std::endl;
   std::map<std::string, std::pair<int,int> > seq_to_alns;
-  int read_index = 0, align_fail_count = 0, qual_filt_count = 0;
+  int read_index = 0, align_fail_count = 0;
   int bp_diff;
 
   // Minimum and maximum alignment boundaries
@@ -228,9 +211,6 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 
   if (align_fail_count != 0)
     logger << "Failed to left align " << align_fail_count << " out of " << num_reads_ << " reads" << std::endl;
-  if (qual_filt_count != 0)
-    logger << "Filtered " << qual_filt_count << " reads due to low overall base qualities." << std::endl
-	   << "If this value is high (>1% of reads), there may be an issue to with the base quality score encoding" << std::endl;
 
   double locus_hap_build_time = clock();
   std::vector<std::string> vcf_alleles;
@@ -907,8 +887,10 @@ void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
   std::map< std::pair<int,int>, int>  candidate_set;
   for (unsigned int i = 0; i < num_samples_; i++)
     for (auto indel_iter = sample_flank_indel_counts[i].begin(); indel_iter != sample_flank_indel_counts[i].end(); indel_iter++)
-      if (indel_iter->second >= 2 && 1.0*indel_iter->second/sample_counts[i] >= 0.15)
+      if (indel_iter->second >= 2 && 1.0*indel_iter->second/sample_counts[i] >= 0.15){
 	  candidate_set[indel_iter->first]++;
+	  std::cerr << sample_names_[i] << " " << indel_iter->first.first << " " << indel_iter->first.second << std::endl;
+      }
 
   if (candidate_set.size() != 0){
     for (auto candidate_iter = candidate_set.begin(); candidate_iter != candidate_set.end(); candidate_iter++){
@@ -927,7 +909,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   assert(haplotype_->num_blocks() == 3);
   assert(read_str_sizes.size() == 0);
 
-  //analyze_flank_indels(logger);
+  analyze_flank_indels(logger);
 
   if(log_allele_priors_ != NULL)
     assert(!output_gls && !output_pls); // These fields only make sense in the context of MLE estimation, not MAP estimation
@@ -1472,5 +1454,4 @@ void SeqStutterGenotyper::compute_bootstrap_qualities(int num_iter, std::vector<
   delete [] read_gt_LLs;
   double bootstrap_time  = (clock() - bootstrap_start)/CLOCKS_PER_SEC;
   total_bootstrap_time_ += bootstrap_time;
-  //std::cerr << "Bootstrapping time = " << bootstrap_time << std::endl;
 }
