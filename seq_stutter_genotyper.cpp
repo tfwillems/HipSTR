@@ -532,34 +532,75 @@ void SeqStutterGenotyper::write_vcf_header(std::string& full_command, std::vecto
 }
 
 void SeqStutterGenotyper::get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles){
-  assert(hap_blocks_.size() == 3 && alleles.size() == 0);
-  HapBlock* block = hap_blocks_[1];
-  int32_t start   = block->start(), end = block->end();
+  assert(alleles.size() == 0);
+
+  // Extract all the alleles
+  std::vector<std::string> allele_seqs;
+  do {
+    allele_seqs.push_back(uppercase(haplotype_->get_seq()));
+  } while(haplotype_->next());
+  haplotype_->reset();
+
+  // Trim from the left until the region boundary or a mismatched character
+  int32_t left_trim = 0;
+  int32_t start     = hap_blocks_.front()->start();
+  while (start + left_trim < region_->start()){
+    bool trim = true;
+    for (unsigned int i = 0; i < allele_seqs.size(); ++i){
+      if ((left_trim+1 >= allele_seqs[i].size()) || (allele_seqs[i][left_trim] != allele_seqs[0][left_trim])){
+	trim = false;
+	break;
+      }
+    }
+    if (!trim) break;
+    left_trim++;
+  }
+  start += left_trim;
+  for (unsigned int i = 0; i < allele_seqs.size(); ++i)
+    allele_seqs[i] = allele_seqs[i].substr(left_trim);
+
+  // Trim from the right until the region boundary or a mismatched character
+  int32_t right_trim = 0;
+  int32_t end        = hap_blocks_.back()->end();
+  while (end - right_trim > region_->stop()){
+    bool trim    = true;
+    int ref_size = allele_seqs[0].size();
+    for (unsigned int i = 0; i < allele_seqs.size(); ++i){
+      int alt_size = allele_seqs[i].size();
+      if ((right_trim+1 >= allele_seqs[i].size()) || (allele_seqs[i][alt_size-right_trim-1] != allele_seqs[0][ref_size-right_trim-1])){
+	trim = false;
+	break;
+      }
+    }
+    if (!trim) break;
+    right_trim++;
+  }
+  end -= right_trim;
+  for (unsigned int i = 0; i < allele_seqs.size(); ++i)
+    allele_seqs[i] = allele_seqs[i].substr(0, allele_seqs[i].size()-right_trim);
 
   std::string left_flank  = (start >= region_->start() ? uppercase(chrom_seq.substr(region_->start(), start-region_->start())) : "");
   std::string right_flank = (end <= region_->stop()    ? uppercase(chrom_seq.substr(end, region_->stop()-end)) : "");
   pos_ = std::min((int32_t)region_->start(), start);
-  
+
   // If necessary, add 1bp on the left so that all the alleles match the reference sequence
   if (left_flank.empty()){
     bool pad_left = false;
-    const std::string& ref_seq = block->get_seq(0);
-    for (unsigned int i = 1; i < block->num_options(); i++){
-      if (block->get_seq(i)[0] != ref_seq[0]){
+    for (unsigned int i = 1; i < allele_seqs.size(); ++i){
+      if (allele_seqs[i][0] != allele_seqs[0][0]){
 	pad_left = true;
 	break;
       }
     }
-
     if (pad_left){
       pos_ -= 1;
       left_flank = uppercase(chrom_seq.substr(pos_, 1));
     }
   }
 
-  for (unsigned int i = 0; i < block->num_options(); i++){
-    std::stringstream ss; 
-    ss << left_flank << block->get_seq(i) << right_flank;
+  for (unsigned int i = 0; i < allele_seqs.size(); ++i){
+    std::stringstream ss;
+    ss << left_flank << allele_seqs[i] << right_flank;
     alleles.push_back(ss.str());
   }
 
