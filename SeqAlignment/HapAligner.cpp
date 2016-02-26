@@ -56,6 +56,9 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
     }
 
     if (stutter_block){
+      int* artifact_size_ptr = best_artifact_size + seq_len*block_index;
+      int* artifact_pos_ptr  = best_artifact_pos  + seq_len*block_index;
+
       RepeatStutterInfo* rep_info   = haplotype->get_block(block_index)->get_repeat_info();
       int period                    = rep_info->get_period();
       int block_option              = haplotype->cur_index(block_index);
@@ -87,7 +90,7 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
 	// Consider valid range of insertions and deletions, including no stutter artifact
 	int art_idx    = 0;
 	double best_LL = IMPOSSIBLE;
-	best_artifact_size[j] = -10000;
+	artifact_size_ptr[j] = -10000;
 	for (int artifact_size = rep_info->max_deletion(); artifact_size <= rep_info->max_insertion(); artifact_size += period){
 	  int art_pos          = -1;
 	  int base_len         = std::min(block_len+artifact_size, j+1);
@@ -95,9 +98,9 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
 	  double pre_prob      = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
 	  block_probs[art_idx] = rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob;
 	  if (block_probs[art_idx] > best_LL){
-	    best_artifact_size[j] = artifact_size;
-	    best_artifact_pos[j]  = art_pos;
-	    best_LL               = block_probs[art_idx];
+	    artifact_size_ptr[j] = artifact_size;
+	    artifact_pos_ptr[j]  = art_pos;
+	    best_LL              = block_probs[art_idx];
 	  }
 	  art_idx++;
 	}
@@ -369,26 +372,29 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
   while (block_index >= 0){
     bool stutter_block = haplotype->get_block(block_index)->get_repeat_info() != NULL;
     if (stutter_block){
+      int* artifact_size_ptr = best_artifact_size + seq_len*block_index;
+      int* artifact_pos_ptr  = best_artifact_pos  + seq_len*block_index;
       std::stringstream str_ss, full_str_ss;
       const std::string& block_seq = haplotype->get_seq(block_index);
       int block_len    = block_seq.size();
-      int stutter_size = best_artifact_size[seq_index];
+      int stutter_size = artifact_size_ptr[seq_index];
       assert(matrix_type == MATCH && base_index+1 == block_len);
+
       int i = 0;
-      for (; i < std::min(seq_index+1, best_artifact_pos[seq_index]); i++){
+      for (; i < std::min(seq_index+1, artifact_pos_ptr[seq_index]); i++){
 	aln_ss      << "M";
 	str_ss      << read_seq[seq_index-i];
 	full_str_ss << read_seq[seq_index-i];
       }
-      if (best_artifact_size[seq_index] < 0)
-	aln_ss << std::string(-best_artifact_size[seq_index], 'D');
+      if (artifact_size_ptr[seq_index] < 0)
+	aln_ss << std::string(-artifact_size_ptr[seq_index], 'D');
       else
-	for (; i < std::min(seq_index+1, best_artifact_pos[seq_index] + best_artifact_size[seq_index]); i++){
+	for (; i < std::min(seq_index+1, artifact_pos_ptr[seq_index] + artifact_size_ptr[seq_index]); i++){
 	  aln_ss      << "I";
 	  str_ss      << read_seq[seq_index-i];
 	  full_str_ss << read_seq[seq_index-i];
 	}
-      for (; i < std::min(block_len + best_artifact_size[seq_index], seq_index+1); i++){
+      for (; i < std::min(block_len + artifact_size_ptr[seq_index], seq_index+1); i++){
 	aln_ss      << "M";
 	str_ss      << read_seq[seq_index-i];
 	full_str_ss << read_seq[seq_index-i];
@@ -398,7 +404,7 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
       // Add the non-spanned stutter block bases to generate what would be the full STR sequence if the read were longer
       // NOTE: Some weird edge case behavior can arise here if there's a stutter indel that's not spanned by the read.
       // In these very rare instances, the extracted string won't necessarily be correct
-      int block_seq_index = std::min(block_len-1, block_len-1+best_artifact_size[seq_index]-i);
+      int block_seq_index = std::min(block_len-1, block_len-1+artifact_size_ptr[seq_index]-i);
       while (block_seq_index >= 0)
 	full_str_ss << block_seq[block_seq_index--];
       std::string full_str_seq = full_str_ss.str();
@@ -415,12 +421,12 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
 	trace.add_str_data(block_index, stutter_size, str_seq, full_str_seq);
       }
 
-      if (block_len + best_artifact_size[seq_index] >= seq_index+1)
+      if (block_len + artifact_size_ptr[seq_index] >= seq_index+1)
 	return aln_ss.str(); // Sequence doesn't span stutter block
       else {
-	matrix_index -= (block_len + best_artifact_size[seq_index] + seq_len*block_len);
+	matrix_index -= (block_len + artifact_size_ptr[seq_index] + seq_len*block_len);
 	matrix_type   = MATCH;
-	seq_index    -= (block_len + best_artifact_size[seq_index]);
+	seq_index    -= (block_len + artifact_size_ptr[seq_index]);
       }
     }
     else {
@@ -565,16 +571,17 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 
   // Allocate scoring matrices based on the maximum haplotype size
   int max_hap_size          = fw_haplotype_->max_size();
+  int num_hap_blocks        = fw_haplotype_->num_blocks();
   double* l_match_matrix    = new double [seed_base*max_hap_size];
   double* l_insert_matrix   = new double [seed_base*max_hap_size];
   double* l_deletion_matrix = new double [seed_base*max_hap_size];
-  int* l_best_artifact_size = new int    [seed_base];
-  int* l_best_artifact_pos  = new int    [seed_base];
+  int* l_best_artifact_size = new int    [seed_base*num_hap_blocks];
+  int* l_best_artifact_pos  = new int    [seed_base*num_hap_blocks];
   double* r_match_matrix    = new double [(base_seq_len-seed_base-1)*max_hap_size];
   double* r_insert_matrix   = new double [(base_seq_len-seed_base-1)*max_hap_size];
   double* r_deletion_matrix = new double [(base_seq_len-seed_base-1)*max_hap_size];
-  int* r_best_artifact_size = new int    [(base_seq_len-seed_base-1)];
-  int* r_best_artifact_pos  = new int    [(base_seq_len-seed_base-1)];
+  int* r_best_artifact_size = new int    [(base_seq_len-seed_base-1)*num_hap_blocks];
+  int* r_best_artifact_pos  = new int    [(base_seq_len-seed_base-1)*num_hap_blocks];
   double max_LL             = -100000000;
 
   // Reverse bases and quality scores for the right flank
