@@ -14,4 +14,8 @@ bool GetIntBamTag(const BamTools::BamAlignment& aln, const std::string& tag_name
 
 bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment);
 
+bool startsWithSoftClip(const BamTools::BamAlignment& aln);
+
+bool endsWithSoftClip(const BamTools::BamAlignment& aln);
+
 #endif

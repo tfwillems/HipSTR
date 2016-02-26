@@ -139,3 +139,17 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
 
     return left_aligned;
 }
+
+
+
+bool startsWithSoftClip(const BamTools::BamAlignment& aln){
+  if (aln.CigarData.size() == 0)
+    return false;
+  return aln.CigarData.front().Type == 'S';
+}
+
+bool endsWithSoftClip(const BamTools::BamAlignment& aln){
+  if (aln.CigarData.size() == 0)
+    return false;
+  return aln.CigarData.back().Type == 'S';
+}

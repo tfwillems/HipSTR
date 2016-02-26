@@ -219,8 +219,15 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	low_qual_score++;
 	filter.append("LOW_BASE_QUALS");
       }
-      // Ignore read if it does not span the STR
-      else if (REQUIRE_SPANNING && (alignment.Position > region_iter->start() || alignment.GetEndPosition() < region_iter->stop())){
+      // Ignore read if it does not span the left boundary of the STR
+      // Don't filter reads with left softclips b/c they frequently span the STR
+      else if (REQUIRE_SPANNING && ((alignment.Position > region_iter->start()) && !startsWithSoftClip(alignment))){
+	not_spanning++;
+	filter.append("NOT_SPANNING");
+      }
+      // Ignore read if it does not span the right boundary of the STR
+      // Don't filter reads with right softclips b/c they frequently span the STR
+      else if (REQUIRE_SPANNING && ((alignment.GetEndPosition() < region_iter->stop()) && !endsWithSoftClip(alignment))){
 	not_spanning++;
 	filter.append("NOT_SPANNING");
       }
