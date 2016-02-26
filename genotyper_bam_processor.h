@@ -116,7 +116,7 @@ public:
     total_genotype_time_   = 0;
     locus_genotype_time_   = -1;
     max_flank_indel_frac_  = 1.0;
-    recalc_stutter_model_  = false;
+    recalc_stutter_model_  = true;//false;
   }
 
   ~GenotyperBamProcessor(){

@@ -37,7 +37,6 @@ class SeqStutterGenotyper{
   double* log_p2_;
   int* sample_label_;              // Sample index for each read
   int* pool_index_;                // Pool index for each read
-  StutterModel* stutter_model_;
   BaseQuality base_quality_;
   ReadPooler pooler_;
 
@@ -122,7 +121,7 @@ class SeqStutterGenotyper{
   void init(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 	    std::vector< std::vector<double> >& log_p1,
 	    std::vector< std::vector<double> >& log_p2,
-	    std::vector<std::string>& sample_names, std::string& chrom_seq, std::ostream& logger);
+	    std::vector<std::string>& sample_names, StutterModel& stutter_model, std::string& chrom_seq, std::ostream& logger);
 
   // Extract the sequences for each allele and the VCF start position
   void get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles);
@@ -217,15 +216,13 @@ class SeqStutterGenotyper{
     sample_names_ = sample_names;
     for (unsigned int i = 0; i < sample_names.size(); i++)
       sample_indices_.insert(std::pair<std::string,int>(sample_names[i], i));
-    stutter_model_      = stutter_model.copy();
     ref_vcf_            = ref_vcf;
     alleles_from_bams_  = true;
-    init(alignments, log_p1, log_p2, sample_names, chrom_seq, logger);
+    init(alignments, log_p1, log_p2, sample_names, stutter_model, chrom_seq, logger);
   }
 
   ~SeqStutterGenotyper(){
     delete region_;
-    delete stutter_model_;
     delete [] log_p1_;
     delete [] log_p2_;
     delete [] sample_label_;
@@ -255,7 +252,7 @@ class SeqStutterGenotyper{
   void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
 			bool output_bootstrap_qualities, bool output_gls, bool output_pls,
 			bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac,
-			bool visualize_left_alns, std::vector<int>& read_str_sizes,
+			bool visualize_left_alns,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 
 
@@ -269,10 +266,10 @@ class SeqStutterGenotyper{
   bool genotype(std::string& chrom_seq, std::ostream& logger);
 
   /*
-   * Recompute the stutter model using the PCR artifacts obtained from the ML alignments
+   * Recompute the stutter model(s) using the PCR artifacts obtained from the ML alignments
    * and regenotype the samples using this new model
   */
-  bool recompute_stutter_model(std::string& chrom_seq, std::ostream& logger, int max_em_iter, double abs_ll_converge, double frac_ll_converge);
+  bool recompute_stutter_models(std::string& chrom_seq, std::ostream& logger, int max_em_iter, double abs_ll_converge, double frac_ll_converge);
 };
 
 #endif

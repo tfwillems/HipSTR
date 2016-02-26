@@ -31,20 +31,21 @@ class RepeatStutterInfo {
     period_        = period;
     max_ins_       = MAX_STUTTER_REPEAT_INS*period_;
     max_del_       = MAX_STUTTER_REPEAT_DEL*period_;
-    stutter_model_ = stutter_model;
+    stutter_model_ = stutter_model->copy();
     allele_sizes_.push_back(ref_allele.size());
   }
 
-  RepeatStutterInfo* clone(){
-    RepeatStutterInfo* copy = new RepeatStutterInfo();
-    copy->period_       = period_;
-    copy->max_ins_      = max_ins_;
-    copy->max_del_      = max_del_;
-    copy->allele_sizes_ = allele_sizes_;
-    return copy;
+  ~RepeatStutterInfo(){
+    if (stutter_model_ != NULL)
+      delete stutter_model_;
   }
 
-  inline void set_stutter_model(StutterModel* model)  { stutter_model_ = model; }
+  void set_stutter_model(StutterModel* model){
+    if (stutter_model_ != NULL)
+      delete stutter_model_;
+    stutter_model_ = model->copy();
+  }
+
   inline StutterModel* get_stutter_model()     const  { return stutter_model_;  }
   inline const int get_period()                const  { return period_;         }
   inline const int max_insertion()             const  { return max_ins_;        }

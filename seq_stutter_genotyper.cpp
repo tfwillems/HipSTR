@@ -133,6 +133,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 			       std::vector< std::vector<double> >& log_p1, 
 			       std::vector< std::vector<double> >& log_p2,
 			       std::vector<std::string>& sample_names,
+			       StutterModel& stutter_model,
 			       std::string& chrom_seq, std::ostream& logger){
   // Compute the total number of reads
   num_reads_ = 0;
@@ -239,7 +240,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
       assert(num_alleles_ > 0);
 
       // Construct the haplotype using the set of VCF alleles
-      haplotype_ = generate_haplotype(pos_, *region_, MAX_REF_FLANK_LEN, chrom_seq, alleles_, stutter_model_, hap_blocks_, logger);
+      haplotype_ = generate_haplotype(pos_, *region_, MAX_REF_FLANK_LEN, chrom_seq, alleles_, &stutter_model, hap_blocks_, logger);
       
       // TO DO: Set vector based on proximity of indels to haplotype
       call_sample_ = std::vector<bool>(num_samples_, true);
@@ -263,7 +264,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
       for (unsigned int j = 0; j < alns_[i].size(); j++)
 	if (use_for_haps_[i][j])
 	  gen_hap_alns[i].push_back(alns_[i][j]);
-    haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, gen_hap_alns, vcf_alleles, stutter_model_,
+    haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, gen_hap_alns, vcf_alleles, &stutter_model,
 				      alleles_from_bams_, hap_blocks_, call_sample_, logger);
     call_sample_ =  std::vector<bool>(num_samples_, true); // Ignore these flags (for now)
     num_alleles_ = haplotype_->num_combs();
@@ -332,6 +333,7 @@ void SeqStutterGenotyper::calc_hap_aln_probs(Haplotype* haplotype, double* log_a
 
 bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::string& chrom_seq, std::ostream& logger){
   assert(haplotype_->num_blocks() == 3);
+  assert(hap_blocks_[1]->get_repeat_info() != NULL);
 
   // Look for candidate alleles present in stutter artifacts
   std::vector<std::string> stutter_seqs;
@@ -345,7 +347,8 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::string& chrom_seq
     // Construct a new haplotype containing only stutter alleles and align each read to it
     std::vector<HapBlock*> blocks;
     blocks.push_back(hap_blocks_[0]);
-    blocks.push_back(new RepeatBlock(hap_blocks_[1]->start(), hap_blocks_[1]->end(), stutter_seqs[0], region_->period(), stutter_model_));
+    blocks.push_back(new RepeatBlock(hap_blocks_[1]->start(), hap_blocks_[1]->end(), stutter_seqs[0], region_->period(),
+				     hap_blocks_[1]->get_repeat_info()->get_stutter_model()));
     blocks.push_back(hap_blocks_[2]);
     for (unsigned int i = 1; i < stutter_seqs.size(); i++)
       blocks[1]->add_alternate(stutter_seqs[i]);
@@ -362,7 +365,8 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::string& chrom_seq
     for (unsigned int i = 0; i < stutter_seqs.size(); i++)
       str_seqs.push_back(stutter_seqs[i]);
     std::sort(str_seqs.begin()+1, str_seqs.end(), stringLengthLT);
-    HapBlock* str_block = new RepeatBlock(hap_blocks_[1]->start(), hap_blocks_[1]->end(), hap_blocks_[1]->get_seq(0), region_->period(), stutter_model_);
+    HapBlock* str_block = new RepeatBlock(hap_blocks_[1]->start(), hap_blocks_[1]->end(), hap_blocks_[1]->get_seq(0), region_->period(),
+					  hap_blocks_[1]->get_repeat_info()->get_stutter_model());
     for (unsigned int i = 1; i < str_seqs.size(); i++)
       str_block->add_alternate(str_seqs[i]);
 
@@ -914,7 +918,7 @@ void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
     for (auto indel_iter = sample_flank_indel_counts[i].begin(); indel_iter != sample_flank_indel_counts[i].end(); indel_iter++)
       if (indel_iter->second >= 2 && 1.0*indel_iter->second/sample_counts[i] >= 0.15){
 	  candidate_set[indel_iter->first]++;
-	  std::cerr << sample_names_[i] << " " << indel_iter->first.first << " " << indel_iter->first.second << std::endl;
+	  //std::cerr << sample_names_[i] << " " << indel_iter->first.first << " " << indel_iter->first.second << std::endl;
       }
 
   if (candidate_set.size() != 0){
@@ -929,10 +933,9 @@ void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
 					   bool output_bootstrap_qualities, bool output_gls, bool output_pls,
 					   bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac,
-					   bool visualize_left_alns, std::vector<int>& read_str_sizes,
+					   bool visualize_left_alns,
 					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
   assert(haplotype_->num_blocks() == 3);
-  assert(read_str_sizes.size() == 0);
 
   analyze_flank_indels(logger);
 
@@ -1033,7 +1036,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     if (seed_positions_[read_index] < 0){
       read_LL_ptr += num_alleles_;
       num_proc_alns[sample_label_[read_index]]++;
-      read_str_sizes.push_back(-999);
       continue;
     }
 
@@ -1063,7 +1065,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       num_reads_with_stutter[sample_label_[read_index]]++;
     if (trace->flank_ins_size() != 0 || trace->flank_del_size() != 0)
       num_reads_with_flank_indels[sample_label_[read_index]]++;
-    read_str_sizes.push_back(allele_bp_diffs[best_gt]+trace->total_stutter_size());
 
     if (visualize_left_alns)
       max_LL_alns_[idx_1].push_back(alns_[idx_1][idx_2]);
@@ -1092,7 +1093,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     // but only for reads that span the original repeat region by 5 bp
     if (trace->traced_aln().get_start() < (region_->start() > 4 ? region_->start()-4 : 0))
       if (trace->traced_aln().get_stop() > region_->stop() + 4)
-	ml_bps_per_sample[sample_label_[read_index]].push_back(read_str_sizes.back());
+	ml_bps_per_sample[sample_label_[read_index]].push_back(allele_bp_diffs[best_gt]+trace->total_stutter_size());
 
     read_LL_ptr += num_alleles_;
   }
@@ -1156,13 +1157,18 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   // Add QUAL and FILTER fields
   out << "\t" << "." << "\t" << ".";
 
+  // Obtain relevant stutter model. For now, get it from first repeat block
+  // TO DO: Generalize this
+  assert(haplotype_->get_block(1)->get_repeat_info() != NULL);
+  StutterModel* stutter_model = haplotype_->get_block(1)->get_repeat_info()->get_stutter_model();
+
   // Add INFO field items
-  out << "\tINFRAME_PGEOM=" << stutter_model_->get_parameter(true,  'P') << ";" 
-      << "INFRAME_UP="      << stutter_model_->get_parameter(true,  'U') << ";" 
-      << "INFRAME_DOWN="    << stutter_model_->get_parameter(true,  'D') << ";" 
-      << "OUTFRAME_PGEOM="  << stutter_model_->get_parameter(false, 'P') << ";" 
-      << "OUTFRAME_UP="     << stutter_model_->get_parameter(false, 'U') << ";" 
-      << "OUTFRAME_DOWN="   << stutter_model_->get_parameter(false, 'D') << ";"
+  out << "\tINFRAME_PGEOM=" << stutter_model->get_parameter(true,  'P') << ";"
+      << "INFRAME_UP="      << stutter_model->get_parameter(true,  'U') << ";"
+      << "INFRAME_DOWN="    << stutter_model->get_parameter(true,  'D') << ";"
+      << "OUTFRAME_PGEOM="  << stutter_model->get_parameter(false, 'P') << ";"
+      << "OUTFRAME_UP="     << stutter_model->get_parameter(false, 'U') << ";"
+      << "OUTFRAME_DOWN="   << stutter_model->get_parameter(false, 'D') << ";"
       << "START="           << region_->start()+1 << ";"
       << "END="             << region_->stop()    << ";"
       << "PERIOD="          << region_->period()  << ";"
@@ -1362,48 +1368,47 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   }
 }
 
-
-bool SeqStutterGenotyper::recompute_stutter_model(std::string& chrom_seq, std::ostream& logger,
+bool SeqStutterGenotyper::recompute_stutter_models(std::string& chrom_seq, std::ostream& logger,
 						  int max_em_iter, double abs_ll_converge, double frac_ll_converge){
   logger << "Retraining EM stutter genotyper using maximum likelihood alignments" << std::endl;
+  std::vector<AlignmentTrace*> traced_alns;
+  retrace_alignments(logger, traced_alns);
+  assert(traced_alns.size() == num_reads_);
 
-  // Get the artifact sizes observed in each read
-  std::vector<std::string> empty_sample_names;
-  std::vector<int> read_str_sizes;
-  write_vcf_record(empty_sample_names, false, chrom_seq, false, false, false, false, false, false, false, 1.0, false, read_str_sizes, std::cerr, std::cerr, logger);
-  max_LL_alns_.clear(); // Need to clear this data structure for a future call to write_vcf_record to work
-  assert(read_str_sizes.size() == num_reads_);
+  for (int block_index = 0; block_index < haplotype_->num_blocks(); ++block_index){
+    HapBlock* block = haplotype_->get_block(block_index);
+    if (block->get_repeat_info() == NULL)
+      continue;
 
-  std::vector< std::vector<int> > str_num_bps(num_samples_);
-  std::vector< std::vector<double> > str_log_p1s(num_samples_), str_log_p2s(num_samples_);
-  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
-    if (read_str_sizes[read_index] != -999){
-      str_num_bps[sample_label_[read_index]].push_back(read_str_sizes[read_index]);
-      str_log_p1s[sample_label_[read_index]].push_back(log_p1_[read_index]);
-      str_log_p2s[sample_label_[read_index]].push_back(log_p2_[read_index]);
+    std::vector< std::vector<int> > str_num_bps(num_samples_);
+    std::vector< std::vector<double> > str_log_p1s(num_samples_), str_log_p2s(num_samples_);
+    for (unsigned int read_index = 0; read_index < num_reads_; ++read_index){
+      AlignmentTrace* trace = traced_alns[read_index];
+      if (trace != NULL){
+	if (trace->traced_aln().get_start() < block->start()){
+	  if (trace->traced_aln().get_stop() > block->end()){
+	    str_num_bps[sample_label_[read_index]].push_back(((int)trace->str_seq(block_index).size())+trace->stutter_size(block_index));
+	    str_log_p1s[sample_label_[read_index]].push_back(log_p1_[read_index]);
+	    str_log_p2s[sample_label_[read_index]].push_back(log_p2_[read_index]);
+	  }
+	}
+      }
     }
-  }
 
-  EMStutterGenotyper length_genotyper(region_->chrom(), region_->start(), region_->stop(), haploid_, str_num_bps, str_log_p1s, str_log_p2s, sample_names_, region_->period(), 0);
-  bool trained = length_genotyper.train(max_em_iter, abs_ll_converge, frac_ll_converge, false, logger);
-  if (trained){
-    delete stutter_model_;
-    stutter_model_ = length_genotyper.get_stutter_model()->copy();
-    logger << "Learned stutter model: " << *stutter_model_ << std::endl;
+    int period = block->get_repeat_info()->get_period();
+    EMStutterGenotyper length_genotyper(region_->chrom(), region_->start(), region_->stop(), haploid_, str_num_bps, str_log_p1s, str_log_p2s, sample_names_, period, 0);
+    bool trained = length_genotyper.train(max_em_iter, abs_ll_converge, frac_ll_converge, false, logger);
+    if (!trained){
+      logger << "Retraining stutter model training failed for locus " << region_->chrom() << ":" << region_->start() << "-" << region_->stop() << std::endl;
+      return false;
+    }
 
-    // Replace the stutter model in the repeat block
-    assert(haplotype_->num_blocks() == 3);
-    assert(haplotype_->get_block(1)->get_repeat_info() != NULL);
-    trace_cache_.clear();
-    ((RepeatBlock*)(haplotype_->get_block(1)))->get_repeat_info()->set_stutter_model(stutter_model_);
-    return genotype(chrom_seq, logger);
+    logger << "Learned stutter model: " << (*length_genotyper.get_stutter_model()) << std::endl;
+    block->get_repeat_info()->set_stutter_model(length_genotyper.get_stutter_model());
   }
-  else {
-    logger << "Retraining stutter model training failed for locus " << region_->chrom() << ":" << region_->start() << "-" << region_->stop() << std::endl;
-    return false;
-  }
+  trace_cache_.clear();
+  return genotype(chrom_seq, logger);
 }
-
 
 void SeqStutterGenotyper::compute_bootstrap_qualities(int num_iter, std::vector<double>& bootstrap_qualities){
   assert(bootstrap_qualities.size() == 0);
