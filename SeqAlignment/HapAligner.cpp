@@ -608,16 +608,16 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
     if (LL > max_LL){
       max_LL = LL;
       if (retrace_aln){
+	std::string left_aln, right_aln, read_aln_to_hap;
+	int fw_seed_block, fw_seed_coord, rev_seed_block, rev_seed_coord;
+
 	// Retrace sequence to left of seed (if appropriate)
 	assert(max_index >= 0 && max_index < fw_haplotype_->cur_size());
-	int fw_seed_block, fw_seed_coord;
 	fw_haplotype_->get_coordinates(max_index, fw_seed_block, fw_seed_coord);
-	assert(fw_seed_block != 1);
-	int l_matrix_index = seed_base*max_index - 1;
-	std::string left_aln;
 	if (max_index == 0)
 	  left_aln = std::string(seed_base, 'S'); // Soft clip read to left of seed as it extends beyond haplotype. Don't retrace
 	else {
+	  int l_matrix_index = seed_base*max_index - 1;
 	  if (fw_seed_coord == 0){
 	    int prev_block_size = fw_haplotype_->get_seq(fw_seed_block-1).size();
 	    left_aln = retrace(fw_haplotype_, base_seq, seed_base, fw_seed_block-1, prev_block_size-1, l_matrix_index, l_match_matrix, l_insert_matrix, l_deletion_matrix,
@@ -627,20 +627,17 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	    left_aln = retrace(fw_haplotype_, base_seq, seed_base, fw_seed_block, fw_seed_coord-1, l_matrix_index, l_match_matrix, l_insert_matrix, l_deletion_matrix,
 			       l_best_artifact_size, l_best_artifact_pos, trace);
 	}
-	std::reverse(left_aln.begin(), left_aln.end());   // Alignment is backwards for left flank
+	std::reverse(left_aln.begin(), left_aln.end()); // Alignment is backwards for left flank
 	assert(left_aln.size() - std::count(left_aln.begin(), left_aln.end(), 'D') == seed_base);
 
 	// Retrace sequence to right of seed (if appropriate)
 	int rev_max_index = fw_haplotype_->cur_size()-1-max_index;
 	assert(rev_max_index >= 0 && rev_max_index < rev_haplotype_->cur_size());
-	int rev_seed_block, rev_seed_coord;
 	rev_haplotype_->get_coordinates(rev_max_index, rev_seed_block, rev_seed_coord);
-	assert(rev_seed_block != -1);
-	int r_matrix_index = (base_seq_len-1-seed_base)*rev_max_index - 1;
-	std::string right_aln;
 	if (rev_max_index == 0)
 	  right_aln = std::string(base_seq_len-1-seed_base, 'S'); // Soft clip read to right of seed as it extends beyond haplotype. Don't retrace
 	else {
+	  int r_matrix_index = (base_seq_len-1-seed_base)*rev_max_index - 1;
 	  if (rev_seed_coord == 0){
 	    int prev_block_size = rev_haplotype_->get_seq(rev_seed_block-1).size();
 	    right_aln = retrace(rev_haplotype_, rev_rseq.c_str(), base_seq_len-1-seed_base, rev_seed_block-1, prev_block_size-1, r_matrix_index, r_match_matrix,
@@ -652,9 +649,8 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	}
 	assert(right_aln.size() - std::count(right_aln.begin(), right_aln.end(), 'D') == base_seq_len-1-seed_base);
 
-	std::string read_aln_to_hap = left_aln + "M" + right_aln;
+	read_aln_to_hap = left_aln + "M" + right_aln;
 	trace.set_hap_aln(read_aln_to_hap);
-
 	stitch_alignment_trace(fw_haplotype_->get_block(0)->start(), fw_haplotype_->get_aln_info(),
 			       read_aln_to_hap, max_index, seed_base, aln, trace.traced_aln());
       }
