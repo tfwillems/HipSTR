@@ -431,9 +431,13 @@ bool SeqStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger)
   // If the smallest stutter block sequence is smaller than the maximum deletion size, the stutter aligner will fail
   // We could extend the stutter block to prevent this, but if this happens, the locus is probably not very high quality
   // As a result, for now, just abort the genotyping for this locus
-  RepeatBlock* rep_block = (RepeatBlock *)haplotype_->get_block(1);
-  if (rep_block->min_size() < std::abs(rep_block->get_repeat_info()->max_deletion()))
-    return false;
+  for (int i = 0; i < haplotype_->num_blocks(); ++i){
+    HapBlock* hap_block = haplotype_->get_block(i);
+    if (hap_block->get_repeat_info() == NULL)
+      continue;
+    if (hap_block->min_size() < std::abs(hap_block->get_repeat_info()->max_deletion()))
+      return false;
+  }
 
   init_alignment_model();
   if (pool_identical_seqs_){
@@ -730,15 +734,6 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(){
 }
 
 bool SeqStutterGenotyper::use_read(AlignmentTrace* trace){
-  /*
-  // Temporary to explore filtering out non-spanning reads
-  if (true){
-    if (trace->traced_aln().get_start() > region_->start())
-      return false;
-    if (trace->traced_aln().get_stop() < region_->stop())
-      return false;
-  }
-  */
   return true;
 }
 
@@ -801,7 +796,8 @@ void SeqStutterGenotyper::filter_alignments(std::ostream& logger, std::vector<in
   }
 
   calc_log_sample_posteriors();
-  logger << "Filtered " << filt_count << " out of " << filt_count+keep_count << " reads based on their ML alignment tracebacks" << "\n";
+  if (filt_count != 0)
+    logger << "Filtered " << filt_count << " out of " << filt_count+keep_count << " reads based on their ML alignment tracebacks" << "\n";
 }
 
 void SeqStutterGenotyper::retrace_alignments(std::ostream& logger, std::vector<AlignmentTrace*>& traced_alns){
