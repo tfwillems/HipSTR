@@ -937,7 +937,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
   assert(haplotype_->num_blocks() == 3);
 
-  analyze_flank_indels(logger);
+  //analyze_flank_indels(logger);
 
   if(log_allele_priors_ != NULL)
     assert(!output_gls && !output_pls); // These fields only make sense in the context of MLE estimation, not MAP estimation

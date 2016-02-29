@@ -21,8 +21,8 @@ const std::string SUBOPT_ALN_SCORE_TAG  = "XS";
 
 const std::string BamProcessor::PASSES_FILTERS_TAG_NAME = "PF";
 const std::string BamProcessor::PASSES_FILTERS_TAG_TYPE = "c";
-const int8_t BamProcessor::PASSES_FILTERS_TRUE     = 1;
-const int8_t BamProcessor::PASSES_FILTERS_FALSE    = 0;
+const int8_t BamProcessor::PASSES_FILTERS_TRUE          = 1;
+const int8_t BamProcessor::PASSES_FILTERS_FALSE         = 0;
 
 void BamProcessor::add_passes_filters_tag(BamTools::BamAlignment& aln, bool passes){
   if (aln.HasTag(PASSES_FILTERS_TAG_NAME))
@@ -70,13 +70,16 @@ void BamProcessor::get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::B
   // When this is the case, we should check that the mate pair has a decent score relative to the suboptimal score
   // Otherwise, we may be including mismapped reads
   if (!aln_2.HasTag(ALT_MAP_TAG)){
-    int primary_score, subopt_score, mate_primary_score, mate_subopt_score;
-    if(!GetIntBamTag(aln_1, PRIMARY_ALN_SCORE_TAG, &primary_score))      printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
-    if(!GetIntBamTag(aln_1, SUBOPT_ALN_SCORE_TAG,  &subopt_score))       printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
-    if(!GetIntBamTag(aln_2, PRIMARY_ALN_SCORE_TAG, &mate_primary_score)) printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
-    if(!GetIntBamTag(aln_2, SUBOPT_ALN_SCORE_TAG,  &mate_subopt_score))  printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
-    if (mate_primary_score - mate_subopt_score < 10)
-      return;
+    // If the BAM doesn't contain the alignment score flags, we can't enforce this check
+    if (aln_2.HasTag(PRIMARY_ALN_SCORE_TAG) && aln_2.HasTag(SUBOPT_ALN_SCORE_TAG)){
+      int primary_score, subopt_score, mate_primary_score, mate_subopt_score;
+      if(!GetIntBamTag(aln_1, PRIMARY_ALN_SCORE_TAG, &primary_score))      printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
+      if(!GetIntBamTag(aln_1, SUBOPT_ALN_SCORE_TAG,  &subopt_score))       printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
+      if(!GetIntBamTag(aln_2, PRIMARY_ALN_SCORE_TAG, &mate_primary_score)) printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
+      if(!GetIntBamTag(aln_2, SUBOPT_ALN_SCORE_TAG,  &mate_subopt_score))  printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
+      if (mate_primary_score - mate_subopt_score < 10)
+	return;
+    }
   }
 
   std::vector< std::pair<std::string, int32_t> > pairs_1, pairs_2;
