@@ -16,7 +16,6 @@
 #include "insert_size.h"
 #include "region.h"
 
-
 void parse_command_line_args(int argc, char** argv,    std::string& input_file, std::string& output_file, 
 			     std::string& region_file, std::string& insert_stats_file, int& max_diff, int& paired_mode, int& region_pad){
    if (argc == 1){
@@ -58,7 +57,10 @@ void parse_command_line_args(int argc, char** argv,    std::string& input_file, 
       max_diff = atoi(optarg);
       break;
     case 'i':
-      input_file = std::string(optarg);
+      if (std::string(optarg).compare("-") == 0)
+	input_file = "stdin";
+      else
+	input_file = std::string(optarg);
       break;
     case 'o':
       output_file = std::string(optarg);
