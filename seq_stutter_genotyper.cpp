@@ -155,11 +155,13 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 
   // Minimum and maximum alignment boundaries
   int32_t min_start = INT_MAX, max_stop = INT_MIN;
-
   for (unsigned int i = 0; i < alignments.size(); ++i){
     alns_.push_back(std::vector<Alignment>());
     use_for_haps_.push_back(std::vector<bool>());
     for (unsigned int j = 0; j < alignments[i].size(); ++j, ++read_index){
+      // Trim alignment if it extends very far upstream or downstream of the STR. For tractability, we limit it to 40bp
+      trimAlignment(alignments[i][j], (region_->start() > 40 ? region_->start()-40 : 1), region_->stop()+40);
+
       auto iter      = seq_to_alns.find(alignments[i][j].QueryBases);
       bool have_prev = (iter != seq_to_alns.end());
       if (have_prev)

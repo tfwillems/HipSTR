@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "AlignmentOps.h"
 #include "../error.h"
 #include "NWNoRefEndPenalty.h"
@@ -141,7 +143,6 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
 }
 
 
-
 bool startsWithSoftClip(const BamTools::BamAlignment& aln){
   if (aln.CigarData.size() == 0)
     return false;
@@ -152,4 +153,83 @@ bool endsWithSoftClip(const BamTools::BamAlignment& aln){
   if (aln.CigarData.size() == 0)
     return false;
   return aln.CigarData.back().Type == 'S';
+}
+
+
+/*
+ *  Trim an alignment that extends too far upstream or downstream of the provided region. Modifies the following
+ *  members of the BamAlignment: Position, CigarData, Qualities, AlignedBases, QueryBases, Length
+ */
+void trimAlignment(BamTools::BamAlignment& aln, int32_t min_read_start, int32_t max_read_stop){
+  int ltrim = 0, aligned_bases_ltrim = 0;
+  int32_t start_pos = aln.Position;
+  while(start_pos < min_read_start && aln.CigarData.size() > 0){
+    switch(aln.CigarData.front().Type){
+    case 'M': case '=': case 'X':
+      ltrim++;
+      aligned_bases_ltrim++;
+      start_pos++;
+      break;
+    case 'D':
+      aligned_bases_ltrim++;
+      start_pos++;
+      break;
+    case 'I':
+      ltrim++;
+      aligned_bases_ltrim++;
+      break;
+    case 'S':
+      ltrim++;
+      break;
+    case 'H':
+      break;
+    default:
+      printErrorAndDie("Invalid CIGAR option encountered in trimAlignment");
+      break;
+    }
+    if(aln.CigarData.front().Length == 1)
+      aln.CigarData.erase(aln.CigarData.begin(), aln.CigarData.begin()+1);
+    else
+      aln.CigarData.front().Length--;
+  }
+  aln.Position = start_pos;
+
+  int rtrim = 0, aligned_bases_rtrim = 0;
+  int32_t end_pos = aln.GetEndPosition();
+  while(end_pos > max_read_stop && aln.CigarData.size() > 0){
+    switch(aln.CigarData.back().Type){
+    case 'M': case '=': case 'X':
+      rtrim++;
+      aligned_bases_rtrim++;
+      end_pos--;
+      break;
+    case 'D':
+      aligned_bases_rtrim++;
+      end_pos--;
+      break;
+    case 'I':
+      rtrim++;
+      aligned_bases_rtrim++;
+      break;
+    case 'S':
+      rtrim++;
+      break;
+    case 'H':
+      break;
+    default:
+      printErrorAndDie("Invalid CIGAR option encountered in trimAlignment");
+      break;
+    }
+    if(aln.CigarData.back().Length == 1)
+      aln.CigarData.pop_back();
+    else
+      aln.CigarData.back().Length--;
+  }
+
+  assert(ltrim+rtrim <= aln.QueryBases.size());
+  assert(aligned_bases_ltrim + aligned_bases_rtrim <= aln.AlignedBases.size());
+  aln.QueryBases   = aln.QueryBases.substr(ltrim, aln.QueryBases.size()-ltrim-rtrim);
+  aln.AlignedBases = aln.AlignedBases.substr(aligned_bases_ltrim, aln.AlignedBases.size()-aligned_bases_ltrim-aligned_bases_rtrim);
+  aln.Qualities    = aln.Qualities.substr(ltrim, aln.Qualities.size()-ltrim-rtrim);
+  aln.Length      -= (ltrim + rtrim);
 }

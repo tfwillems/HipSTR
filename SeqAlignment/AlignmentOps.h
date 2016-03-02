@@ -7,7 +7,6 @@
 #include "../bamtools/include/api/BamAlignment.h"
 #include "AlignmentData.h"
 
-
 extern const int ALIGN_WINDOW_WIDTH;
 
 bool GetIntBamTag(const BamTools::BamAlignment& aln, const std::string& tag_name, int* destination);
@@ -17,5 +16,7 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
 bool startsWithSoftClip(const BamTools::BamAlignment& aln);
 
 bool endsWithSoftClip(const BamTools::BamAlignment& aln);
+
+void trimAlignment(BamTools::BamAlignment& aln, int32_t min_read_start, int32_t max_read_stop);
 
 #endif
