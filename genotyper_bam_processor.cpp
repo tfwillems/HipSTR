@@ -55,7 +55,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   // Extract bp differences and phasing probabilities for each read if we 
   // need to utilize the length-based EM genotyper for stutter model training or genotyping
   int skip_count = 0;
-  if (!read_stutter_models_ || !use_seq_aligner_){
+  if (((def_stutter_model_ == NULL) && !read_stutter_models_) || !use_seq_aligner_){
     for (unsigned int i = 0; i < alignments.size(); ++i){
       for (unsigned int j = 0; j < alignments[i].size(); ++j){
 	int bp_diff;
@@ -90,7 +90,12 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   StutterModel* stutter_model          = NULL;
   EMStutterGenotyper* length_genotyper = NULL;
   locus_stutter_time_ = clock();
-  if (read_stutter_models_){
+  if (def_stutter_model_ != NULL){
+    log("Using default stutter model");
+    stutter_model = def_stutter_model_->copy();
+    stutter_model->set_period(region.period());
+  }
+  else if (read_stutter_models_){
     // Attempt to extact model from dictionary
     auto model_iter = stutter_models_.find(region);
     if (model_iter != stutter_models_.end())

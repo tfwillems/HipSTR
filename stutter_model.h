@@ -72,6 +72,7 @@ class StutterModel {
   double log_stutter_geq(int sample_bps, int min_read_bps);
 
   int period(){ return motif_len_; }
+  void set_period(int period){ motif_len_ = period; }
 
   void write(std::ostream& output);
 

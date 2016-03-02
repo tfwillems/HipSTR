@@ -84,6 +84,8 @@ private:
   // Simple object to track total times consumed by various processes
   ProcessTimer process_timer_;
 
+  // If it is not null, this stutter model will be used for each locus
+  StutterModel* def_stutter_model_;
 
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups, bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
@@ -117,12 +119,15 @@ public:
     locus_genotype_time_   = -1;
     max_flank_indel_frac_  = 1.0;
     recalc_stutter_model_  = false;
+    def_stutter_model_     = NULL;
   }
 
   ~GenotyperBamProcessor(){
     for (auto iter = stutter_models_.begin(); iter != stutter_models_.end(); iter++)
       delete iter->second;
     stutter_models_.clear();
+    if (def_stutter_model_ != NULL)
+      delete def_stutter_model_;
   }
 
   double total_stutter_time()  { return total_stutter_time_;  }
@@ -140,13 +145,18 @@ public:
   void visualize_left_alns(){ viz_left_alns_ = true;      }
   void pool_sequences()     { pool_seqs_ = true;          }
 
-  void add_haploid_chrom(std::string chrom){
-    haploid_chroms_.insert(chrom);
+  void add_haploid_chrom(std::string chrom){ haploid_chroms_.insert(chrom); }
+  void set_max_flank_indel_frac(float frac){  max_flank_indel_frac_ = frac; }
+  bool has_default_stutter_model()         { return def_stutter_model_ != NULL; }
+  void set_default_stutter_model(double inframe_geom,  double inframe_up,  double inframe_down,
+				 double outframe_geom, double outframe_up, double outframe_down){
+    if (def_stutter_model_ != NULL)
+      delete def_stutter_model_;
+
+    // The motif length will vary for each locus, but we'll use 2 so that we can utilize the constructor
+    def_stutter_model_ = new StutterModel(inframe_geom, inframe_up, inframe_down, outframe_geom, outframe_up, outframe_down, 2);
   }
 
-  void set_max_flank_indel_frac(float frac){
-    max_flank_indel_frac_ = frac;
-  }
 
   void set_output_viz(std::string& viz_file){
     output_viz_ = true;

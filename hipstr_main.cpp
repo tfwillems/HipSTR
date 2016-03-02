@@ -100,6 +100,8 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--no-pool-seqs                        "  << "\t" << "Do not merge reads with identical sequences and combine their base quality scores."  << "\n"
 	    << "\t" << "                                      "  << "\t" << "  By default, pooled reads will be aligned using the haplotype aligner instead"      << "\n"
 	    << "\t" << "                                      "  << "\t" << "  of the reads themselves, resulting in a large speedup."                            << "\n"
+	    << "\t" << "--def-stutter-model                   "  << "\t" << "For each locus, use a stutter model with PGEOM=0.9, UP=0.05, DOWN=0.05 for "         << "\n"
+	    << "\t" << "                                      "  << "\t" << " in-frame artifacts and PGEOM=0.9, UP=0.01, DOWN=0.01 for out-of-frame artifacts"    << "\n"
 	    << "\t" << "--version                             "  << "\t" << "Print HipSTR version and exit"                                                       << "\n"  
 	    << "\n";
 }
@@ -109,7 +111,7 @@ void parse_command_line_args(int argc, char** argv,
 			     std::string& fasta_dir,         std::string& region_file,           std::string& snp_vcf_file,  std::string& chrom,
 			     std::string& bam_pass_out_file, std::string& bam_filt_out_file,
 			     std::string& str_vcf_out_file,  std::string& allele_vcf_out_file,   std::string& log_file,
-			     int& use_hap_aligner, int& remove_pcr_dups,  int& bams_from_10x,    int& bam_lib_from_samp,
+			     int& use_hap_aligner, int& remove_pcr_dups,  int& bams_from_10x,    int& bam_lib_from_samp,     int& def_stutter_model,
 			     int& output_gls,      int& output_pls,       int& output_all_reads, int& output_pall_reads,     int& output_mall_reads, std::string& ref_vcf_file,
 			     GenotyperBamProcessor& bam_processor){
   int def_mdist       = bam_processor.MAX_MATE_DIST;
@@ -162,6 +164,7 @@ void parse_command_line_args(int argc, char** argv,
     {"ref-vcf",         required_argument, 0, 'p'},
     {"regions",         required_argument, 0, 'r'},
     {"require-pairs",   no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 1},
+    {"def-stutter-model", no_argument, &def_stutter_model, 1},
     {"snp-vcf",         required_argument, 0, 'v'},
     {"stutter-in",      required_argument, 0, 'm'},
     {"stutter-out",     required_argument, 0, 's'},
@@ -302,14 +305,14 @@ int main(int argc, char** argv){
   std::string full_command = full_command_ss.str();
 
   GenotyperBamProcessor bam_processor(true, true, true);
-  int use_hap_aligner = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0;
+  int use_hap_aligner = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0, def_stutter_model = 0;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", allele_vcf_out_file="", log_file = "";
   int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 1, output_mall_reads = 1;
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
-			  bam_pass_out_file, bam_filt_out_file, str_vcf_out_file, allele_vcf_out_file, log_file, use_hap_aligner,
-			  remove_pcr_dups, bams_from_10x, bam_lib_from_samp, output_gls, output_pls, output_all_reads, output_pall_reads, output_mall_reads,
+			  bam_pass_out_file, bam_filt_out_file, str_vcf_out_file, allele_vcf_out_file, log_file, use_hap_aligner, remove_pcr_dups, bams_from_10x,
+			  bam_lib_from_samp, def_stutter_model, output_gls, output_pls, output_all_reads, output_pall_reads, output_mall_reads,
 			  ref_vcf_file, bam_processor);
 
   if (!log_file.empty())
@@ -324,6 +327,7 @@ int main(int argc, char** argv){
   if (output_pall_reads == 0) bam_processor.hide_pall_reads();
   if (output_mall_reads == 0) bam_processor.hide_mall_reads();
   if (remove_pcr_dups == 0)   bam_processor.allow_pcr_dups();
+  if (def_stutter_model == 1) bam_processor.set_default_stutter_model(0.95, 0.05, 0.05, 0.95, 0.01, 0.01);
 
   if (!use_hap_aligner) {
     bam_processor.use_len_model();
@@ -413,11 +417,11 @@ int main(int argc, char** argv){
 	rg_samples.insert(rg_iter->Sample);
 	rg_libs.insert(rg_library);
       }
-      bam_processor.logger() << "BAMs contain  unique read group IDs for "
-			     << rg_libs.size()    << " unique libraries and "
-			     << rg_samples.size() << " unique samples" << std::endl;
       single_file_reader.Close();
     }
+    bam_processor.logger() << "BAMs contain unique read group IDs for "
+			   << rg_libs.size()    << " unique libraries and "
+			   << rg_samples.size() << " unique samples" << std::endl;
   }
 
   // Open BAM index files, assuming they're the same path with a .bai suffix
