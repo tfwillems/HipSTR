@@ -387,7 +387,7 @@ int main(int argc, char** argv){
     for (unsigned int i = 0; i < bam_files.size(); i++){
       // Although it would be ideal to use the dictionary provided by the BamMultiReader, it doesn't appropriately handle
       // read group ID collisions across BAMs (as it just overwrites the previous entry).
-      // Instead, we can option an individual reader for each BAM and allow for conficting IDs, as long as they lie in separate files
+      // Instead, we can open an individual reader for each BAM and allow for conficting IDs, as long as they lie in separate files
 
       BamTools::BamReader single_file_reader;
       if (!single_file_reader.Open(bam_files[i]))
@@ -395,7 +395,6 @@ int main(int argc, char** argv){
 
       BamTools::SamReadGroupDictionary rg_dict = single_file_reader.GetHeader().ReadGroups;
       for (auto rg_iter = rg_dict.Begin(); rg_iter != rg_dict.End(); rg_iter++){
-	std::cerr << rg_iter->ID << " " << rg_iter->Sample << " " << rg_iter->Library << std::endl;
 	if (!rg_iter->HasID() || !rg_iter->HasSample() || ((bam_lib_from_samp == 0) && !rg_iter->HasLibrary()))
 	  printErrorAndDie("RG in BAM header is lacking the ID, SM or LB tag");
 
