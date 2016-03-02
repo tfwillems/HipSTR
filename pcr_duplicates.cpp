@@ -59,7 +59,7 @@ std::string get_library(BamTools::BamAlignment& aln, std::map<std::string, std::
   if (!aln.GetTagType(rg_tag, tag_type))
     printErrorAndDie("Failed to retrieve BAM alignment's RG tag");
   aln.GetTag("RG", rg);
-  auto iter = rg_to_library.find(rg);
+  auto iter = rg_to_library.find(aln.Filename + rg);
   if (iter == rg_to_library.end())
     printErrorAndDie("No library found for read group " + rg + " in BAM file headers");
   return iter->second;

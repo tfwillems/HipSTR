@@ -113,7 +113,7 @@ std::string BamProcessor::get_read_group(BamTools::BamAlignment& aln, std::map<s
   if (!aln.GetTagType(rg_tag, tag_type))
     printErrorAndDie("Failed to retrieve BAM alignment's RG tag");
   aln.GetTag("RG", rg);
-  auto iter = read_group_mapping.find(rg);
+  auto iter = read_group_mapping.find(aln.Filename + rg);
   if (iter == read_group_mapping.end())
     printErrorAndDie("No sample found for read group " + rg + " in BAM file headers");
   return iter->second;

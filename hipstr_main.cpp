@@ -384,31 +384,42 @@ int main(int argc, char** argv){
     if (!reader.GetHeader().HasReadGroups())
       printErrorAndDie("Provided BAM files don't contain read groups in the header and the --bam-samps flag was not specified");
 
-    BamTools::SamReadGroupDictionary rg_dict = reader.GetHeader().ReadGroups;
-    for (auto rg_iter = rg_dict.Begin(); rg_iter != rg_dict.End(); rg_iter++){
-      if (!rg_iter->HasID() || !rg_iter->HasSample() || ((bam_lib_from_samp == 0) && !rg_iter->HasLibrary()))
-	printErrorAndDie("RG in BAM header is lacking the ID, SM or LB tag");
+    for (unsigned int i = 0; i < bam_files.size(); i++){
+      // Although it would be ideal to use the dictionary provided by the BamMultiReader, it doesn't appropriately handle
+      // read group ID collisions across BAMs (as it just overwrites the previous entry).
+      // Instead, we can option an individual reader for each BAM and allow for conficting IDs, as long as they lie in separate files
 
-      std::string rg_library = (bam_lib_from_samp == 0 ? rg_iter->Library : rg_iter->Sample);
+      BamTools::BamReader single_file_reader;
+      if (!single_file_reader.Open(bam_files[i]))
+	printErrorAndDie("Failed to open one or more BAM files");
 
-      // Ensure that there aren't identical read group ids that map to different samples or libraries
-      if (rg_ids_to_sample.find(rg_iter->ID) != rg_ids_to_sample.end())
-	if (rg_ids_to_sample[rg_iter->ID].compare(rg_iter->Sample) != 0)
-	  printErrorAndDie("Read group id " + rg_iter->ID + " maps to more than one sample");
-      if (rg_ids_to_library.find(rg_iter->ID) != rg_ids_to_library.end())
-	if (rg_ids_to_library[rg_iter->ID].compare(rg_library) != 0)
-	  printErrorAndDie("Read group id " + rg_iter->ID + " maps to more than one library");
+      BamTools::SamReadGroupDictionary rg_dict = single_file_reader.GetHeader().ReadGroups;
+      for (auto rg_iter = rg_dict.Begin(); rg_iter != rg_dict.End(); rg_iter++){
+	std::cerr << rg_iter->ID << " " << rg_iter->Sample << " " << rg_iter->Library << std::endl;
+	if (!rg_iter->HasID() || !rg_iter->HasSample() || ((bam_lib_from_samp == 0) && !rg_iter->HasLibrary()))
+	  printErrorAndDie("RG in BAM header is lacking the ID, SM or LB tag");
 
-      rg_ids_to_sample[rg_iter->ID]  = rg_iter->Sample;
-      rg_ids_to_library[rg_iter->ID] = rg_library;
-      rg_samples.insert(rg_iter->Sample);
-      rg_libs.insert(rg_library);
+	std::string rg_library = (bam_lib_from_samp == 0 ? rg_iter->Library : rg_iter->Sample);
+
+	// Ensure that there aren't identical read group ids that map to different samples or libraries
+	if (rg_ids_to_sample.find(rg_iter->ID) != rg_ids_to_sample.end())
+	  if (rg_ids_to_sample[rg_iter->ID].compare(rg_iter->Sample) != 0)
+	    printErrorAndDie("Read group id " + rg_iter->ID + " maps to more than one sample");
+	if (rg_ids_to_library.find(rg_iter->ID) != rg_ids_to_library.end())
+	  if (rg_ids_to_library[rg_iter->ID].compare(rg_library) != 0)
+	    printErrorAndDie("Read group id " + rg_iter->ID + " maps to more than one library");
+
+	rg_ids_to_sample[bam_files[i] + rg_iter->ID]  = rg_iter->Sample;
+	rg_ids_to_library[bam_files[i] + rg_iter->ID] = rg_library;
+	rg_samples.insert(rg_iter->Sample);
+	rg_libs.insert(rg_library);
+      }
+      bam_processor.logger() << "BAMs contain  unique read group IDs for "
+			     << rg_libs.size()    << " unique libraries and "
+			     << rg_samples.size() << " unique samples" << std::endl;
+      single_file_reader.Close();
     }
-    bam_processor.logger() << "BAMs contain " << rg_ids_to_sample.size() << " unique read group IDs for "
-			   << rg_libs.size()    << " unique libraries and "
-			   << rg_samples.size() << " unique samples" << std::endl;
   }
-
 
   // Open BAM index files, assuming they're the same path with a .bai suffix
   std::vector<std::string> bam_indexes;
