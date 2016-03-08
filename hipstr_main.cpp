@@ -61,7 +61,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "                                      "  << "\t" << " in the sequence flanking the STR is greater than MAX_FLANK_FRAC (Default = 1.0) "   << "\n"
 	    << "\t" << "--hide-allreads                       "  << "\t" << "Don't output the ALLREADS  FORMAT field to the VCF. By default, it will be output"   << "\n"
 	    << "\t" << "--hide-mallreads                      "  << "\t" << "Don't output the MALLREADS FORMAT field to the VCF. By default, it will be output"   << "\n"
-	    << "\t" << "--hide-pallreads                      "  << "\t" << "Don't output the PALLREADS FORMAT field to the VCF. By default, it will be output"   << "\n"
+	    << "\t" << "--output-pallreads                    "  << "\t" << "Output the PALLREADS FORMAT field to the VCF. By default, it will not be output"     << "\n"
 	    << "\t" << "--output-gls                          "  << "\t" << "Write genotype likelihoods to VCF (Default = False)"                                 << "\n"
 	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to VCF (Default = False)"                    << "\n" << "\n"
 
@@ -152,7 +152,7 @@ void parse_command_line_args(int argc, char** argv,
     {"help",            no_argument, &print_help, 1},
     {"hide-allreads",   no_argument, &output_all_reads,   0},
     {"hide-mallreads",  no_argument, &output_mall_reads,  0},
-    {"hide-pallreads",  no_argument, &output_pall_reads,  0},
+    {"output-pallreads",no_argument, &output_pall_reads,  1},
     {"len-genotyper",   no_argument, &use_hap_aligner,    0},
     {"no-rmdup",        no_argument, &remove_pcr_dups,    0},
     {"output-gls",      no_argument, &output_gls, 1},
@@ -308,7 +308,7 @@ int main(int argc, char** argv){
   int use_hap_aligner = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0, def_stutter_model = 0;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", allele_vcf_out_file="", log_file = "";
-  int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 1, output_mall_reads = 1;
+  int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 1, output_mall_reads = 0;
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
 			  bam_pass_out_file, bam_filt_out_file, str_vcf_out_file, allele_vcf_out_file, log_file, use_hap_aligner, remove_pcr_dups, bams_from_10x,
@@ -357,7 +357,7 @@ int main(int argc, char** argv){
     std::cerr << reader.GetErrorString() << std::endl;
     printErrorAndDie("Failed to open one or more BAM files");
   }
-  reader.SetExplicitMergeOrder(BamTools::BamMultiReader::MergeOrder::RoundRobinMerge);
+  //reader.SetExplicitMergeOrder(BamTools::BamMultiReader::MergeOrder::RoundRobinMerge);
 
 
   // Construct filename->read group map (if one has been specified) and determine the list
