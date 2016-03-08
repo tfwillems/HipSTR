@@ -141,26 +141,15 @@ void BamProcessor::modify_and_write_alns(std::vector<BamTools::BamAlignment>& al
   for (auto read_iter = alignments.begin(); read_iter != alignments.end(); read_iter++){
     // Add RG to BAM record based on file
     if (!use_bam_rgs_){
-      std::string rg_tag = "lobSTR;" + rg_to_sample[read_iter->Filename] + ";" + rg_to_sample[read_iter->Filename];
+      std::string rg_tag = "HipSTR;" + rg_to_sample[read_iter->Filename] + ";" + rg_to_sample[read_iter->Filename];
       read_iter->AddTag("RG", "Z", rg_tag);
     }
-
-    // Add STR start and stop tags
-    if (read_iter->HasTag("XS"))
-      read_iter->RemoveTag("XS");
-    if(!read_iter->AddTag("XS",  "i", region.start()))
-      printErrorAndDie("Failed to modify XS tag");
-    if (read_iter->HasTag("XE"))
-      read_iter->RemoveTag("XE");
-    if(!read_iter->AddTag("XE", "i", region.stop()))
-      printErrorAndDie("Failed to modify XE tag");
     if (!writer.SaveAlignment(*read_iter))
       printErrorAndDie("Failed to save alignment for STR-spanning read");
   }
 
 }
 
-// TO DO: Track reads from observed from both strands, whether or not they're filtered
 void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, 
 					 std::vector<Region>::iterator region_iter,
 					 std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
@@ -184,7 +173,21 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   const std::string FILTER_TAG_NAME = "FT";
   const std::string FILTER_TAG_TYPE = "Z";
 
-  while (reader.GetNextAlignment(alignment)){
+  while (reader.GetNextAlignmentCore(alignment)){
+    // Discard reads that don't overlap the STR region and whose mate pair has no chance of overlapping the region
+    if (alignment.Position > region_iter->stop() || alignment.GetEndPosition() < region_iter->start()){
+      if (!alignment.IsPaired() || alignment.MatePosition == alignment.Position)
+	continue;
+      if (alignment.MatePosition > region_iter->stop())
+	continue;
+      if (alignment.MatePosition+alignment.Length+50 < region_iter->start())
+	continue;
+    }
+
+    // Populate string fields
+    if(!alignment.BuildCharData())
+      printErrorAndDie("Failed to build char data for BamAlignment");
+
     // Stop parsing reads if we've already exceeded the maximum number for downstream analyses
     if (paired_str_alns.size() > MAX_TOTAL_READS)
       break;
