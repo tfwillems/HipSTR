@@ -62,6 +62,14 @@ class Alignment {
   inline void set_start(int32_t start)         { start_ = start; }
   inline void set_stop(int32_t stop)           { stop_  = stop;  }
 
+  bool operator<(const Alignment &aln)  const {
+    if (start_ != aln.get_start())
+      return start_ < aln.get_start();
+    if (stop_ != aln.get_stop())
+      return stop_ < aln.get_stop();
+    return false;
+  }
+
   void check_CIGAR_string(std::string& name){
     unsigned int num = 0;
     for (std::vector<CigarElement>::const_iterator iter = cigar_list_.begin(); iter != cigar_list_.end(); iter++)
