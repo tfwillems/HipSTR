@@ -383,14 +383,15 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	   << "\n\t" << read_has_N       << " had an 'N' base call"
 	   << "\n\t" << mapping_quality  << " had too low of a mapping quality"
 	   << "\n\t" << low_qual_score   << " had low base quality scores"
-	   << "\n\t" << not_spanning     << " did not span the STR"
-	   << "\n\t" << hard_clip        << " had too many hard clipped bases"
-	   << "\n\t" << soft_clip        << " had too many soft clipped bases"
-	   << "\n\t" << flank_len        << " had too bps in one or more flanks"
-	   << "\n\t" << bp_before_indel  << " had too few bp before the first indel"
-	   << "\n\t" << end_match_window << " did not have the maximal number of end matches within the specified window"
-	   << "\n\t" << num_end_matches  << " had too few bp matches along the ends"
-	   << "\n\t" << unique_mapping   << " did not have a unique mapping";
+	   << "\n\t" << not_spanning     << " did not span the STR";
+  if (false)
+    logger() << "\n\t" << hard_clip        << " had too many hard clipped bases"
+	     << "\n\t" << soft_clip        << " had too many soft clipped bases"
+	     << "\n\t" << flank_len        << " had too bps in one or more flanks"
+	     << "\n\t" << bp_before_indel  << " had too few bp before the first indel"
+	     << "\n\t" << end_match_window << " did not have the maximal number of end matches within the specified window"
+	     << "\n\t" << num_end_matches  << " had too few bp matches along the ends"
+	     << "\n\t" << unique_mapping   << " did not have a unique mapping";
   if (REQUIRE_PAIRED_READS)
     logger() << "\n\t" << num_filt_unpaired_reads << " did not have a mate pair";
   logger() << "\n" << region_alignments.size() << " PASSED ALL FILTERS" << "\n" << std::endl;
