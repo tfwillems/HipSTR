@@ -32,10 +32,6 @@ private:
   bool output_stutter_models_;
   std::ofstream stutter_model_out_;
 
-  // Output file for STR alleles (w/o genotypes)
-  bool output_alleles_;
-  bgzfostream allele_vcf_;
-
   // Output file for STR genotypes
   bool output_str_gts_;
   bgzfostream str_vcf_;
@@ -90,7 +86,6 @@ private:
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups, bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
     output_stutter_models_ = false;
-    output_alleles_        = false;
     output_str_gts_        = false;
     output_viz_            = false;
     read_stutter_models_   = false;
@@ -188,16 +183,6 @@ public:
       printErrorAndDie("Failed to open output file for stutter models");
   }
 
-  void set_output_allele_vcf(std::string& vcf_file, std::string& full_command){
-    output_alleles_ = true;
-    allele_vcf_.open(vcf_file.c_str());
-    std::vector<std::string> no_samples;
-    if (use_seq_aligner_)
-      SeqStutterGenotyper::write_vcf_header(full_command, no_samples, output_gls_, output_pls_, allele_vcf_);
-    else
-      printErrorAndDie("Cannot output STR allele VCF if --seq-genotyper option has not been specified");
-  }
-
   void set_output_str_vcf(std::string& vcf_file, std::string& full_command, std::set<std::string>& samples_to_output){
     output_str_gts_ = true;
     str_vcf_.open(vcf_file.c_str());
@@ -223,8 +208,6 @@ public:
 				 std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq, int iter);
   void finish(){
     SNPBamProcessor::finish();
-    if (output_alleles_)
-      allele_vcf_.close();
     if (output_str_gts_)
       str_vcf_.close();
     if (output_stutter_models_)

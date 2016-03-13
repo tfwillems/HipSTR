@@ -138,11 +138,6 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 
 	seq_genotyper = new SeqStutterGenotyper(region, haploid, alignments, log_p1s, log_p2s, rg_names, chrom_seq, pool_seqs_,
 						*stutter_model, reference_panel_vcf, logger());
-	if (output_alleles_){
-	  std::vector<std::string> no_samples;
-	  seq_genotyper->write_vcf_record(no_samples, false, chrom_seq, false, false, false,
-					  false, false, false, false, max_flank_indel_frac_, false, viz_out_, allele_vcf_, logger());
-	}
 
 	if (output_str_gts_){
 	  if (seq_genotyper->genotype(chrom_seq, logger())) {

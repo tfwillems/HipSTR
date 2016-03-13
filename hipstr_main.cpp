@@ -45,7 +45,6 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "Optional output parameters:" << "\n"
 	    << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Output a bgzipped VCF file containing STR genotypes"                                 << "\n"
 	    << "\t" << "                                      "  << "\t" << " NOTE: If you don't specify this option, no genotyping will be performed"            << "\n"
-	    << "\t" << "--allele-vcf    <str_alleles.vcf.gz>  "  << "\t" << "Output a bgzipped VCF file containing alleles with strong evidence in the BAMs"      << "\n"
 	    << "\t" << "--stutter-out   <stutter_models.txt>  "  << "\t" << "Output stutter models learned by the EM algorithm to the provided file"              << "\n"
 	    << "\t" << "--log <log.txt>                       "  << "\t" << "Output the log information to the provided file. By default, the log will be "       << "\n"
 	    << "\t" << "                                      "  << "\t" << " written to standard err"                                                            << "\n"
@@ -114,7 +113,7 @@ void parse_command_line_args(int argc, char** argv,
 			     std::string& bamfile_string,    std::string& rg_sample_string,      std::string& rg_lib_string, std::string& haploid_chr_string,
 			     std::string& fasta_dir,         std::string& region_file,           std::string& snp_vcf_file,  std::string& chrom,
 			     std::string& bam_pass_out_file, std::string& bam_filt_out_file,
-			     std::string& str_vcf_out_file,  std::string& allele_vcf_out_file,   std::string& log_file,      int& use_all_reads,
+			     std::string& str_vcf_out_file,  std::string& log_file,      int& use_all_reads,
 			     int& use_hap_aligner, int& remove_pcr_dups,  int& bams_from_10x,    int& bam_lib_from_samp,     int& def_stutter_model,
 			     int& output_gls,      int& output_pls,       int& output_all_reads, int& output_pall_reads,     int& output_mall_reads, std::string& ref_vcf_file,
 			     GenotyperBamProcessor& bam_processor){
@@ -137,7 +136,6 @@ void parse_command_line_args(int argc, char** argv,
 
   static struct option long_options[] = {
     {"10x-bams",        no_argument, &bams_from_10x, 1},
-    {"allele-vcf",      required_argument, 0, 'a'},
     {"bams",            required_argument, 0, 'b'},
     {"chrom",           required_argument, 0, 'c'},
     {"max-mate-dist",   required_argument, 0, 'd'},
@@ -186,15 +184,12 @@ void parse_command_line_args(int argc, char** argv,
   int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:v:w:x:y:z:", long_options, &option_index);
+    c = getopt_long(argc, argv, "b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:v:w:x:y:z:", long_options, &option_index);
     if (c == -1)
       break;
 
     switch(c){
     case 0:
-      break;
-    case 'a':
-      allele_vcf_out_file = std::string(optarg);
       break;
     case 'b':
       bamfile_string = std::string(optarg);
@@ -312,11 +307,11 @@ int main(int argc, char** argv){
   GenotyperBamProcessor bam_processor(true, true, true);
   int use_all_reads = 0, use_hap_aligner = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0, def_stutter_model = 0;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
-  std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", allele_vcf_out_file="", log_file = "";
+  std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", log_file = "";
   int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 0, output_mall_reads = 1;
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
-			  bam_pass_out_file, bam_filt_out_file, str_vcf_out_file, allele_vcf_out_file, log_file, use_all_reads, use_hap_aligner, remove_pcr_dups, bams_from_10x,
+			  bam_pass_out_file, bam_filt_out_file, str_vcf_out_file, log_file, use_all_reads, use_hap_aligner, remove_pcr_dups, bams_from_10x,
 			  bam_lib_from_samp, def_stutter_model, output_gls, output_pls, output_all_reads, output_pall_reads, output_mall_reads,
 			  ref_vcf_file, bam_processor);
 
@@ -481,12 +476,6 @@ int main(int argc, char** argv){
 	printErrorAndDie("No .tbi index found for the SNP VCF file. Please index using tabix and rerun HipSTR");
 
     bam_processor.set_input_snp_vcf(snp_vcf_file);
-  }
-
-  if(!allele_vcf_out_file.empty()){
-    if (!string_ends_with(allele_vcf_out_file, ".gz"))
-      printErrorAndDie("Path for allele VCF output file must end in .gz as it will be bgzipped");
-    bam_processor.set_output_allele_vcf(allele_vcf_out_file, full_command);
   }
 
   if(!str_vcf_out_file.empty()){
