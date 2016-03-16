@@ -94,7 +94,7 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
 	break;
       default:
 	std::stringstream msg;
-	msg << "Invalid CIGAR character " << cigar_iter->Type << " in adjustAlignment()";
+	msg << "Invalid CIGAR character " << cigar_iter->Type << " in realign() for alignment " << alignment.Name;
 	printErrorAndDie(msg.str());
 	break;
       }
@@ -155,15 +155,43 @@ bool endsWithSoftClip(const BamTools::BamAlignment& aln){
   return aln.CigarData.back().Type == 'S';
 }
 
+bool startsWithHardClip(const BamTools::BamAlignment& aln){
+  if (aln.CigarData.size() == 0)
+    return false;
+  return aln.CigarData.front().Type == 'H';
+}
+
+bool endsWithHardClip(const BamTools::BamAlignment& aln){
+  if (aln.CigarData.size() == 0)
+    return false;
+  return aln.CigarData.back().Type == 'H';
+}
+
 
 /*
- *  Trim an alignment that extends too far upstream or downstream of the provided region. Modifies the following
- *  members of the BamAlignment: Position, CigarData, Qualities, AlignedBases, QueryBases, Length
+ *  Trim an alignment that extends too far upstream or downstream of the provided region or has low base qualities on the ends
+ *  Trims until either i) the base quality exceeds the provided threshold or ii) the alignment is fully within the provided region bounds
+ *  Modifies the following members of the BamAlignment: Position, CigarData, Qualities, AlignedBases, QueryBases, Length
  */
-void trimAlignment(BamTools::BamAlignment& aln, int32_t min_read_start, int32_t max_read_stop){
+void trimAlignment(BamTools::BamAlignment& aln, int32_t min_read_start, int32_t max_read_stop, char min_base_qual){
   int ltrim = 0, aligned_bases_ltrim = 0;
   int32_t start_pos = aln.Position;
   while(start_pos < min_read_start && aln.CigarData.size() > 0){
+    // Check if we should stop trimming b/c the quality score is above the threshold
+    bool qual_above_thresh = false;
+    switch(aln.CigarData.front().Type){
+    case 'M': case '=': case 'X': case 'I': case 'S':
+      qual_above_thresh = (aln.Qualities[ltrim] > min_base_qual);
+      break;
+    case 'D': case 'H':
+      break;
+    default:
+      printErrorAndDie("Invalid CIGAR option encountered in trimAlignment");
+      break;
+    }
+    if (qual_above_thresh)
+      break;
+
     switch(aln.CigarData.front().Type){
     case 'M': case '=': case 'X':
       ltrim++;
@@ -194,9 +222,24 @@ void trimAlignment(BamTools::BamAlignment& aln, int32_t min_read_start, int32_t 
   }
   aln.Position = start_pos;
 
-  int rtrim = 0, aligned_bases_rtrim = 0;
+  int rtrim = 0, aligned_bases_rtrim = 0, qual_string_len = aln.Qualities.size()-1;
   int32_t end_pos = aln.GetEndPosition();
   while(end_pos > max_read_stop && aln.CigarData.size() > 0){
+    // Check if we should stop trimming b/c the quality score is above the threshold
+    bool qual_above_thresh = false;
+    switch(aln.CigarData.back().Type){
+    case 'M': case '=': case 'X': case 'I': case 'S':
+      qual_above_thresh = (aln.Qualities[qual_string_len-rtrim] > min_base_qual);
+      break;
+    case 'D': case 'H':
+      break;
+    default:
+      printErrorAndDie("Invalid CIGAR option encountered in trimAlignment");
+      break;
+    }
+    if (qual_above_thresh)
+      break;
+
     switch(aln.CigarData.back().Type){
     case 'M': case '=': case 'X':
       rtrim++;
@@ -232,4 +275,10 @@ void trimAlignment(BamTools::BamAlignment& aln, int32_t min_read_start, int32_t 
   aln.AlignedBases = aln.AlignedBases.substr(aligned_bases_ltrim, aln.AlignedBases.size()-aligned_bases_ltrim-aligned_bases_rtrim);
   aln.Qualities    = aln.Qualities.substr(ltrim, aln.Qualities.size()-ltrim-rtrim);
   aln.Length      -= (ltrim + rtrim);
+}
+
+void trimLowQualityEnds(BamTools::BamAlignment& aln, char min_base_qual){
+  int32_t min_read_start  = aln.GetEndPosition()+1;
+  int32_t max_read_stop   = aln.Position-1;
+  return trimAlignment(aln, min_read_start, max_read_stop, min_base_qual);
 }
