@@ -42,8 +42,10 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     logger() << "Skipping locus with too few reads: TOTAL=" << total_reads << ", MIN=" << MIN_TOTAL_READS << std::endl;
     return;
   }
-  if (total_reads > MAX_TOTAL_READS){
-    logger() << "Skipping locus with too many reads: TOTAL=" << total_reads << ", MAX=" << MAX_TOTAL_READS << std::endl;
+  // Can't simply check the total number of reads because the bam processor may have stopped reading at the threshold and then removed PCR duplicates
+  // Instead, we check this flag which it sets when too many reads are encountered during filtering
+  if (TOO_MANY_READS){
+    logger() << "Skipping locus with too many reads: MAX=" << MAX_TOTAL_READS << std::endl;
     return;
   }
 

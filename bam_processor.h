@@ -152,6 +152,7 @@ class BamProcessor {
  double  MIN_SUM_QUAL_LOG_PROB;
  int32_t MAX_TOTAL_READS;       // Skip loci where the number of STR reads passing all filters exceeds this limit
  char    BASE_QUAL_TRIM;        // Trim boths ends of the read until encountering a base with quality greater than this threshold
+ bool    TOO_MANY_READS;        // Flag set if the current locus being processed as too many reads
 };
 
 #endif

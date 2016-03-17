@@ -171,6 +171,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   std::map<std::string, BamTools::BamAlignment> potential_strs, potential_mates;
   const std::string FILTER_TAG_NAME = "FT";
   const std::string FILTER_TAG_TYPE = "Z";
+  TOO_MANY_READS = false;
 
   while (reader.GetNextAlignmentCore(alignment)){
     // Discard reads that don't overlap the STR region and whose mate pair has no chance of overlapping the region
@@ -188,8 +189,10 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       printErrorAndDie("Failed to build char data for BamAlignment");
 
     // Stop parsing reads if we've already exceeded the maximum number for downstream analyses
-    if (paired_str_alns.size() > MAX_TOTAL_READS)
+    if (paired_str_alns.size() > MAX_TOTAL_READS){
+      TOO_MANY_READS = true;
       break;
+    }
 
     if (!alignment.IsMapped() || alignment.Position == 0 || alignment.CigarData.size() == 0)
 	continue;
