@@ -12,6 +12,7 @@ private:
   BamTools::BamAlignment aln_1_;
   BamTools::BamAlignment aln_2_;
   std::string library_;
+  std::string name_;
 
 public:
   ReadPair(BamTools::BamAlignment& aln_1, std::string& library){
@@ -19,6 +20,7 @@ public:
     min_read_start_ = -1;
     max_read_start_ = aln_1.Position;
     library_        = library;
+    name_           = aln_1.Name;
   }
 
   ReadPair(BamTools::BamAlignment& aln_1, BamTools::BamAlignment& aln_2, std::string& library){
@@ -27,14 +29,14 @@ public:
     min_read_start_ = std::min(aln_1.Position, aln_2.Position);
     max_read_start_ = std::max(aln_1.Position, aln_2.Position);
     library_        = library;
+    assert(aln_1.Name.compare(aln_2.Name) == 0);
+    name_           = aln_1.Name;
   }
   
   BamTools::BamAlignment& aln_one(){ return aln_1_; }
   BamTools::BamAlignment& aln_two(){ return aln_2_; }
-
-  bool single_ended(){
-    return min_read_start_ == -1;
-  }
+  std::string& name()              { return name_;  }
+  bool single_ended()              { return min_read_start_ == -1; }
 
   bool duplicate (const ReadPair& pair) const {
     return (library_.compare(pair.library_) == 0)
@@ -48,7 +50,9 @@ public:
       return lib_comp < 0;
     if (min_read_start_ != pair.min_read_start_)
       return min_read_start_ < pair.min_read_start_;
-    return max_read_start_ < pair.max_read_start_;
+    if (max_read_start_ != pair.max_read_start_)
+      return max_read_start_ < pair.max_read_start_;
+    return (name_.compare(pair.name_) < 0);
   }
 };
 
@@ -91,14 +95,23 @@ void remove_pcr_duplicates(BaseQuality& base_quality, bool use_bam_rgs,
     unpaired_strs_by_rg[i].clear();
     if (read_pairs.size() == 0)
       continue;
+
+    // When both mates in a pair overlap the STR, they generate pseudo PCR duplicates because the read pair is included twice in the input (but reversed).
+    // To use both reads for genotyping, we don't want to remove these duplicates for downstream analysis. Instead, we use this flag to track
+    // if this issue has occurred and undo the duplicate removal when saving the alignments
+    bool include_rev  = false;
     size_t best_index = 0;
     for (size_t j = 1; j < read_pairs.size(); j++){
       if (read_pairs[j].duplicate(read_pairs[best_index])){
 	dup_count++;
 	// Update index if new pair's STR read has a higher total base quality
 	if (base_quality.sum_log_prob_correct(read_pairs[j].aln_one().Qualities) > 
-	    base_quality.sum_log_prob_correct(read_pairs[best_index].aln_one().Qualities))
-	  best_index = j;
+	    base_quality.sum_log_prob_correct(read_pairs[best_index].aln_one().Qualities)){
+	  best_index  = j;
+	  include_rev = (read_pairs[best_index].name().compare(read_pairs[j-1].name()) == 0);
+	}
+	else if (j == best_index+1)
+	  include_rev |= (read_pairs[best_index].name().compare(read_pairs[j].name()) == 0);
       }
       else {
 	// Keep best pair from prior set of duplicates
@@ -107,8 +120,14 @@ void remove_pcr_duplicates(BaseQuality& base_quality, bool use_bam_rgs,
 	else {
 	  paired_strs_by_rg[i].push_back(read_pairs[best_index].aln_one());
 	  mate_pairs_by_rg[i].push_back(read_pairs[best_index].aln_two());
+	  if (include_rev){
+	    dup_count--;
+	    paired_strs_by_rg[i].push_back(read_pairs[best_index].aln_two());
+	    mate_pairs_by_rg[i].push_back(read_pairs[best_index].aln_one());
+	  }
 	}
-	best_index = j; // Update index for new set of duplicates
+	best_index  = j; // Update index for new set of duplicates
+	include_rev = false;
       }
     }
 
@@ -118,6 +137,11 @@ void remove_pcr_duplicates(BaseQuality& base_quality, bool use_bam_rgs,
     else {
       paired_strs_by_rg[i].push_back(read_pairs[best_index].aln_one());
       mate_pairs_by_rg[i].push_back(read_pairs[best_index].aln_two());
+      if (include_rev){
+	dup_count--;
+	paired_strs_by_rg[i].push_back(read_pairs[best_index].aln_two());
+	mate_pairs_by_rg[i].push_back(read_pairs[best_index].aln_one());
+      }
     }
   }
   logger << "Removed " << dup_count << " sets of PCR duplicate reads" << std::endl;
