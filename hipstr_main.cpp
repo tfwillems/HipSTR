@@ -22,7 +22,7 @@ bool file_exists(std::string path){
   return (access(path.c_str(), F_OK) != -1);
 }
 
-void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_sclips, int def_max_hclips, int def_max_str_len){
+void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_str_len){
   std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <dir> --regions <region_file.bed> [OPTIONS]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
@@ -67,9 +67,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "Optional read filtering parameters:" << "\n"
 	    << "\t" << "--no-rmdup                            "  << "\t" << "Don't remove PCR duplicates. By default, they'll be removed"                         << "\n"
 	    << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
-	    << "\t" << "--max-softclips <num_bases>           "  << "\t" << "Remove reads with more than NUM_BASES soft-clipped bases (Default = " << def_max_sclips << ")" << "\n"
 	    << "\t" << "--require-pairs                       "  << "\t" << "Only utilize paired-end reads (Default = False)" << "\n"
-	    << "\t" << "--max-hardclips <num_bases>           "  << "\t" << "Remove reads with more than NUM_BASES hard-clipped bases (Default = " << def_max_hclips << ")" << "\n"
 	    << "\t" << "--min-mapq      <min_qual>            "  << "\t" << "Remove reads with a mapping quality below this threshold (Default = 0)"              << "\n" << "\n"
 
 	    << "Other optional parameters:" << "\n"
@@ -105,6 +103,8 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "                                      "  << "\t" << " unlikely to be informative. By default, HipSTR only utilizes the reads it thinks"   << "\n"
 	    << "\t" << "                                      "  << "\t" << " will be informative. Enabling this option can slightly increase accuracy but at"    << "\n"
 	    << "\t" << "                                      "  << "\t" << " the expense of significantly longer runtimes (~4-5 times longer)."                  << "\n"
+	    << "\t" << "--read-qual-trim <min_qual>           "  << "\t" << "Trim both ends of the read until reaching a base with quality > MIN_QUAL"            << "\n"
+	    << "\t" << "                                      "  << "\t" << " By default, no quality trimmming is performed"                                      << "\n"
 	    << "\t" << "--version                             "  << "\t" << "Print HipSTR version and exit"                                                       << "\n"  
 	    << "\n";
 }
@@ -120,11 +120,9 @@ void parse_command_line_args(int argc, char** argv,
   int def_mdist       = bam_processor.MAX_MATE_DIST;
   int def_min_reads   = bam_processor.MIN_TOTAL_READS;
   int def_max_reads   = bam_processor.MAX_TOTAL_READS;
-  int def_max_sclips  = bam_processor.MAX_SOFT_CLIPS;
-  int def_max_hclips  = bam_processor.MAX_HARD_CLIPS;
   int def_max_str_len = bam_processor.MAX_STR_LENGTH;
   if (argc == 1){
-    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_sclips, def_max_hclips, def_max_str_len);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len);
     exit(0);
   }
 
@@ -146,8 +144,7 @@ void parse_command_line_args(int argc, char** argv,
     {"full-read-fields", no_argument, &condense_read_fields, 0},
     {"min-mapq",        required_argument, 0, 'e'},
     {"min-reads",       required_argument, 0, 'i'},
-    {"max-softclips",   required_argument, 0, 'j'},
-    {"max-hardclips",   required_argument, 0, 'k'},
+    {"read-qual-trim",  required_argument, 0, 'j'},
     {"log",             required_argument, 0, 'l'},
     {"max-reads",       required_argument, 0, 'n'},
     {"h",               no_argument, &print_help, 1},
@@ -215,10 +212,9 @@ void parse_command_line_args(int argc, char** argv,
 	printErrorAndDie("--min-total-reads must be greater than 0");
       break;
     case 'j':
-      bam_processor.MAX_SOFT_CLIPS = atoi(optarg);
-      break;
-    case 'k':
-      bam_processor.MAX_HARD_CLIPS = atoi(optarg);
+      if (std::string(optarg).size() != 1)
+	printErrorAndDie("--read-qual-trim requires a single character argument");
+      bam_processor.BASE_QUAL_TRIM = std::string(optarg)[0];
       break;
     case 'l':
       log_file = std::string(optarg);
@@ -286,7 +282,7 @@ void parse_command_line_args(int argc, char** argv,
   if (pool_seqs == 1)
     bam_processor.pool_sequences();
   if (print_help){
-    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_sclips, def_max_hclips, def_max_str_len);
+    print_usage(def_mdist, def_min_reads, def_max_reads,  def_max_str_len);
     exit(0);
   }
   if (viz_left_alns)
