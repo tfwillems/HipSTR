@@ -146,6 +146,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
   sample_label_     = new int[num_reads_];
   sample_total_LLs_ = new double[num_samples_];
   pool_index_       = new int[num_reads_];
+  second_mate_      = new bool[num_reads_];
 
   double locus_left_aln_time = clock();
   logger << "Left aligning reads..." << std::endl;
@@ -155,12 +156,18 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 
   // Minimum and maximum alignment boundaries
   int32_t min_start = INT_MAX, max_stop = INT_MIN;
+  std::string prev_aln_name = "";
   for (unsigned int i = 0; i < alignments.size(); ++i){
     alns_.push_back(std::vector<Alignment>());
     use_for_haps_.push_back(std::vector<bool>());
     for (unsigned int j = 0; j < alignments[i].size(); ++j, ++read_index){
       // Trim alignment if it extends very far upstream or downstream of the STR. For tractability, we limit it to 40bp
       trimAlignment(alignments[i][j], (region_->start() > 40 ? region_->start()-40 : 1), region_->stop()+40);
+      if (alignments[i][j].Length == 0){
+	num_reads_--;
+	read_index--;
+	continue;
+      }
 
       auto iter      = seq_to_alns.find(alignments[i][j].QueryBases);
       bool have_prev = (iter != seq_to_alns.end());
@@ -207,6 +214,9 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
       log_p2_[read_index]       = log_p2[i][j];
       sample_label_[read_index] = i;
       pool_index_[read_index]   = (pool_identical_seqs_ ? pooler_.add_alignment(alns_.back().back()) : read_index);
+      second_mate_[read_index]  = (alignments[i][j].Name.compare(prev_aln_name) == 0);
+      read_weights_.push_back(second_mate_[read_index] ? 0 : 1);
+      prev_aln_name = alignments[i][j].Name;
     }
   }
   locus_left_aln_time  = (clock() - locus_left_aln_time)/CLOCKS_PER_SEC;
@@ -299,11 +309,11 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
 void SeqStutterGenotyper::calc_hap_aln_probs(Haplotype* haplotype, double* log_aln_probs, int* seed_positions){
   double locus_hap_aln_time = clock();
   HapAligner hap_aligner(haplotype);
+  int num_alleles = haplotype->num_combs();
 
   if (pool_identical_seqs_){
     // Align each pooled read to each haplotype
     std::vector<Alignment>& pooled_alns = pooler_.get_alignments();
-    int num_alleles            = haplotype->num_combs();
     double* log_pool_aln_probs = new double[pooled_alns.size()*num_alleles];
     int* pool_seed_positions   = new int[pooled_alns.size()];
     hap_aligner.process_reads(pooled_alns, 0, &base_quality_, log_pool_aln_probs, pool_seed_positions);
@@ -327,6 +337,23 @@ void SeqStutterGenotyper::calc_hap_aln_probs(Haplotype* haplotype, double* log_a
       read_index += alns_[i].size();
     }
   }
+
+  // If both mate pairs overlap the STR region, they share the same phasing probabilities
+  // We therefore need to avoid treating them as independent reads
+  // To do so, we combine the alignment probabilities here and set the read weight
+  // for the second in the pair to zero during posterior calculation
+  for (unsigned int i = 0; i < num_reads_; ++i){
+    if (!second_mate_[i])
+      continue;
+    double* mate_one_ptr = log_aln_probs + (i-1)*num_alleles;
+    double* mate_two_ptr = log_aln_probs + i*num_alleles;
+    for (unsigned int j = 0; j < num_alleles; ++j, ++mate_one_ptr, ++mate_two_ptr){
+      double total  = *mate_one_ptr + *mate_two_ptr;
+      *mate_one_ptr = total;
+      *mate_two_ptr = total;
+    }
+  }
+
   locus_hap_aln_time   = (clock() - locus_hap_aln_time)/CLOCKS_PER_SEC;
   total_hap_aln_time_ += locus_hap_aln_time;
 }
@@ -423,7 +450,6 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::string& chrom_seq
   }
   return true;
 }
-
 
 bool SeqStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger){
   // Unsuccessful initialization. May be due to
@@ -733,8 +759,7 @@ double SeqStutterGenotyper::calc_log_sample_posteriors(std::vector<int>& read_we
 }
 
 double SeqStutterGenotyper::calc_log_sample_posteriors(){
-  std::vector<int> weights(num_reads_, 1);
-  return calc_log_sample_posteriors(weights);
+  return calc_log_sample_posteriors(read_weights_);
 }
 
 bool SeqStutterGenotyper::use_read(AlignmentTrace* trace){
@@ -1054,7 +1079,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     // Retrace alignment and ensure that it's of sufficient quality
     double trace_start = clock();
-    int best_gt = (log_phase_one > LOG_ONE_HALF ? gt_a : gt_b);
+    int best_gt = (read_strand == 0 ? gt_a : gt_b);
     AlignmentTrace* trace = NULL;
     std::pair<int,int> trace_key(pool_index_[read_index], best_gt);
     int idx_1 = sample_label_[read_index], idx_2 = num_proc_alns[sample_label_[read_index]];

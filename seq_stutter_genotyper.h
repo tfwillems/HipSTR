@@ -98,6 +98,14 @@ class SeqStutterGenotyper{
   // Cache of traced back alignments
   std::map<std::pair<int,int>, AlignmentTrace*> trace_cache_;
 
+  // True iff both the indexed read and its mate overlap the STR and the current read's index is greater
+  bool* second_mate_;
+
+  // Read weights used to calculate posteriors (See calc_log_sample_posteriors function)
+  // Used to account for special cases in which both reads in a pair overlap the STR by setting
+  // the weight for the second read to zero. Elsewhere, the alignments probabilities for the two reads are summed
+  std::vector<int> read_weights_;
+
   /* Compute the alignment probabilites between each read and each haplotype */
   double calc_align_probs();
 
@@ -185,6 +193,7 @@ class SeqStutterGenotyper{
     sample_label_          = NULL;
     pool_index_            = NULL;
     haplotype_             = NULL;
+    second_mate_           = NULL;
     MAX_REF_FLANK_LEN      = 30;
     pos_                   = -1;
     pool_identical_seqs_   = pool_identical_seqs;
@@ -223,6 +232,7 @@ class SeqStutterGenotyper{
     delete [] sample_total_LLs_;
     delete [] log_allele_priors_;
     delete [] pool_index_;
+    delete [] second_mate_;
     for (auto trace_iter = trace_cache_.begin(); trace_iter != trace_cache_.end(); trace_iter++)
       delete trace_iter->second;
     trace_cache_.clear();
