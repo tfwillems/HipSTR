@@ -10,6 +10,8 @@ def filter_call(sample, filters):
           return "Quality"
      else:
           d_1, d_2 = map(float, sample['PDP'].split('|'))
+          if d_1 == 0 or d_2 == 0:
+               return "Allele depth"
           if min(d_1, d_2) < filters.ALLELE_DEPTH:
                return "Allele depth"
           elif min(1.0*d_1/d_2, 1.0*d_2/d_1) < filters.ALLELE_RATIO:
