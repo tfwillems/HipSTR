@@ -67,7 +67,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "Optional read filtering parameters:" << "\n"
 	    << "\t" << "--no-rmdup                            "  << "\t" << "Don't remove PCR duplicates. By default, they'll be removed"                         << "\n"
 	    << "\t" << "--max-mate-dist <max_bp>              "  << "\t" << "Remove reads whose mate pair distance is > MAX_BP (Default = " << def_mdist << ")"   << "\n"
-	    << "\t" << "--require-pairs                       "  << "\t" << "Only utilize paired-end reads (Default = False)" << "\n"
+	    << "\t" << "--use-unpaired                        "  << "\t" << "Use unpaired reads when genotyping. (Default = False)"                               << "\n"
 	    << "\t" << "--min-mapq      <min_qual>            "  << "\t" << "Remove reads with a mapping quality below this threshold (Default = 0)"              << "\n" << "\n"
 
 	    << "Other optional parameters:" << "\n"
@@ -162,7 +162,7 @@ void parse_command_line_args(int argc, char** argv,
     {"str-vcf",         required_argument, 0, 'o'},
     {"ref-vcf",         required_argument, 0, 'p'},
     {"regions",         required_argument, 0, 'r'},
-    {"require-pairs",   no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 1},
+    {"use-unpaired",    no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 0},
     {"use-all-reads",   no_argument, &use_all_reads, 1},
     {"def-stutter-model", no_argument, &def_stutter_model, 1},
     {"snp-vcf",         required_argument, 0, 'v'},
@@ -301,6 +301,7 @@ int main(int argc, char** argv){
   std::string full_command = full_command_ss.str();
 
   GenotyperBamProcessor bam_processor(true, true, true);
+
   int use_all_reads = 0, use_hap_aligner = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0, def_stutter_model = 0;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", log_file = "";
