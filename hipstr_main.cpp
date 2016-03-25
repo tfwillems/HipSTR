@@ -121,7 +121,7 @@ void parse_command_line_args(int argc, char** argv,
   int def_min_reads   = bam_processor.MIN_TOTAL_READS;
   int def_max_reads   = bam_processor.MAX_TOTAL_READS;
   int def_max_str_len = bam_processor.MAX_STR_LENGTH;
-  if (argc == 1){
+  if (argc == 1 || (argc == 2 && std::string("-h").compare(std::string(argv[1])) == 0)){
     print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len);
     exit(0);
   }
