@@ -33,6 +33,54 @@ int max_index(double* vals, unsigned int num_vals){
   return best_index;
 }
 
+void SeqStutterGenotyper::get_unspanned_alleles(std::vector<int>& allele_indices, std::ostream& logger){
+  assert(allele_indices.size() == 0);
+
+  // Extract each sample's MAP genotype
+  std::vector< std::pair<int,int> > gts;
+  get_optimal_genotypes(log_sample_posteriors_, gts);
+
+  std::vector<AlignmentTrace*> traced_alns;
+  retrace_alignments(logger, traced_alns);
+
+  assert(haplotype_->num_blocks() == 3);
+  int str_block_index = 1;
+  HapBlock* str_block = haplotype_->get_block(str_block_index);
+
+  std::vector<bool> spanned(num_alleles_, false);
+  spanned[0] = true;
+  double* read_LL_ptr = log_aln_probs_;
+  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
+    if (seed_positions_[read_index] < 0){
+      read_LL_ptr += num_alleles_;
+      continue;
+    }
+    AlignmentTrace* trace = traced_alns[read_index];
+    if (trace->traced_aln().get_start() < str_block->start())
+      if (trace->traced_aln().get_stop() > str_block->end())
+	if (trace->stutter_size(str_block_index) == 0){
+	  int gt_a    = gts[sample_label_[read_index]].first;
+	  int gt_b    = gts[sample_label_[read_index]].second;
+	  int best_gt = gt_a;
+	  if (!haploid_ && (gt_a != gt_b)){
+	    double v1 = log_p1_[read_index]+read_LL_ptr[gt_a], v2 = log_p2_[read_index]+read_LL_ptr[gt_b];
+	    if (abs(v1-v2) > TOLERANCE)
+	      best_gt = (v1 > v2 ? gt_a : gt_b);
+	  }
+	  spanned[best_gt] = true;
+	}
+    read_LL_ptr += num_alleles_;
+  }
+
+  int count = 0;
+  for (unsigned int i = 0; i < num_alleles_; ++i)
+    if (!spanned[i]){
+      allele_indices.push_back(i);
+      count++;
+    }
+}
+
+
 void SeqStutterGenotyper::get_uncalled_alleles(std::vector<int>& allele_indices){
   assert(allele_indices.size() == 0);
  
@@ -492,6 +540,13 @@ bool SeqStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger)
     get_uncalled_alleles(uncalled_indices);
     if (uncalled_indices.size() != 0){
       logger << "Recomputing sample posteriors after removing " << uncalled_indices.size() << " uncalled alleles" << std::endl;
+      remove_alleles(uncalled_indices);
+    }
+
+    uncalled_indices.clear();
+    get_unspanned_alleles(uncalled_indices, logger);
+    if (uncalled_indices.size() != 0){
+      logger << "Recomputing sample posteriors after removing " << uncalled_indices.size() << " alleles with no spanning reads" << std::endl;
       remove_alleles(uncalled_indices);
     }
   }
