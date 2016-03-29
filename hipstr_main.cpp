@@ -57,7 +57,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--filt-bam      <filt_reads.bam>      "  << "\t" << "Output a BAM file containing the reads filtered in each region. Each BAM entry"      << "\n"
 	    << "\t" << "                                      "  << "\t" << " has an FT tag specifying the reason for filtering"                                  << "\n"
 	    << "\t" << "--max-flank-indel <max_flank_frac>    "  << "\t" << "Don't output genotypes for a sample if the fraction of reads containing an indel"    << "\n"
-	    << "\t" << "                                      "  << "\t" << " in the sequence flanking the STR is greater than MAX_FLANK_FRAC (Default = 1.0) "   << "\n"
+	    << "\t" << "                                      "  << "\t" << " in the sequence flanking the STR is greater than MAX_FLANK_FRAC (Default = 0.15)"   << "\n"
 	    << "\t" << "--hide-allreads                       "  << "\t" << "Don't output the ALLREADS  FORMAT field to the VCF. By default, it will be output"   << "\n"
 	    << "\t" << "--hide-mallreads                      "  << "\t" << "Don't output the MALLREADS FORMAT field to the VCF. By default, it will be output"   << "\n"
 	    << "\t" << "--output-pallreads                    "  << "\t" << "Output the PALLREADS FORMAT field to the VCF. By default, it will not be output"     << "\n"
@@ -301,6 +301,7 @@ int main(int argc, char** argv){
   std::string full_command = full_command_ss.str();
 
   GenotyperBamProcessor bam_processor(true, true, true);
+  bam_processor.set_max_flank_indel_frac(0.15);
 
   int use_all_reads = 0, use_hap_aligner = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0, def_stutter_model = 0;
   std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
