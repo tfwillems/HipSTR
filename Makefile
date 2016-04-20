@@ -28,11 +28,10 @@ LIBS              = -L./ -lm -lhts -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabix
 INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I$(VCFLIB_ROOT)/ -I$(VCFLIB_ROOT)/tabixpp/htslib/
 BAMTOOLS_LIB      = $(BAMTOOLS_ROOT)/lib/libbamtools.a
 VCFLIB_LIB        = vcflib/libvcflib.a
-PHASED_BEAGLE_JAR = PhasedBEAGLE/PhasedBEAGLE.jar
 FASTA_HACK_LIB    = fastahack/Fasta.o
 
 .PHONY: all
-all: version BamSieve HipSTR test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test $(PHASED_BEAGLE_JAR) exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
+all: version BamSieve HipSTR test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
 	rm version.cpp
 	touch version.cpp
 
@@ -42,7 +41,7 @@ version:
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
 clean:
-	rm -f *.o *.d BamSieve HipSTR test/allele_expansion_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test SeqAlignment/*.o ${PHASED_BEAGLE_JAR} exploratory/RNASeq exploratory/Clipper exploratory/Mapper exploratory/10X
+	rm -f *.o *.d BamSieve HipSTR test/allele_expansion_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test SeqAlignment/*.o exploratory/RNASeq exploratory/Clipper exploratory/Mapper exploratory/10X
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -118,12 +117,6 @@ $(VCFLIB_LIB):
 	git submodule update --init --recursive vcflib
 	git submodule update --recursive vcflib
 	cd vcflib && $(MAKE)
-
-# Rebuild PhasedBEAGLE if needed
-$(PHASED_BEAGLE_JAR):
-	git submodule update --init --recursive PhasedBEAGLE
-	git submodule update --recursive PhasedBEAGLE
-	cd PhasedBEAGLE && $(MAKE)
 
 # Rebuild fastahack if needed
 $(FASTA_HACK_LIB):
