@@ -1,6 +1,8 @@
 #ifndef MATH_OPS_H_
 #define MATH_OPS_H_
 
+#include <cstdint>
+
 #define cast_uint32_t static_cast<uint32_t>
 
 #include <algorithm>
