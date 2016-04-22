@@ -26,12 +26,13 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
   std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <dir> --regions <region_file.bed> [OPTIONS]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
-	    << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of BAM files"                                                   << "\n"
+	    << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of BAM files. Either --bams or --bam-files must be specified"   << "\n"
 	    << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory in which FASTA files for each chromosome are located or the path to a"     << "\n"
 	    << "\t" << "                                      "  << "\t" << " single FASTA file that contains all of the relevant sequences"                      << "\n"
 	    << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                         << "\n" << "\n"
     
 	    << "Optional input parameters:" << "\n"
+	    << "\t" << "--bam-files  <bam_files.txt>         "  << "\t" << "File containing BAM files to analyze, one per line."                                 << "\n"
 	    << "\t" << "--ref-vcf    <str_ref_panel.vcf.gz>   "  << "\t" << "Bgzipped input VCF file containing a reference panel of STR genotypes"               << "\n"
 	    << "\t" << "                                      "  << "\t" << " For each locus, alleles in the VCF will be used as candidate STR variants instead"  << "\n"
 	    << "\t" << "                                      "  << "\t" << " of trying to identify candidates from the BAMs (default)"                           << "\n"
@@ -110,10 +111,10 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 }
   
 void parse_command_line_args(int argc, char** argv, 
-			     std::string& bamfile_string,    std::string& rg_sample_string,      std::string& rg_lib_string, std::string& haploid_chr_string,
-			     std::string& fasta_dir,         std::string& region_file,           std::string& snp_vcf_file,  std::string& chrom,
-			     std::string& bam_pass_out_file, std::string& bam_filt_out_file,
-			     std::string& str_vcf_out_file,  std::string& log_file,      int& use_all_reads,
+			     std::string& bamfile_string,     std::string& bamlist_string,    std::string& rg_sample_string,      std::string& rg_lib_string,
+			     std::string& haploid_chr_string, std::string& fasta_dir,         std::string& region_file,           std::string& snp_vcf_file,
+			     std::string& chrom,              std::string& bam_pass_out_file, std::string& bam_filt_out_file,
+			     std::string& str_vcf_out_file,   std::string& log_file,      int& use_all_reads,
 			     int& use_hap_aligner, int& remove_pcr_dups,  int& bams_from_10x,    int& bam_lib_from_samp,     int& def_stutter_model,
 			     int& output_gls,      int& output_pls,       int& output_all_reads, int& output_pall_reads,     int& output_mall_reads, std::string& ref_vcf_file,
 			     GenotyperBamProcessor& bam_processor){
@@ -135,6 +136,7 @@ void parse_command_line_args(int argc, char** argv,
   static struct option long_options[] = {
     {"10x-bams",        no_argument, &bams_from_10x, 1},
     {"bams",            required_argument, 0, 'b'},
+    {"bam-files",       required_argument, 0, 'B'},
     {"chrom",           required_argument, 0, 'c'},
     {"max-mate-dist",   required_argument, 0, 'd'},
     {"fasta",           required_argument, 0, 'f'},
@@ -181,7 +183,7 @@ void parse_command_line_args(int argc, char** argv,
   int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:v:w:x:y:z:", long_options, &option_index);
+    c = getopt_long(argc, argv, "b:B:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:v:w:x:y:z:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -189,6 +191,9 @@ void parse_command_line_args(int argc, char** argv,
     case 0:
       break;
     case 'b':
+      bamlist_string = std::string(optarg);
+      break;
+    case 'B':
       bamfile_string = std::string(optarg);
       break;
     case 'c':
@@ -304,11 +309,11 @@ int main(int argc, char** argv){
   bam_processor.set_max_flank_indel_frac(0.15);
 
   int use_all_reads = 0, use_hap_aligner = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0, def_stutter_model = 0;
-  std::string bamfile_string= "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
+  std::string bamfile_string= "", bamlist_string = "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", log_file = "";
   int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 0, output_mall_reads = 1;
   std::string ref_vcf_file="";
-  parse_command_line_args(argc, argv, bamfile_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
+  parse_command_line_args(argc, argv, bamfile_string, bamlist_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
 			  bam_pass_out_file, bam_filt_out_file, str_vcf_out_file, log_file, use_all_reads, use_hap_aligner, remove_pcr_dups, bams_from_10x,
 			  bam_lib_from_samp, def_stutter_model, output_gls, output_pls, output_all_reads, output_pall_reads, output_mall_reads,
 			  ref_vcf_file, bam_processor);
@@ -336,8 +341,8 @@ int main(int argc, char** argv){
     //printErrorAndDie("--viz-out option is not compatible with the --len-genotyper option");
   }
 
-  if (bamfile_string.empty())
-    printErrorAndDie("--bams option required");
+  if (bamfile_string.empty() && bamlist_string.empty())
+    printErrorAndDie("You must specify either the --bams or --bam-files option");
   else if (region_file.empty())
     printErrorAndDie("--region option required");
   else if (fasta_dir.empty())
@@ -347,7 +352,22 @@ int main(int argc, char** argv){
     fasta_dir += "/";
 
   std::vector<std::string> bam_files;
-  split_by_delim(bamfile_string, ',', bam_files);
+  if (!bamlist_string.empty())
+    split_by_delim(bamlist_string, ',', bam_files);
+
+  // Read file containing BAM paths line-by-line
+  if (!bamfile_string.empty()){
+    if (!file_exists(bamfile_string))
+      printErrorAndDie("File containing BAM file names does not exist: " + bamfile_string);
+    std::ifstream input(bamfile_string.c_str());
+    if (!input.is_open())
+      printErrorAndDie("Failed to open file containing BAM file names: " + bamfile_string);
+    std::string line;
+    while (std::getline(input, line))
+      if (!line.empty())
+	bam_files.push_back(line);
+    input.close();
+  }
   bam_processor.logger() << "Detected " << bam_files.size() << " BAM files" << std::endl;
 
   // Open all BAM files
@@ -423,13 +443,32 @@ int main(int argc, char** argv){
 			   << rg_samples.size() << " unique samples" << std::endl;
   }
 
-  // Open BAM index files, assuming they're the same path with a .bai suffix
+  // Open BAM index files, assuming they're either the same path with a .bai suffix or a path where .bai replaces .bam
   std::vector<std::string> bam_indexes;
   for (unsigned int i = 0; i < bam_files.size(); i++){
+    bool have_index      = false;
     std::string bai_file = bam_files[i] + ".bai";
-    if (!file_exists(bai_file))
-      printErrorAndDie("BAM index file " + bai_file + " does not exist. Please ensure that each BAM has been sorted by position and indexed using samtools");
-    bam_indexes.push_back(bai_file);
+    if (!file_exists(bai_file)){
+      int filename_len = bam_files[i].size();
+      if (filename_len > 4 && bam_files[i].substr(filename_len-4).compare(".bam") == 0){
+	bai_file = bam_files[i].substr(0, filename_len-4) + ".bai";
+	if (file_exists(bai_file)){
+	  have_index = true;
+	  bam_indexes.push_back(bai_file);
+	}
+      }
+    }
+    else {
+      have_index = true;
+      bam_indexes.push_back(bai_file);
+    }
+
+    if(!have_index){
+      std::stringstream error_msg;
+      error_msg << "Unable to find a BAM index file for " << bam_files[i] << "\n"
+		<< "Please ensure that each BAM has been sorted by position and indexed using samtools.";
+      printErrorAndDie(error_msg.str());
+    }
   }
   if (!reader.OpenIndexes(bam_indexes))
     printErrorAndDie("Failed to open one or more BAM index files");
