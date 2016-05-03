@@ -22,8 +22,17 @@ def filter_call(sample, filters):
                return "Stutter fraction"
           elif filters.BSTRAP_QUAL > 0 and 1.0*sample['BQ'] < filters.BSTRAP_QUAL:
                return "Bootstrap quality"
-          else:
-               return None
+
+          if filters.SPAN_DEPTH > 0:
+               if sample["MALLREADS"] is None:
+                    return "Spanning depth"
+               gb_a, gb_b = map(int, sample["GB"].split("|"))
+               span_depth_dict = dict(map(lambda x: map(int, x.split("|")), sample["MALLREADS"].split(";")))
+               dp_a = 0 if gb_a not in span_depth_dict else span_depth_dict[gb_a]
+               dp_b = 0 if gb_b not in span_depth_dict else span_depth_dict[gb_b]
+               if min(dp_a, dp_b) < filters.SPAN_DEPTH:
+                    return "Spanning depth"
+          return None
 
 def main():
      parser = argparse.ArgumentParser()
@@ -50,6 +59,9 @@ def main():
      parser.add_argument("--min-call-bstrap-qual", type=float, required=False, default=0.0, dest="BSTRAP_QUAL",
                          help="Omit a sample's call if BQ < BSTRAP_QUAL")
 
+     parser.add_argument("--min-call-spanning-depth", type=int, required=False, default=0.0, dest="SPAN_DEPTH",
+                         help="Omit a sample's call if the minimum number of spanning reads supporting an allele < SPAN_DEPTH")
+
      parser.add_argument("--min-loc-depth", type=int, required=False, default=0, dest="MIN_LOC_DEPTH",
                          help="Omit locus if the total depth (DP INFO field) < MIN_LOC_DEPTH")
 
@@ -66,7 +78,6 @@ def main():
                          help="Omit locus if the number of valid samples after filtering < MIN_CALLS")
                          
      args = parser.parse_args()
-
      if args.VCF == "-":
           vcf_reader = vcf.Reader(sys.stdin)
      else:
