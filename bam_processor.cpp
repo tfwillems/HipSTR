@@ -1,4 +1,4 @@
-#include <fstream>
+B1;2c#include <fstream>
 #include <iostream>
 #include <locale>
 #include <sstream>
@@ -66,18 +66,29 @@ void BamProcessor::get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::B
   if (aln_1.RefID == -1 || aln_2.RefID == -1)
     return;
 
-  // BWA-MEM sometimes doesn't report the alternate alignment tag if there are too may available options
-  // When this is the case, we should check that the mate pair has a decent score relative to the suboptimal score
-  // Otherwise, we may be including mismapped reads
+  // BWA-MEM sometimes doesn't report the alternate alignment tag if there are too many alternate mappings
+  // To avoid including mismapped reads, we need to be careful about drawing any conclusions
+  // regarding alternate mappings. We do this by examining the alignment score of the read or its mate pair relative
+  // to the suboptimal alignment score.
+  //  i) If the mate pair has no XA tag, we require that it has a decent alignment score relative to its best alternate score.
+  //     Otherwise, the mate mapping information is not informative and we discard the pair of reads.
+  // ii) If the mate pairs has an XA tag but the read has no XA tag, we require that the read has a decent alignment score relative to its best alternate score.
+  //     Otherwise, even with an informative mate, there may be other equally valid alignments for the read
   if (!aln_2.HasTag(ALT_MAP_TAG)){
-    // If the BAM doesn't contain the alignment score flags, we can't enforce this check
     if (aln_2.HasTag(PRIMARY_ALN_SCORE_TAG) && aln_2.HasTag(SUBOPT_ALN_SCORE_TAG)){
-      int primary_score, subopt_score, mate_primary_score, mate_subopt_score;
-      if(!GetIntBamTag(aln_1, PRIMARY_ALN_SCORE_TAG, &primary_score))      printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
-      if(!GetIntBamTag(aln_1, SUBOPT_ALN_SCORE_TAG,  &subopt_score))       printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
+      int mate_primary_score, mate_subopt_score;
       if(!GetIntBamTag(aln_2, PRIMARY_ALN_SCORE_TAG, &mate_primary_score)) printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
       if(!GetIntBamTag(aln_2, SUBOPT_ALN_SCORE_TAG,  &mate_subopt_score))  printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
       if (mate_primary_score - mate_subopt_score < 10)
+	return;
+    }
+  }
+  else if (!aln_1.HasTag(ALT_MAP_TAG)){
+    if (aln_1.HasTag(PRIMARY_ALN_SCORE_TAG) && aln_1.HasTag(SUBOPT_ALN_SCORE_TAG)){
+      int primary_score, subopt_score;
+      if(!GetIntBamTag(aln_1, PRIMARY_ALN_SCORE_TAG, &primary_score))      printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
+      if(!GetIntBamTag(aln_1, SUBOPT_ALN_SCORE_TAG,  &subopt_score))       printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
+      if (primary_score - subopt_score < 10)
 	return;
     }
   }
@@ -306,6 +317,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	    paired_str_alns.push_back(alignment);
 	    mate_alns.push_back(aln_iter->second);
 	    region_alignments.push_back(alignment);
+	    region_alignments.push_back(aln_iter->second);
 	  }
 	  else {
 	    unique_mapping++;
@@ -365,6 +377,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	  paired_str_alns.push_back(aln_iter->second);
 	  mate_alns.push_back(alignment);
 	  region_alignments.push_back(aln_iter->second);
+	  region_alignments.push_back(alignment);
 	}
 	else {
 	  unique_mapping++;
