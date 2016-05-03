@@ -1,4 +1,4 @@
-B1;2c#include <fstream>
+#include <fstream>
 #include <iostream>
 #include <locale>
 #include <sstream>
