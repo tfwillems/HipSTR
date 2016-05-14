@@ -39,7 +39,7 @@ void read_vcf_alleles(vcflib::VariantCallFile* ref_vcf, Region* region, std::vec
 
       int32_t str_start = (int32_t)variant.getInfoValueFloat(START_INFO_TAG);
       int32_t str_stop  = (int32_t)variant.getInfoValueFloat(STOP_INFO_TAG);
-      if (str_start == region->start() && str_stop == region->stop()){
+      if (str_start == region->start()+1 && str_stop == region->stop()){
 	success = true;
 	pos     = variant.position-1;
 	alleles.insert(alleles.end(), variant.alleles.begin(), variant.alleles.end());
@@ -89,7 +89,7 @@ double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Reg
     
     int32_t str_start = (int32_t)variant.getInfoValueFloat(START_INFO_TAG);
     int32_t str_stop  = (int32_t)variant.getInfoValueFloat(STOP_INFO_TAG);
-    if (str_start == region->start() && str_stop == region->stop()){
+    if (str_start == region->start()+1 && str_stop == region->stop()){
       matches_region = true;
       break;
     }
