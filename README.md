@@ -23,8 +23,8 @@ Despite their utility, STRs are particularly difficult to genotype. The repetiti
 
 1. Learning locus-specific PCR stutter models using an [EM algorithm] (http://en.wikipedia.org/wiki/Expectation%E2%80%93maximization_algorithm)
 2. Mining candidate STR alleles from population-scale sequencing data
-2. Utilizing phased SNP haplotypes to genotype, phase and/or impute STRs
-3. Employing a specialized hidden Markov model to align reads to candidate sequences while accounting for stutter
+3. Employing a specialized hidden Markov model to align reads to candidate sequences while accounting for STR artifacts
+4. Utilizing phased SNP haplotypes to genotype and phase STRs
 
 
 
