@@ -1293,12 +1293,12 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       << "DFLANKINDEL=" << tot_dflankindel << ";";
 
   // Add allele counts
-  out << "AN=" << allele_number << ";" << "REFAC=" << allele_counts[0] << ";";
+  out << "AN=" << allele_number << ";" << "REFAC=" << allele_counts[0];
   if (allele_counts.size() > 1){
-    out << "AC=";
+    out << ";AC=";
     for (unsigned int i = 1; i < allele_counts.size()-1; i++)
       out << allele_counts[i] << ",";
-    out << allele_counts.back() << ";";
+    out << allele_counts.back();
   }
 
   // Add FORMAT field
