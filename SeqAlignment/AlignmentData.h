@@ -118,7 +118,7 @@ class Alignment {
   int num_matched_bases() const{
     int num = 0;
     for (std::vector<CigarElement>::const_iterator iter = cigar_list_.begin(); iter != cigar_list_.end(); iter++)
-      if (iter->get_type() == 'M')
+      if (iter->get_type() == 'M' || iter->get_type() == '=')
 	num += iter->get_num();
     return num;
   }
