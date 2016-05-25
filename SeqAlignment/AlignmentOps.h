@@ -13,10 +13,14 @@ bool GetIntBamTag(const BamTools::BamAlignment& aln, const std::string& tag_name
 
 bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment);
 
+void convertAlignment(BamTools::BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment);
+
 bool startsWithSoftClip(const BamTools::BamAlignment& aln);
 bool endsWithSoftClip(const BamTools::BamAlignment& aln);
 bool startsWithHardClip(const BamTools::BamAlignment& aln);
 bool endsWithHardClip(const BamTools::BamAlignment& aln);
+bool matchesReference(const BamTools::BamAlignment& aln);
+
 
 void trimAlignment(BamTools::BamAlignment& aln, int32_t min_read_start, int32_t max_read_stop, char min_base_qual='~');
 
