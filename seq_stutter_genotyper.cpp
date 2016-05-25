@@ -225,14 +225,22 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
       bool use_in_haplotype_gen = BamProcessor::passes_filters(alignments[i][j]);
       if (!have_prev){
 	alns_.back().push_back(Alignment());
-	if (realign(alignments[i][j], chrom_seq, alns_.back().back())){
+	bool aligned = false;
+	if (matchesReference(alignments[i][j])){
+	  aligned = true;
+	  convertAlignment(alignments[i][j], chrom_seq,  alns_.back().back());
+	}
+	else if (realign(alignments[i][j], chrom_seq, alns_.back().back()))
+	  aligned = true;
+
+	if (aligned){
 	  seq_to_alns[alignments[i][j].QueryBases] = std::pair<int,int>(i, alns_[i].size()-1);
 	  alns_.back().back().check_CIGAR_string(alignments[i][j].Name);
 	  use_for_haps_.back().push_back(use_in_haplotype_gen);
-	  if (use_in_haplotype_gen){
-	    min_start = std::min(min_start, alns_.back().back().get_start());
-	    max_stop  = std::max(max_stop,  alns_.back().back().get_stop());
-	  }
+          if (use_in_haplotype_gen){
+            min_start = std::min(min_start, alns_.back().back().get_start());
+            max_stop  = std::max(max_stop,  alns_.back().back().get_stop());
+          }
 	}
 	else {
 	  // Failed to realign read
