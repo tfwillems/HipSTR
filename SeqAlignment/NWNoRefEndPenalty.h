@@ -11,11 +11,11 @@
 #include "../bamtools/include/api/BamAux.h"
 
 namespace NWNoRefEndPenalty { 
-  void Align(const std::string& ref_seq, 
+  bool Align(const std::string& ref_seq,
 	     const std::string& read_seq,
-	     std::string& ref_seq_al, 
+	     std::string& ref_seq_al,
 	     std::string& read_seq_al,
-	     float* score, 
+	     float* score,
 	     std::vector<BamTools::CigarOp>& cigar_list);
 
   bool LeftAlign(const std::string& ref_seq, 

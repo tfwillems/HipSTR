@@ -227,7 +227,6 @@ namespace NWNoRefEndPenalty {
     }
   }
 
-
   void traceAlignment(int best_col, 
 		      int best_type, 
 		      int L1, int L2,
@@ -317,15 +316,7 @@ namespace NWNoRefEndPenalty {
 	num += 1;
     }
     cigar_list.push_back(BamTools::CigarOp(cigar_char, num));
-    /*
-    if (cigar_list.front().Type == 'I')
-      cigar_list.front().Type = 'S';
-    if (cigar_list.back().Type == 'I')
-      cigar_list.back().Type = 'S';
-    */
   }
-
- 
 
   void initMatrices(std::vector<float>& M,    std::vector<float>& Iref,    std::vector<float>& Iread,
 		    std::vector<int>& traceM, std::vector<int>& traceIref, std::vector<int>& traceIread,
@@ -368,7 +359,7 @@ namespace NWNoRefEndPenalty {
   }
 
 
-  void Align(const std::string& ref_seq, const std::string& read_seq,
+  bool Align(const std::string& ref_seq, const std::string& read_seq,
 	     std::string& ref_seq_al, std::string& read_seq_al,
 	     float* score, std::vector<BamTools::CigarOp>& cigar_list) {
     int L1       = ref_seq.length();
@@ -400,6 +391,11 @@ namespace NWNoRefEndPenalty {
     // matrices and the optimal end position
     traceAlignment(best_col, best_type, L1, L2, traceM, traceIref, traceIread,
 		   ref_seq, read_seq, ref_seq_al, read_seq_al, cigar_list);
+
+    // Don't proceed if the read sequence extends past the reference boundaries
+    if (cigar_list.front().Type == 'S' || cigar_list.back().Type == 'S')
+      return false;
+    return true;
   }
 
   

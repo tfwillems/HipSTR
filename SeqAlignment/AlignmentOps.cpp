@@ -65,7 +65,7 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
     std::string ref_al, read_al;
     float score;
     std::vector<BamTools::CigarOp> cigar_list;
-    bool left_aligned = NWNoRefEndPenalty::LeftAlign(ref_seq, read_seq, ref_al, read_al, &score, cigar_list);
+    bool aligned = NWNoRefEndPenalty::Align(ref_seq, read_seq, ref_al, read_al, &score, cigar_list);
     
     // Calculate number of leading spaces in read's alignment and start position
     unsigned int num_lead = 0;
@@ -139,7 +139,7 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
     if (head+tail < end_iter->Length)
       new_alignment.add_cigar_element(CigarElement(end_iter->Type, end_iter->Length-head-tail));
 
-    return left_aligned;
+    return aligned;
 }
 
 

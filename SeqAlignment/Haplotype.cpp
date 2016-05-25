@@ -64,7 +64,7 @@ void Haplotype::aln_haps_to_ref(){
 
   do {
     alt_hap_seq = get_seq();
-    if (!NWNoRefEndPenalty::LeftAlign(ref_hap_seq, alt_hap_seq, ref_hap_al, alt_hap_al, &score, cigar_list))
+    if (!NWNoRefEndPenalty::Align(ref_hap_seq, alt_hap_seq, ref_hap_al, alt_hap_al, &score, cigar_list))
       printErrorAndDie("Failed to left-align haplotype sequence to reference allele");
     cigar_list.clear();
 
