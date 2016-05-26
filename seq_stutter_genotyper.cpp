@@ -543,7 +543,7 @@ bool SeqStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger)
   }
 
   // Remove alleles with no MAP genotype calls and recompute the posteriors
-  if (log_allele_priors_ == NULL){
+  if (ref_vcf_ == NULL && log_allele_priors_ == NULL){
     std::vector<int> uncalled_indices;
     get_uncalled_alleles(uncalled_indices);
     if (uncalled_indices.size() != 0){
@@ -1134,7 +1134,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     // Determine which of the two genotypes each read is associated with
     int read_strand = 0;
-    if (!haploid_ && (gt_a != gt_b)){
+    if (!haploid_ && ((gt_a != gt_b) || (abs(log_p1_[read_index]- log_p2_[read_index]) > TOLERANCE))){
       double v1 = log_p1_[read_index]+read_LL_ptr[gt_a], v2 = log_p2_[read_index]+read_LL_ptr[gt_b];
       if (abs(v1-v2) > TOLERANCE)
 	read_strand = (v1 > v2 ? 0 : 1);
@@ -1466,7 +1466,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     }
 
     std::stringstream locus_info;
-    locus_info << region_->chrom() << "\t" << region_->start() << "\t" << region_->stop();
+    locus_info << region_->chrom() << "\t" << region_->start()+1 << "\t" << region_->stop();
     double viz_start = clock();
     visualizeAlignments(max_LL_alns, sample_names_, sample_results, hap_blocks_, chrom_seq, locus_info.str(), true, html_output);
     logger << "Visualization time: " << (clock() - viz_start)/CLOCKS_PER_SEC << std::endl;
