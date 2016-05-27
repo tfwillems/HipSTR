@@ -9,6 +9,12 @@ if [ "$#" -eq 3 ] || [ "$#" -eq 4 ]; then
     # Make sure tabix is installed
     hash tabix 2>/dev/null || { echo >&2 "ERROR: VizAln requires tabix. Please check that it's appropriately installed"; exit 1; }
 
+    # Make sure python is installed
+    hash python 2>/dev/null || { echo >&2 "ERROR: VizAln requires python. Please check that it's appropriately installed"; exit 1; }
+
+    # Make sure the required python packages are installed
+    python -c "import HTMLParser" 2>/dev/null || { echo >&2 "ERROR: VizAln requires the HTMLParser python package. Please check that it's appropriately installed"; exit 1; }
+
     # Make sure the file exists
     if [ ! -e $1 ]
 	then
@@ -37,7 +43,6 @@ msg
 	exit 1
     fi
 
-
     parent_path=$( cd "$(dirname "${BASH_SOURCE}")" ; pwd -P )
     chrom=$2
     start=$3
@@ -45,9 +50,9 @@ msg
     f="/tmp/vizaln.$RANDOM.html"
     if [ "$#" -eq 3 ]
 	then
-	tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | cut -f 1-4 --complement | ${parent_path}/filter_html_alns.py > $f
+	tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | cut -f 1-4 --complement | python ${parent_path}/filter_html_alns.py > $f
     else
-	tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | cut -f 1-4 --complement | ${parent_path}/filter_html_alns.py > $f
+	tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | cut -f 1-4 --complement | python ${parent_path}/filter_html_alns.py > $f
     fi
 
     open $f
