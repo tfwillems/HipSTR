@@ -7,6 +7,20 @@
 ##   make CXXFLAGS=XXXXX
 CXXFLAGS= -O3 -g -D_FILE_OFFSET_BITS=64 -std=c++0x -DMACOSX -pthread #-pedantic -Wunreachable-code -Weverything
 
+## To build static executables, run:
+##   rm -f HipSTR BamSieve
+##   make STATIC=1
+## verify:
+##   ldd HipSTR BamSieve
+##
+## To Create a static distribution file, run:
+##   make static-dist
+ifeq ($(STATIC),1)
+LDFLAGS=-static
+else
+LDFLAGS=
+endif
+
 ## Source code files, add new files to this list
 SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp extract_indels.cpp mathops.cpp pcr_duplicates.cpp fastahack/Fasta.cpp fastahack/split.cpp
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
@@ -35,6 +49,19 @@ all: version BamSieve HipSTR test/fast_ops_test test/haplotype_test test/read_vc
 	rm version.cpp
 	touch version.cpp
 
+# Create a tarball with static binaries
+.PHONY: static-dist
+static-dist:
+	rm -f HipSTR BamSieve
+	$(MAKE) STATIC=1
+	( VER="$$(git describe --abbrev=7 --dirty --always --tags)" ;\
+	  DST="HipSTR-$${VER}-static-$$(uname -s)-$$(uname -m)" ; \
+	  mkdir "$${DST}" && \
+            cp HipSTR BamSieve "$${DST}" && \
+            tar -czvf "$${DST}.tar.gz" "$${DST}" && \
+            rm -r "$${DST}/" \
+        )
+
 version:
 	git describe --abbrev=7 --dirty --always --tags | awk '{print "#include \"version.h\""; print "const std::string VERSION = \""$$0"\";"}' > version.cpp
 
@@ -59,10 +86,10 @@ include $(subst .cpp,.d,$(SRC))
 # The resulting binary executable
 
 BamSieve: $(OBJ_COMMON) $(OBJ_SIEVE) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(FASTA_HACK_LIB) $(OBJ_SEQALN)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 exploratory/RNASeq: $(OBJ_COMMON) $(OBJ_RNASEQ) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
