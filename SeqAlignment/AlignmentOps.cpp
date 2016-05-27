@@ -65,7 +65,7 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
     std::string ref_al, read_al;
     float score;
     std::vector<BamTools::CigarOp> cigar_list;
-    bool left_aligned = NWNoRefEndPenalty::LeftAlign(ref_seq, read_seq, ref_al, read_al, &score, cigar_list);
+    bool aligned = NWNoRefEndPenalty::Align(ref_seq, read_seq, ref_al, read_al, &score, cigar_list);
     
     // Calculate number of leading spaces in read's alignment and start position
     unsigned int num_lead = 0;
@@ -139,7 +139,7 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
     if (head+tail < end_iter->Length)
       new_alignment.add_cigar_element(CigarElement(end_iter->Type, end_iter->Length-head-tail));
 
-    return left_aligned;
+    return aligned;
 }
 
 
@@ -166,7 +166,6 @@ bool endsWithHardClip(const BamTools::BamAlignment& aln){
     return false;
   return aln.CigarData.back().Type == 'H';
 }
-
 
 /*
  *  Trim an alignment that extends too far upstream or downstream of the provided region or has low base qualities on the ends
@@ -281,4 +280,78 @@ void trimLowQualityEnds(BamTools::BamAlignment& aln, char min_base_qual){
   int32_t min_read_start  = aln.GetEndPosition()+1;
   int32_t max_read_stop   = aln.Position-1;
   return trimAlignment(aln, min_read_start, max_read_stop, min_base_qual);
+}
+
+bool matchesReference(const BamTools::BamAlignment& aln){
+  for (auto cigar_iter = aln.CigarData.begin(); cigar_iter != aln.CigarData.end(); cigar_iter++)
+    if (cigar_iter->Type != 'M' && cigar_iter->Type != '=')
+      return false;
+  return true;
+}
+
+void convertAlignment(BamTools::BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment){
+  std::string read_sequence = uppercase(alignment.QueryBases);
+  int32_t seq_index = 0, ref_index = alignment.Position;
+  std::stringstream aln_ss;
+  new_alignment = Alignment(alignment.Position, alignment.GetEndPosition()-1, alignment.Qualities, read_sequence, "");
+  for (auto cigar_iter = alignment.CigarData.begin(); cigar_iter != alignment.CigarData.end(); cigar_iter++){
+    int32_t cigar_index    = 0;
+    char prev_cigar_type   = '=';
+    int32_t prev_cigar_num = 0;
+
+    switch (cigar_iter->Type){
+    case 'H':
+      break;
+    case 'S':
+      new_alignment.add_cigar_element(CigarElement(cigar_iter->Type, cigar_iter->Length));
+      seq_index += cigar_iter->Length;
+      break;
+    case 'I':
+      new_alignment.add_cigar_element(CigarElement(cigar_iter->Type, cigar_iter->Length));
+      aln_ss << read_sequence.substr(seq_index, cigar_iter->Length);
+      seq_index += cigar_iter->Length;
+      break;
+    case 'D':
+      new_alignment.add_cigar_element(CigarElement(cigar_iter->Type, cigar_iter->Length));
+      aln_ss << std::string(cigar_iter->Length, '-');
+      ref_index += cigar_iter->Length;
+      break;
+    case 'M': case '=': case 'X':
+      while (cigar_index < cigar_iter->Length){
+	if (read_sequence[seq_index] == static_cast<char>(toupper(ref_sequence[ref_index]))){
+	  if (prev_cigar_type == '=')
+	    prev_cigar_num++;
+	  else {
+	    if (prev_cigar_num != 0)
+	      new_alignment.add_cigar_element(CigarElement(prev_cigar_type, prev_cigar_num));
+	    prev_cigar_type = '=';
+	    prev_cigar_num  = 1;
+	  }
+	}
+	else {
+	  if (prev_cigar_type == 'X')
+	    prev_cigar_num++;
+	  else {
+	    if (prev_cigar_num != 0)
+	      new_alignment.add_cigar_element(CigarElement(prev_cigar_type, prev_cigar_num));
+	    prev_cigar_type = 'X';
+	    prev_cigar_num  = 1;
+	  }
+	}
+	aln_ss << read_sequence[seq_index];
+	cigar_index++; ref_index++; seq_index++;
+      }
+
+      if (prev_cigar_num != 0)
+	new_alignment.add_cigar_element(CigarElement(prev_cigar_type, prev_cigar_num));
+      break;
+    default:
+      printErrorAndDie("Invalid CIGAR option encountered in convertAlignment");
+      break;
+    }
+  }
+
+  new_alignment.set_alignment(aln_ss.str());
+  assert(seq_index == read_sequence.size());
+  assert(ref_index == alignment.GetEndPosition());
 }

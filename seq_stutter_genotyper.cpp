@@ -225,14 +225,22 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
       bool use_in_haplotype_gen = BamProcessor::passes_filters(alignments[i][j]);
       if (!have_prev){
 	alns_.back().push_back(Alignment());
-	if (realign(alignments[i][j], chrom_seq, alns_.back().back())){
+	bool aligned = false;
+	if (matchesReference(alignments[i][j])){
+	  aligned = true;
+	  convertAlignment(alignments[i][j], chrom_seq,  alns_.back().back());
+	}
+	else if (realign(alignments[i][j], chrom_seq, alns_.back().back()))
+	  aligned = true;
+
+	if (aligned){
 	  seq_to_alns[alignments[i][j].QueryBases] = std::pair<int,int>(i, alns_[i].size()-1);
 	  alns_.back().back().check_CIGAR_string(alignments[i][j].Name);
 	  use_for_haps_.back().push_back(use_in_haplotype_gen);
-	  if (use_in_haplotype_gen){
-	    min_start = std::min(min_start, alns_.back().back().get_start());
-	    max_stop  = std::max(max_stop,  alns_.back().back().get_stop());
-	  }
+          if (use_in_haplotype_gen){
+            min_start = std::min(min_start, alns_.back().back().get_start());
+            max_stop  = std::max(max_stop,  alns_.back().back().get_stop());
+          }
 	}
 	else {
 	  // Failed to realign read
@@ -535,7 +543,7 @@ bool SeqStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger)
   }
 
   // Remove alleles with no MAP genotype calls and recompute the posteriors
-  if (log_allele_priors_ == NULL){
+  if (ref_vcf_ == NULL && log_allele_priors_ == NULL){
     std::vector<int> uncalled_indices;
     get_uncalled_alleles(uncalled_indices);
     if (uncalled_indices.size() != 0){
@@ -1126,7 +1134,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     // Determine which of the two genotypes each read is associated with
     int read_strand = 0;
-    if (!haploid_ && (gt_a != gt_b)){
+    if (!haploid_ && ((gt_a != gt_b) || (abs(log_p1_[read_index]- log_p2_[read_index]) > TOLERANCE))){
       double v1 = log_p1_[read_index]+read_LL_ptr[gt_a], v2 = log_p2_[read_index]+read_LL_ptr[gt_b];
       if (abs(v1-v2) > TOLERANCE)
 	read_strand = (v1 > v2 ? 0 : 1);
@@ -1458,7 +1466,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     }
 
     std::stringstream locus_info;
-    locus_info << region_->chrom() << "\t" << region_->start() << "\t" << region_->stop();
+    locus_info << region_->chrom() << "\t" << region_->start()+1 << "\t" << region_->stop();
     double viz_start = clock();
     visualizeAlignments(max_LL_alns, sample_names_, sample_results, hap_blocks_, chrom_seq, locus_info.str(), true, html_output);
     logger << "Visualization time: " << (clock() - viz_start)/CLOCKS_PER_SEC << std::endl;

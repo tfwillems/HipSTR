@@ -227,7 +227,6 @@ namespace NWNoRefEndPenalty {
     }
   }
 
-
   void traceAlignment(int best_col, 
 		      int best_type, 
 		      int L1, int L2,
@@ -317,15 +316,7 @@ namespace NWNoRefEndPenalty {
 	num += 1;
     }
     cigar_list.push_back(BamTools::CigarOp(cigar_char, num));
-    /*
-    if (cigar_list.front().Type == 'I')
-      cigar_list.front().Type = 'S';
-    if (cigar_list.back().Type == 'I')
-      cigar_list.back().Type = 'S';
-    */
   }
-
- 
 
   void initMatrices(std::vector<float>& M,    std::vector<float>& Iref,    std::vector<float>& Iread,
 		    std::vector<int>& traceM, std::vector<int>& traceIref, std::vector<int>& traceIread,
@@ -368,7 +359,7 @@ namespace NWNoRefEndPenalty {
   }
 
 
-  void Align(const std::string& ref_seq, const std::string& read_seq,
+  bool Align(const std::string& ref_seq, const std::string& read_seq,
 	     std::string& ref_seq_al, std::string& read_seq_al,
 	     float* score, std::vector<BamTools::CigarOp>& cigar_list) {
     int L1       = ref_seq.length();
@@ -400,10 +391,15 @@ namespace NWNoRefEndPenalty {
     // matrices and the optimal end position
     traceAlignment(best_col, best_type, L1, L2, traceM, traceIref, traceIread,
 		   ref_seq, read_seq, ref_seq_al, read_seq_al, cigar_list);
+
+    // Don't proceed if the read sequence extends past the reference boundaries
+    if (cigar_list.front().Type == 'S' || cigar_list.back().Type == 'S')
+      return false;
+    return true;
   }
 
   
-  float bestIndex(float s1, float s2, float s3, IndelTracker* t1, IndelTracker* t2, IndelTracker* t3, int* best_type){
+  float bestIndex(float s1, float s2, float s3, IndelTracker* t1, IndelTracker* t2, IndelTracker* t3, int& best_type, IndelTracker& opt_track){
     IndelTracker max_val; 
     max_val.set_max_val();
     float best_val           = std::max(s1, std::max(s2, s3));
@@ -411,27 +407,29 @@ namespace NWNoRefEndPenalty {
 
     if (s1 == best_val){
       if (t1->less_than(*best_track)){
-	*best_type = 0;
+	best_type  = 0;
 	best_track = t1;
       }
     }
 
     if (s2 == best_val){
       if (t2->less_than(*best_track)){
-	*best_type = 1;
+	best_type  = 1;
 	best_track = t2;
       }
     }
 
     if (s3 == best_val){
       if (t3->less_than(*best_track)){
-	*best_type = 2;
+	best_type  = 2;
 	best_track = t3;
       }
     }
 
     if (!best_track->less_than(max_val))
       printErrorAndDie("Logical error in bestIndex()");
+
+    opt_track = *best_track;
     return best_val;
   }
 
@@ -453,7 +451,6 @@ namespace NWNoRefEndPenalty {
     int ref_base, read_base, oindex, nindex;
     int otindex, ntindex;
     float s1, s2, s3;
-    int c;
     IndelTracker t1, t2, t3;
 
     std::vector<int> ref_base_ints, read_base_ints;
@@ -481,16 +478,7 @@ namespace NWNoRefEndPenalty {
 	M[nindex]       = bestIndex(s1, s2, s3, 
 				    &(prev_M_tracks[otindex]), 
 				    &(prev_Iref_tracks[otindex]), 
-				    &(prev_Iread_tracks[otindex]), &c) + s[ref_base][read_base];
-	traceM[nindex]  = c;
-	if (c == 0)
-	  M_tracks[ntindex] = prev_M_tracks[otindex].copy();
-	else if (c == 1)
-	  M_tracks[ntindex] = prev_Iref_tracks[otindex].copy();
-	else if (c == 2)
-	  M_tracks[ntindex] = prev_Iread_tracks[otindex].copy();
-	else
-	  printErrorAndDie("Invalid matrix type");
+				    &(prev_Iread_tracks[otindex]), traceM[nindex], M_tracks[ntindex]) + s[ref_base][read_base];
 		
        	// Update Iref matrix (examine (i,j-1))
 	oindex             = i*(L1+1) + (j-1);
@@ -502,16 +490,7 @@ namespace NWNoRefEndPenalty {
 	t1 = M_tracks[otindex].add(false);
 	t2 = Iref_tracks[otindex].copy();
 	t3 = Iread_tracks[otindex].add(false);
-	Iref[nindex] = bestIndex(s1, s2, s3, &t1, &t2, &t3, &c);
-	traceIref[nindex] = c;
-	if (c == 0)
-	  Iref_tracks[ntindex] = t1;
-	else if (c == 1)
-	  Iref_tracks[ntindex] = t2;
-	else if (c == 2)
-	  Iref_tracks[ntindex] = t3;
-	else
-	  printErrorAndDie("Invalid matrix type");
+	Iref[nindex] = bestIndex(s1, s2, s3, &t1, &t2, &t3, traceIref[nindex], Iref_tracks[ntindex]);
 
 	// Update Iread matrix (examine (i-1,j))
 	oindex              = (i-1)*(L1+1) + j;
@@ -523,16 +502,7 @@ namespace NWNoRefEndPenalty {
 	t1 = prev_M_tracks[otindex].add(false);
 	t2 = prev_Iref_tracks[otindex].add(false);
 	t3 = prev_Iread_tracks[otindex].copy();
-	Iread[nindex] = bestIndex(s1, s2, s3, &t1, &t2, &t3, &c);
-	traceIread[nindex] = c;
-	if (c == 0)
-	  Iread_tracks[ntindex] = t1;
-	else if (c == 1)
-	  Iread_tracks[ntindex] = t2;
-	else if (c == 2)
-	  Iread_tracks[ntindex] = t3;
-	else
-	  printErrorAndDie("Invalid matrix type");
+	Iread[nindex] = bestIndex(s1, s2, s3, &t1, &t2, &t3, traceIread[nindex], Iread_tracks[ntindex]);
       }
 
       // Move current tracks to previous tracks
