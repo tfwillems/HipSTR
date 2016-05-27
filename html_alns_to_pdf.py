@@ -1,5 +1,3 @@
-#!/usr/local/bin/python
-
 # Simple class that processes HTML files created by HipSTR
 # and removes any alignment positions in which all bases correspond
 # to an insertion

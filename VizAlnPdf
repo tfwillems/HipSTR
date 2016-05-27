@@ -8,7 +8,7 @@ if [ "$#" -eq 5 ]; then
     # Make sure python is installed
     hash python 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires python. Please check that it's appropriately installed"; exit 1; }
 
-    # Makre sure the required python packages are installed
+    # Make sure the required python packages are installed
     python -c "from svglib.svglib import svg2rlg" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the svglib python package. Please check that it's appropriately installed"; exit 1; }
     python -c "from reportlab.graphics import renderPDF" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the reportlab python package. Please check that it's appropriately installed"; exit 1; }
 
@@ -40,14 +40,13 @@ msg
 	exit 1
     fi
 
-
     parent_path=$( cd "$(dirname "${BASH_SOURCE}")" ; pwd -P )
     chrom=$2
     start=$3
     stop=`expr $start + 100`
     sample=$4
     f=$5
-    tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | cut -f 1-4 --complement | ${parent_path}/html_alns_to_pdf.py $f
+    tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | cut -f 1-4 --complement | python ${parent_path}/html_alns_to_pdf.py $f
 
     rm $f.svg
     open $f.pdf
