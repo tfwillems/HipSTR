@@ -57,7 +57,7 @@ static-dist:
 	( VER="$$(git describe --abbrev=7 --dirty --always --tags)" ;\
 	  DST="HipSTR-$${VER}-static-$$(uname -s)-$$(uname -m)" ; \
 	  mkdir "$${DST}" && \
-            cp HipSTR BamSieve "$${DST}" && \
+            cp HipSTR BamSieve VizAln VizAlnPdf filter_html_alns.py html_alns_to_pdf.py README.md "$${DST}" && \
             tar -czvf "$${DST}.tar.gz" "$${DST}" && \
             rm -r "$${DST}/" \
         )
