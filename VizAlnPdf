@@ -9,8 +9,8 @@ if [ "$#" -eq 5 ]; then
     hash python 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires python. Please check that it's appropriately installed"; exit 1; }
 
     # Make sure the required python packages are installed
-    python -c "from svglib.svglib import svg2rlg" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the svglib python package. Please check that it's appropriately installed"; exit 1; }
     python -c "from reportlab.graphics import renderPDF" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the reportlab python package. Please check that it's appropriately installed"; exit 1; }
+    python -c "from svglib.svglib import svg2rlg" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the svglib python package. Please check that it's appropriately installed"; exit 1; }
 
     # Make sure the file exists
     if [ ! -e $1 ]
