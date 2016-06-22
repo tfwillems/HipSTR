@@ -20,7 +20,7 @@ void getMaxInsertionSizes(std::vector<Alignment>& alignments,
     int32_t position = align_iter->get_start();
     const std::vector<CigarElement>& cigar_ops = align_iter->get_cigar_list();
     std::map<int32_t, int>::iterator insertion_iter;
-    for(std::vector<CigarElement>::const_iterator cigar_iter = cigar_ops.begin(); cigar_iter != cigar_ops.end(); cigar_iter++){
+    for (std::vector<CigarElement>::const_iterator cigar_iter = cigar_ops.begin(); cigar_iter != cigar_ops.end(); cigar_iter++){
       char type  = cigar_iter->get_type();
       int length = cigar_iter->get_num();
       switch(type){
@@ -89,7 +89,7 @@ void overlayHaplotypeRegions(std::vector<HapBlock*> blocks,
 
       // Spaces before/between regions
       std::cerr << "Start position" << std::endl;
-      for(int32_t i = position; i < (*block_iter)->start(); i++){
+      for (int32_t i = position; i < (*block_iter)->start(); i++){
 	if (insertion_iter != max_insertions.end() && (i == insertion_iter->first)){
 	  for (int j = 0; j < insertion_iter->second; j++)
 	    result << SPACE_CHAR;
@@ -108,7 +108,7 @@ void overlayHaplotypeRegions(std::vector<HapBlock*> blocks,
 	for (int i = 0; i < max_reg_sizes[block_index]-blocks[block_index]->get_seq(n).size(); i++)
 	  result << NOT_APP_CHAR;
       else
-	for(int i = 0; i < max_reg_sizes[block_index]; i++)
+	for (int i = 0; i < max_reg_sizes[block_index]; i++)
 	  result << SPACE_CHAR;
       
       // Discard insertions within region
@@ -154,7 +154,7 @@ void overlayAlignments(std::vector<Alignment>& alignments,
     
     // Left pad with space characters
     std::map<int32_t,int>::iterator insertion_iter = max_insertions.begin();
-    for(int32_t i = min_start; i <= position; i++){
+    for (int32_t i = min_start; i <= position; i++){
       if (i == insertion_iter->first){
 	for (int j = 0; j < insertion_iter->second; j++)
 	  result << SPACE_CHAR;
@@ -173,31 +173,39 @@ void overlayAlignments(std::vector<Alignment>& alignments,
 	length = cigar_iter->get_num();
       }
       
+      int num_rem_ins = 0;
       if (position == insertion_iter->first){
 	int num_ins = insertion_iter->second;
-	if (type == 'I')
-	  num_ins -= length;
-	for(int i = 0; i < num_ins; i++)
-	  result << NOT_APP_CHAR;
+	if (type == 'I'){
+	  num_ins    -= length;
+	  num_rem_ins = num_ins;
+	}
+	else
+	  for (int i = 0; i < num_ins; i++)
+	    result << NOT_APP_CHAR;
 	insertion_iter++;
       }
       
       if (type == 'M' || type == '=' || type == 'X'){
 	int num_match = std::min(length, insertion_iter->first - position);
-	for(int i = 0; i < num_match; i++){
+	for (int i = 0; i < num_match; i++){
 	  result << nucleotides[nuc_index++];
 	  position++;
 	  length--;
 	}
       }
       else if (type == 'I'){
-	for(int i = 0; i < length; i++)
+	for (int i = 0; i < length; i++)
 	  result << nucleotides[nuc_index++];
 	length = 0;
+	if (cigar_iter+1 != cigar_ops.end())
+	  for (int i = 0; i < num_rem_ins; i++)
+	    result << NOT_APP_CHAR;
+	num_rem_ins = 0;
       }
       else if (type == 'D'){
 	int num_del = std::min(length, insertion_iter->first - position);
-	for(int i = 0; i < num_del; i++){
+	for (int i = 0; i < num_del; i++){
 	  result << DELETION_CHAR;
 	  position++;
 	  length--;
@@ -222,7 +230,6 @@ void overlayAlignments(std::vector<Alignment>& alignments,
   }
 }
 
-
 std::string arrangeReferenceString(std::string& chrom_seq, 
 				   std::map<int32_t,int>& max_insertions,
 				   std::string& locus_id,
@@ -238,7 +245,7 @@ std::string arrangeReferenceString(std::string& chrom_seq,
   std::stringstream ref_result;
   std::vector<bool> within_locus;
   std::map<int32_t,int>::iterator insertion_iter = max_insertions.begin();
-  for(int32_t i = min_start; i <= max_stop; i++){
+  for (int32_t i = min_start; i <= max_stop; i++){
     if (i == insertion_iter->first){
       for (int j = 0; j < insertion_iter->second; j++){
 	ref_result << NOT_APP_CHAR;
@@ -270,13 +277,22 @@ void visualizeAlignments(std::vector< std::vector<Alignment> >& alns, std::vecto
 			 std::string& chrom_seq, std::string locus_id, bool draw_locus_id,
 			 std::ostream& output) {
   assert(hap_blocks.size() == 3 && alns.size() == sample_names.size());
-  
+
+
+  // Sort samples by name
+  std::vector<std::pair<std::string, int> > sample_ordering;
+  for (unsigned int i = 0; i < sample_names.size(); i++)
+    sample_ordering.push_back(std::pair<std::string,int>(sample_names[i], i));
+  std::sort(sample_ordering.begin(), sample_ordering.end());
+
   std::vector<Alignment> alignments;
   std::vector<std::string> alignment_samples;
-  for (unsigned int i = 0; i < alns.size(); i++){
-   alignments.insert(alignments.end(), alns[i].begin(), alns[i].end());
-   for (unsigned int j = 0; j < alns[i].size(); j++)
-     alignment_samples.push_back(sample_names[i]);
+  for (unsigned int i = 0; i < sample_ordering.size(); i++){
+    std::string& sample = sample_ordering[i].first;
+    std::vector<Alignment>& sample_alns = alns[sample_ordering[i].second];
+    alignments.insert(alignments.end(), sample_alns.begin(), sample_alns.end());
+    for (unsigned int j = 0; j < sample_alns.size(); j++)
+      alignment_samples.push_back(sample);
   }
 
   // Minimum and maximum coordinates of alignments
