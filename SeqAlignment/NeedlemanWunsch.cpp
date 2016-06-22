@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include "../error.h"		    
-#include "NWNoRefEndPenalty.h"
+#include "NeedlemanWunsch.h"
 
 class IndelTracker {
 private:
@@ -81,7 +81,7 @@ public:
 
 
 
-namespace NWNoRefEndPenalty {
+namespace NeedlemanWunsch {
   // Create alignment scoring matrix
   const float a           =  2.0; // Match
   const float b           = -2.0; // Mismatch
@@ -171,6 +171,27 @@ namespace NWNoRefEndPenalty {
 	best_type = 2;
       }
       column++;
+    }
+  }
+
+  void findOptimalStopEndPenalty(int& L1, int& L2,
+				 std::vector<float>& M,
+				 std::vector<float>& Iref,
+				 std::vector<float>& Iread,
+				 float& best_val, int& best_col, int& best_type){
+    int i      = (L2+1)*(L1+1) - 1;
+    best_col   = L1;
+    best_val   = M[i];
+    best_type  = 0;
+
+    if (Iref[i] > best_val){
+      best_val  = Iref[i];
+      best_type = 1;
+    }
+
+    if (Iread[i] > best_val){
+      best_val  = Iread[i];
+      best_type = 2;
     }
   }
 
@@ -320,7 +341,7 @@ namespace NWNoRefEndPenalty {
 
   void initMatrices(std::vector<float>& M,    std::vector<float>& Iref,    std::vector<float>& Iread,
 		    std::vector<int>& traceM, std::vector<int>& traceIref, std::vector<int>& traceIread,
-		    int L1, int L2){
+		    int L1, int L2, bool use_ref_end_penalty){
     M[0]     = 0.0;
     Iref[0]  = -LARGE; // Impossible
     Iread[0] = -LARGE; // Impossible
@@ -328,7 +349,7 @@ namespace NWNoRefEndPenalty {
     // Fill in row (0,n)
     for(int i = 1; i < L1+1; i++){
       // No penalty for leading affine gap in reference seq 
-      Iref[i]       = 0.0;  
+      Iref[i]       = (!use_ref_end_penalty ? 0.0 : -GAPOPEN-(i-1)*GAPEXTEND);
       traceIref[i]  = 1;
 
       // Impossible
@@ -342,7 +363,7 @@ namespace NWNoRefEndPenalty {
 
     // Fill in column (n, 0)
     for(int i = 1; i < L2+1; i++){
-       int index = i*(L1+1);
+      int index = i*(L1+1);
 
       // Penalty for leading affine gap in read sequence
       Iread[index]      = -GAPOPEN-(i-1)*GAPEXTEND;
@@ -361,7 +382,7 @@ namespace NWNoRefEndPenalty {
 
   bool Align(const std::string& ref_seq, const std::string& read_seq,
 	     std::string& ref_seq_al, std::string& read_seq_al,
-	     float* score, std::vector<BamTools::CigarOp>& cigar_list) {
+	     float* score, std::vector<BamTools::CigarOp>& cigar_list, bool use_ref_end_penalty){
     int L1       = ref_seq.length();
     int L2       = read_seq.length();
     int mat_size = (L1+1)*(L2+1);
@@ -376,7 +397,7 @@ namespace NWNoRefEndPenalty {
     std::vector<int> traceM(mat_size), traceIref(mat_size), traceIread(mat_size);
 
     // Initialize matrices
-    initMatrices(M, Iref, Iread, traceM, traceIref, traceIread, L1, L2);
+    initMatrices(M, Iref, Iread, traceM, traceIref, traceIread, L1, L2, use_ref_end_penalty);
 
     // Fill out scoring and traceback matrices using variant of NW algorithm
     nw_helper(M, Iref, Iread, traceM, traceIref, traceIread, ref_seq, read_seq);
@@ -384,7 +405,10 @@ namespace NWNoRefEndPenalty {
     // Find the best ending point for the alignment
     float best_val;
     int best_col, best_type;
-    findOptimalStop(L1, L2, M, Iref, Iread, best_val, best_col, best_type);
+    if (use_ref_end_penalty)
+      findOptimalStopEndPenalty(L1, L2, M, Iref, Iread, best_val, best_col, best_type);
+    else
+      findOptimalStop(L1, L2, M, Iref, Iread, best_val, best_col, best_type);
     *score = best_val;
 
     // Construct the alignment strings and CIGAR string using the traceback 
@@ -554,7 +578,7 @@ namespace NWNoRefEndPenalty {
   
   bool LeftAlign(const std::string& ref_seq, const std::string& read_seq,
 		 std::string& ref_seq_al, std::string& read_seq_al,
-		 float* score, std::vector<BamTools::CigarOp>& cigar_list) {
+		 float* score, std::vector<BamTools::CigarOp>& cigar_list, bool use_ref_end_penalty){
     int L1       = ref_seq.length();
     int L2       = read_seq.length();
     int mat_size = (L1+1)*(L2+1);
@@ -569,7 +593,7 @@ namespace NWNoRefEndPenalty {
     std::vector<int> traceM(mat_size), traceIref(mat_size), traceIread(mat_size);
 
     // Initialize matrices
-    initMatrices(M, Iref, Iread, traceM, traceIref, traceIread, L1, L2);
+    initMatrices(M, Iref, Iread, traceM, traceIref, traceIread, L1, L2, use_ref_end_penalty);
 
     // Fill out scoring and traceback matrices using variant of NW algorithm
     nw_helper(M, Iref, Iread, traceM, traceIref, traceIread, ref_seq, read_seq);
@@ -577,7 +601,10 @@ namespace NWNoRefEndPenalty {
     // Find the best ending point for the alignment
     float best_val;
     int best_col, best_type;
-    findOptimalStop(L1, L2, M, Iref, Iread, best_val, best_col, best_type);
+    if (use_ref_end_penalty)
+      findOptimalStopEndPenalty(L1, L2, M, Iref, Iread, best_val, best_col, best_type);
+    else
+      findOptimalStop(L1, L2, M, Iref, Iread, best_val, best_col, best_type);
     *score = best_val;
 
     // Construct the alignment strings and CIGAR string using the traceback 

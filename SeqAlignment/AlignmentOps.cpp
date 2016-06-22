@@ -2,7 +2,7 @@
 
 #include "AlignmentOps.h"
 #include "../error.h"
-#include "NWNoRefEndPenalty.h"
+#include "NeedlemanWunsch.h"
 #include "../stringops.h"
 
 extern const int ALIGN_WINDOW_WIDTH = 75;
@@ -65,7 +65,7 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
     std::string ref_al, read_al;
     float score;
     std::vector<BamTools::CigarOp> cigar_list;
-    bool aligned = NWNoRefEndPenalty::Align(ref_seq, read_seq, ref_al, read_al, &score, cigar_list);
+    bool aligned = NeedlemanWunsch::Align(ref_seq, read_seq, ref_al, read_al, &score, cigar_list);
     
     // Calculate number of leading spaces in read's alignment and start position
     unsigned int num_lead = 0;
