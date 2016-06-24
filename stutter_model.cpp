@@ -106,6 +106,10 @@ StutterModel* StutterModel::read(std::istream& input){
   std::istringstream ss(line);
   if (!(ss >> inframe_geom >> inframe_down >> inframe_up >> outframe_geom >> outframe_down >> outframe_up >> motif_len))
     printErrorAndDie("Improperly formatted stutter model file");
+  if (motif_len < 1)
+    printErrorAndDie("Improperly formatted stutter model file. One or more entries have a motif length < 1");
+  if (motif_len > 9)
+    printErrorAndDie("Improperly formatted stutter model file. One or more entries have a motif length > 9");
   return new StutterModel(inframe_geom, inframe_up, inframe_down, outframe_geom, outframe_up, outframe_down, motif_len);
 }
 

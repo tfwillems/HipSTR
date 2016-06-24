@@ -40,6 +40,7 @@ class StutterModel {
     assert(inframe_up    > 0.0 && inframe_down  > 0.0);
     assert(outframe_up   > 0.0 && outframe_down > 0.0);
     assert(inframe_up + inframe_down + outframe_up + outframe_down < 1.0);
+    assert(motif_len > 0 && motif_len < 10);
 
     in_geom_        = inframe_geom;
     in_log_step_    = log(1-inframe_geom);
