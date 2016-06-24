@@ -385,7 +385,7 @@ int main(int argc, char** argv){
   std::map<std::string, std::string> rg_ids_to_sample, rg_ids_to_library;
   if (!rg_sample_string.empty()){
     if (rg_lib_string.empty())
-      printErrorAndDie("--bam-lbs option required when --bam-samps option specified");
+      printErrorAndDie("--bam-libs option required when --bam-samps option specified");
 
     std::vector<std::string> read_groups, libraries;
     split_by_delim(rg_sample_string, ',', read_groups);
@@ -393,7 +393,7 @@ int main(int argc, char** argv){
     if (bam_files.size() != read_groups.size())
       printErrorAndDie("Number of BAM files in --bams and samples in --bam-samps must match");
     if (bam_files.size() != libraries.size())
-      printErrorAndDie("Number of BAM files in --bams and libraries in --bam-lbs must match");
+      printErrorAndDie("Number of BAM files in --bams and libraries in --bam-libs must match");
 
     for (unsigned int i = 0; i < bam_files.size(); i++){
       rg_ids_to_sample[bam_files[i]]  = read_groups[i];
