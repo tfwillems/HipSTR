@@ -23,6 +23,8 @@
 #include "SeqAlignment/RepeatStutterInfo.h"
 #include "SeqAlignment/RepeatBlock.h"
 
+#include "cephes/cephes.h"
+
 bool SeqStutterGenotyper::condense_read_count_fields = true;
 
 int max_index(double* vals, unsigned int num_vals){
@@ -1355,6 +1357,12 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     std::stringstream samp_info;
     samp_info << allele_bp_diffs[gts[sample_index].first] << "|" << allele_bp_diffs[gts[sample_index].second];
     sample_results[sample_names[i]] = samp_info.str();
+
+    // TO DO: Compute p-value for allele read depth bias
+    // i)  Spanning reads
+    // ii) All reads if --use-all-reads is specified
+    // We will use the  bdtr(k, N, p) function from the cephes directory, which computes the CDF for a binomial distribution
+    // e.g.: double val = bdtr (24, 50, 0.5);
 
     if (!haploid_){
       out << gts[sample_index].first << "|" << gts[sample_index].second                             // Genotype
