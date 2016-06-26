@@ -37,12 +37,14 @@ OBJ_RNASEQ  := $(SRC_RNASEQ:.cpp=.o)
 
 BAMTOOLS_ROOT=bamtools
 VCFLIB_ROOT=vcflib
+CEPHES_ROOT=cephes
 
-LIBS              = -L./ -lm -lhts -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/ -Lvcflib/tabixpp/htslib/ -lz
+LIBS              = -L./ -lm -lhts -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/ -Lvcflib/tabixpp/htslib/ -lz -L$(CEPHES_ROOT)/
 INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I$(VCFLIB_ROOT)/ -I$(VCFLIB_ROOT)/tabixpp/htslib/
 BAMTOOLS_LIB      = $(BAMTOOLS_ROOT)/lib/libbamtools.a
 VCFLIB_LIB        = vcflib/libvcflib.a
 FASTA_HACK_LIB    = fastahack/Fasta.o
+CEPHES_LIB        = cephes/libprob.a
 
 .PHONY: all
 all: version BamSieve HipSTR test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
@@ -90,7 +92,7 @@ include $(subst .cpp,.d,$(SRC))
 BamSieve: $(OBJ_COMMON) $(OBJ_SIEVE) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(FASTA_HACK_LIB) $(OBJ_SEQALN)
+HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(FASTA_HACK_LIB) $(CEPHES_LIB) $(OBJ_SEQALN)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 exploratory/RNASeq: $(OBJ_COMMON) $(OBJ_RNASEQ) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB)
@@ -124,7 +126,7 @@ exploratory/Clipper: exploratory/count_trimmed_bases.cpp error.cpp zalgorithm.cp
 exploratory/10X: base_quality.cpp exploratory/calc_10x_barcode_phasings.cpp error.cpp mathops.cpp snp_phasing_quality.cpp snp_tree.cpp $(BAMTOOLS_LIB) $(VCFLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-exploratory/Mapper: error.cpp seqio.cpp stringops.cpp exploratory/mapping_efficiency.cpp $(BAMTOOLS_LIB) $(VCFLIB_LIB)
+exploratory/Mapper: error.cpp seqio.cpp stringops.cpp exploratory/mapping_efficiency.cpp $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(CEPHES_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 # Build each object file independently
@@ -152,3 +154,7 @@ $(FASTA_HACK_LIB):
 	git submodule update --init --recursive fastahack
 	git submodule update --recursive fastahack
 	cd fastahack && $(MAKE)
+
+# Rebuild CEPHES library if needed
+$(CEPHES_LIB):
+	cd cephes && $(MAKE)

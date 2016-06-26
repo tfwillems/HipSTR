@@ -34,15 +34,15 @@ class HTMLCharCounter(HTMLParser):
 
 
 cell_width   = 8
-cell_height  = 16
-cell_padding = 1
-text_colors  = {"locustd":"black", "Atd":"purple",   "Ctd":"blue",     "Gtd":"green",     "Ttd":"orange", "vtd":"gray", "-td":"red",
+cell_height  = 13
+cell_padding = 2
+text_colors  = {"locustd":"white", "Atd":"purple",   "Ctd":"blue",     "Gtd":"green",     "Ttd":"orange", "vtd":"gray", "-td":"red",
                 "Areftd":"white",  "Creftd":"white", "Greftd":"white", "Treftd":"white",  "vreftd":"white",
                 "areftd":"white",  "creftd":"white", "greftd":"white", "treftd":"white",  "snptd":"black", "inserttd": "black"}
 
 fill_colors  = {"locustd":"N/A",   "Atd":"white",    "Ctd":"white",    "Gtd":"white",     "Ttd":"white", "vtd":"white", "-td":"white",
                 "Areftd":"purple", "Creftd":"blue",  "Greftd":"green", "Treftd":"orange", "vreftd":"gray",
-                "areftd":"purple", "creftd":"blue",  "greftd":"green", "treftd":"orange", "snptd": "#ffd700", "inserttd": "red"}
+                "areftd":"purple", "creftd":"blue",  "greftd":"green", "treftd":"orange", "snptd": "#ffd700", "inserttd": "#ff4d4d"}
 
 class FilteredPDFOutputter(HTMLParser):
     def __init__(self, skip_columns, left_trim, num_lines, num_columns, output_file):
@@ -58,7 +58,7 @@ class FilteredPDFOutputter(HTMLParser):
         text = line.strip().split("<caption>")[1].split("</caption>")[0].replace("\t", " ")
         x = 5
         y = (self.row_number-1)*(cell_height+cell_padding) + cell_padding
-        res  = "<text x=\"%d\" y=\"%d\" font-family=\"%s\" font-size=\"%s\" font-weight=\"bold\" fill=\"%s\">%s</text>\n"%(x, y, "Courier", "15px", "black", text)
+        res  = "<text x=\"%d\" y=\"%d\" font-family=\"%s\" font-size=\"%s\" font-weight=\"bold\" fill=\"%s\">%s</text>\n"%(x, y, "Courier", "15px", "white", text)
         self.output_stream.write(res)
 
     def handle_sample(self, line):        
@@ -111,7 +111,7 @@ class FilteredPDFOutputter(HTMLParser):
         width     = num_cells*cell_width + (num_cells-1)*cell_padding
         height    = cell_height
         if not self.spanner and self.fill_color != "white":
-            output += "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" fill=\"%s\"/>"%(x, y, width, height, self.fill_color)
+            output += "<rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" fill=\"%s\"/>"%(x, y-cell_padding/2, width+cell_padding, height+cell_padding, self.fill_color)
 
         self.coord_change = coord_change
         if (self.coord + coord_change) not in self.skip_columns:
