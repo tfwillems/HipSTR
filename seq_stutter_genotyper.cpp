@@ -706,7 +706,10 @@ void SeqStutterGenotyper::get_alleles(std::string& chrom_seq, std::vector<std::s
   pos_ += 1; // Fix off-by-1 VCF error
 }
  
-void SeqStutterGenotyper::debug_sample(int sample_index){
+void SeqStutterGenotyper::debug_sample(int sample_index, std::ostream& logger){
+  std::vector<AlignmentTrace*> traced_alns;
+  retrace_alignments(logger, traced_alns);
+
   std::cerr << "DEBUGGING SAMPLE..." << std::endl;
   std::cerr << "READ LL's:" << std::endl;
   double* read_LL_ptr = log_aln_probs_;
@@ -718,7 +721,11 @@ void SeqStutterGenotyper::debug_sample(int sample_index){
 		<< bp_diffs_[i] << " " << max_index(read_LL_ptr, num_alleles_) << ", "
 		<< log_p1_[read_index] << " " << log_p2_[read_index] <<  ", "
 		<< alns_[sample_index][read_index].get_sequence().substr(0, seed_positions_[i]) 
-		<< " " << alns_[sample_index][read_index].get_sequence().substr(seed_positions_[i]+1) << std::endl;
+		<< " " << alns_[sample_index][read_index].get_sequence().substr(seed_positions_[i]+1) << std::endl
+		<< traced_alns[i]->hap_aln() << std::endl
+		<< traced_alns[i]->traced_aln().get_alignment()  << std::endl
+		<< traced_alns[i]->traced_aln().getCigarString() << std::endl;
+
       for (unsigned int j = 0; j < num_alleles_; ++j, ++read_LL_ptr)
 	std::cerr << "\t\t" << j << " " << *read_LL_ptr << std::endl;
       read_index++;
@@ -1028,6 +1035,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   assert(haplotype_->num_blocks() == 3);
 
   //analyze_flank_indels(logger);
+  //debug_sample(sample_indices_["SSC11604"], logger);
 
   if(log_allele_priors_ != NULL)
     assert(!output_gls && !output_pls); // These fields only make sense in the context of MLE estimation, not MAP estimation
@@ -1075,7 +1083,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     double max_gl    = *(std::max_element(gls[sample_index].begin(), gls[sample_index].end()));
     double second_gl = -DBL_MAX;
     for (unsigned int j = 0; j < gls[sample_index].size(); j++){
-      pls[sample_index].push_back((int)(gls[sample_index][j]-max_gl));
+      pls[sample_index].push_back(std::min(999, (int)(-10*(gls[sample_index][j]-max_gl))));
       if (gls[sample_index][j] < max_gl)
 	second_gl = std::max(second_gl, gls[sample_index][j]);
     }
@@ -1118,6 +1126,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector< std::vector<int> > bps_per_sample(num_samples_), ml_bps_per_sample(num_samples_);
   std::vector< std::vector<double> > log_read_phases(num_samples_), posterior_bps_per_sample(num_samples_);
   std::vector< std::vector<Alignment> > max_LL_alns_strand_one(num_samples_), max_LL_alns_strand_two(num_samples_);
+  std::vector< std::vector<Alignment> > left_alns_strand_one(num_samples_), left_alns_strand_two(num_samples_);
+  std::vector< std::vector<Alignment> > orig_alns_strand_one(num_samples_), orig_alns_strand_two(num_samples_);
+
   HapAligner hap_aligner(haplotype_);
   double* read_LL_ptr = log_aln_probs_;
   for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
@@ -1163,7 +1174,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       num_reads_with_flank_indels[sample_label_[read_index]]++;
 
     if (visualize_left_alns)
-      (read_strand == 0 ? max_LL_alns_strand_one : max_LL_alns_strand_two)[idx_1].push_back(alns_[idx_1][idx_2]);
+      (read_strand == 0 ? left_alns_strand_one : left_alns_strand_two)[idx_1].push_back(alns_[idx_1][idx_2]);
     (read_strand == 0 ? max_LL_alns_strand_one : max_LL_alns_strand_two)[idx_1].push_back(trace->traced_aln());
     total_aln_trace_time_ += (clock() - trace_start)/CLOCKS_PER_SEC;
 
@@ -1465,11 +1476,26 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     // Combine alignments from both strands after ordering them by position independently
     std::vector< std::vector<Alignment> > max_LL_alns(num_samples_);
     for (unsigned int i = 0; i < max_LL_alns_strand_one.size(); i++){
+      std::sort(orig_alns_strand_one[i].begin(),  orig_alns_strand_one[i].end());
+      std::sort(orig_alns_strand_two[i].begin(),  orig_alns_strand_two[i].end());
+      std::sort(left_alns_strand_one[i].begin(),  left_alns_strand_one[i].end());
+      std::sort(left_alns_strand_two[i].begin(),  left_alns_strand_two[i].end());
       std::sort(max_LL_alns_strand_one[i].begin(), max_LL_alns_strand_one[i].end());
       std::sort(max_LL_alns_strand_two[i].begin(), max_LL_alns_strand_two[i].end());
+
+      max_LL_alns[i].insert(max_LL_alns[i].end(), orig_alns_strand_one[i].begin(), orig_alns_strand_one[i].end());
+      orig_alns_strand_one[i].clear();
+      max_LL_alns[i].insert(max_LL_alns[i].end(), orig_alns_strand_two[i].begin(), orig_alns_strand_two[i].end());
+      orig_alns_strand_two[i].clear();
+
+      max_LL_alns[i].insert(max_LL_alns[i].end(), left_alns_strand_one[i].begin(), left_alns_strand_one[i].end());
+      left_alns_strand_one[i].clear();
+      max_LL_alns[i].insert(max_LL_alns[i].end(), left_alns_strand_two[i].begin(), left_alns_strand_two[i].end());
+      left_alns_strand_two[i].clear();
+
       max_LL_alns[i].insert(max_LL_alns[i].end(), max_LL_alns_strand_one[i].begin(), max_LL_alns_strand_one[i].end());
-      max_LL_alns[i].insert(max_LL_alns[i].end(), max_LL_alns_strand_two[i].begin(), max_LL_alns_strand_two[i].end());
       max_LL_alns_strand_one[i].clear();
+      max_LL_alns[i].insert(max_LL_alns[i].end(), max_LL_alns_strand_two[i].begin(), max_LL_alns_strand_two[i].end());
       max_LL_alns_strand_two[i].clear();
     }
 

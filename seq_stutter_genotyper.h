@@ -125,7 +125,7 @@ class SeqStutterGenotyper{
   // Extract the sequences for each allele and the VCF start position
   void get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles);
 
-  void debug_sample(int sample_index);
+  void debug_sample(int sample_index, std::ostream& logger);
   
   // Identify a list of alleles that aren't the MAP genotype for any sample
   // Doesn't include the reference allele (index = 0)
