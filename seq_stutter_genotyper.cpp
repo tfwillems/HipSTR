@@ -1566,61 +1566,67 @@ void SeqStutterGenotyper::compute_bootstrap_qualities(int num_iter, std::vector<
   std::vector<int> ML_gt_counts(num_samples_, 0);
   std::uniform_int_distribution<int> unif_dist;
   std::default_random_engine gen;
-  double* bstrap_LLs = new double[num_alleles_*num_alleles_*num_samples_];
-
-  // Precompute all read LLs for each diploid genotype
-  double* read_gt_LLs = new double[num_alleles_*num_alleles_*num_reads_];
-  double* ptr         = read_gt_LLs;
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-      double* read_LL_ptr = log_aln_probs_;
-      for (int read_index = 0; read_index < num_reads_; ++read_index, ++ptr){
-	*ptr = log_sum_exp(LOG_ONE_HALF + log_p1_[read_index] + read_LL_ptr[index_1],
-			   LOG_ONE_HALF + log_p2_[read_index] + read_LL_ptr[index_2]);
-	read_LL_ptr += num_alleles_;
-      }
-    }
+  double log_homoz_prior, log_hetz_prior;
+  if (haploid_)
+    log_homoz_prior = -int_log(num_alleles_);
+  else {
+    log_hetz_prior  = -int_log(num_alleles_) - int_log(num_alleles_+1);
+    log_homoz_prior = int_log(2) - int_log(num_alleles_) - int_log(num_alleles_+1);
   }
 
-  for (unsigned int i = 0; i < num_iter; i++){
-    std::vector<int> bootstrap_weights(num_reads_, 0);
+  for (unsigned int i = 0; i < num_samples_; i++){
+    int num_sample_reads = reads_by_sample[i].size();
 
-    // Bootstrap reads for each sample
-    for (unsigned int j = 0; j < num_samples_; j++){
-      int mod = reads_by_sample[j].size();
-      for (unsigned int k = 0; k < mod; k++)
-	bootstrap_weights[reads_by_sample[j][unif_dist(gen)% mod]]++;
-    }
-
-    // Recompute the posteriors using bootstrapped read weights
-    init_log_sample_priors(bstrap_LLs);
-    double* sample_LL_ptr = bstrap_LLs;
-    double* read_LL_ptr   = read_gt_LLs;
+    // Precompute all read LLs for each of the sample's diploid genotypes
+    double* read_gt_LLs = new double[num_alleles_*num_alleles_*num_sample_reads];
+    double* ptr         = read_gt_LLs;
     for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
       for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-	for (int read_index = 0; read_index < num_reads_; ++read_index, ++read_LL_ptr)
-	  sample_LL_ptr[sample_label_[read_index]] += bootstrap_weights[read_index]*(*read_LL_ptr);
-	sample_LL_ptr += num_samples_;
+	for (auto read_index = reads_by_sample[i].begin(); read_index != reads_by_sample[i].end(); ++read_index, ++ptr){
+	  double* read_LL_ptr = log_aln_probs_ + *read_index*num_alleles_;
+	  *ptr = log_sum_exp(LOG_ONE_HALF + log_p1_[*read_index] + read_LL_ptr[index_1],
+			     LOG_ONE_HALF + log_p2_[*read_index] + read_LL_ptr[index_2]);
+	}
       }
     }
 
-    // Increment count if bootstrapped ML genotype (unordered) matches the ML genotype
-    std::vector< std::pair<int, int> > bootstrap_gts;
-    get_optimal_genotypes(bstrap_LLs, bootstrap_gts);
-    for (unsigned int i = 0; i < num_samples_; i++){
-      if (bootstrap_gts[i].first == ML_gts[i].first && bootstrap_gts[i].second == ML_gts[i].second)
+    for (int j = 0; j < num_iter; j++){
+      // Bootstrap reads for the sample
+      std::vector<int> bootstrap_weights(num_sample_reads, 0);
+      for (unsigned int k = 0; k < num_sample_reads; k++)
+	bootstrap_weights[unif_dist(gen) % num_sample_reads]++;
+
+      // Recompute the genotype posteriors using bootstrapped read weights
+      double* read_LL_ptr = read_gt_LLs;
+      std::pair<int, int> bootstrap_gt(0, 0);
+      double bootstrap_max_LL = -10e6;
+      for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
+	for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
+	  if (haploid_ && (index_1 != index_2))
+	    continue;
+	  double gt_LL = (index_1 == index_2 ? log_homoz_prior: log_hetz_prior);
+	  for (int read_index = 0; read_index < num_sample_reads; ++read_index, ++read_LL_ptr)
+	    gt_LL += bootstrap_weights[read_index]*(*read_LL_ptr);
+	  if (gt_LL > bootstrap_max_LL){
+	    bootstrap_gt     = std::pair<int,int>(index_1, index_2);
+	    bootstrap_max_LL = gt_LL;
+	  }
+	}
+      }
+
+      // Increment count if bootstrapped ML genotype (unordered) matches the ML genotype
+      if (bootstrap_gt.first == ML_gts[i].first && bootstrap_gt.second == ML_gts[i].second)
 	ML_gt_counts[i]++;
-      else if (bootstrap_gts[i].first == ML_gts[i].second && bootstrap_gts[i].second == ML_gts[i].first)
+      else if (bootstrap_gt.first == ML_gts[i].second && bootstrap_gt.second == ML_gts[i].first)
 	ML_gt_counts[i]++;
     }
+    delete [] read_gt_LLs;
   }
 
   // Compute the boostrapped qualities as the fraction of iterations in which the genotype matched
   for (unsigned int i = 0; i < num_samples_; i++)
     bootstrap_qualities.push_back(1.0*ML_gt_counts[i]/num_iter);
 
-  delete [] bstrap_LLs;
-  delete [] read_gt_LLs;
   double bootstrap_time  = (clock() - bootstrap_start)/CLOCKS_PER_SEC;
   total_bootstrap_time_ += bootstrap_time;
 }
