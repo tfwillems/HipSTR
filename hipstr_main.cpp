@@ -282,7 +282,7 @@ void parse_command_line_args(int argc, char** argv,
 
   if (optind < argc) {
     std::stringstream msg;
-    msg << "Did not recognizee the following command line arguments:" << "\n";
+    msg << "Did not recognize the following command line arguments:" << "\n";
     while (optind < argc)
       msg << "\t" << argv[optind++] << "\n";
     msg << "Please check your command line syntax or type ./HipSTR --help for additional information" << "\n";
