@@ -16,6 +16,7 @@ exploratory/10X
 exploratory/Clipper
 exploratory/Mapper
 exploratory/RNASeq
+cephes/libprob.a
 *.o
 *.d
 *~
