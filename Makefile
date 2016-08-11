@@ -27,6 +27,7 @@ SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
 SRC_HIPSTR  = hipstr_main.cpp bam_processor.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp vcf_input.cpp read_pooler.cpp version.cpp process_timer.cpp
 SRC_SEQALN  = SeqAlignment/AlignmentData.cpp SeqAlignment/HapAligner.cpp SeqAlignment/RepeatStutterInfo.cpp SeqAlignment/AlignmentModel.cpp SeqAlignment/AlignmentOps.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NeedlemanWunsch.cpp SeqAlignment/Haplotype.cpp SeqAlignment/RepeatBlock.cpp SeqAlignment/HaplotypeGenerator.cpp SeqAlignment/HTMLCreator.cpp SeqAlignment/AlignmentViz.cpp SeqAlignment/AlignmentTraceback.cpp SeqAlignment/StutterAlignerClass.cpp
 SRC_RNASEQ  = exploratory/filter_rnaseq.cpp exploratory/exon_info.cpp
+SRC_DENOVO  = denovo_main.cpp error.cpp stringops.cpp version.cpp unused/Pedigree.cpp
 
 # For each CPP file, generate an object file
 OBJ_COMMON  := $(SRC_COMMON:.cpp=.o)
@@ -34,6 +35,7 @@ OBJ_SIEVE   := $(SRC_SIEVE:.cpp=.o)
 OBJ_HIPSTR  := $(SRC_HIPSTR:.cpp=.o)
 OBJ_SEQALN  := $(SRC_SEQALN:.cpp=.o)
 OBJ_RNASEQ  := $(SRC_RNASEQ:.cpp=.o)
+OBJ_DENOVO  := $(SRC_DENOVO:.cpp=.o)
 
 BAMTOOLS_ROOT=bamtools
 VCFLIB_ROOT=vcflib
@@ -47,7 +49,7 @@ FASTA_HACK_LIB    = fastahack/Fasta.o
 CEPHES_LIB        = cephes/libprob.a
 
 .PHONY: all
-all: version BamSieve HipSTR test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
+all: version BamSieve HipSTR DenovoFinder test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
 	rm version.cpp
 	touch version.cpp
 
@@ -72,7 +74,7 @@ version:
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
 clean:
-	rm -f *.o *.d BamSieve HipSTR test/allele_expansion_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test SeqAlignment/*.o exploratory/RNASeq exploratory/Clipper exploratory/Mapper exploratory/10X
+	rm -f *.o *.d BamSieve HipSTR DenovoFinder test/allele_expansion_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test SeqAlignment/*.o exploratory/RNASeq exploratory/Clipper exploratory/Mapper exploratory/10X
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -94,6 +96,9 @@ BamSieve: $(OBJ_COMMON) $(OBJ_SIEVE) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB)
 
 HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(FASTA_HACK_LIB) $(CEPHES_LIB) $(OBJ_SEQALN)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+DenovoFinder: $(OBJ_DENOVO) $(VCFLIB_LIB)
+	$(CXX) $(LDFALGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 exploratory/RNASeq: $(OBJ_COMMON) $(OBJ_RNASEQ) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
