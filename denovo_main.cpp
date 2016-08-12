@@ -3,6 +3,7 @@
 #include <time.h>
 
 #include <iostream>
+#include <set>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -12,7 +13,7 @@
 #include "version.h"
 
 #include "unused/Pedigree.h"
-
+#include "haplotype_tracker.h"
 #include "vcflib/src/Variant.h"
 
 bool file_exists(std::string path){
@@ -121,6 +122,15 @@ void parse_command_line_args(int argc, char** argv, std::string& fam_file, std::
   }
 }
 
+void read_site_skip_list(std::string input_file, std::set<std::string>& sites_to_skip){
+  sites_to_skip.clear();
+  std::ifstream input(input_file.c_str());
+  std::string line;
+  while (std::getline(input, line))
+    sites_to_skip.insert(line);
+  input.close();
+}
+
 int main(int argc, char** argv){
   double total_time = clock();
 
@@ -210,24 +220,50 @@ int main(int argc, char** argv){
   logger << "Detected " << families.size() << " nuclear families and " << num_others << " other family structures\n"
 	 << "\tOnly the nuclear families will undergo de novo analysis\n\n";
 
+  // Read a list of sites to skip
+  std::string skip_file = "sites_to_skip.txt";//"shapeit_04082016_04h36m12s_a7d7bf53-6575-4b1c-a577-8f6facf9da99.snp.me";
+  std::set<std::string> sites_to_skip;
+  read_site_skip_list(skip_file, sites_to_skip);
+
   // TO DO: Test pedigree reading/structure manipulation...
   // TO DO: Iterate through SNP VCF to determine haplotype sharing at each position
+
+  HaplotypeTracker haplotype_tracker(families);
+  int32_t window_size = 1000000;
+
 
   vcflib::Variant variant(snp_vcf);
   int32_t count = 0;
   int32_t mend_count = 0, not_mend_count = 0;
   while (snp_vcf.getNextVariant(variant)){
-    for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
-      if (!family_iter->is_missing_genotype(variant)){
-	if (family_iter->is_mendelian(variant))
-	  mend_count++;
-	else
-	  not_mend_count++;
+    std::string key = variant.sequenceName + ":" + std::to_string(variant.position);
+    if (sites_to_skip.find(key) != sites_to_skip.end())
+      continue;
+
+    haplotype_tracker.add_snp(variant);
+
+    if (++count % 11 == 0)
+      return 0;
+    continue;
+
+    if (++count % 1000 == 0){
+      std::cerr << variant.position << " " << mend_count << " " << not_mend_count << " " << 100.0*mend_count/(mend_count+not_mend_count) << std::endl;
+      int32_t position = variant.position;
+      while (haplotype_tracker.next_snp_position() < position-window_size && haplotype_tracker.next_snp_position() != -1)
+	haplotype_tracker.remove_next_snp();
+      std::cerr << haplotype_tracker.num_stored_snps()  << std::endl;
+
+      int d11, d12, d21, d22;
+      for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
+	for (auto child_iter = family_iter->get_children().begin(); child_iter != family_iter->get_children().end(); child_iter++){
+	  haplotype_tracker.edit_distances(*child_iter, family_iter->get_mother(), d11, d12, d21, d22);
+	  std::cout << *child_iter << " " << position << " " << d11 << " " << d12 << " " << d21 << " " << d22 << "\t";
+
+	  haplotype_tracker.edit_distances(*child_iter, family_iter->get_father(), d11, d12, d21, d22);
+	  std::cout << d11 << " " << d12 << " " << d21 << " " << d22 << std::endl;
+	}
       }
     }
-
-    if (++count % 1000 == 0)
-      std::cerr << variant.position << " " << mend_count << " " << not_mend_count << " " << 100.0*mend_count/(mend_count+not_mend_count) << std::endl;
   }
     
 

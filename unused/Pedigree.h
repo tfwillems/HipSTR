@@ -27,6 +27,8 @@ class NuclearFamily {
   const std::string& get_mother() { return mother_; }
   const std::string& get_father() { return father_; }
   const std::vector<std::string>& get_children() { return children_; }
+  const int size()         {  return 2 + children_.size(); }
+  const int num_children() { return children_.size();      }
 
   bool is_missing_genotype(vcflib::Variant& variant){
     if (variant.getGenotype(mother_).empty() || variant.getGenotype(father_).empty())
