@@ -38,12 +38,14 @@ void print_usage(){
 	    << "\t" << "--chrom         <chrom>          "  << "\t" << "Only consider STRs on the provided chromosome"                                        << "\n"
 	    << "\t" << "--haploid-chrs  <list_of_chroms> "  << "\t" << "Comma separated list of chromosomes to treat as haploid"                              << "\n"
 	    << "\t" << "                                 "  << "\t" << " By default, all chromosomes are treated as diploid"                                  << "\n"
-	    << "\t" << "--version                        "  << "\t" << "Print DenovoFinder version and exit"                                                  << "\n"  
+	    << "\t" << "--skip-snps     <snp_list.txt>   "  << "\t" << "File containing SNPs to omit from the analysis. Each line should contain a "          << "\n"
+	    << "\t" << "                                 "  << "\t" << " position in the format CHROMOSOME:START"                                             << "\n"
+	    << "\t" << "--version                        "  << "\t" << "Print DenovoFinder version and exit"                                                  << "\n"
 	    << "\n";
 }
   
 void parse_command_line_args(int argc, char** argv, std::string& fam_file, std::string& snp_vcf_file, std::string& str_vcf_file,
-			     std::string& chrom, std::string& log_file, std::string& haploid_chr_string){
+			     std::string& chrom, std::string& log_file, std::string& haploid_chr_string, std::string& snp_skip_file){
   if (argc == 1 || (argc == 2 && std::string("-h").compare(std::string(argv[1])) == 0)){
     print_usage();
     exit(0);
@@ -59,6 +61,7 @@ void parse_command_line_args(int argc, char** argv, std::string& fam_file, std::
     {"h",               no_argument, &print_help, 1},
     {"help",            no_argument, &print_help, 1},
     {"version",         no_argument, &print_version, 1},
+    {"skip-snps",       required_argument, 0, 'm'},
     {"str-vcf",         required_argument, 0, 'o'},
     {"snp-vcf",         required_argument, 0, 'v'},
     {"haploid-chrs",    required_argument, 0, 't'},
@@ -69,7 +72,7 @@ void parse_command_line_args(int argc, char** argv, std::string& fam_file, std::
   int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "c:f:l:o:t:v:", long_options, &option_index);
+    c = getopt_long(argc, argv, "c:f:l:m:o:t:v:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -84,6 +87,9 @@ void parse_command_line_args(int argc, char** argv, std::string& fam_file, std::
       break;
     case 'l':
       log_file = std::string(optarg);
+      break;
+    case 'm':
+      snp_skip_file = std::string(optarg);
       break;
     case 'o':
       str_vcf_file = std::string(optarg);
@@ -141,8 +147,8 @@ int main(int argc, char** argv){
   std::string full_command = full_command_ss.str();
 
   std::string fam_file = "", snp_vcf_file = "", str_vcf_file = "";
-  std::string chrom = "", log_file = "", haploid_chr_string  = "";
-  parse_command_line_args(argc, argv, fam_file, snp_vcf_file, str_vcf_file, chrom, log_file, haploid_chr_string);
+  std::string chrom = "", log_file = "", haploid_chr_string  = "", snp_skip_file = "";
+  parse_command_line_args(argc, argv, fam_file, snp_vcf_file, str_vcf_file, chrom, log_file, haploid_chr_string, snp_skip_file);
 
   if (fam_file.empty())
     printErrorAndDie("--fam option required");
@@ -221,20 +227,18 @@ int main(int argc, char** argv){
 	 << "\tOnly the nuclear families will undergo de novo analysis\n\n";
 
   // Read a list of sites to skip
-  std::string skip_file = "sites_to_skip.txt";//"shapeit_04082016_04h36m12s_a7d7bf53-6575-4b1c-a577-8f6facf9da99.snp.me";
   std::set<std::string> sites_to_skip;
-  read_site_skip_list(skip_file, sites_to_skip);
+  if (!snp_skip_file.empty())
+    read_site_skip_list(snp_skip_file, sites_to_skip);
 
   // TO DO: Test pedigree reading/structure manipulation...
-  // TO DO: Iterate through SNP VCF to determine haplotype sharing at each position
 
+
+  // Iterate through the SNP VCF to determine haplotype sharing at each position
   HaplotypeTracker haplotype_tracker(families);
   int32_t window_size = 1000000;
-
-
   vcflib::Variant variant(snp_vcf);
   int32_t count = 0;
-  int32_t mend_count = 0, not_mend_count = 0;
   while (snp_vcf.getNextVariant(variant)){
     std::string key = variant.sequenceName + ":" + std::to_string(variant.position);
     if (sites_to_skip.find(key) != sites_to_skip.end())
@@ -247,7 +251,7 @@ int main(int argc, char** argv){
     continue;
 
     if (++count % 1000 == 0){
-      std::cerr << variant.position << " " << mend_count << " " << not_mend_count << " " << 100.0*mend_count/(mend_count+not_mend_count) << std::endl;
+      std::cerr << variant.position << std::endl;
       int32_t position = variant.position;
       while (haplotype_tracker.next_snp_position() < position-window_size && haplotype_tracker.next_snp_position() != -1)
 	haplotype_tracker.remove_next_snp();
