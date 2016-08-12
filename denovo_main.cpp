@@ -246,10 +246,6 @@ int main(int argc, char** argv){
 
     haplotype_tracker.add_snp(variant);
 
-    if (++count % 11 == 0)
-      return 0;
-    continue;
-
     if (++count % 1000 == 0){
       std::cerr << variant.position << std::endl;
       int32_t position = variant.position;
