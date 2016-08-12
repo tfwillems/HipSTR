@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "vcflib/src/Variant.h"
-#include "unused/Pedigree.h"
+#include "pedigree.h"
 
 class DiploidHaplotype {
  private:

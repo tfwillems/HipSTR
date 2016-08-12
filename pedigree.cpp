@@ -6,8 +6,8 @@
 #include <sstream>
 #include <vector>
 
-#include "Pedigree.h"
-#include "../error.h"
+#include "pedigree.h"
+#include "error.h"
 
 void PedigreeGraph::init_no_ancestors() {
   no_ancestors_.clear();

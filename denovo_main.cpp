@@ -12,7 +12,7 @@
 #include "stringops.h"
 #include "version.h"
 
-#include "unused/Pedigree.h"
+#include "pedigree.h"
 #include "haplotype_tracker.h"
 #include "vcflib/src/Variant.h"
 

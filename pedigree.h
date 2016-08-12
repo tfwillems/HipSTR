@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include "../error.h"
-#include "../vcflib/src/Variant.h"
+#include "error.h"
+#include "vcflib/src/Variant.h"
 
 class NuclearFamily {
  private:
