@@ -12,6 +12,7 @@ class DiploidHaplotype {
  private:
   std::deque<int64_t> snps_1_, snps_2_;
   int64_t erase_mask_, set_mask_;
+  const static int64_t MAX_DIGIT = (1ULL << 63);
 
   int num_set_bits(int64_t value){
     int count = 0;
@@ -24,6 +25,7 @@ class DiploidHaplotype {
 
   int edit_distance(std::deque<int64_t>& snp_hap_1, std::deque<int64_t>& snp_hap_2){
     int distance = 0;
+    assert(snp_hap_1.size() == snp_hap_2.size());
     auto iter_a = snp_hap_1.begin();
     auto iter_b = snp_hap_2.begin();
     while (iter_a != snp_hap_1.end()){

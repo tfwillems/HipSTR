@@ -1,15 +1,12 @@
 #include "haplotype_tracker.h"
 
 void DiploidHaplotype::add_snp(int gt_a, int gt_b){
-  if (gt_a == 1)
-    snps_1_.back() |= set_mask_;
-  if (gt_b == 1)
-    snps_2_.back() |= set_mask_;
-
-  //std::cerr << gt_a << " " << gt_b << " " << snps_1_.back() << " " << snps_2_.back() << std::endl;
+  assert(snps_1_.size() > 0 && snps_2_.size() > 0);
+  if (gt_a == 1) snps_1_.back() |= set_mask_;
+  if (gt_b == 1) snps_2_.back() |= set_mask_;
   
   set_mask_ <<= 1;
-  if (set_mask_ == 0){
+  if (set_mask_ == MAX_DIGIT){
     snps_1_.push_back(0);
     snps_2_.push_back(0);
     set_mask_ = 1;
@@ -17,6 +14,7 @@ void DiploidHaplotype::add_snp(int gt_a, int gt_b){
 }
 
 void DiploidHaplotype::remove_next_snp(){
+  assert(snps_1_.size() > 0 && snps_2_.size() > 0);
   snps_1_.front() &= erase_mask_;
   snps_2_.front() &= erase_mask_;
   erase_mask_ <<= 1;
