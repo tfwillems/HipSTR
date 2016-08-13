@@ -42,7 +42,7 @@ VCFLIB_ROOT=vcflib
 CEPHES_ROOT=cephes
 
 LIBS              = -L./ -lm -lhts -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/ -Lvcflib/tabixpp/htslib/ -lz -L$(CEPHES_ROOT)/
-INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I$(VCFLIB_ROOT)/include/ -I$(VCFLIB_ROOT)/tabixpp/htslib/htslib/
+INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I$(VCFLIB_ROOT)/include/ -I$(VCFLIB_ROOT)/tabixpp/htslib/
 BAMTOOLS_LIB      = $(BAMTOOLS_ROOT)/lib/libbamtools.a
 VCFLIB_LIB        = vcflib/libvcflib.a
 FASTA_HACK_LIB    = fastahack/Fasta.o
