@@ -32,7 +32,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                         << "\n" << "\n"
     
 	    << "Optional input parameters:" << "\n"
-	    << "\t" << "--bam-files  <bam_files.txt>         "  << "\t" << "File containing BAM files to analyze, one per line."                                 << "\n"
+	    << "\t" << "--bam-files  <bam_files.txt>          "  << "\t" << "File containing BAM files to analyze, one per line."                                 << "\n"
 	    << "\t" << "--ref-vcf    <str_ref_panel.vcf.gz>   "  << "\t" << "Bgzipped input VCF file containing a reference panel of STR genotypes"               << "\n"
 	    << "\t" << "                                      "  << "\t" << " For each locus, alleles in the VCF will be used as candidate STR variants instead"  << "\n"
 	    << "\t" << "                                      "  << "\t" << " of trying to identify candidates from the BAMs (default)"                           << "\n"
@@ -76,6 +76,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on the provided chromosome"                                       << "\n"
 	    << "\t" << "--haploid-chrs  <list_of_chroms>      "  << "\t" << "Comma separated list of chromosomes to treat as haploid"                             << "\n"
 	    << "\t" << "                                      "  << "\t" << " By default, all chromosomes are treated as diploid"                                 << "\n"
+	    << "\t" << "--hap-chr-file  <hap_chroms.txt>      "  << "\t" << "File containing chromosomes to treat as haploid, one per line"                       << "\n"
 	    << "\t" << "--min-reads     <num_reads>           "  << "\t" << "Minimum total reads required to genotype a locus (Default = " << def_min_reads << ")" << "\n"
 	    << "\t" << "--max-reads     <num_reads>           "  << "\t" << "Skip a locus if it has more than NUM_READS reads (Default = " << def_max_reads << ")" << "\n"
 	    << "\t" << "--max-str-len   <max_bp>              "  << "\t" << "Only genotype STRs in the provided BED file with length < MAX_BP (Default = " << def_max_str_len << ")" << "\n"
@@ -111,8 +112,8 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 }
   
 void parse_command_line_args(int argc, char** argv, 
-			     std::string& bamfile_string,     std::string& bamlist_string,    std::string& rg_sample_string,      std::string& rg_lib_string,
-			     std::string& haploid_chr_string, std::string& fasta_dir,         std::string& region_file,           std::string& snp_vcf_file,
+			     std::string& bamfile_string,     std::string& bamlist_string,    std::string& rg_sample_string,  std::string& rg_lib_string,
+			     std::string& haploid_chr_string, std::string& hap_chr_file,      std::string& fasta_dir,         std::string& region_file,   std::string& snp_vcf_file,
 			     std::string& chrom,              std::string& bam_pass_out_file, std::string& bam_filt_out_file,
 			     std::string& str_vcf_out_file,   std::string& log_file,      int& use_all_reads,
 			     int& use_hap_aligner, int& remove_pcr_dups,  int& bams_from_10x,    int& bam_lib_from_samp,     int& def_stutter_model,
@@ -171,6 +172,7 @@ void parse_command_line_args(int argc, char** argv,
     {"stutter-in",      required_argument, 0, 'm'},
     {"stutter-out",     required_argument, 0, 's'},
     {"haploid-chrs",    required_argument, 0, 't'},
+    {"hap-chr-file",    required_argument, 0, 'u'},
     {"pass-bam",        required_argument, 0, 'w'},
     {"max-str-len",     required_argument, 0, 'x'},
     {"filt-bam",        required_argument, 0, 'y'},
@@ -183,7 +185,7 @@ void parse_command_line_args(int argc, char** argv,
   int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "b:B:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:v:w:x:y:z:", long_options, &option_index);
+    c = getopt_long(argc, argv, "b:B:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:u:v:w:x:y:z:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -249,6 +251,9 @@ void parse_command_line_args(int argc, char** argv,
       break;
     case 't':
       haploid_chr_string = std::string(optarg);
+      break;
+    case 'u':
+      hap_chr_file = std::string(optarg);
       break;
     case 'v':
       snp_vcf_file = std::string(optarg);
@@ -318,11 +323,11 @@ int main(int argc, char** argv){
   bam_processor.set_max_flank_indel_frac(0.15);
 
   int use_all_reads = 0, use_hap_aligner = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0, def_stutter_model = 0;
-  std::string bamfile_string= "", bamlist_string = "", rg_sample_string="", rg_lib_string="", hap_chr_string="", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
+  std::string bamfile_string= "", bamlist_string = "", rg_sample_string="", rg_lib_string="", hap_chr_string="", hap_chr_file = "", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", log_file = "";
   int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 0, output_mall_reads = 1;
   std::string ref_vcf_file="";
-  parse_command_line_args(argc, argv, bamfile_string, bamlist_string, rg_sample_string, rg_lib_string, hap_chr_string, fasta_dir, region_file, snp_vcf_file, chrom,
+  parse_command_line_args(argc, argv, bamfile_string, bamlist_string, rg_sample_string, rg_lib_string, hap_chr_string, hap_chr_file, fasta_dir, region_file, snp_vcf_file, chrom,
 			  bam_pass_out_file, bam_filt_out_file, str_vcf_out_file, log_file, use_all_reads, use_hap_aligner, remove_pcr_dups, bams_from_10x,
 			  bam_lib_from_samp, def_stutter_model, output_gls, output_pls, output_all_reads, output_pall_reads, output_mall_reads,
 			  ref_vcf_file, bam_processor);
@@ -352,6 +357,8 @@ int main(int argc, char** argv){
 
   if (bamfile_string.empty() && bamlist_string.empty())
     printErrorAndDie("You must specify either the --bams or --bam-files option");
+  else if ((!bamfile_string.empty()) && (!bamlist_string.empty()))
+    printErrorAndDie("You can only specify one of the --bams or --bam-files options");
   else if (region_file.empty())
     printErrorAndDie("--region option required");
   else if (fasta_dir.empty())
@@ -535,6 +542,18 @@ int main(int argc, char** argv){
     split_by_delim(hap_chr_string, ',', haploid_chroms);
     for (auto chrom_iter = haploid_chroms.begin(); chrom_iter != haploid_chroms.end(); chrom_iter++)
       bam_processor.add_haploid_chrom(*chrom_iter);
+  }
+  if (!hap_chr_file.empty()){
+    if (!file_exists(hap_chr_file))
+      printErrorAndDie("File containing haploid chromosome names does not exist: " + hap_chr_file);
+    std::ifstream input(hap_chr_file.c_str());
+    if (!input.is_open())
+      printErrorAndDie("Failed to open file containing haploid chromosome names: " + hap_chr_file);
+    std::string line;
+    while (std::getline(input, line))
+      if (!line.empty())
+	bam_processor.add_haploid_chrom(line);
+    input.close();
   }
 
   // Run analysis
