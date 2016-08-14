@@ -6,7 +6,7 @@
 #include "error.h"
 #include "mathops.h"
 
-void EMStutterGenotyper::write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, std::ostream& out){
+void EMStutterGenotyper::write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out){
   out << "##fileformat=VCFv4.1" << "\n"
       << "##command=" << full_command << "\n";
 
@@ -38,6 +38,9 @@ void EMStutterGenotyper::write_vcf_header(std::string& full_command, std::vector
     out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "log-10 genotype likelihoods" << "\">" << "\n";
   if (output_pls)
     out << "##FORMAT=<ID=" << "PL" << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
+  if (output_phased_gls)
+    out << "##FORMAT=<ID=" << "PHASEDGL" << ",Number=.,Type=Float,Description=\""
+        << "log-10 genotype likelihood for each phased genotype. Value for phased genotype X|Y is stored at a 0-based index of X*A + Y, where A is the number of alleles" << "\">" << "\n";
 
   // Sample names
   out << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
@@ -359,7 +362,7 @@ std::string EMStutterGenotyper::get_allele(std::string& ref_allele, int bp_diff)
 }
 
 void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<std::string>& sample_names,
-					  bool output_gls, bool output_pls, bool output_allreads, std::ostream& out){
+					  bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads, std::ostream& out){
   std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
   std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX);
   std::vector< std::vector<double> > log_read_phases(num_samples_);
@@ -480,9 +483,10 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
 
   // Add FORMAT field
   out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:PDP" : "\tGT:GB:Q:DP");
-  if (output_allreads) out << ":ALLREADS";
-  if (output_gls)      out << ":GL";
-  if (output_pls)      out << ":PL";
+  if (output_allreads)    out << ":ALLREADS";
+  if (output_gls)         out << ":GL";
+  if (output_pls)         out << ":PL";
+  if (output_phased_gls)  out << ":PHASEDGL";
 
   for (unsigned int i = 0; i < sample_names.size(); i++){
     out << "\t";
@@ -532,6 +536,9 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
       out << ":" << pls[sample_index][0];
       for (unsigned int j = 1; j < pls[sample_index].size(); j++)
 	out << "," << pls[sample_index][j];
+    }
+    if (output_phased_gls){
+      out << ".";
     }
   }
 

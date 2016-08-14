@@ -566,7 +566,7 @@ bool SeqStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger)
   return true;
 }
 
-void SeqStutterGenotyper::write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, std::ostream& out){
+void SeqStutterGenotyper::write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out){
   out << "##fileformat=VCFv4.1" << "\n"
       << "##command=" << full_command << "\n";
 
@@ -616,12 +616,15 @@ void SeqStutterGenotyper::write_vcf_header(std::string& full_command, std::vecto
     out << "##FORMAT=<ID=" << "ALLREADS"  << ",Number=.,Type=Integer,Description=\"" << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n"
 	<< "##FORMAT=<ID=" << "MALLREADS" << ",Number=.,Type=Integer,Description=\""
 	<< "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs" << "\">" << "\n";
-  out << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probs"        << "\">" << "\n";
+  out << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probs" << "\">" << "\n";
 
   if (output_gls)
-    out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\""   << "log-10 genotype likelihoods" << "\">" << "\n";
+    out << "##FORMAT=<ID=" << "GL"       << ",Number=G,Type=Float,Description=\""   << "log-10 genotype likelihoods" << "\">" << "\n";
   if (output_pls)
-    out << "##FORMAT=<ID=" << "PL" << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
+    out << "##FORMAT=<ID=" << "PL"       << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
+  if (output_phased_gls)
+    out << "##FORMAT=<ID=" << "PHASEDGL" << ",Number=.,Type=Float,Description=\""
+	<< "log-10 genotype likelihood for each phased genotype. Value for phased genotype X|Y is stored at a 0-based index of X*A + Y, where A is the number of alleles" << "\">" << "\n";
 
   // Sample names
   out << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
@@ -1028,7 +1031,7 @@ void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
 
 
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
-					   bool output_bootstrap_qualities, bool output_gls, bool output_pls,
+					   bool output_bootstrap_qualities, bool output_gls, bool output_pls, bool output_phased_gls,
 					   bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac,
 					   bool visualize_left_alns,
 					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
@@ -1330,6 +1333,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   if (output_mallreads)           out << ":MALLREADS";
   if (output_gls)                 out << ":GL";
   if (output_pls)                 out << ":PL";
+  if (output_phased_gls)          out << ":PHASEDGL";
 
   std::map<std::string, std::string> sample_results;
   for (unsigned int i = 0; i < sample_names.size(); i++){
@@ -1467,6 +1471,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       out << ":" << pls[sample_index][0];
       for (unsigned int j = 1; j < pls[sample_index].size(); j++)
 	out << "," << pls[sample_index][j];
+    }
+    if (output_phased_gls){
+      out << ".";
     }
   }
   out << "\n";

@@ -151,10 +151,10 @@ class EMStutterGenotyper {
     delete stutter_model_;
   }  
 
-  static void write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, std::ostream& out);
+  static void write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out);
 
   void write_vcf_record(std::string& ref_allele, std::vector<std::string>& sample_names,
-			bool output_gls, bool output_pls, bool output_allreads, std::ostream& out);
+			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads, std::ostream& out);
   
   void set_stutter_model(double inframe_geom,  double inframe_up,  double inframe_down,
 			 double outframe_geom, double outframe_up, double outframe_down){

@@ -63,7 +63,8 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--hide-mallreads                      "  << "\t" << "Don't output the MALLREADS FORMAT field to the VCF. By default, it will be output"   << "\n"
 	    << "\t" << "--output-pallreads                    "  << "\t" << "Output the PALLREADS FORMAT field to the VCF. By default, it will not be output"     << "\n"
 	    << "\t" << "--output-gls                          "  << "\t" << "Write genotype likelihoods to VCF (Default = False)"                                 << "\n"
-	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to VCF (Default = False)"                    << "\n" << "\n"
+	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to VCF (Default = False)"                    << "\n"
+	    << "\t" << "--output-phased-gls                   "  << "\t" << "Write phased genotype likelihoods to VCF (Default = False)"                          << "\n" << "\n"
 
 	    << "Optional read filtering parameters:" << "\n"
 	    << "\t" << "--no-rmdup                            "  << "\t" << "Don't remove PCR duplicates. By default, they'll be removed"                         << "\n"
@@ -116,8 +117,8 @@ void parse_command_line_args(int argc, char** argv,
 			     std::string& haploid_chr_string, std::string& hap_chr_file,      std::string& fasta_dir,         std::string& region_file,   std::string& snp_vcf_file,
 			     std::string& chrom,              std::string& bam_pass_out_file, std::string& bam_filt_out_file,
 			     std::string& str_vcf_out_file,   std::string& log_file,      int& use_all_reads,
-			     int& use_hap_aligner, int& remove_pcr_dups,  int& bams_from_10x,    int& bam_lib_from_samp,     int& def_stutter_model,
-			     int& output_gls,      int& output_pls,       int& output_all_reads, int& output_pall_reads,     int& output_mall_reads, std::string& ref_vcf_file,
+			     int& use_hap_aligner, int& remove_pcr_dups,   int& bams_from_10x,    int& bam_lib_from_samp,     int& def_stutter_model, int& output_gls,
+			     int& output_pls,      int& output_phased_gls, int& output_all_reads, int& output_pall_reads,     int& output_mall_reads, std::string& ref_vcf_file,
 			     GenotyperBamProcessor& bam_processor){
   int def_mdist       = bam_processor.MAX_MATE_DIST;
   int def_min_reads   = bam_processor.MIN_TOTAL_READS;
@@ -159,6 +160,7 @@ void parse_command_line_args(int argc, char** argv,
     {"no-rmdup",        no_argument, &remove_pcr_dups,    0},
     {"output-gls",      no_argument, &output_gls, 1},
     {"output-pls",      no_argument, &output_pls, 1},
+    {"output-phased-gls", no_argument, &output_phased_gls, 1},
     {"no-pool-seqs",    no_argument, &pool_seqs,  0},
     {"version",         no_argument, &print_version, 1},
     {"max-flank-indel", required_argument, 0, 'F'},
@@ -325,11 +327,11 @@ int main(int argc, char** argv){
   int use_all_reads = 0, use_hap_aligner = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0, def_stutter_model = 0;
   std::string bamfile_string= "", bamlist_string = "", rg_sample_string="", rg_lib_string="", hap_chr_string="", hap_chr_file = "", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", log_file = "";
-  int output_gls = 0, output_pls = 0, output_all_reads = 1, output_pall_reads = 0, output_mall_reads = 1;
+  int output_gls = 0, output_pls = 0, output_phased_gls = 0, output_all_reads = 1, output_pall_reads = 0, output_mall_reads = 1;
   std::string ref_vcf_file="";
   parse_command_line_args(argc, argv, bamfile_string, bamlist_string, rg_sample_string, rg_lib_string, hap_chr_string, hap_chr_file, fasta_dir, region_file, snp_vcf_file, chrom,
 			  bam_pass_out_file, bam_filt_out_file, str_vcf_out_file, log_file, use_all_reads, use_hap_aligner, remove_pcr_dups, bams_from_10x,
-			  bam_lib_from_samp, def_stutter_model, output_gls, output_pls, output_all_reads, output_pall_reads, output_mall_reads,
+			  bam_lib_from_samp, def_stutter_model, output_gls, output_pls, output_phased_gls, output_all_reads, output_pall_reads, output_mall_reads,
 			  ref_vcf_file, bam_processor);
 
   if (!log_file.empty())
@@ -341,6 +343,7 @@ int main(int argc, char** argv){
   if (use_all_reads == 1)     bam_processor.REQUIRE_SPANNING = false;
   if (output_gls)             bam_processor.output_gls();
   if (output_pls)             bam_processor.output_pls();
+  if (output_phased_gls)      bam_processor.output_phased_gls();
   if (output_all_reads == 0)  bam_processor.hide_all_reads();
   if (output_pall_reads == 0) bam_processor.hide_pall_reads();
   if (output_mall_reads == 0) bam_processor.hide_mall_reads();

@@ -247,7 +247,7 @@ class SeqStutterGenotyper{
     delete haplotype_;
   }
   
-  static void write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, std::ostream& out);
+  static void write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out);
 
   /*
    *  Returns true iff the read with the associated retraced maximum log-likelihood alignment should be used in genotyping
@@ -256,7 +256,7 @@ class SeqStutterGenotyper{
   bool use_read(AlignmentTrace* trace);
 
   void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
-			bool output_bootstrap_qualities, bool output_gls, bool output_pls,
+			bool output_bootstrap_qualities, bool output_gls, bool output_pls, bool output_phased_gls,
 			bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac,
 			bool visualize_left_alns,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
