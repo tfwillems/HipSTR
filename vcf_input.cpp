@@ -6,10 +6,12 @@
 #include "region.h"
 #include "vcf_input.h"
 
-std::string PGP_KEY           = "PGP";
-std::string START_INFO_TAG    = "START";
-std::string STOP_INFO_TAG     = "END";
-const double MIN_ALLELE_PRIOR = 0.0001;
+const std::string GT_KEY        = "GT";
+const std::string PHASED_GL_KEY = "PHASEDGL";
+std::string PGP_KEY             = "PGP";
+std::string START_INFO_TAG      = "START";
+std::string STOP_INFO_TAG       = "END";
+const double MIN_ALLELE_PRIOR   = 0.0001;
 
 // Because HipSTR extends putative STR regions if there are nearby indels, the STR coordinates in the VCF may
 // not exactly match the original reference region coordinates. As a result, when looking for a particular STR region,
@@ -153,4 +155,34 @@ double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Reg
   if (sample_count != num_samples)
     logger << "WARNING: VCF only contained allele priors for " << sample_count << " out of " << num_samples << " samples";
   return log_allele_priors;
+}
+
+
+
+bool PhasedGL::build(vcflib::VariantCallFile& vcf_file, vcflib::Variant& variant){
+  if (vcf_file.formatTypes.find(GT_KEY) == vcf_file.formatTypes.end())
+    return false;
+  if (vcf_file.formatTypes.find(PHASED_GL_KEY) == vcf_file.formatTypes.end())
+    return false;
+
+  num_samples_ = 0;
+  num_alleles_ = variant.alleles.size();
+  for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
+    if (variant.getGenotype(*sample_iter).empty())
+      continue;
+
+    phased_gls_.push_back(std::vector<double>());
+    sample_indices_[*sample_iter] = num_samples_++;
+    size_t gl_index  = 0;
+    for (size_t i = 0; i < num_alleles_; ++i){
+      for (size_t j = 0; j < num_alleles_; ++j, ++gl_index){
+        // NOTE: We'd like to use the getSampleValueFloat method from vcflib, but it doesn't work if the number of
+        // fields isn't equal to the number of alleles.Instead, have to use this ugly internal hack
+        double gl = std::stod(variant.samples[*sample_iter][PHASED_GL_KEY].at(gl_index));
+        phased_gls_.back().push_back(gl);
+      }
+    }
+  }
+
+  return true;
 }

@@ -14,6 +14,7 @@
 
 #include "pedigree.h"
 #include "haplotype_tracker.h"
+#include "vcf_input.h"
 #include "vcflib/src/Variant.h"
 
 bool file_exists(std::string path){
@@ -233,6 +234,8 @@ int main(int argc, char** argv){
 
   // TO DO: Test pedigree reading/structure manipulation...
 
+
+  PhasedGL phased_gls;
 
   // Iterate through the SNP VCF to determine haplotype sharing at each position
   HaplotypeTracker haplotype_tracker(families);
