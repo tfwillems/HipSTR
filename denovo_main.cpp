@@ -8,13 +8,12 @@
 #include <sstream>
 #include <vector>
 
+#include "denovo_scanner.h"
 #include "error.h"
+#include "pedigree.h"
 #include "stringops.h"
 #include "version.h"
 
-#include "pedigree.h"
-#include "haplotype_tracker.h"
-#include "vcf_input.h"
 #include "vcflib/src/Variant.h"
 
 bool file_exists(std::string path){
@@ -234,41 +233,8 @@ int main(int argc, char** argv){
 
   // TO DO: Test pedigree reading/structure manipulation...
 
-
-  PhasedGL phased_gls;
-
-  // Iterate through the SNP VCF to determine haplotype sharing at each position
-  HaplotypeTracker haplotype_tracker(families);
-  int32_t window_size = 1000000;
-  vcflib::Variant variant(snp_vcf);
-  int32_t count = 0;
-  while (snp_vcf.getNextVariant(variant)){
-    std::string key = variant.sequenceName + ":" + std::to_string(variant.position);
-    if (sites_to_skip.find(key) != sites_to_skip.end())
-      continue;
-
-    haplotype_tracker.add_snp(variant);
-
-    if (++count % 1000 == 0){
-      std::cerr << variant.position << std::endl;
-      int32_t position = variant.position;
-      while (haplotype_tracker.next_snp_position() < position-window_size && haplotype_tracker.next_snp_position() != -1)
-	haplotype_tracker.remove_next_snp();
-      std::cerr << haplotype_tracker.num_stored_snps()  << std::endl;
-
-      int d11, d12, d21, d22;
-      for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
-	for (auto child_iter = family_iter->get_children().begin(); child_iter != family_iter->get_children().end(); child_iter++){
-	  haplotype_tracker.edit_distances(*child_iter, family_iter->get_mother(), d11, d12, d21, d22);
-	  std::cout << *child_iter << " " << position << " " << d11 << " " << d12 << " " << d21 << " " << d22 << "\t";
-
-	  haplotype_tracker.edit_distances(*child_iter, family_iter->get_father(), d11, d12, d21, d22);
-	  std::cout << d11 << " " << d12 << " " << d21 << " " << d22 << std::endl;
-	}
-      }
-    }
-  }
-    
+  DenovoScanner denovo_scanner(families);
+  denovo_scanner.scan(snp_vcf, str_vcf, sites_to_skip, logger);
 
   total_time = (clock() - total_time)/CLOCKS_PER_SEC;
   logger << "DenovoFinder execution finished: Total runtime = " << total_time << " sec" << std::endl;
