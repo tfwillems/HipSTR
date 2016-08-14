@@ -624,7 +624,8 @@ void SeqStutterGenotyper::write_vcf_header(std::string& full_command, std::vecto
     out << "##FORMAT=<ID=" << "PL"       << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
   if (output_phased_gls)
     out << "##FORMAT=<ID=" << "PHASEDGL" << ",Number=.,Type=Float,Description=\""
-	<< "log-10 genotype likelihood for each phased genotype. Value for phased genotype X|Y is stored at a 0-based index of X*A + Y, where A is the number of alleles" << "\">" << "\n";
+	<< "log-10 genotype likelihood for each phased genotype. Value for phased genotype X|Y is stored at a 0-based index of X*A + Y, where A is the number of alleles. Identical to GL for haploid genotypes"
+	<< "\">" << "\n";
 
   // Sample names
   out << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
