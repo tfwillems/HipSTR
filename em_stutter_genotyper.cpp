@@ -369,7 +369,7 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
   std::vector<double> log_unphased_posteriors, phase_probs;
 
   // Extract each sample's MAP genotype and the associated posterior
-  std::vector< std::vector<double> > gls(num_samples_);
+  std::vector< std::vector<double> > gls(num_samples_), phased_gls(num_samples_);
   std::vector< std::vector<int> > pls(num_samples_);
   double* log_post_ptr = log_sample_posteriors_;
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
@@ -386,6 +386,9 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
 	  if (!haploid_ || (index_1 == index_2))
 	    gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
         }
+
+	if (!haploid_ || (index_1 == index_2))
+	  phased_gls[sample_index].push_back((*log_post_ptr + sample_total_LLs_[sample_index])*LOG_E_BASE_10);
       }
     }
   }
@@ -538,7 +541,9 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
 	out << "," << pls[sample_index][j];
     }
     if (output_phased_gls){
-      out << ".";
+      out << ":" << phased_gls[sample_index][0];
+      for (unsigned int j = 1; j < phased_gls[sample_index].size(); j++)
+	out << "," << phased_gls[sample_index][j];
     }
   }
 
