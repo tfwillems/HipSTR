@@ -27,6 +27,7 @@ void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t
     double ref_copy;
     if (!(iss >> chrom >> start >> stop >> period >> ref_copy))
       printErrorAndDie("Improperly formatted region file. \nRequired format is tab-delimited columns CHROM START STOP PERIOD NCOPIES\n Bad line: " + line);
+    if (start < 1)      printErrorAndDie("Improperly formatted region file. \n Region has a START < 1, but START must be >= 1\n Bad line: " + line);
     if (stop <= start)  printErrorAndDie("Improperly formatted region file. \n Region has a STOP <= START. Bad line: " + line);
     if (period < 1)     printErrorAndDie("Improperly formatted region file. \n Region has a PERIOD < 1. Bad line: " + line);
     if (period > 9)     printErrorAndDie("Improperly formatted region file. \n Region has a PERIOD > 9. Bad line: " + line);
