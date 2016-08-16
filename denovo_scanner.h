@@ -16,7 +16,7 @@ class DenovoScanner {
  public:
   DenovoScanner(std::vector<NuclearFamily>& families){
     families_    = families;
-    window_size_ = 1000000;
+    window_size_ = 500000;
   }
   
   void scan(vcflib::VariantCallFile& snp_vcf, vcflib::VariantCallFile& str_vcf, std::set<std::string>& sites_to_skip,

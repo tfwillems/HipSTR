@@ -2,11 +2,33 @@
 #define HAPLOTYPE_TRACKER_H_
 
 #include <deque>
+#include <iostream>
 #include <string>
 #include <vector>
 
 #include "vcflib/src/Variant.h"
 #include "pedigree.h"
+
+class DiploidEditDistance {
+ private:
+  int distances_[4];
+
+ public:
+  DiploidEditDistance(int d11, int d12, int d21, int d22){
+    distances_[0] = d11;
+    distances_[1] = d12;
+    distances_[2] = d21;
+    distances_[3] = d22;
+  }
+
+  int distance(int index_a, int index_b){
+    if (index_a < 0 || index_a > 1 || index_b < 0 || index_b > 1)
+      printErrorAndDie("Index for distance() function in DiplodEditDistance class must be 0 or 1");
+    return distances_[index_a*2 + index_b];
+  }
+
+  friend std::ostream& operator<< (std::ostream &out, DiploidEditDistance& distances);
+};
 
 class DiploidHaplotype {
  private:
@@ -37,31 +59,30 @@ class DiploidHaplotype {
 
  public:  
   DiploidHaplotype(){
-    snps_1_        = std::deque<int64_t>();
-    snps_2_        = std::deque<int64_t>();
-    snps_1_.push_back(0);
-    snps_2_.push_back(0);
-    erase_mask_    = -2;
-    set_mask_      = 1;
+    reset();
   }
 
-  void edit_distances(DiploidHaplotype& other_hap, int& d11, int& d12, int& d21, int& d22){
-    d11 = edit_distance(snps_1_, other_hap.snps_1_);
-    d12 = edit_distance(snps_1_, other_hap.snps_2_);
-    d21 = edit_distance(snps_2_, other_hap.snps_1_);
-    d22 = edit_distance(snps_2_, other_hap.snps_2_);
+  DiploidEditDistance edit_distances(DiploidHaplotype& other_hap){
+    int d11 = edit_distance(snps_1_, other_hap.snps_1_);
+    int d12 = edit_distance(snps_1_, other_hap.snps_2_);
+    int d21 = edit_distance(snps_2_, other_hap.snps_1_);
+    int d22 = edit_distance(snps_2_, other_hap.snps_2_);
+    return DiploidEditDistance(d11, d12, d21, d22);
   }
 
   void add_snp(int gt_a, int gt_b);
 
   void remove_next_snp();
+
+  void reset(){
+    snps_1_.clear();
+    snps_2_.clear();
+    snps_1_.push_back(0);
+    snps_2_.push_back(0);
+    erase_mask_ = -2;
+    set_mask_   = 1;
+  }
 };
-
-
-
-
-
-
 
 class HaplotypeTracker {
  private:
@@ -97,6 +118,12 @@ class HaplotypeTracker {
     return positions_.front();
   }
 
+  int32_t last_snp_position(){
+    if (num_snps_ == 0)
+      return -1;
+    return positions_.back();
+  }
+
   void remove_next_snp(){
     if (num_snps_ == 0)
       return;
@@ -110,11 +137,17 @@ class HaplotypeTracker {
 
   int32_t num_stored_snps() { return num_snps_; }
 
-  void edit_distances(const std::string& sample_1, const std::string& sample_2,
-		      int& d11, int& d12, int& d21, int& d22){
+  DiploidEditDistance edit_distances(const std::string& sample_1, const std::string& sample_2){
     int index_1 = sample_indices_[sample_1];
     int index_2 = sample_indices_[sample_2];
-    snp_haplotypes_[index_1].edit_distances(snp_haplotypes_[index_2], d11, d12, d21, d22);
+    return snp_haplotypes_[index_1].edit_distances(snp_haplotypes_[index_2]);
+  }
+
+  void reset(){
+    num_snps_  = 0;
+    positions_ =  std::queue<int32_t>();
+    for (unsigned int i = 0; i < snp_haplotypes_.size(); i++)
+      snp_haplotypes_[i].reset();
   }
 };
 

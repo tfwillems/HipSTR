@@ -1,44 +1,59 @@
 #include "denovo_scanner.h"
+#include "error.h"
 #include "haplotype_tracker.h"
 #include "vcf_input.h"
+
+#include <vector>
 
 void DenovoScanner::scan(vcflib::VariantCallFile& snp_vcf, vcflib::VariantCallFile& str_vcf, std::set<std::string>& sites_to_skip,
 			 std::ostream& logger){
   HaplotypeTracker haplotype_tracker(families_);
-  vcflib::Variant variant(snp_vcf);
+  vcflib::Variant snp_variant(snp_vcf), str_variant(str_vcf);
 
+  std::string chrom = "";
+  int32_t num_strs = 0;
+  while (str_vcf.getNextVariant(str_variant)){
+    num_strs++;
+    //PhasedGL phased_gls(str_vcf, str_variant);
 
+    if (str_variant.sequenceName.compare(chrom) != 0){
+      chrom = str_variant.sequenceName;
+      haplotype_tracker.reset();
+      if(!snp_vcf.setRegion(chrom, 1))
+	printErrorAndDie("Failed to set the region to chromosome " + chrom + " in the SNP VCF. Please check the SNP VCF and rerun the analysis");
+    }
 
-  PhasedGL phased_gls;
-  // Iterate through the SNP VCF to determine haplotype sharing at each position
+    int32_t start_of_window = str_variant.position - window_size_;
+    int32_t end_of_window   = str_variant.position + window_size_;
+    if (start_of_window < 0)
+      start_of_window = 0;
 
-  int32_t count = 0;
-  while (snp_vcf.getNextVariant(variant)){
-    std::string key = variant.sequenceName + ":" + std::to_string(variant.position);
-    if (sites_to_skip.find(key) != sites_to_skip.end())
-      continue;
+    // Incorporate new SNPs within the window
+    while (haplotype_tracker.last_snp_position() < end_of_window && snp_vcf.getNextVariant(snp_variant)){
+      std::string key = snp_variant.sequenceName + ":" + std::to_string(snp_variant.position);
+      if (sites_to_skip.find(key) != sites_to_skip.end())
+	continue;
+      haplotype_tracker.add_snp(snp_variant);
+    }
 
-    haplotype_tracker.add_snp(variant);
+    // Remove SNPs to left of window
+    while (haplotype_tracker.next_snp_position() < start_of_window && haplotype_tracker.next_snp_position() != -1)
+      haplotype_tracker.remove_next_snp();
 
-    if (++count % 1000 == 0){
-      std::cerr << variant.position << std::endl;
-      int32_t position = variant.position;
-      while (haplotype_tracker.next_snp_position() < position-window_size_ && haplotype_tracker.next_snp_position() != -1)
-        haplotype_tracker.remove_next_snp();
-      std::cerr << haplotype_tracker.num_stored_snps()  << std::endl;
+    std::cerr << str_variant.position << " " << haplotype_tracker.num_stored_snps()  << std::endl;  // TO DO: Add this to VCF INFO field?
 
-      int d11, d12, d21, d22;
-      for (auto family_iter = families_.begin(); family_iter != families_.end(); family_iter++){
-        for (auto child_iter = family_iter->get_children().begin(); child_iter != family_iter->get_children().end(); child_iter++){
-          haplotype_tracker.edit_distances(*child_iter, family_iter->get_mother(), d11, d12, d21, d22);
-	  std::cout << *child_iter << " " << position << " " << d11 << " " << d12 << " " << d21 << " " << d22 << "\t";
+    // Analyze edit distances between the phased SNP haplotypes of each child and its parents
+    int d11, d12, d21, d22;
+    for (auto family_iter = families_.begin(); family_iter != families_.end(); family_iter++){
+      for (auto child_iter = family_iter->get_children().begin(); child_iter != family_iter->get_children().end(); child_iter++){
+	DiploidEditDistance maternal_distance = haplotype_tracker.edit_distances(*child_iter, family_iter->get_mother());
+	std::cout << *child_iter << maternal_distance;
+	//std::cout << *child_iter << " " << str_variant.position << " " << d11 << " " << d12 << " " << d21 << " " << d22 << "\t";
 
-          haplotype_tracker.edit_distances(*child_iter, family_iter->get_father(), d11, d12, d21, d22);
-	  std::cout << d11 << " " << d12 << " " << d21 << " " << d22 << std::endl;
-        }
+	DiploidEditDistance paternal_distance = haplotype_tracker.edit_distances(*child_iter, family_iter->get_father());
+	std::cout << paternal_distance << std::endl;
+	//std::cout << d11 << " " << d12 << " " << d21 << " " << d22 << std::endl;
       }
     }
   }
-
-
 }
