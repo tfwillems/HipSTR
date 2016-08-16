@@ -561,6 +561,11 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
       assert(chrom_seq.size() != 0);
     }
 
+    if (region_iter->start() < 50 || region_iter->stop()+50 >= chrom_seq.size()){
+      logger() << "Skipping region within 50bp of the end of the contig" << std::endl;
+      continue;
+    }
+
     locus_bam_seek_time_ = clock();
     if(!reader.SetRegion(chrom_id, (region_iter->start() < MAX_MATE_DIST ? 0: region_iter->start()-MAX_MATE_DIST), 
 			 chrom_id, region_iter->stop() + MAX_MATE_DIST)){
