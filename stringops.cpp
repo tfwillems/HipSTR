@@ -20,6 +20,12 @@ std::string uppercase(std::string str){
   return res.str();
 }
 
+bool string_starts_with(std::string&s, std::string prefix){
+  if (s.size() < prefix.size())
+    return false;
+  return s.substr(0, prefix.size()).compare(prefix) == 0;
+}
+
 bool string_ends_with(std::string& s, std::string suffix){
   if (s.size() < suffix.size())
     return false;
