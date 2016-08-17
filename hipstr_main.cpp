@@ -191,6 +191,12 @@ void parse_command_line_args(int argc, char** argv,
     if (c == -1)
       break;
 
+    if (optarg != NULL){
+      std::string val(optarg);
+      if (string_starts_with(val, "--"))
+	printErrorAndDie("Argument to option --" + std::string(long_options[option_index].name) + " cannot begin with \"--\"\n\tBad argument: " + val);
+    }
+
     switch(c){
     case 0:
       break;
@@ -325,7 +331,8 @@ int main(int argc, char** argv){
   bam_processor.set_max_flank_indel_frac(0.15);
 
   int use_all_reads = 0, use_hap_aligner = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0, def_stutter_model = 0;
-  std::string bamfile_string= "", bamlist_string = "", rg_sample_string="", rg_lib_string="", hap_chr_string="", hap_chr_file = "", region_file="", fasta_dir="", chrom="", snp_vcf_file="";
+  std::string bamfile_string= "", bamlist_string = "", rg_sample_string="", rg_lib_string="", hap_chr_string="", hap_chr_file = "";
+  std::string region_file="", fasta_dir="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", log_file = "";
   int output_gls = 0, output_pls = 0, output_phased_gls = 0, output_all_reads = 1, output_pall_reads = 0, output_mall_reads = 1;
   std::string ref_vcf_file="";
@@ -437,8 +444,10 @@ int main(int argc, char** argv){
 
       BamTools::SamReadGroupDictionary rg_dict = single_file_reader.GetHeader().ReadGroups;
       for (auto rg_iter = rg_dict.Begin(); rg_iter != rg_dict.End(); rg_iter++){
-	if (!rg_iter->HasID() || !rg_iter->HasSample() || ((bam_lib_from_samp == 0) && !rg_iter->HasLibrary()))
-	  printErrorAndDie("RG in BAM header is lacking the ID, SM or LB tag");
+	if (!rg_iter->HasID())     printErrorAndDie("RG in BAM header is lacking the ID tag");
+	if (!rg_iter->HasSample()) printErrorAndDie("RG in BAM header is lacking the SM tag");
+	if ((bam_lib_from_samp == 0) && !rg_iter->HasLibrary())
+	  printErrorAndDie("RG in BAM header is lacking the LB tag");
 
 	std::string rg_library = (bam_lib_from_samp == 0 ? rg_iter->Library : rg_iter->Sample);
 
