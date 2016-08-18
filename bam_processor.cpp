@@ -199,7 +199,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     }
 
     // Populate string fields
-    if(!alignment.BuildCharData())
+    if (!alignment.BuildCharData())
       printErrorAndDie("Failed to build char data for BamAlignment");
 
     // Stop parsing reads if we've already exceeded the maximum number for downstream analyses
@@ -208,7 +208,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       break;
     }
 
-    if (!alignment.IsMapped() || alignment.Position == 0 || alignment.CigarData.size() == 0)
+    if (!alignment.IsMapped() || alignment.Position == 0 || alignment.CigarData.size() == 0 || alignment.Length == 0)
 	continue;
     assert(alignment.CigarData.size() > 0 && alignment.RefID != -1);
 
@@ -221,7 +221,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       read_count++;
 
       if (BASE_QUAL_TRIM > ' '){
-	//Read trimming doesn't work if hard clipping has been applied
+	// Read trimming doesn't work if hard clipping has been applied
 	if (startsWithHardClip(alignment) || endsWithHardClip(alignment)){
 	  hard_clip++;
 	  continue;
