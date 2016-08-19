@@ -410,7 +410,7 @@ int main(int argc, char** argv){
   std::set<std::string> rg_samples, rg_libs;
   std::map<std::string, std::string> rg_ids_to_sample, rg_ids_to_library;
   if (!rg_sample_string.empty()){
-    if (rg_lib_string.empty())
+    if ((bam_lib_from_samp == 0) && rg_lib_string.empty())
       printErrorAndDie("--bam-libs option required when --bam-samps option specified");
 
     std::vector<std::string> read_groups, libraries;
@@ -418,12 +418,12 @@ int main(int argc, char** argv){
     split_by_delim(rg_lib_string, ',', libraries);
     if (bam_files.size() != read_groups.size())
       printErrorAndDie("Number of BAM files in --bams and samples in --bam-samps must match");
-    if (bam_files.size() != libraries.size())
+    if ((bam_lib_from_samp == 0) && (bam_files.size() != libraries.size()))
       printErrorAndDie("Number of BAM files in --bams and libraries in --bam-libs must match");
 
     for (unsigned int i = 0; i < bam_files.size(); i++){
       rg_ids_to_sample[bam_files[i]]  = read_groups[i];
-      rg_ids_to_library[bam_files[i]] = libraries[i];
+      rg_ids_to_library[bam_files[i]] = (bam_lib_from_samp == 0 ? libraries[i]: read_groups[i]);
       rg_samples.insert(read_groups[i]);
     }
     bam_processor.use_custom_read_groups();
