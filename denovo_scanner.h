@@ -9,6 +9,9 @@
 #include "vcflib/src/Variant.h"
 
 class DenovoScanner {
+  const static int MIN_SECOND_BEST_SCORE = 50;
+  const static int MAX_BEST_SCORE        = 10;
+
  private:
   int32_t window_size_;
   std::vector<NuclearFamily> families_;

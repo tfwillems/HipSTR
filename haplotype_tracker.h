@@ -1,6 +1,7 @@
 #ifndef HAPLOTYPE_TRACKER_H_
 #define HAPLOTYPE_TRACKER_H_
 
+#include <climits>
 #include <deque>
 #include <iostream>
 #include <string>
@@ -25,6 +26,34 @@ class DiploidEditDistance {
     if (index_a < 0 || index_a > 1 || index_b < 0 || index_b > 1)
       printErrorAndDie("Index for distance() function in DiplodEditDistance class must be 0 or 1");
     return distances_[index_a*2 + index_b];
+  }
+
+  void min_distance(int& dist, int& index){
+    dist  = distances_[0];
+    index = 0;
+    for (int i = 1; i < 4; i++)
+      if (distances_[i] < dist){
+	dist  = distances_[i];
+	index = i;
+      }
+  }
+
+  void second_min_distance(int& second_dist, int& second_index){
+    int dist    = INT_MAX, index = -1;
+    second_dist = INT_MAX;
+
+    for (int i = 0; i < 4; i++){
+      if (distances_[i] < dist){
+	second_dist  = dist;
+	second_index = index;
+	dist  = distances_[i];
+	index = i;
+      }
+      else if (distances_[i] < second_dist){
+	second_dist  = distances_[i];
+	second_index = i;
+      }
+    }
   }
 
   friend std::ostream& operator<< (std::ostream &out, DiploidEditDistance& distances);
