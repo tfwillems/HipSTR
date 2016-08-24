@@ -45,7 +45,6 @@ void HaplotypeTracker::add_snp(vcflib::Variant& variant){
     else if (!family.is_mendelian(variant))
       use_gts = false; // Ignore a SNP if any samples in the family have a Mendelian inconsistency
 
-
     for (int j = 0; j < family.size(); j++){
       if (use_gts){
 	std::string gt = variant.getGenotype(samples_[sample_index]);

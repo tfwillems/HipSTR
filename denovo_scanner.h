@@ -15,14 +15,14 @@ class DiploidGenotypePrior {
   int num_alleles_;
   std::vector<double> allele_freqs_, log_allele_freqs_;
 
-  void compute_allele_freqs(vcflib::Variant& variant);
+  void compute_allele_freqs(vcflib::Variant& variant, std::vector<NuclearFamily>& families);
  public:
   DiploidGenotypePrior(vcflib::Variant& str_variant, std::vector<NuclearFamily>& families){
     num_alleles_ = str_variant.alleles.size();
     if (str_variant.alleles.back().compare(".") == 0)
       num_alleles_--;
     assert(num_alleles_ > 0);
-    compute_allele_freqs(str_variant);
+    compute_allele_freqs(str_variant, families);
   }
 
   /* Returns the log10 prior for the given phased genotype, assuming Hardy-Weinberg equilibrium */

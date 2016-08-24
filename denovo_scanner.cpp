@@ -9,26 +9,29 @@
 
 #include <vector>
 
-void DiploidGenotypePrior::compute_allele_freqs(vcflib::Variant& variant){
+void DiploidGenotypePrior::compute_allele_freqs(vcflib::Variant& variant, std::vector<NuclearFamily>& families){
   allele_freqs_ = std::vector<double>(num_alleles_, 1.0); // Use a one sample pseudocount
 
-  // Iterate over all samples in the VCF to compute allele counts
+  // Iterate over all founders in the families to compute allele counts
   double total_count = num_alleles_;
-  for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
-    std::string gts = variant.getGenotype(*sample_iter);
-    if (gts.size() == 0)
-      continue;
+  for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
+    for (int i = 0; i < 2; i++){
+      std::string sample = (i == 0 ? family_iter->get_mother() : family_iter->get_father());
+      std::string gts = variant.getGenotype(sample);
+      if (gts.size() == 0)
+	continue;
 
-    size_t separator_index = gts.find("|");
-    if (separator_index == std::string::npos)
-      separator_index = gts.find("/");
-    if (separator_index == std::string::npos || separator_index+1 == gts.size())
-      printErrorAndDie("Failed to find valid separator in genotype: " + gts);
-    int gt_a = std::atoi(gts.substr(0, separator_index).c_str());
-    int gt_b = std::atoi(gts.substr(separator_index+1).c_str());
-    allele_freqs_[gt_a]++;
-    allele_freqs_[gt_b]++;
-    total_count += 2;
+      size_t separator_index = gts.find("|");
+      if (separator_index == std::string::npos)
+	separator_index = gts.find("/");
+      if (separator_index == std::string::npos || separator_index+1 == gts.size())
+	printErrorAndDie("Failed to find valid separator in genotype: " + gts);
+      int gt_a = std::atoi(gts.substr(0, separator_index).c_str());
+      int gt_b = std::atoi(gts.substr(separator_index+1).c_str());
+      allele_freqs_[gt_a]++;
+      allele_freqs_[gt_b]++;
+      total_count += 2;
+    }
   }
 
   // Normalize the allele counts to obtain frequencies
