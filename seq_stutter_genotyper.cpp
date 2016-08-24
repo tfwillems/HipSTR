@@ -749,37 +749,38 @@ void SeqStutterGenotyper::debug_sample(int sample_index, std::ostream& logger){
   std::cerr << "END OF SAMPLE DEBUGGING..." << std::endl;
 }
 
+
+// Each genotype has an equal total prior, but heterozygotes have two possible phasings. Therefore,
+// i)   Phased heterozygotes have a prior of 1/(n(n+1))
+// ii)  Homozygotes have a prior of 2/(n(n+1))
+// iii) Total prior is n*2/(n(n+1)) + n(n-1)*1/(n(n+1)) = 2/(n+1) + (n-1)/(n+1) = 1
+
+double SeqStutterGenotyper::log_homozygous_prior(){
+  if (haploid_)
+    return -int_log(num_alleles_);
+  else
+    return int_log(2) - int_log(num_alleles_) - int_log(num_alleles_+1);
+}
+
+double SeqStutterGenotyper::log_heterozygous_prior(){
+  if (haploid_)
+    return -DBL_MAX/2;
+  else
+    return -int_log(num_alleles_) - int_log(num_alleles_+1);
+}
+
 void SeqStutterGenotyper::init_log_sample_priors(double* log_sample_ptr){
   if (log_allele_priors_ != NULL)
     memcpy(log_sample_ptr, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
   else {
-    if (!haploid_){
-      // Each genotype has an equal total prior, but heterozygotes have two possible phasings. Therefore,
-      // i)   Phased heterozygotes have a prior of 1/(n(n+1))
-      // ii)  Homozygotes have a prior of 2/(n(n+1))
-      // iii) Total prior is n*2/(n(n+1)) + n(n-1)*1/(n(n+1)) = 2/(n+1) + (n-1)/(n+1) = 1
+    // Set all elements to the het prior
+    std::fill(log_sample_ptr, log_sample_ptr+(num_alleles_*num_alleles_*num_samples_), log_heterozygous_prior());
 
-      // Set all elements to het prior
-      double log_hetz_prior = -int_log(num_alleles_) - int_log(num_alleles_+1);
-      std::fill(log_sample_ptr, log_sample_ptr+(num_alleles_*num_alleles_*num_samples_), log_hetz_prior);
-
-      // Fix homozygotes
-      double log_homoz_prior = int_log(2) - int_log(num_alleles_) - int_log(num_alleles_+1);
-      for (unsigned int i = 0; i < num_alleles_; i++){
-	double* LL_ptr = log_sample_ptr + i*num_alleles_*num_samples_ + i*num_samples_;
-	std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
-      }
-    }
-    else {
-      // Set all elements to impossible
-      std::fill(log_sample_ptr, log_sample_ptr+(num_alleles_*num_alleles_*num_samples_), -DBL_MAX/2);
-
-      // Fix homozygotes using a uniform prior
-      double log_homoz_prior = -int_log(num_alleles_);
-      for (unsigned int i = 0; i < num_alleles_; i++){
-	double* LL_ptr = log_sample_ptr + i*num_alleles_*num_samples_ + i*num_samples_;
-	std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
-      }
+    // Fix homozygotes
+    double log_homoz_prior = log_homozygous_prior();
+    for (unsigned int i = 0; i < num_alleles_; i++){
+      double* LL_ptr = log_sample_ptr + i*num_alleles_*num_samples_ + i*num_samples_;
+      std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
     }
   }
 }
@@ -1042,7 +1043,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   //debug_sample(sample_indices_["SSC11604"], logger);
 
   if(log_allele_priors_ != NULL)
-    assert(!output_gls && !output_pls); // These fields only make sense in the context of MLE estimation, not MAP estimation
+    assert(!output_gls && !output_pls && !output_phased_gls); // These fields only make sense in the context of MLE estimation, not MAP estimation
 
   // Compute the base pair differences from the reference
   std::vector<int> allele_bp_diffs;
@@ -1061,8 +1062,16 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector< std::vector<double> > log_post_probs(num_samples_), gls(num_samples_), phased_gls(num_samples_);
   std::vector< std::vector<int> > pls(num_samples_);
   double* log_post_ptr = log_sample_posteriors_;
+
+  // The genotype likelihoods should not contain the priors we used during the posterior calculation
+  // To obtain the true likelihoods, we subtract out the priors from the posteriors using these values.
+  // Not correct if we used non-uniform genotype priors, but GLs and PLs can't be output under this circumstance anyways (see assert above)
+  double hom_ll_correction = log_homozygous_prior();
+  double het_ll_correction = (haploid_ ? 0 : log_heterozygous_prior()); // If haploid, don't correct hetz genotypes as they're impossible
+
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
+      double ll_correction = (index_1 == index_2 ? hom_ll_correction : het_ll_correction);
       dip_bpdiffs.push_back(allele_bp_diffs[index_1]+allele_bp_diffs[index_2]);
       for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index, ++log_post_ptr){
 	if (*log_post_ptr > log_phased_posteriors[sample_index]){
@@ -1071,15 +1080,15 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	}
 	log_post_probs[sample_index].push_back(*log_post_ptr);
 	if (index_2 <= index_1){
-	  double gl_base_e =  sample_total_LLs_[sample_index] + LOG_ONE_HALF
-	    + log_sum_exp(*log_post_ptr, log_sample_posteriors_[index_2*num_alleles_*num_samples_ + index_1*num_samples_ + sample_index]);
-
-	  if (!haploid_ || (index_1 == index_2))
+	  if (!haploid_ || (index_1 == index_2)){
+	    double gl_base_e = sample_total_LLs_[sample_index] + LOG_ONE_HALF - ll_correction
+	      + log_sum_exp(*log_post_ptr, log_sample_posteriors_[index_2*num_alleles_*num_samples_ + index_1*num_samples_ + sample_index]);
 	    gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
+	  }
 	}
 
 	if (!haploid_ || (index_1 == index_2))
-	  phased_gls[sample_index].push_back((*log_post_ptr + sample_total_LLs_[sample_index])*LOG_E_BASE_10);
+	  phased_gls[sample_index].push_back((*log_post_ptr + sample_total_LLs_[sample_index] - ll_correction)*LOG_E_BASE_10);
       }
     }
   }

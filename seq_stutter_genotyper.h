@@ -109,6 +109,12 @@ class SeqStutterGenotyper{
   /* Compute the alignment probabilites between each read and each haplotype */
   double calc_align_probs();
 
+  /* Returns the log-prior for homozygous genotypes, while accounting for the number of alleles and the ploidy */
+  double log_homozygous_prior();
+
+  /* Returns the log-prior for heterozygous genotypes, while accounting for the number of alleles and the ploidy */
+  double log_heterozygous_prior();
+
   /* Initialize the priors required for computed sample genotype posteriors */
   void init_log_sample_priors(double* log_sample_ptr);
 
