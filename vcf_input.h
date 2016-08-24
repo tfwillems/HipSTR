@@ -45,6 +45,10 @@ class PhasedGL{
       printErrorAndDie("Failed to construct PhasedGL instance from VCF record");
   }
 
+  bool has_sample(const std::string& sample){
+    return sample_indices_.find(sample) != sample_indices_.end();
+  }
+
   double get_gl(const std::string& sample, int gt_a, int gt_b){
     auto sample_iter = sample_indices_.find(sample);
     if (sample_iter == sample_indices_.end())

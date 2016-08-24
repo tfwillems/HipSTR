@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "denovo_scanner.h"
 #include "error.h"
 #include "haplotype_tracker.h"
@@ -7,10 +9,38 @@
 
 #include <vector>
 
-double log_genotype_prior(vcflib::Variant& str_variant, int gt_a, int gt_b, const std::string& sample_name){
-  printErrorAndDie("log_genotype_prior() function not implemented");
-  return 0.0;
+void DiploidGenotypePrior::compute_allele_freqs(vcflib::Variant& variant){
+  allele_freqs_ = std::vector<double>(num_alleles_, 1.0); // Use a one sample pseudocount
+
+  // Iterate over all samples in the VCF to compute allele counts
+  double total_count = num_alleles_;
+  for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
+    std::string gts = variant.getGenotype(*sample_iter);
+    if (gts.size() == 0)
+      continue;
+
+    size_t separator_index = gts.find("|");
+    if (separator_index == std::string::npos)
+      separator_index = gts.find("/");
+    if (separator_index == std::string::npos || separator_index+1 == gts.size())
+      printErrorAndDie("Failed to find valid separator in genotype: " + gts);
+    int gt_a = std::atoi(gts.substr(0, separator_index).c_str());
+    int gt_b = std::atoi(gts.substr(separator_index+1).c_str());
+    allele_freqs_[gt_a]++;
+    allele_freqs_[gt_b]++;
+    total_count += 2;
+  }
+
+  // Normalize the allele counts to obtain frequencies
+  for (int i = 0; i < allele_freqs_.size(); i++)
+    allele_freqs_[i] /= total_count;
+
+  // Precompute the logs of the allele frequencies
+  log_allele_freqs_.clear();
+  for (int i = 0; i < allele_freqs_.size(); i++)
+    log_allele_freqs_.push_back(log10(allele_freqs_[i]));
 }
+
 
 void DenovoScanner::scan(vcflib::VariantCallFile& snp_vcf, vcflib::VariantCallFile& str_vcf, std::set<std::string>& sites_to_skip,
 			 std::ostream& logger){
@@ -18,7 +48,7 @@ void DenovoScanner::scan(vcflib::VariantCallFile& snp_vcf, vcflib::VariantCallFi
   vcflib::Variant snp_variant(snp_vcf), str_variant(str_vcf);
 
   std::string chrom = "";
-  int32_t num_strs = 0;
+  int32_t num_strs  = 0;
   while (str_vcf.getNextVariant(str_variant)){
     num_strs++;
     PhasedGL phased_gls(str_vcf, str_variant);
@@ -48,12 +78,15 @@ void DenovoScanner::scan(vcflib::VariantCallFile& snp_vcf, vcflib::VariantCallFi
       haplotype_tracker.remove_next_snp();
 
     int num_alleles = str_variant.alleles.size();
+    if (num_alleles <= 1)
+      continue;
+
     MutationModel mut_model(str_variant);
+    DiploidGenotypePrior dip_gt_priors(str_variant, families_);
 
     // Analyze edit distances between the phased SNP haplotypes of each child and its parents
     int d11, d12, d21, d22;
     for (auto family_iter = families_.begin(); family_iter != families_.end(); family_iter++){
-
       // Determine if all samples have well-phased SNP haplotypes and infer the inheritance pattern
       bool scan_for_denovo = true;
       std::vector<int> maternal_indices, paternal_indices;
@@ -71,13 +104,12 @@ void DenovoScanner::scan(vcflib::VariantCallFile& snp_vcf, vcflib::VariantCallFi
 	int min_pat_dist, min_pat_index, second_pat_dist, second_pat_index;
 	paternal_distance.min_distance(min_pat_dist, min_pat_index);
 	paternal_distance.second_min_distance(second_pat_dist, second_pat_index);
-
 	if (min_pat_dist > MAX_BEST_SCORE || second_pat_dist < MIN_SECOND_BEST_SCORE){
 	  scan_for_denovo = false;
 	  break;
 	}
 
-	// Ensure that one of the best matches involves haplotype #1 and the other involves haplotype #2
+	// Ensure that one of the parental best matches involves haplotype #1 and the other involves haplotype #2
 	if (min_mat_index == 0 || min_mat_index == 1){
 	  if (min_pat_index != 2 && min_pat_index != 3){
 	    scan_for_denovo = false;
@@ -96,7 +128,14 @@ void DenovoScanner::scan(vcflib::VariantCallFile& snp_vcf, vcflib::VariantCallFi
 	assert(paternal_indices.back() >= 0 && paternal_indices.back() < 4);
       }
 
-      if (!scan_for_denovo || num_alleles <= 1)
+      // Don't look for de novos if any of the family members are missing GLs
+      scan_for_denovo &= phased_gls.has_sample(family_iter->get_mother());
+      scan_for_denovo &= phased_gls.has_sample(family_iter->get_father());
+      if (scan_for_denovo)
+	for (auto child_iter = family_iter->get_children().begin(); child_iter != family_iter->get_children().end(); ++child_iter)
+	  scan_for_denovo &= phased_gls.has_sample(*child_iter);
+
+      if (!scan_for_denovo)
 	1;
       else {
 	std::vector<double> lls_no_denovo;
@@ -106,12 +145,12 @@ void DenovoScanner::scan(vcflib::VariantCallFile& snp_vcf, vcflib::VariantCallFi
 	// Iterate over all maternal genotypes
 	for (int mat_i = 0; mat_i < num_alleles; mat_i++){
 	  for (int mat_j = 0; mat_j < num_alleles; mat_j++){
-	    double mat_ll = log_genotype_prior(str_variant, mat_i, mat_j, family_iter->get_mother()) + phased_gls.get_gl(family_iter->get_mother(), mat_i, mat_j);
+	    double mat_ll = dip_gt_priors.log_phased_genotype_prior(mat_i, mat_j, family_iter->get_mother()) + phased_gls.get_gl(family_iter->get_mother(), mat_i, mat_j);
 
 	    // Iterate over all paternal genotypes
 	    for (int pat_i = 0; pat_i < num_alleles; pat_i++){
 	      for (int pat_j = 0; pat_j < num_alleles; pat_j++){
-		double pat_ll = log_genotype_prior(str_variant, pat_i, pat_j, family_iter->get_father()) + phased_gls.get_gl(family_iter->get_father(), pat_i, pat_j);
+		double pat_ll = dip_gt_priors.log_phased_genotype_prior(pat_i, pat_j, family_iter->get_father()) + phased_gls.get_gl(family_iter->get_father(), pat_i, pat_j);
 
 		double no_denovo_config_ll = mat_ll + pat_ll;
 

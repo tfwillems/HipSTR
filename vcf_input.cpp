@@ -177,7 +177,7 @@ bool PhasedGL::build(vcflib::VariantCallFile& vcf_file, vcflib::Variant& variant
     for (size_t i = 0; i < num_alleles_; ++i){
       for (size_t j = 0; j < num_alleles_; ++j, ++gl_index){
         // NOTE: We'd like to use the getSampleValueFloat method from vcflib, but it doesn't work if the number of
-        // fields isn't equal to the number of alleles.Instead, have to use this ugly internal hack
+        // fields isn't equal to the number of alleles. Instead, have to use this ugly internal hack
         double gl = std::stod(variant.samples[*sample_iter][PHASED_GL_KEY].at(gl_index));
         phased_gls_.back().push_back(gl);
       }
