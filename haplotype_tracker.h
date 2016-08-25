@@ -86,6 +86,8 @@ class DiploidHaplotype {
     return distance;
   }
 
+  void extract_set_bits(int64_t value, int offset, std::set<int>& mismatch_indices);
+
  public:  
   DiploidHaplotype(){
     reset();
@@ -98,6 +100,13 @@ class DiploidHaplotype {
     int d22 = edit_distance(snps_2_, other_hap.snps_2_);
     return DiploidEditDistance(d11, d12, d21, d22);
   }
+
+  /* Stores the indices of all SNPs where the haplotypes don't match.
+     If FLIP is false, compares strand #1 in this haplotype with strand #1 in the other haplotype and strand #2 vs. strand #2
+     If FLIP is true,  compares strand #1 in this haplotype with strand #2 in the other haplotype and strand #2 vs. strand #1
+   */
+  void mismatched_sites(DiploidHaplotype& other_hap, bool flip,
+			std::set<int>& mismatch_indices);
 
   void add_snp(int gt_a, int gt_b);
 

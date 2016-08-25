@@ -19,6 +19,34 @@ void DiploidHaplotype::add_snp(int gt_a, int gt_b){
   }
 }
 
+void DiploidHaplotype::extract_set_bits(int64_t value, int offset, std::set<int>& mismatch_indices){
+  while (value){
+    if (value & 1)
+      mismatch_indices.insert(offset);
+    value >>= 1;
+    offset++;
+  }
+}
+
+void DiploidHaplotype::mismatched_sites(DiploidHaplotype& other_hap, bool flip,
+				       std::set<int>& mismatch_indices){
+  std::deque<int64_t>& other_hap_1 = (flip ? other_hap.snps_2_ : other_hap.snps_1_);
+  std::deque<int64_t>& other_hap_2 = (flip ? other_hap.snps_1_ : other_hap.snps_2_);
+  assert(snps_1_.size() == other_hap_1.size());
+  assert(snps_2_.size() == other_hap_2.size());
+  auto iter_a = snps_1_.begin();
+  auto iter_b = other_hap_1.begin();
+
+  int offset = 0;
+  while (iter_a != snps_1_.end()){
+    int64_t set_bits = (*iter_a)^(*iter_b);
+    if (set_bits)
+      extract_set_bits(set_bits, offset, mismatch_indices);
+    offset += 64;
+    iter_a++; iter_b++;
+  }
+}
+
 void DiploidHaplotype::remove_next_snp(){
   assert(snps_1_.size() > 0 && snps_2_.size() > 0);
   snps_1_.front() &= erase_mask_;
