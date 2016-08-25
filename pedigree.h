@@ -42,25 +42,30 @@ class NuclearFamily {
     return false;
   }
 
-  bool is_missing_genotype(vcflib::Variant& variant){
-    for (auto sample_iter = samples_.begin(); sample_iter != samples_.end(); sample_iter++)
-      if (variant.getGenotype(*sample_iter).empty())
+  bool is_missing_genotype(vcflib::Variant& variant) const {
+    for (auto sample_iter = samples_.begin(); sample_iter != samples_.end(); sample_iter++){
+      std::string s = *sample_iter;
+      if (variant.getGenotype(s).empty())
 	return true;
+    }
     return false;
   }
 
-  bool is_mendelian(vcflib::Variant& variant){
-    std::string father_gt = variant.getGenotype(father_);
-    std::string mother_gt = variant.getGenotype(mother_);
-    if (father_gt.empty() || mother_gt.empty())
+  bool is_mendelian(vcflib::Variant& variant) const {
+    if (is_missing_genotype(variant))
       return false;
+
+    std::string s = father_;
+    std::string father_gt = variant.getGenotype(s);
+    s = mother_;
+    std::string mother_gt = variant.getGenotype(s);
     assert(father_gt.size() == 3 && mother_gt.size() == 3);
     int f_1 = father_gt[0]-'0', f_2 = father_gt[2]-'0';
     int m_1 = mother_gt[0]-'0', m_2 = mother_gt[2]-'0';
+
     for (auto child_iter = children_.begin(); child_iter != children_.end(); child_iter++){
-      std::string child_gt = variant.getGenotype(*child_iter);
-      if (child_gt.empty())
-	return false;
+      std::string s = *child_iter;
+      std::string child_gt = variant.getGenotype(s);
       assert(child_gt.size() == 3);
       int c_1 = child_gt[0]-'0', c_2 = child_gt[2]-'0';
       if ((c_1 != m_1 && c_1 != m_2) || (c_2 != f_1 && c_2 != f_2))
