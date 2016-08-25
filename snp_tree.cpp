@@ -23,6 +23,14 @@ bool in_region(vcflib::Variant& variant, uint32_t region_start, uint32_t region_
   return variant.position >= region_start && variant.position <= region_end;
 }
 
+void filter_snps(std::vector<SNP>& snps, std::set<int32_t>& bad_sites){
+  int insert_index = 0;
+  for (int i = 0; i < snps.size(); i++)
+    if (bad_sites.find(snps[i].pos()+1) == bad_sites.end()) // +1 required b/c bad sites are 1-based, while SNPs are 0-based
+      snps[insert_index++] = snps[i];
+  snps.resize(insert_index);
+}
+
 bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, uint32_t skip_start, uint32_t skip_stop, vcflib::VariantCallFile& variant_file, HaplotypeTracker* tracker,
                       std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees, std::ostream& logger){
   logger << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
@@ -77,7 +85,7 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, ui
   }
   logger << "Region contained a total of " << locus_count << " valid SNPs" << std::endl;
 
-  // TO DO: Filter out SNPs on a per-sample basis using any available pedigree information
+  // Filter out SNPs on a per-sample basis using any available pedigree information
   int MAX_BEST_SCORE = 10;
   int MIN_SECOND_BEST_SCORE = 50;
   if (tracker != NULL){
@@ -85,9 +93,18 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, ui
     for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
       std::vector<int> maternal_indices, paternal_indices;
       std::set<int32_t> bad_sites;
-      tracker->infer_haplotype_inheritance(*family_iter, MAX_BEST_SCORE, MIN_SECOND_BEST_SCORE, maternal_indices, paternal_indices, bad_sites);
+      bool good_haplotypes = tracker->infer_haplotype_inheritance(*family_iter, MAX_BEST_SCORE, MIN_SECOND_BEST_SCORE, maternal_indices, paternal_indices, bad_sites);
 
-
+      // If the family haplotypes aren't good enough, clear all of the sample's SNPs. Otherwise, remove only the bad sites from each sample's list
+      for (auto sample_iter = family_iter->get_samples().begin(); sample_iter != family_iter->get_samples().end(); sample_iter++){
+	auto sample_index = sample_indices.find(*sample_iter);
+	if (sample_index != sample_indices.end()){
+	  if (!good_haplotypes)
+	    snps_by_sample[sample_index->second].clear();
+	  else
+	    filter_snps(snps_by_sample[sample_index->second], bad_sites);
+	}
+      }
     }
   }
   

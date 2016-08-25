@@ -17,6 +17,12 @@ class SNP {
   char base_1_;
   char base_2_;
  public:
+  SNP(){
+    pos_    = 0;
+    base_1_ = 'N';
+    base_2_ = 'N';
+  }
+
   SNP(uint32_t pos, char base_1, char base_2){
     pos_    = pos;
     base_1_ = base_1;
