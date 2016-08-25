@@ -4,6 +4,7 @@
 #include <climits>
 #include <deque>
 #include <iostream>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -101,12 +102,8 @@ class DiploidHaplotype {
     return DiploidEditDistance(d11, d12, d21, d22);
   }
 
-  /* Stores the indices of all SNPs where the haplotypes don't match.
-     If FLIP is false, compares strand #1 in this haplotype with strand #1 in the other haplotype and strand #2 vs. strand #2
-     If FLIP is true,  compares strand #1 in this haplotype with strand #2 in the other haplotype and strand #2 vs. strand #1
-   */
-  void mismatched_sites(DiploidHaplotype& other_hap, bool flip,
-			std::set<int>& mismatch_indices);
+  void add_mismatched_sites(int hap_index, DiploidHaplotype& other_hap, int other_index,
+			    std::set<int>& mismatch_indices);
 
   void add_snp(int gt_a, int gt_b);
 
@@ -124,31 +121,15 @@ class DiploidHaplotype {
 
 class HaplotypeTracker {
  private:
+  std::string chrom_;
   std::vector<NuclearFamily> families_;
   std::vector<std::string> samples_;
   std::map<std::string, int> sample_indices_;
   std::vector<DiploidHaplotype> snp_haplotypes_;
-
+  vcflib::VariantCallFile snp_vcf_;
+  int32_t window_size_;
   int32_t num_snps_;
-  std::queue<int32_t> positions_;
-
- public:  
-  HaplotypeTracker(std::vector<NuclearFamily>& families){
-    families_ = families;
-    samples_  = std::vector<std::string>();
-    for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
-      samples_.push_back(family_iter->get_mother());
-      samples_.push_back(family_iter->get_father());
-      for (auto child_iter = family_iter->get_children().begin(); child_iter != family_iter->get_children().end(); child_iter++)
-	samples_.push_back(*child_iter);
-    }    
-    for (unsigned int i = 0; i < samples_.size(); i++)
-      sample_indices_[samples_[i]] = i;
-    
-    snp_haplotypes_ = std::vector<DiploidHaplotype>(samples_.size(), DiploidHaplotype());
-    num_snps_       = 0;
-    positions_      = std::queue<int32_t>();
-  }
+  std::deque<int32_t> positions_;
 
   int32_t next_snp_position(){
     if (num_snps_ == 0)
@@ -168,10 +149,40 @@ class HaplotypeTracker {
     num_snps_--;
     for (unsigned int i = 0; i < snp_haplotypes_.size(); i++)
       snp_haplotypes_[i].remove_next_snp();
-    positions_.pop();
+    positions_.pop_front();
+  }
+
+  void reset(){
+    num_snps_  = 0;
+    positions_ =  std::deque<int32_t>();
+    for (unsigned int i = 0; i < snp_haplotypes_.size(); i++)
+      snp_haplotypes_[i].reset();
   }
 
   void add_snp(vcflib::Variant& variant);
+
+ public:
+  HaplotypeTracker(std::vector<NuclearFamily>& families, std::string& snp_vcf_file, int32_t window_size){
+    chrom_       = "";
+    families_    = families;
+    window_size_ = window_size;
+    samples_     = std::vector<std::string>();
+    for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
+      samples_.push_back(family_iter->get_mother());
+      samples_.push_back(family_iter->get_father());
+      for (auto child_iter = family_iter->get_children().begin(); child_iter != family_iter->get_children().end(); child_iter++)
+	samples_.push_back(*child_iter);
+    }
+    for (unsigned int i = 0; i < samples_.size(); i++)
+      sample_indices_[samples_[i]] = i;
+
+    snp_haplotypes_ = std::vector<DiploidHaplotype>(samples_.size(), DiploidHaplotype());
+    num_snps_       = 0;
+    positions_      = std::deque<int32_t>();
+
+    if (!snp_vcf_.open(snp_vcf_file))
+      printErrorAndDie("Failed to open input SNP VCF file");
+  }
 
   int32_t num_stored_snps() { return num_snps_; }
 
@@ -181,15 +192,10 @@ class HaplotypeTracker {
     return snp_haplotypes_[index_1].edit_distances(snp_haplotypes_[index_2]);
   }
 
-  void reset(){
-    num_snps_  = 0;
-    positions_ =  std::queue<int32_t>();
-    for (unsigned int i = 0; i < snp_haplotypes_.size(); i++)
-      snp_haplotypes_[i].reset();
-  }
+  void advance(std::string chrom, int32_t pos, std::set<std::string>& sites_to_skip);
 
   bool infer_haplotype_inheritance(NuclearFamily& family, int max_best_score, int min_second_best_score,
-				   std::vector<int>& maternal_indices, std::vector<int>& paternal_indices);
+				   std::vector<int>& maternal_indices, std::vector<int>& paternal_indices, std::set<int32_t>& bad_sites);
 };
 
 #endif

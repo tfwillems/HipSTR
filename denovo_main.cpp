@@ -234,7 +234,7 @@ int main(int argc, char** argv){
   // TO DO: Test pedigree reading/structure manipulation...
 
   DenovoScanner denovo_scanner(families);
-  denovo_scanner.scan(snp_vcf, str_vcf, sites_to_skip, logger);
+  denovo_scanner.scan(snp_vcf_file, str_vcf, sites_to_skip, logger);
 
   total_time = (clock() - total_time)/CLOCKS_PER_SEC;
   logger << "DenovoFinder execution finished: Total runtime = " << total_time << " sec" << std::endl;

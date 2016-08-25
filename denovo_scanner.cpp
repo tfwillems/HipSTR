@@ -45,40 +45,15 @@ void DiploidGenotypePrior::compute_allele_freqs(vcflib::Variant& variant, std::v
 }
 
 
-void DenovoScanner::scan(vcflib::VariantCallFile& snp_vcf, vcflib::VariantCallFile& str_vcf, std::set<std::string>& sites_to_skip,
+void DenovoScanner::scan(std::string& snp_vcf_file, vcflib::VariantCallFile& str_vcf, std::set<std::string>& sites_to_skip,
 			 std::ostream& logger){
-  HaplotypeTracker haplotype_tracker(families_);
-  vcflib::Variant snp_variant(snp_vcf), str_variant(str_vcf);
-
-  std::string chrom = "";
+  HaplotypeTracker haplotype_tracker(families_, snp_vcf_file, window_size_);
+  vcflib::Variant str_variant(str_vcf);
   int32_t num_strs  = 0;
   while (str_vcf.getNextVariant(str_variant)){
     num_strs++;
     PhasedGL phased_gls(str_vcf, str_variant);
-
-    if (str_variant.sequenceName.compare(chrom) != 0){
-      chrom = str_variant.sequenceName;
-      haplotype_tracker.reset();
-      if(!snp_vcf.setRegion(chrom, 1))
-	printErrorAndDie("Failed to set the region to chromosome " + chrom + " in the SNP VCF. Please check the SNP VCF and rerun the analysis");
-    }
-
-    int32_t start_of_window = str_variant.position - window_size_;
-    int32_t end_of_window   = str_variant.position + window_size_;
-    if (start_of_window < 0)
-      start_of_window = 0;
-
-    // Incorporate new SNPs within the window
-    while (haplotype_tracker.last_snp_position() < end_of_window && snp_vcf.getNextVariant(snp_variant)){
-      std::string key = snp_variant.sequenceName + ":" + std::to_string(snp_variant.position);
-      if (sites_to_skip.find(key) != sites_to_skip.end())
-	continue;
-      haplotype_tracker.add_snp(snp_variant);
-    }
-
-    // Remove SNPs to left of window
-    while (haplotype_tracker.next_snp_position() < start_of_window && haplotype_tracker.next_snp_position() != -1)
-      haplotype_tracker.remove_next_snp();
+    haplotype_tracker.advance(str_variant.sequenceName, str_variant.position, sites_to_skip);
 
     int num_alleles = str_variant.alleles.size();
     if (num_alleles <= 1)
@@ -91,10 +66,11 @@ void DenovoScanner::scan(vcflib::VariantCallFile& snp_vcf, vcflib::VariantCallFi
     for (auto family_iter = families_.begin(); family_iter != families_.end(); family_iter++){
       // Determine if all samples have well-phased SNP haplotypes and infer the inheritance pattern
       std::vector<int> maternal_indices, paternal_indices;
+      std::set<int32_t> bad_sites;
       bool scan_for_denovo = haplotype_tracker.infer_haplotype_inheritance(*family_iter, MAX_BEST_SCORE, MIN_SECOND_BEST_SCORE,
-									   maternal_indices, paternal_indices);
+									   maternal_indices, paternal_indices, bad_sites);
 
-      // Don't look for de novos if any of the family members are missing GLs
+      // Don't look for de novos if any of the family members are missing genotype likelihoods
       scan_for_denovo &= phased_gls.has_sample(family_iter->get_mother());
       scan_for_denovo &= phased_gls.has_sample(family_iter->get_father());
       if (scan_for_denovo)

@@ -49,7 +49,7 @@ class DenovoScanner {
     window_size_ = 500000;
   }
   
-  void scan(vcflib::VariantCallFile& snp_vcf, vcflib::VariantCallFile& str_vcf, std::set<std::string>& sites_to_skip,
+  void scan(std::string& snp_vcf_file, vcflib::VariantCallFile& str_vcf, std::set<std::string>& sites_to_skip,
 	    std::ostream& logger);
 };
 
