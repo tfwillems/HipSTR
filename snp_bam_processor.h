@@ -58,6 +58,11 @@ public:
     haplotype_tracker_          = NULL;
   }
 
+  ~SNPBamProcessor(){
+    if (haplotype_tracker_ != NULL)
+      delete haplotype_tracker_;
+  }
+
   double total_snp_phase_info_time() { return total_snp_phase_info_time_; }
   double locus_snp_phase_info_time() { return locus_snp_phase_info_time_; }
 
