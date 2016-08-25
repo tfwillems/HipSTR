@@ -198,8 +198,6 @@ int main(int argc, char** argv){
 
   std::ostream& logger = (log_file.empty() ?  std::cerr : log_);
 
-  // Read the original pedigree
-  PedigreeGraph pedigree(fam_file);
 
   // Determine which samples have both SNP and STR data
   std::set<std::string> samples_with_data;
@@ -208,30 +206,15 @@ int main(int argc, char** argv){
     if (str_samples.find(*sample_iter) != str_samples.end())
       samples_with_data.insert(*sample_iter);
 
-  // Remove irrelevant samples from pedigree
-  pedigree.prune(samples_with_data);
-
-  // Identify simple nuclear families in the pedigree
-  std::vector<PedigreeGraph> pedigree_components;
-  pedigree.split_into_connected_components(pedigree_components);
-  
+  // Extract the nuclear families with both types of data
   std::vector<NuclearFamily> families;
-  int num_others = 0;
-  for (unsigned int i = 0; i < pedigree_components.size(); i++){
-    if (pedigree_components[i].is_nuclear_family())
-      families.push_back(pedigree_components[i].convert_to_nuclear_family());
-    else
-      num_others++;
-  }
-  logger << "Detected " << families.size() << " nuclear families and " << num_others << " other family structures\n"
-	 << "\tOnly the nuclear families will undergo de novo analysis\n\n";
+  extract_pedigree_nuclear_families(fam_file, samples_with_data, families, logger);
+  logger << "\tOnly the nuclear families will undergo de novo analysis\n\n";
 
   // Read a list of sites to skip
   std::set<std::string> sites_to_skip;
   if (!snp_skip_file.empty())
     read_site_skip_list(snp_skip_file, sites_to_skip);
-
-  // TO DO: Test pedigree reading/structure manipulation...
 
   DenovoScanner denovo_scanner(families);
   denovo_scanner.scan(snp_vcf_file, str_vcf, sites_to_skip, logger);

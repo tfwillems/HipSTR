@@ -217,4 +217,7 @@ class PedigreeGraph {
 
 void read_sample_list(std::string input_file, std::set<std::string>& sample_set);
 
+void extract_pedigree_nuclear_families(std::string pedigree_fam_file, std::set<std::string>& samples_with_data,
+                                       std::vector<NuclearFamily>& nuclear_families, std::ostream& logger);
+
 #endif

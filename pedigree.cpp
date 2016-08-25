@@ -295,3 +295,26 @@ void read_sample_list(std::string input_file, std::set<std::string>& sample_set)
   while (std::getline(input, line))
     sample_set.insert(line);
 }
+
+void extract_pedigree_nuclear_families(std::string pedigree_fam_file, std::set<std::string>& samples_with_data,
+				       std::vector<NuclearFamily>& nuclear_families, std::ostream& logger){
+  assert(nuclear_families.size() == 0);
+
+  // Read the original pedigree
+  PedigreeGraph pedigree(pedigree_fam_file);
+
+  // Remove irrelevant samples from pedigree
+  pedigree.prune(samples_with_data);
+
+  // Identify simple nuclear families in the pedigree
+  std::vector<PedigreeGraph> pedigree_components;
+  pedigree.split_into_connected_components(pedigree_components);
+  int num_others = 0;
+  for (unsigned int i = 0; i < pedigree_components.size(); i++){
+    if (pedigree_components[i].is_nuclear_family())
+      nuclear_families.push_back(pedigree_components[i].convert_to_nuclear_family());
+    else
+      num_others++;
+  }
+  logger << "Detected " << nuclear_families.size() << " nuclear families and " << num_others << " other family structures\n";
+}
