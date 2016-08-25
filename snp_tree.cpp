@@ -101,6 +101,7 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, ui
   int MAX_BEST_SCORE = 10;
   int MIN_SECOND_BEST_SCORE = 50;
   if (tracker != NULL){
+    int32_t filt_count = 0, unfilt_count = 0;
     const std::vector<NuclearFamily>& families = tracker->families();
     int family_index = 0;
     for (auto family_iter = families.begin(); family_iter != families.end(); ++family_iter, ++family_index){
@@ -111,15 +112,20 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, ui
       for (auto sample_iter = family_iter->get_samples().begin(); sample_iter != family_iter->get_samples().end(); sample_iter++){
 	auto sample_index = sample_indices.find(*sample_iter);
 	if (sample_index != sample_indices.end()){
+	  filt_count += snps_by_sample[sample_index->second].size();
 	  if (!good_haplotypes)
 	    snps_by_sample[sample_index->second].clear();
 	  else
 	    filter_snps(snps_by_sample[sample_index->second], bad_sites_by_family[family_index]);
+	  filt_count   -= snps_by_sample[sample_index->second].size();
+	  unfilt_count += snps_by_sample[sample_index->second].size();
 	}
       }
     }
+    logger << "Removed " << filt_count << " out of " << filt_count+unfilt_count << " individual heterozygous SNP calls due to pedigree uncertainties or inconsistencies" << std::endl;
   }
   
+
   // Create SNP trees
   for (unsigned int i = 0; i < snps_by_sample.size(); i++){
     //logger << "Building interval tree for " << variant_file.sampleNames[i] << " containing " << snps_by_sample[i].size() << " heterozygous SNPs" << std::endl;
