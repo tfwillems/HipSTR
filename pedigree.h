@@ -16,12 +16,16 @@ class NuclearFamily {
  private:
   std::string mother_, father_;
   std::vector<std::string> children_;
+  std::vector<std::string> samples_;
 
  public:
   NuclearFamily(std::string mother, std::string father, std::vector<std::string> children){
     mother_   = mother;
     father_   = father;
     children_ = children;
+    samples_.push_back(mother_);
+    samples_.push_back(father_);
+    samples_.insert(samples_.end(), children_.begin(), children_.end());
   }
 
   const std::string& get_mother() const { return mother_; }
@@ -29,21 +33,18 @@ class NuclearFamily {
   const int size()                const {  return 2 + children_.size(); }
   const int num_children()        const { return children_.size();      }
   const std::vector<std::string>& get_children() const { return children_; }
+  const std::vector<std::string>& get_samples()  const { return samples_; }
 
   bool is_missing_sample(std::set<std::string>& samples) const {
-    if (samples.find(mother_) == samples.end()) return true;
-    if (samples.find(father_) == samples.end()) return true;
-    for (auto child_iter = children_.begin(); child_iter != children_.end(); child_iter++)
-      if (samples.find(*child_iter) == samples.end())
+    for (auto sample_iter = samples_.begin(); sample_iter != samples_.end(); sample_iter++)
+      if (samples.find(*sample_iter) == samples.end())
         return true;
     return false;
   }
 
   bool is_missing_genotype(vcflib::Variant& variant){
-    if (variant.getGenotype(mother_).empty() || variant.getGenotype(father_).empty())
-      return true;
-    for (auto child_iter = children_.begin(); child_iter != children_.end(); child_iter++)
-      if (variant.getGenotype(*child_iter).empty())
+    for (auto sample_iter = samples_.begin(); sample_iter != samples_.end(); sample_iter++)
+      if (variant.getGenotype(*sample_iter).empty())
 	return true;
     return false;
   }
@@ -102,7 +103,7 @@ class PedigreeNode {
   void del_child (PedigreeNode* child)  {
     auto iter = std::find(children_.begin(), children_.end(), child);;
     if (iter == children_.end())
-      printErrorAndDie("Can't delete chid from node as it is not among the existing children");
+      printErrorAndDie("Can't delete child from node as it is not among the existing children");
     children_.erase(iter);
   }
   
