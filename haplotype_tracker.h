@@ -167,12 +167,8 @@ class HaplotypeTracker {
     families_    = families;
     window_size_ = window_size;
     samples_     = std::vector<std::string>();
-    for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
-      samples_.push_back(family_iter->get_mother());
-      samples_.push_back(family_iter->get_father());
-      for (auto child_iter = family_iter->get_children().begin(); child_iter != family_iter->get_children().end(); child_iter++)
-	samples_.push_back(*child_iter);
-    }
+    for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++)
+      samples_.insert(samples_.end(),  family_iter->get_samples().begin(),  family_iter->get_samples().end());
     for (unsigned int i = 0; i < samples_.size(); i++)
       sample_indices_[samples_[i]] = i;
 
