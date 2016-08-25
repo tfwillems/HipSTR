@@ -187,6 +187,9 @@ class HaplotypeTracker {
     for (unsigned int i = 0; i < snp_haplotypes_.size(); i++)
       snp_haplotypes_[i].reset();
   }
+
+  bool infer_haplotype_inheritance(NuclearFamily& family, int max_best_score, int min_second_best_score,
+				   std::vector<int>& maternal_indices, std::vector<int>& paternal_indices);
 };
 
 #endif

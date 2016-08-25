@@ -88,48 +88,11 @@ void DenovoScanner::scan(vcflib::VariantCallFile& snp_vcf, vcflib::VariantCallFi
     DiploidGenotypePrior dip_gt_priors(str_variant, families_);
 
     // Analyze edit distances between the phased SNP haplotypes of each child and its parents
-    int d11, d12, d21, d22;
     for (auto family_iter = families_.begin(); family_iter != families_.end(); family_iter++){
       // Determine if all samples have well-phased SNP haplotypes and infer the inheritance pattern
-      bool scan_for_denovo = true;
       std::vector<int> maternal_indices, paternal_indices;
-      for (auto child_iter = family_iter->get_children().begin(); child_iter != family_iter->get_children().end(); child_iter++){
-	DiploidEditDistance maternal_distance = haplotype_tracker.edit_distances(*child_iter, family_iter->get_mother());
-	int min_mat_dist, min_mat_index, second_mat_dist, second_mat_index;
-	maternal_distance.min_distance(min_mat_dist, min_mat_index);
-	maternal_distance.second_min_distance(second_mat_dist, second_mat_index);
-	if (min_mat_dist > MAX_BEST_SCORE || second_mat_dist < MIN_SECOND_BEST_SCORE){
-	  scan_for_denovo = false;
-	  break;
-	}
-
-	DiploidEditDistance paternal_distance = haplotype_tracker.edit_distances(*child_iter, family_iter->get_father());
-	int min_pat_dist, min_pat_index, second_pat_dist, second_pat_index;
-	paternal_distance.min_distance(min_pat_dist, min_pat_index);
-	paternal_distance.second_min_distance(second_pat_dist, second_pat_index);
-	if (min_pat_dist > MAX_BEST_SCORE || second_pat_dist < MIN_SECOND_BEST_SCORE){
-	  scan_for_denovo = false;
-	  break;
-	}
-
-	// Ensure that one of the parental best matches involves haplotype #1 and the other involves haplotype #2
-	if (min_mat_index == 0 || min_mat_index == 1){
-	  if (min_pat_index != 2 && min_pat_index != 3){
-	    scan_for_denovo = false;
-	    break;
-	  }
-	}
-	else {
-	  if (min_pat_index != 0 && min_pat_index != 1){
-	    scan_for_denovo = false;
-	    break;
-	  }
-	}
-	maternal_indices.push_back(min_mat_index);
-	paternal_indices.push_back(min_pat_index);
-	assert(maternal_indices.back() >= 0 && maternal_indices.back() < 4);
-	assert(paternal_indices.back() >= 0 && paternal_indices.back() < 4);
-      }
+      bool scan_for_denovo = haplotype_tracker.infer_haplotype_inheritance(*family_iter, MAX_BEST_SCORE, MIN_SECOND_BEST_SCORE,
+									   maternal_indices, paternal_indices);
 
       // Don't look for de novos if any of the family members are missing GLs
       scan_for_denovo &= phased_gls.has_sample(family_iter->get_mother());

@@ -87,3 +87,37 @@ void HaplotypeTracker::add_snp(vcflib::Variant& variant){
     }      
   }
 }
+
+/* Analyze edit distances between the phased SNP haplotypes of each child and its parents */
+bool HaplotypeTracker::infer_haplotype_inheritance(NuclearFamily& family, int max_best_score, int min_second_best_score,
+						   std::vector<int>& maternal_indices, std::vector<int>& paternal_indices){
+  assert(maternal_indices.size() == 0 && paternal_indices.size() == 0);
+
+  for (auto child_iter = family.get_children().begin(); child_iter != family.get_children().end(); child_iter++){
+    DiploidEditDistance maternal_distance = edit_distances(*child_iter, family.get_mother());
+    int min_mat_dist, min_mat_index, second_mat_dist, second_mat_index;
+    maternal_distance.min_distance(min_mat_dist, min_mat_index);
+    maternal_distance.second_min_distance(second_mat_dist, second_mat_index);
+    if (min_mat_dist > max_best_score || second_mat_dist < min_second_best_score)
+      return false;
+
+    DiploidEditDistance paternal_distance = edit_distances(*child_iter, family.get_father());
+    int min_pat_dist, min_pat_index, second_pat_dist, second_pat_index;
+    paternal_distance.min_distance(min_pat_dist, min_pat_index);
+    paternal_distance.second_min_distance(second_pat_dist, second_pat_index);
+    if (min_pat_dist > max_best_score || second_pat_dist < min_second_best_score)
+      return false;
+
+    // Ensure that one of the parental best matches involves haplotype #1 and the other involves haplotype #2
+    if (min_mat_index == 0 || min_mat_index == 1){
+      if (min_pat_index != 2 && min_pat_index != 3)
+	return false;
+    }
+    else if (min_pat_index != 0 && min_pat_index != 1)
+      return false;
+
+    assert(min_mat_index >= 0 && min_mat_index < 4);
+    assert(min_pat_index >= 0 && min_pat_index < 4);
+  }
+  return true;
+}
