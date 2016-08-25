@@ -125,7 +125,7 @@ void HaplotypeTracker::advance(std::string chrom, int32_t position, std::set<std
  */
 bool HaplotypeTracker::infer_haplotype_inheritance(const NuclearFamily& family, int max_best_score, int min_second_best_score,
 						   std::vector<int>& maternal_indices, std::vector<int>& paternal_indices, std::set<int32_t>& bad_sites){
-  assert(maternal_indices.size() == 0 && paternal_indices.size() == 0 && bad_sites.size() == 0);
+  assert(maternal_indices.size() == 0 && paternal_indices.size() == 0);
   DiploidHaplotype& mat_haplotypes = snp_haplotypes_[sample_indices_[family.get_mother()]];
   DiploidHaplotype& pat_haplotypes = snp_haplotypes_[sample_indices_[family.get_father()]];
   std::set<int> mismatch_indices;
