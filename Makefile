@@ -24,7 +24,7 @@ endif
 ## Source code files, add new files to this list
 SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp extract_indels.cpp mathops.cpp pcr_duplicates.cpp fastahack/Fasta.cpp fastahack/split.cpp
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
-SRC_HIPSTR  = hipstr_main.cpp bam_processor.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp vcf_input.cpp read_pooler.cpp version.cpp process_timer.cpp haplotype_tracker.cpp
+SRC_HIPSTR  = hipstr_main.cpp bam_processor.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp vcf_input.cpp read_pooler.cpp version.cpp process_timer.cpp haplotype_tracker.cpp pedigree.cpp
 SRC_SEQALN  = SeqAlignment/AlignmentData.cpp SeqAlignment/HapAligner.cpp SeqAlignment/RepeatStutterInfo.cpp SeqAlignment/AlignmentModel.cpp SeqAlignment/AlignmentOps.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NeedlemanWunsch.cpp SeqAlignment/Haplotype.cpp SeqAlignment/RepeatBlock.cpp SeqAlignment/HaplotypeGenerator.cpp SeqAlignment/HTMLCreator.cpp SeqAlignment/AlignmentViz.cpp SeqAlignment/AlignmentTraceback.cpp SeqAlignment/StutterAlignerClass.cpp
 SRC_RNASEQ  = exploratory/filter_rnaseq.cpp exploratory/exon_info.cpp
 SRC_DENOVO  = denovo_main.cpp error.cpp stringops.cpp version.cpp pedigree.cpp haplotype_tracker.cpp vcf_input.cpp denovo_scanner.cpp mathops.cpp mutation_model.cpp
