@@ -151,7 +151,7 @@ int main(int argc, char** argv){
       std::cerr << "Processing region " << chrom << " " << start << " " << end << ", # reads = " << read_count << std::endl;
 
       std::map<std::string, unsigned int> sample_indices;
-      if (create_snp_trees(chrom, start, end + READ_PAD, 1, 1, variant_file, sample_indices, snp_trees, std::cerr)){
+      if (create_snp_trees(chrom, start, end + READ_PAD, 1, 1, variant_file, NULL, sample_indices, snp_trees, std::cerr)){
 	std::cerr << "Built SNP tree" << std::endl;
 	assert(snp_trees.size() > 0);  
 	

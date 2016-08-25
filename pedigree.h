@@ -24,11 +24,20 @@ class NuclearFamily {
     children_ = children;
   }
 
-  const std::string& get_mother() { return mother_; }
-  const std::string& get_father() { return father_; }
-  const std::vector<std::string>& get_children() { return children_; }
-  const int size()         {  return 2 + children_.size(); }
-  const int num_children() { return children_.size();      }
+  const std::string& get_mother() const { return mother_; }
+  const std::string& get_father() const { return father_; }
+  const int size()                const {  return 2 + children_.size(); }
+  const int num_children()        const { return children_.size();      }
+  const std::vector<std::string>& get_children() const { return children_; }
+
+  bool is_missing_sample(std::set<std::string>& samples) const {
+    if (samples.find(mother_) == samples.end()) return true;
+    if (samples.find(father_) == samples.end()) return true;
+    for (auto child_iter = children_.begin(); child_iter != children_.end(); child_iter++)
+      if (samples.find(*child_iter) == samples.end())
+        return true;
+    return false;
+  }
 
   bool is_missing_genotype(vcflib::Variant& variant){
     if (variant.getGenotype(mother_).empty() || variant.getGenotype(father_).empty())

@@ -184,6 +184,10 @@ class HaplotypeTracker {
       printErrorAndDie("Failed to open input SNP VCF file");
   }
 
+  const std::vector<NuclearFamily>& families(){
+    return families_;
+  }
+
   int32_t num_stored_snps() { return num_snps_; }
 
   DiploidEditDistance edit_distances(const std::string& sample_1, const std::string& sample_2){
@@ -194,7 +198,7 @@ class HaplotypeTracker {
 
   void advance(std::string chrom, int32_t pos, std::set<std::string>& sites_to_skip);
 
-  bool infer_haplotype_inheritance(NuclearFamily& family, int max_best_score, int min_second_best_score,
+  bool infer_haplotype_inheritance(const NuclearFamily& family, int max_best_score, int min_second_best_score,
 				   std::vector<int>& maternal_indices, std::vector<int>& paternal_indices, std::set<int32_t>& bad_sites);
 };
 

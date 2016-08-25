@@ -11,6 +11,7 @@
 #include "bam_processor.h"
 #include "base_quality.h"
 #include "error.h"
+#include "haplotype_tracker.h"
 #include "region.h"
 
 
@@ -23,6 +24,10 @@ private:
   bool have_snp_vcf_;
   vcflib::VariantCallFile phased_snp_vcf_;
   int32_t match_count_, mismatch_count_;
+
+  // Used to enforce pedigree requirements on SNPs used for phasing
+  HaplotypeTracker* haplotype_tracker_;
+  std::vector<NuclearFamily> families_;
 
   // Timing statistics (in seconds)
   double total_snp_phase_info_time_;
@@ -50,6 +55,7 @@ public:
     total_snp_phase_info_time_  = 0;
     locus_snp_phase_info_time_  = -1;
     bams_from_10x_              = false;
+    haplotype_tracker_          = NULL;
   }
 
   double total_snp_phase_info_time() { return total_snp_phase_info_time_; }
@@ -76,6 +82,25 @@ public:
     if(!phased_snp_vcf_.open(vcf_file))
       printErrorAndDie("Failed to open input SNP VCF file");
     have_snp_vcf_ = true;
+  }
+
+  void use_pedigree_to_filter_snps(std::vector<NuclearFamily>& families, std::string snp_vcf_file){
+    if (!have_snp_vcf_)
+      printErrorAndDie("Cannot enforce pedigree structure on SNPs if no SNP VCF has been specified");
+    if (haplotype_tracker_ != NULL)
+      delete haplotype_tracker_;
+
+    vcflib::VariantCallFile pedigree_snp_vcf;
+    if (!pedigree_snp_vcf.open(snp_vcf_file))
+      printErrorAndDie("Failed to open SNP VCF");
+
+    // Keep only those families where all members are present in the VCF
+    families_.clear();
+    std::set<std::string> snp_samples(pedigree_snp_vcf.sampleNames.begin(), pedigree_snp_vcf.sampleNames.end());
+    for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++)
+      if (!family_iter->is_missing_sample(snp_samples))
+	families_.push_back(*family_iter);
+    haplotype_tracker_ = new HaplotypeTracker(families_, snp_vcf_file, 500000);
   }
 
   void finish(){

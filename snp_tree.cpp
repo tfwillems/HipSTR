@@ -1,5 +1,7 @@
 #include <assert.h>
 
+#include <set>
+
 #include "error.h"
 #include "snp_tree.h"
 
@@ -21,7 +23,7 @@ bool in_region(vcflib::Variant& variant, uint32_t region_start, uint32_t region_
   return variant.position >= region_start && variant.position <= region_end;
 }
 
-bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, uint32_t skip_start, uint32_t skip_stop, vcflib::VariantCallFile& variant_file,
+bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, uint32_t skip_start, uint32_t skip_stop, vcflib::VariantCallFile& variant_file, HaplotypeTracker* tracker,
                       std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees, std::ostream& logger){
   logger << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
@@ -42,7 +44,7 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, ui
   std::vector< std::vector<SNP> > snps_by_sample(variant_file.sampleNames.size());
   vcflib::Variant variant(variant_file);
   uint32_t locus_count = 0, skip_count = 0;
-  while(variant_file.getNextVariant(variant)){
+  while (variant_file.getNextVariant(variant)){
     //if (locus_count % 1000 == 0)   std::cout << "\rProcessing locus #" << locus_count << " (skipped " << skip_count << ") at position " << variant.position << std::flush;
     if (!is_biallelic_snp(variant) || in_region(variant, skip_start, skip_stop)){
       skip_count++;
@@ -74,9 +76,23 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, ui
     }
   }
   logger << "Region contained a total of " << locus_count << " valid SNPs" << std::endl;
+
+  // TO DO: Filter out SNPs on a per-sample basis using any available pedigree information
+  int MAX_BEST_SCORE = 10;
+  int MIN_SECOND_BEST_SCORE = 50;
+  if (tracker != NULL){
+    const std::vector<NuclearFamily>& families = tracker->families();
+    for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
+      std::vector<int> maternal_indices, paternal_indices;
+      std::set<int32_t> bad_sites;
+      tracker->infer_haplotype_inheritance(*family_iter, MAX_BEST_SCORE, MIN_SECOND_BEST_SCORE, maternal_indices, paternal_indices, bad_sites);
+
+
+    }
+  }
   
   // Create SNP trees
-  for(unsigned int i = 0; i < snps_by_sample.size(); i++){
+  for (unsigned int i = 0; i < snps_by_sample.size(); i++){
     //logger << "Building interval tree for " << variant_file.sampleNames[i] << " containing " << snps_by_sample[i].size() << " heterozygous SNPs" << std::endl;
     snp_trees.push_back(new SNPTree(snps_by_sample[i]));
   }

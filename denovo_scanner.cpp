@@ -62,7 +62,6 @@ void DenovoScanner::scan(std::string& snp_vcf_file, vcflib::VariantCallFile& str
     MutationModel mut_model(str_variant);
     DiploidGenotypePrior dip_gt_priors(str_variant, families_);
 
-    // Analyze edit distances between the phased SNP haplotypes of each child and its parents
     for (auto family_iter = families_.begin(); family_iter != families_.end(); family_iter++){
       // Determine if all samples have well-phased SNP haplotypes and infer the inheritance pattern
       std::vector<int> maternal_indices, paternal_indices;

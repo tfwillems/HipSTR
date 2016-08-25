@@ -123,7 +123,7 @@ void HaplotypeTracker::advance(std::string chrom, int32_t position, std::set<std
  * Stores the positions of any SNPs that are inconsistent with the inhertiance pattern in the set.
  * NOTE: this set can ONLY contain SNPs that are Mendelian and have no missing genotypes in the family.
  */
-bool HaplotypeTracker::infer_haplotype_inheritance(NuclearFamily& family, int max_best_score, int min_second_best_score,
+bool HaplotypeTracker::infer_haplotype_inheritance(const NuclearFamily& family, int max_best_score, int min_second_best_score,
 						   std::vector<int>& maternal_indices, std::vector<int>& paternal_indices, std::set<int32_t>& bad_sites){
   assert(maternal_indices.size() == 0 && paternal_indices.size() == 0 && bad_sites.size() == 0);
   DiploidHaplotype& mat_haplotypes = snp_haplotypes_[sample_indices_[family.get_mother()]];
