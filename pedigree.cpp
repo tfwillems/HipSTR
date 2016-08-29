@@ -248,7 +248,6 @@ void PedigreeGraph::split_into_connected_components(std::vector<PedigreeGraph>& 
 
   // Construct individual graphs for each component
   assert(components.size() == 0);
-  std::cerr << component_nodes.size() << std::endl;
   for (int i = 0; i < component_nodes.size(); i++)
     components.push_back(PedigreeGraph(component_nodes[i]));
 }
