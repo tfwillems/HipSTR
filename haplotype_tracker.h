@@ -64,6 +64,7 @@ class DiploidHaplotype {
  private:
   std::deque<int64_t> snps_1_, snps_2_;
   int64_t erase_mask_, set_mask_;
+  int num_removed_;
   const static int64_t MAX_DIGIT = (1ULL << 63);
 
   int num_set_bits(int64_t value){
@@ -114,8 +115,9 @@ class DiploidHaplotype {
     snps_2_.clear();
     snps_1_.push_back(0);
     snps_2_.push_back(0);
-    erase_mask_ = -2;
-    set_mask_   = 1;
+    erase_mask_  = -2;
+    set_mask_    = 1;
+    num_removed_ = 0;
   }
 };
 
@@ -192,7 +194,7 @@ class HaplotypeTracker {
     return snp_haplotypes_[index_1].edit_distances(snp_haplotypes_[index_2]);
   }
 
-  void advance(std::string chrom, int32_t pos, std::set<std::string>& sites_to_skip);
+  void advance(std::string chrom, int32_t pos, std::set<std::string>& sites_to_skip, std::ostream& logger);
 
   bool infer_haplotype_inheritance(const NuclearFamily& family, int max_best_score, int min_second_best_score,
 				   std::vector<int>& maternal_indices, std::vector<int>& paternal_indices, std::set<int32_t>& bad_sites);

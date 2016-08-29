@@ -99,7 +99,7 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, ui
 
   // Filter out SNPs on a per-sample basis using any available pedigree information
   int MAX_BEST_SCORE = 10;
-  int MIN_SECOND_BEST_SCORE = 50;
+  int MIN_SECOND_BEST_SCORE = 100;
   if (tracker != NULL){
     int32_t filt_count = 0, unfilt_count = 0;
     const std::vector<NuclearFamily>& families = tracker->families();

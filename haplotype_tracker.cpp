@@ -37,12 +37,12 @@ void DiploidHaplotype::add_mismatched_sites(int hap_index, DiploidHaplotype& oth
   auto iter_a = hap_a.begin();
   auto iter_b = hap_b.begin();
 
-  int offset = 0;
+  int offset = -num_removed_;
   while (iter_a != hap_a.end()){
     int64_t set_bits = (*iter_a)^(*iter_b);
     if (set_bits)
       extract_set_bits(set_bits, offset, mismatch_indices);
-    offset += 64;
+    offset += 63;
     iter_a++; iter_b++;
   }
 }
@@ -52,10 +52,12 @@ void DiploidHaplotype::remove_next_snp(){
   snps_1_.front() &= erase_mask_;
   snps_2_.front() &= erase_mask_;
   erase_mask_ <<= 1;
+  num_removed_++;
   if (erase_mask_ == 0){
     snps_1_.pop_front();
     snps_2_.pop_front();
-    erase_mask_ = -2;
+    erase_mask_  = -2;
+    num_removed_ = 0;
   } 
 }
 
@@ -88,7 +90,8 @@ void HaplotypeTracker::add_snp(vcflib::Variant& variant){
   }
 }
 
-void HaplotypeTracker::advance(std::string chrom, int32_t position, std::set<std::string>& sites_to_skip){
+void HaplotypeTracker::advance(std::string chrom, int32_t position, std::set<std::string>& sites_to_skip, std::ostream& logger){
+  logger << "Advancing haplotype tracker...";
   if (chrom.compare(chrom_) != 0){
     chrom_ = chrom;
     reset();
@@ -111,6 +114,7 @@ void HaplotypeTracker::advance(std::string chrom, int32_t position, std::set<std
   // Remove SNPs to left of window
   while (next_snp_position() < start_of_window && next_snp_position() != -1)
     remove_next_snp();
+  logger << " done" << std::endl;
 }
 
 /* Analyze edit distances between the phased SNP haplotypes of each child and its parents. Returns true iff all the children in the family

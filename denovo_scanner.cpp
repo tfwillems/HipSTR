@@ -53,7 +53,7 @@ void DenovoScanner::scan(std::string& snp_vcf_file, vcflib::VariantCallFile& str
   while (str_vcf.getNextVariant(str_variant)){
     num_strs++;
     PhasedGL phased_gls(str_vcf, str_variant);
-    haplotype_tracker.advance(str_variant.sequenceName, str_variant.position, sites_to_skip);
+    haplotype_tracker.advance(str_variant.sequenceName, str_variant.position, sites_to_skip, logger);
 
     int num_alleles = str_variant.alleles.size();
     if (num_alleles <= 1)
