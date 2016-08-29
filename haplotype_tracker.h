@@ -130,6 +130,7 @@ class HaplotypeTracker {
   int32_t window_size_;
   int32_t num_snps_;
   std::deque<int32_t> positions_;
+  int32_t prev_window_start_, prev_window_end_;
 
   int32_t next_snp_position(){
     if (num_snps_ == 0)
@@ -155,6 +156,8 @@ class HaplotypeTracker {
   void reset(){
     num_snps_  = 0;
     positions_ =  std::deque<int32_t>();
+    prev_window_start_ = -1;
+    prev_window_end_   = -1;
     for (unsigned int i = 0; i < snp_haplotypes_.size(); i++)
       snp_haplotypes_[i].reset();
   }
@@ -172,9 +175,11 @@ class HaplotypeTracker {
     for (unsigned int i = 0; i < samples_.size(); i++)
       sample_indices_[samples_[i]] = i;
 
-    snp_haplotypes_ = std::vector<DiploidHaplotype>(samples_.size(), DiploidHaplotype());
-    num_snps_       = 0;
-    positions_      = std::deque<int32_t>();
+    snp_haplotypes_    = std::vector<DiploidHaplotype>(samples_.size(), DiploidHaplotype());
+    num_snps_          = 0;
+    positions_         = std::deque<int32_t>();
+    prev_window_start_ = -1;
+    prev_window_end_   = -1;
 
     if (!snp_vcf_.open(snp_vcf_file))
       printErrorAndDie("Failed to open input SNP VCF file");
