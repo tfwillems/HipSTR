@@ -167,6 +167,9 @@ bool PhasedGL::build(vcflib::VariantCallFile& vcf_file, vcflib::Variant& variant
 
   num_samples_ = 0;
   num_alleles_ = variant.alleles.size();
+  if (variant.alleles.back().compare(".") == 0)
+    num_alleles_--;
+
   for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
     if (variant.getGenotype(*sample_iter).empty())
       continue;
@@ -183,6 +186,5 @@ bool PhasedGL::build(vcflib::VariantCallFile& vcf_file, vcflib::Variant& variant
       }
     }
   }
-
   return true;
 }

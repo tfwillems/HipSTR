@@ -49,6 +49,11 @@ class PhasedGL{
     return sample_indices_.find(sample) != sample_indices_.end();
   }
 
+  int get_sample_index(const std::string& sample){
+    auto sample_iter = sample_indices_.find(sample);
+    return (sample_iter == sample_indices_.end() ? -1 : sample_iter->second);
+  }
+
   double get_gl(const std::string& sample, int gt_a, int gt_b){
     auto sample_iter = sample_indices_.find(sample);
     if (sample_iter == sample_indices_.end())
@@ -60,6 +65,10 @@ class PhasedGL{
 
     int gt_index = gt_a*num_alleles_ + gt_b;
     return phased_gls_[sample_iter->second][gt_index];
+  }
+
+  double get_gl(int sample_index, int gt_a, int gt_b){
+    return phased_gls_[sample_index][gt_a*num_alleles_ + gt_b];
   }
 };
 
