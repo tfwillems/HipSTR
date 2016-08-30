@@ -39,10 +39,11 @@ class DiploidGenotypePrior {
 };
 
 class DenovoScanner {
+ private:
   const static int MIN_SECOND_BEST_SCORE = 100;
   const static int MAX_BEST_SCORE        = 10;
+  std::string BPDIFFS_KEY = "BPDIFFS", START_KEY = "START", END_KEY = "END", PERIOD_KEY = "PERIOD";
 
- private:
   int32_t window_size_;
   std::vector<NuclearFamily> families_;
   bgzfostream denovo_vcf_;
@@ -50,7 +51,6 @@ class DenovoScanner {
   void write_vcf_header(std::string& full_command);
   void initialize_vcf_record(vcflib::Variant& str_variant);
   void add_family_to_record(NuclearFamily& family, double total_ll_no_denovo, std::vector<double>& total_lls_one_denovo, std::vector<double>& total_lls_one_other);
-
 
  public:
   DenovoScanner(std::vector<NuclearFamily>& families, std::string& output_file, std::string& full_command){
