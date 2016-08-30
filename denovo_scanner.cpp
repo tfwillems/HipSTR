@@ -57,9 +57,8 @@ void DenovoScanner::write_vcf_header(std::string& full_command){
 
   // Format field descriptors
   denovo_vcf_ << "##FORMAT=<ID=" << "CHILDREN" << ",Number=.,Type=String,Description=\""  << "Ordered list of children in family that were tested for mutations. Specifies order of values for AFF, DENOVO and OTHER FORMAT fields" << "\">\n"
-	      << "##FORMAT=<ID=" << "AFF"      << ",Number=.,Type=String,Description=\""  << "Affected status of each child in the family" << "\">\n"
-	      << "##FORMAT=<ID=" << "NOMUT"    << ",Number=1,Type=Float,Description=\""
-	      << "Log-likelihood that no mutations occurred in any of the family members" << "\">\n"
+	      << "##FORMAT=<ID=" << "NOMUT"    << ",Number=1,Type=Float,Description=\""   << "Log-likelihood that no mutations occurred in any of the family members" << "\">\n"
+	      << "##FORMAT=<ID=" << "ANYMUT"   << ",Number=1,Type=Float,Description=\""   << "Log-likelihood that a mutation occurred in any of the family members"   << "\">\n"
 	      << "##FORMAT=<ID=" << "DENOVO"   << ",Number=.,Type=Float,Description=\""
 	      << "Log-likelihood that a single de novo mutation occurred in the family, and it occurred in the current child" << "\">\n"
 	      << "##FORMAT=<ID=" << "OTHER"    << ",Number=.,Type=Float,Description=\""
@@ -89,7 +88,7 @@ void DenovoScanner::initialize_vcf_record(vcflib::Variant& str_variant){
 	      << ";PERIOD=" << str_variant.getInfoValueFloat(period_key);
 
   // FORMAT field
-  denovo_vcf_ << "\t" << "CHILDREN:AFF:NOMUT:DENOVO:OTHER";
+  denovo_vcf_ << "\t" << "CHILDREN:NOMUT:ANYMUT:DENOVO:OTHER";
 }
 
 void DenovoScanner::add_family_to_record(NuclearFamily& family, double total_ll_no_mutation, std::vector<double>& total_lls_one_denovo, std::vector<double>& total_lls_one_other){
@@ -101,13 +100,11 @@ void DenovoScanner::add_family_to_record(NuclearFamily& family, double total_ll_
   for (int i = 1; i < children.size(); i++)
     denovo_vcf_ << "," << children[i];
 
-  // Children's affected statuses (missing for now)
-  denovo_vcf_ << ":" << ".";
-  for (int i = 1; i < children.size(); i++)
-    denovo_vcf_ << "," << ".";
-
   // LL no mutation
   denovo_vcf_ << ":" << total_ll_no_mutation;
+
+  // LL a mutation
+  denovo_vcf_ << ":" << fast_log_sum_exp(fast_log_sum_exp(total_lls_one_denovo), fast_log_sum_exp(total_lls_one_other));
 
   // LL one denovo, for each child
   denovo_vcf_ << ":" << total_lls_one_denovo.at(0);
