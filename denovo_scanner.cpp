@@ -81,12 +81,12 @@ void DenovoScanner::initialize_vcf_record(vcflib::Variant& str_variant){
   std::string bpdiffs_key = "BPDIFFS", start_key = "START", end_key = "END", period_key = "PERIOD";
 
   // INFO field
-  denovo_vcf_ << "BPDIFFS=" << str_variant.getInfoValueFloat(bpdiffs_key, 0);
+  denovo_vcf_ << "BPDIFFS=" << (int)str_variant.getInfoValueFloat(bpdiffs_key, 0);
   for (int i = 2; i < str_variant.alleles.size(); i++)
-    denovo_vcf_ << "," <<  str_variant.getInfoValueFloat(bpdiffs_key, i-1);
-  denovo_vcf_ << ";START="  << str_variant.getInfoValueFloat(start_key)
-	      << ";END="    << str_variant.getInfoValueFloat(end_key)
-	      << ";PERIOD=" << str_variant.getInfoValueFloat(period_key);
+    denovo_vcf_ << "," <<  (int)str_variant.getInfoValueFloat(bpdiffs_key, i-1);
+  denovo_vcf_ << ";START="  << (int32_t)str_variant.getInfoValueFloat(start_key)
+	      << ";END="    << (int32_t)str_variant.getInfoValueFloat(end_key)
+	      << ";PERIOD=" << (int)str_variant.getInfoValueFloat(period_key);
 
   // FORMAT field
   denovo_vcf_ << "\t" << "CHILDREN:AFF:NOMUT:DENOVO:OTHER";
@@ -126,6 +126,9 @@ void DenovoScanner::scan(std::string& snp_vcf_file, vcflib::VariantCallFile& str
   vcflib::Variant str_variant(str_vcf);
   int32_t num_strs  = 0;
   while (str_vcf.getNextVariant(str_variant)){
+
+    std::cerr << str_variant.sequenceName << " " << str_variant.position << std::endl;
+
     num_strs++;
     PhasedGL phased_gls(str_vcf, str_variant);
     haplotype_tracker.advance(str_variant.sequenceName, str_variant.position, sites_to_skip, logger);
@@ -155,6 +158,7 @@ void DenovoScanner::scan(std::string& snp_vcf_file, vcflib::VariantCallFile& str
       if (!scan_for_denovo)
 	denovo_vcf_ << "\t" << ".";
       else {
+	assert(family_iter->get_children().size() == maternal_indices.size() && maternal_indices.size() == paternal_indices.size());
 	std::vector<double> lls_no_mutation;
 	std::vector< std::vector<double> > lls_one_denovo_mut(family_iter->get_children().size());
 	std::vector< std::vector<double> > lls_one_other_mut(family_iter->get_children().size());
@@ -235,18 +239,17 @@ void DenovoScanner::scan(std::string& snp_vcf_file, vcflib::VariantCallFile& str
 	}
 
 	// Compute total LL for each scenario
-	double total_ll_no_mutation = log_sum_exp(lls_no_mutation);
+	double total_ll_no_mutation = fast_log_sum_exp(lls_no_mutation);
 	std::vector<double> total_lls_one_denovo, total_lls_one_other;
 	int child_index = 0;
 	for (auto child_iter = family_iter->get_children().begin(); child_iter != family_iter->get_children().end(); ++child_iter, ++child_index){
-	  total_lls_one_denovo.push_back(log_sum_exp(lls_one_denovo_mut[child_index]));
-	  total_lls_one_other.push_back(log_sum_exp(lls_one_other_mut[child_index]));
+	  total_lls_one_denovo.push_back(fast_log_sum_exp(lls_one_denovo_mut[child_index]));
+	  total_lls_one_other.push_back(fast_log_sum_exp(lls_one_other_mut[child_index]));
 	}
 
 	// Add family's mutation likelihoods to the VCF record
 	add_family_to_record(*family_iter, total_ll_no_mutation, total_lls_one_denovo, total_lls_one_other);
       }
-      std::cout << str_variant.position << " " << (scan_for_denovo ? 1 : 0) << "\n";
     }
 
     // End of VCF record line
