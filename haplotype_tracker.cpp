@@ -177,6 +177,10 @@ bool HaplotypeTracker::infer_haplotype_inheritance(const NuclearFamily& family, 
     idx_a = (min_pat_index == 0 || min_pat_index == 1 ? 0 : 1);
     idx_b = (min_pat_index == 0 || min_pat_index == 2 ? 0 : 1);
     child_haplotypes.add_mismatched_sites(idx_a, pat_haplotypes, idx_b, mismatch_indices);
+
+    // Store the best indices
+    maternal_indices.push_back(min_mat_index);
+    paternal_indices.push_back(min_pat_index);
   }
 
   // Convert from internal SNP indices to SNP positions
