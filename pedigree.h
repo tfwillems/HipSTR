@@ -14,24 +14,27 @@
 
 class NuclearFamily {
  private:
+  std::string family_id_;
   std::string mother_, father_;
   std::vector<std::string> children_;
   std::vector<std::string> samples_;
 
  public:
-  NuclearFamily(std::string mother, std::string father, std::vector<std::string> children){
-    mother_   = mother;
-    father_   = father;
-    children_ = children;
+  NuclearFamily(std::string family_id, std::string mother, std::string father, std::vector<std::string> children){
+    family_id_ = family_id;
+    mother_    = mother;
+    father_    = father;
+    children_  = children;
     samples_.push_back(mother_);
     samples_.push_back(father_);
     samples_.insert(samples_.end(), children_.begin(), children_.end());
   }
 
-  const std::string& get_mother() const { return mother_; }
-  const std::string& get_father() const { return father_; }
-  const int size()                const {  return 2 + children_.size(); }
-  const int num_children()        const { return children_.size();      }
+  const std::string& get_family_id() const { return family_id_; }
+  const std::string& get_mother()    const { return mother_; }
+  const std::string& get_father()    const { return father_; }
+  const int size()                   const { return 2 + children_.size(); }
+  const int num_children()           const { return children_.size();      }
   const std::vector<std::string>& get_children() const { return children_; }
   const std::vector<std::string>& get_samples()  const { return samples_; }
 
@@ -82,24 +85,27 @@ class PedigreeNode {
   PedigreeNode* mother_;
   PedigreeNode* father_;
   std::vector<PedigreeNode*> children_;
+  std::string family_id_;
 
  public:
-  PedigreeNode(std::string name){
-    name_     = name;
-    mother_   = NULL;
-    father_   = NULL;
-    children_ = std::vector<PedigreeNode*>();
+  PedigreeNode(std::string name, std::string family_id){
+    name_      = name;
+    family_id_ = family_id;
+    mother_    = NULL;
+    father_    = NULL;
+    children_  = std::vector<PedigreeNode*>();
   }
 
   ~PedigreeNode(){
     children_.clear();
   }
 
-  bool has_mother() const    { return mother_ != NULL; }
-  bool has_father() const    { return father_ != NULL; }
-  PedigreeNode* get_mother() const { return mother_; }
-  PedigreeNode* get_father() const { return father_; }
-  std::string   get_name()   const { return name_;   }
+  bool has_mother() const    { return mother_ != NULL;  }
+  bool has_father() const    { return father_ != NULL;  }
+  PedigreeNode* get_mother() const { return mother_;    }
+  PedigreeNode* get_father() const { return father_;    }
+  std::string   get_name()   const { return name_;      }
+  std::string   get_family() const { return family_id_; }
   std::vector<PedigreeNode*>& get_children() { return children_; }
 
   void set_mother(PedigreeNode* mother) { mother_ = mother;           }
@@ -166,7 +172,7 @@ class PedigreeGraph {
     std::map<std::string, int> indices;
     for (int i = 0; i < other.nodes_.size(); i++){
       indices[other.nodes_[i]->get_name()] = i;
-      nodes_.push_back(new PedigreeNode(other.nodes_[i]->get_name()));
+      nodes_.push_back(new PedigreeNode(other.nodes_[i]->get_name(), other.nodes_[i]->get_family()));
     }
 
     // Restore links between cloned nodes

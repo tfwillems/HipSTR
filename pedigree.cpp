@@ -70,7 +70,6 @@ bool PedigreeGraph::build(std::string filename) {
   std::map<std::string, PedigreeNode*> samples;
   std::vector<PedigreeNode*> nodes;
   std::string line;
-  //std::getline(input, line));  // TO DO: Fix weird expection that occurs if I try to skip header  
   while (std::getline(input, line)){
     std::istringstream iss(line);
     std::string family, child, father, mother;
@@ -82,17 +81,17 @@ bool PedigreeGraph::build(std::string filename) {
 
     // Create new nodes for any previously unseen samples that have an identifier other than 0
     if (samples.find(child) == samples.end()){
-      PedigreeNode* new_node = new PedigreeNode(child);
+      PedigreeNode* new_node = new PedigreeNode(child, family);
       nodes.push_back(new_node);
       samples[child] = new_node;
     }
     if (mother.compare("0") != 0 && samples.find(mother) == samples.end()){
-      PedigreeNode* new_node = new PedigreeNode(mother);
+      PedigreeNode* new_node = new PedigreeNode(mother, family);
       samples[mother] = new_node;
       nodes.push_back(new_node);
     }
     if (father.compare("0") != 0 && samples.find(father) == samples.end()){
-      PedigreeNode* new_node = new PedigreeNode(father);
+      PedigreeNode* new_node = new PedigreeNode(father, family);
       samples[father] = new_node;
       nodes.push_back(new_node);
     }
@@ -101,6 +100,15 @@ bool PedigreeGraph::build(std::string filename) {
     PedigreeNode* child_node  = samples.find(child)->second;
     PedigreeNode* mother_node = (mother.compare("0") == 0 ? NULL : samples.find(mother)->second);
     PedigreeNode* father_node = (father.compare("0") == 0 ? NULL : samples.find(father)->second);
+
+    // Ensure that the family ids are consistent
+    if (child_node->get_family().compare(family) != 0)
+      printErrorAndDie("Inconsistent family IDs detected in FAM file for sample " + child);
+    if (mother_node != NULL && mother_node->get_family().compare(family) != 0)
+      printErrorAndDie("Inconsistent family IDs detected in FAM file for sample " + mother);
+    if (father_node != NULL && father_node->get_family().compare(family) != 0)
+      printErrorAndDie("Inconsistent family IDs detected in FAM file for sample " + father);
+
     child_node->set_mother(mother_node);
     child_node->set_father(father_node);
     if (mother_node != NULL) mother_node->add_child(child_node);
@@ -172,11 +180,12 @@ bool PedigreeGraph::build_subgraph(std::vector<PedigreeNode*>& subgraph_nodes){
     PedigreeNode* child_node;
     PedigreeNode* mother_node = NULL;
     PedigreeNode* father_node = NULL;
-    std::string child = (*node_iter)->get_name();
+    std::string child  = (*node_iter)->get_name();
+    std::string family = (*node_iter)->get_family();
 
     // Create new nodes for any previously unseen samples
     if (samples.find(child) == samples.end()){
-      child_node = new PedigreeNode(child);
+      child_node = new PedigreeNode(child, family);
       samples[child] = child_node;
       nodes.push_back(child_node);
     }
@@ -186,7 +195,7 @@ bool PedigreeGraph::build_subgraph(std::vector<PedigreeNode*>& subgraph_nodes){
     if ((*node_iter)->has_mother()){
       std::string mother = (*node_iter)->get_mother()->get_name();
       if (samples.find(mother) == samples.end()){
-	mother_node = new PedigreeNode(mother);
+	mother_node = new PedigreeNode(mother, family);
 	nodes.push_back(mother_node);
 	samples[mother] = mother_node;
       }
@@ -197,13 +206,21 @@ bool PedigreeGraph::build_subgraph(std::vector<PedigreeNode*>& subgraph_nodes){
     if ((*node_iter)->has_father()){
       std::string father = (*node_iter)->get_father()->get_name();
       if (samples.find(father) == samples.end()){
-	father_node = new PedigreeNode(father);
+	father_node = new PedigreeNode(father, family);
 	nodes.push_back(father_node);
 	samples[father] = father_node;
       }
       else
 	father_node = samples[father];
     }
+
+    // Ensure that the family ids are consistent
+    if (child_node->get_family().compare(family) != 0)
+      printErrorAndDie("Inconsistent family IDs detected in FAM file for sample " + child);
+    if (mother_node != NULL && mother_node->get_family().compare(family) != 0)
+      printErrorAndDie("Inconsistent family IDs detected in FAM file for sample " + mother_node->get_name());
+    if (father_node != NULL && father_node->get_family().compare(family) != 0)
+      printErrorAndDie("Inconsistent family IDs detected in FAM file for sample " + father_node->get_name());
 
     // Store relationships in node instance
     child_node->set_mother(mother_node);
@@ -282,7 +299,7 @@ NuclearFamily PedigreeGraph::convert_to_nuclear_family(){
   std::vector<std::string> children;
   for (auto node_iter = no_descendants_.begin(); node_iter != no_descendants_.end(); node_iter++)
     children.push_back((*node_iter)->get_name());
-  return NuclearFamily(mother, father, children);
+  return NuclearFamily(no_descendants_[0]->get_family(), mother, father, children);
 }
 
 void read_sample_list(std::string input_file, std::set<std::string>& sample_set){
