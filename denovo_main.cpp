@@ -186,9 +186,10 @@ int main(int argc, char** argv){
   if (!str_vcf.open(str_vcf_file))
     printErrorAndDie("Failed to open the input STR VCF file");
   
-  if (!chrom.empty()){
-    // TO DO...
-  }
+  // Restrict the analysis to a given chromosome, if requested
+  if (!chrom.empty())
+    if (!str_vcf.setRegion(chrom, 0))
+      printErrorAndDie("Failed to set the region to chromosome " + chrom + " in the STR VCF. Please check the STR VCF and rerun the analysis");
 
   std::ofstream log_;
   if (!log_file.empty()){
