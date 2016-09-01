@@ -1,16 +1,17 @@
 #ifndef VCF_READER_H_
 #define VCF_READER_H_
 
-#include <stdint.h>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
 #include <vector>
 
+extern "C" {
 #include "htslib/htslib/bgzf.h" 
 #include "htslib/htslib/tbx.h" 
 #include "htslib/htslib/vcf.h" 
+}
 
 #include "error.h"
 
@@ -48,6 +49,7 @@ public:
   ~Variant(){ }
 
   const std::string& get_allele(int allele)    { return alleles_[allele]; }
+  int num_alleles() const { return alleles_.size();}
 
   bool is_biallelic_snp(){
     if (vcf_record_ != NULL)
