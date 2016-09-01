@@ -41,11 +41,12 @@ BAMTOOLS_ROOT=bamtools
 CEPHES_ROOT=cephes
 HTSLIB_ROOT=htslib
 
-LIBS              = -L./ -lm -lhts -L$(BAMTOOLS_ROOT)/lib -lz -L$(CEPHES_ROOT)/
+LIBS              = -L./ -lm -lhts -L$(HTSLIB_ROOT)/ -L$(BAMTOOLS_ROOT)/lib -lz -L$(CEPHES_ROOT)/
 INCLUDE           = -I$(BAMTOOLS_ROOT)/src
 BAMTOOLS_LIB      = $(BAMTOOLS_ROOT)/lib/libbamtools.a
 FASTA_HACK_LIB    = fastahack/Fasta.o
 CEPHES_LIB        = cephes/libprob.a
+HTSLIB_LIB        = $(HTSLIB_ROOT)/libhts.a
 
 .PHONY: all
 all: version BamSieve HipSTR DenovoFinder test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
@@ -122,7 +123,6 @@ test/snp_tree_test: snp_tree.cpp error.cpp test/snp_tree_test.cpp haplotype_trac
 
 test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp error.cpp snp_tree.cpp haplotype_tracker.cpp vcf_reader.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
-
 
 exploratory/Clipper: exploratory/count_trimmed_bases.cpp error.cpp zalgorithm.cpp $(BAMTOOLS_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
