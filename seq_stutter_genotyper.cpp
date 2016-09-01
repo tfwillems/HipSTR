@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cfloat>
+#include <cstring>
 #include <random>
 #include <string>
 #include <sstream>
@@ -380,7 +381,7 @@ void SeqStutterGenotyper::calc_hap_aln_probs(Haplotype* haplotype, double* log_a
     double* log_aln_ptr = log_aln_probs;
     for (unsigned int i = 0; i < num_reads_; i++){
       seed_positions[i] = pool_seed_positions[pool_index_[i]];
-      memcpy(log_aln_ptr, log_pool_aln_probs + num_alleles*pool_index_[i], num_alleles*sizeof(double));
+      std::memcpy(log_aln_ptr, log_pool_aln_probs + num_alleles*pool_index_[i], num_alleles*sizeof(double));
       log_aln_ptr += num_alleles;
     }
 
@@ -771,7 +772,7 @@ double SeqStutterGenotyper::log_heterozygous_prior(){
 
 void SeqStutterGenotyper::init_log_sample_priors(double* log_sample_ptr){
   if (log_allele_priors_ != NULL)
-    memcpy(log_sample_ptr, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
+    std::memcpy(log_sample_ptr, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
   else {
     // Set all elements to the het prior
     std::fill(log_sample_ptr, log_sample_ptr+(num_alleles_*num_alleles_*num_samples_), log_heterozygous_prior());

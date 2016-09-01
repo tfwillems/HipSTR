@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cfloat>
+#include <cstring>
 #include <sstream>
 
 #include "em_stutter_genotyper.h"
@@ -174,7 +175,7 @@ double EMStutterGenotyper::recalc_log_sample_posteriors(bool use_pop_freqs){
     // If per-allele priors have been set for each sample, use them
     // Otherwise we'll set them in the for loop below on a per-allele basis
     if (log_allele_priors_ != NULL)
-      memcpy(log_sample_posteriors_, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
+      std::memcpy(log_sample_posteriors_, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
   }
   else {
     if (!haploid_){

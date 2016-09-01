@@ -74,6 +74,8 @@ void VCFReader::open(std::string& filename){
   char *fnidx = (char*) calloc(strlen(cfilename) + 5, 1);
   strcat(strcpy(fnidx, cfilename), ".tbi");
   struct stat stat_tbi, stat_vcf;
+  stat(fnidx, &stat_tbi);
+  stat(cfilename, &stat_vcf);
   if (stat_vcf.st_mtime > stat_tbi.st_mtime)
     printErrorAndDie("The tabix index for the VCF file is older than the VCF itself. Please reindex the VCF with tabix");
   free(fnidx);

@@ -175,7 +175,7 @@ class HaplotypeTracker {
     window_size_ = window_size;
     samples_     = std::vector<std::string>();
     vcf_indices_ = std::vector<int>();
-    for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
+    for (auto family_iter = families_.begin(); family_iter != families_.end(); family_iter++){
       family_iter->load_vcf_indices(snp_vcf_);
       samples_.insert(samples_.end(),  family_iter->get_samples().begin(),  family_iter->get_samples().end());
     }
