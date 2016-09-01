@@ -22,9 +22,9 @@ LDFLAGS=
 endif
 
 ## Source code files, add new files to this list
-SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp extract_indels.cpp mathops.cpp pcr_duplicates.cpp fastahack/Fasta.cpp fastahack/split.cpp vcf_reader.cpp
+SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp extract_indels.cpp mathops.cpp pcr_duplicates.cpp fastahack/Fasta.cpp fastahack/split.cpp
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
-SRC_HIPSTR  = hipstr_main.cpp bam_processor.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp vcf_input.cpp read_pooler.cpp version.cpp process_timer.cpp haplotype_tracker.cpp pedigree.cpp
+SRC_HIPSTR  = hipstr_main.cpp bam_processor.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp vcf_input.cpp read_pooler.cpp version.cpp process_timer.cpp haplotype_tracker.cpp pedigree.cpp vcf_reader.cpp
 SRC_SEQALN  = SeqAlignment/AlignmentData.cpp SeqAlignment/HapAligner.cpp SeqAlignment/RepeatStutterInfo.cpp SeqAlignment/AlignmentModel.cpp SeqAlignment/AlignmentOps.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NeedlemanWunsch.cpp SeqAlignment/Haplotype.cpp SeqAlignment/RepeatBlock.cpp SeqAlignment/HaplotypeGenerator.cpp SeqAlignment/HTMLCreator.cpp SeqAlignment/AlignmentViz.cpp SeqAlignment/AlignmentTraceback.cpp SeqAlignment/StutterAlignerClass.cpp
 SRC_RNASEQ  = exploratory/filter_rnaseq.cpp exploratory/exon_info.cpp
 SRC_DENOVO  = denovo_main.cpp error.cpp stringops.cpp version.cpp pedigree.cpp haplotype_tracker.cpp vcf_input.cpp denovo_scanner.cpp mathops.cpp mutation_model.cpp vcf_reader.cpp
@@ -41,7 +41,7 @@ BAMTOOLS_ROOT=bamtools
 CEPHES_ROOT=cephes
 HTSLIB_ROOT=htslib
 
-LIBS              = -L./ -lm -lhts -L$(HTSLIB_ROOT)/ -L$(BAMTOOLS_ROOT)/lib -lz -L$(CEPHES_ROOT)/
+LIBS              = -L./ -lm -L$(HTSLIB_ROOT)/ -L$(BAMTOOLS_ROOT)/lib -lz -L$(CEPHES_ROOT)/
 INCLUDE           = -I$(BAMTOOLS_ROOT)/src
 BAMTOOLS_LIB      = $(BAMTOOLS_ROOT)/lib/libbamtools.a
 FASTA_HACK_LIB    = fastahack/Fasta.o
@@ -112,25 +112,25 @@ test/em_stutter_test: test/em_stutter_test.cpp em_stutter_genotyper.cpp genotype
 test/fast_ops_test: test/fast_ops_test.cpp mathops.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
-test/read_vcf_alleles_test: test/read_vcf_alleles_test.cpp error.cpp region.cpp vcf_input.cpp vcf_reader.cpp
+test/read_vcf_alleles_test: test/read_vcf_alleles_test.cpp error.cpp region.cpp vcf_input.cpp vcf_reader.cpp $(HTSLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/read_vcf_priors_test: test/read_vcf_priors_test.cpp error.cpp region.cpp vcf_input.cpp vcf_reader.cpp
+test/read_vcf_priors_test: test/read_vcf_priors_test.cpp error.cpp region.cpp vcf_input.cpp vcf_reader.cpp $(HTSLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/snp_tree_test: snp_tree.cpp error.cpp test/snp_tree_test.cpp haplotype_tracker.cpp vcf_reader.cpp
+test/snp_tree_test: snp_tree.cpp error.cpp test/snp_tree_test.cpp haplotype_tracker.cpp vcf_reader.cpp $(HTSLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp error.cpp snp_tree.cpp haplotype_tracker.cpp vcf_reader.cpp
+test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp error.cpp snp_tree.cpp haplotype_tracker.cpp vcf_reader.cpp $(HTSLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-exploratory/Clipper: exploratory/count_trimmed_bases.cpp error.cpp zalgorithm.cpp $(BAMTOOLS_LIB)
+exploratory/Clipper: exploratory/count_trimmed_bases.cpp error.cpp zalgorithm.cpp $(BAMTOOLS_LIB) $(HTSLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-exploratory/10X: base_quality.cpp exploratory/calc_10x_barcode_phasings.cpp error.cpp mathops.cpp snp_phasing_quality.cpp snp_tree.cpp haplotype_tracker.cpp vcf_reader.cpp $(BAMTOOLS_LIB)
+exploratory/10X: base_quality.cpp exploratory/calc_10x_barcode_phasings.cpp error.cpp mathops.cpp snp_phasing_quality.cpp snp_tree.cpp haplotype_tracker.cpp vcf_reader.cpp $(BAMTOOLS_LIB) $(HTSLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-exploratory/Mapper: error.cpp seqio.cpp stringops.cpp vcf_reader.cpp exploratory/mapping_efficiency.cpp $(BAMTOOLS_LIB) $(CEPHES_LIB) $(FASTA_HACK_LIB) fastahack/split.o
+exploratory/Mapper: error.cpp seqio.cpp stringops.cpp vcf_reader.cpp exploratory/mapping_efficiency.cpp $(BAMTOOLS_LIB) $(CEPHES_LIB) $(FASTA_HACK_LIB) $(HTSLIB_LIB) fastahack/split.o
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 # Build each object file independently
