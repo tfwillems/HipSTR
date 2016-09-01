@@ -1,6 +1,7 @@
 #ifndef VCF_READER_H_
 #define VCF_READER_H_
 
+#include <cstdint>
 #include <iostream>
 #include <map>
 #include <sstream>
