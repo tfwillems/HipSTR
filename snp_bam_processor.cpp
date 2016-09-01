@@ -24,7 +24,7 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
   std::vector<  std::vector<BamTools::BamAlignment> > alignments(paired_strs_by_rg.size());
   std::vector< std::vector<double> > log_p1s, log_p2s;
   bool got_snp_info = false;
-  if (have_snp_vcf_){
+  if (phased_snp_vcf_ != NULL){
     // If we are tracking SNP haplotypes for pedigree-based filtering, we need to update the haplotypes to the current position
     if (haplotype_tracker_ != NULL){
       std::set<std::string> sites_to_skip;

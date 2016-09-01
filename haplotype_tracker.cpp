@@ -61,9 +61,9 @@ void DiploidHaplotype::remove_next_snp(){
   } 
 }
 
-void HaplotypeTracker::add_snp(vcflib::Variant& variant){
+void HaplotypeTracker::add_snp(VCF::Variant& variant){
   num_snps_++;
-  positions_.push_back(variant.position);
+  positions_.push_back(variant.get_position());
   
   int sample_index = 0;
   for (unsigned int i = 0; i < families_.size(); i++){
@@ -75,12 +75,10 @@ void HaplotypeTracker::add_snp(vcflib::Variant& variant){
     else if (!family.is_mendelian(variant))
       use_gts = false; // Ignore a SNP if any samples in the family have a Mendelian inconsistency
 
+    int gt_a, gt_b;
     for (int j = 0; j < family.size(); j++){
       if (use_gts){
-	std::string gt = variant.getGenotype(samples_[sample_index]);
-	assert(gt.size() == 3);
-	assert(gt[1] == '|');
-	int gt_a = gt[0]-'0', gt_b = gt[2]-'0';
+	variant.get_genotype(vcf_indices_[sample_index], gt_a, gt_b);
 	snp_haplotypes_[sample_index].add_snp(gt_a, gt_b);
       }
       else
@@ -97,7 +95,7 @@ void HaplotypeTracker::advance(std::string chrom, int32_t position, std::set<std
   if (chrom.compare(chrom_) != 0){
     chrom_ = chrom;
     reset();
-    if(!snp_vcf_.setRegion(chrom, start_of_window))
+    if(!snp_vcf_.set_region(chrom, start_of_window))
       printErrorAndDie("Failed to set the region to chromosome " + chrom + " in the SNP VCF. Please check the SNP VCF and rerun the analysis");
   }
   else {
@@ -105,7 +103,7 @@ void HaplotypeTracker::advance(std::string chrom, int32_t position, std::set<std
       printErrorAndDie("Haplotype tracker's advance() function can only consecutively process regions sorted by position");
     if (start_of_window > prev_window_end_){
       reset();
-      if (!snp_vcf_.setRegion(chrom, start_of_window))
+      if (!snp_vcf_.set_region(chrom, start_of_window))
 	printErrorAndDie("Failed to set the region in the SNP VCF. Please check the SNP VCF and rerun the analysis");
     }
   }
@@ -113,9 +111,9 @@ void HaplotypeTracker::advance(std::string chrom, int32_t position, std::set<std
   prev_window_end_   = end_of_window;
 
   // Incorporate new SNPs within the window
-  vcflib::Variant snp_variant(snp_vcf_);
-  while (last_snp_position() < end_of_window && snp_vcf_.getNextVariant(snp_variant)){
-    std::string key = snp_variant.sequenceName + ":" + std::to_string(snp_variant.position);
+  VCF::Variant snp_variant;
+  while (last_snp_position() < end_of_window && snp_vcf_.get_next_variant(snp_variant)){
+    std::string key = snp_variant.get_chromosome() + ":" + std::to_string(snp_variant.get_position());
     if (sites_to_skip.find(key) != sites_to_skip.end())
       continue;
     add_snp(snp_variant);

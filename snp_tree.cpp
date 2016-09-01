@@ -10,17 +10,8 @@ std::ostream& operator<<(std::ostream& out, SNP& snp) {
   return out;
 }
 
-bool is_biallelic_snp(vcflib::Variant& variant){
-  if (variant.alleles.size() != 2)
-    return false;
-  for (auto iter = variant.alleles.begin(); iter != variant.alleles.end(); ++iter)
-    if (iter->size() != 1)
-      return false;
-  return true;
-}
-
-bool in_region(vcflib::Variant& variant, uint32_t region_start, uint32_t region_end){
-  return variant.position >= region_start && variant.position <= region_end;
+bool in_region(VCF::Variant& variant, uint32_t region_start, uint32_t region_end){
+  return variant.get_position() >= region_start && variant.get_position() <= region_end;
 }
 
 void filter_snps(std::vector<SNP>& snps, std::set<int32_t>& bad_sites){
@@ -31,32 +22,32 @@ void filter_snps(std::vector<SNP>& snps, std::set<int32_t>& bad_sites){
   snps.resize(insert_index);
 }
 
-bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, uint32_t skip_start, uint32_t skip_stop, vcflib::VariantCallFile& variant_file, HaplotypeTracker* tracker,
+bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, uint32_t skip_start, uint32_t skip_stop, VCF::VCFReader* snp_vcf, HaplotypeTracker* tracker,
                       std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees, std::ostream& logger){
   logger << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
-  assert(variant_file.is_open());
 
-  if (!variant_file.setRegion(chrom, start, end)){
+  if (!snp_vcf->set_region(chrom, start, end)){
     // Retry setting region if chr is in chromosome name
-    if (chrom.size() <= 3 || chrom.substr(0, 3).compare("chr") != 0 || !variant_file.setRegion(chrom.substr(3), start, end))
+    if (chrom.size() <= 3 || chrom.substr(0, 3).compare("chr") != 0 || !snp_vcf->set_region(chrom.substr(3), start, end))
       return false;
   }
 
   // Index samples
   unsigned int sample_count = 0;
-  for (auto sample_iter = variant_file.sampleNames.begin(); sample_iter != variant_file.sampleNames.end(); ++sample_iter)
+  const std::vector<std::string>& vcf_samples = snp_vcf->get_samples();
+  for (auto sample_iter = vcf_samples.begin(); sample_iter != vcf_samples.end(); sample_iter++)
     sample_indices[*sample_iter] = sample_count++;
 
   std::vector< std::set<int32_t> > bad_sites_by_family(tracker != NULL ? tracker->families().size() : 0);
 
   // Iterate through all VCF entries
-  std::vector< std::vector<SNP> > snps_by_sample(variant_file.sampleNames.size());
-  vcflib::Variant variant(variant_file);
+  std::vector< std::vector<SNP> > snps_by_sample(vcf_samples.size());
+  VCF::Variant variant;
   uint32_t locus_count = 0, skip_count = 0;
-  while (variant_file.getNextVariant(variant)){
+  while (snp_vcf->get_next_variant(variant)){
     //if (locus_count % 1000 == 0)   std::cout << "\rProcessing locus #" << locus_count << " (skipped " << skip_count << ") at position " << variant.position << std::flush;
-    if (!is_biallelic_snp(variant) || in_region(variant, skip_start, skip_stop)){
+    if (!variant.is_biallelic_snp() || in_region(variant, skip_start, skip_stop)){
       skip_count++;
       continue;
     }
@@ -68,30 +59,21 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, ui
       int family_index = 0;
       for (auto family_iter = families.begin(); family_iter != families.end(); ++family_iter, ++family_index)
 	if (family_iter->is_missing_genotype(variant) || !family_iter->is_mendelian(variant))
-	  bad_sites_by_family[family_index].insert(variant.position);
+	  bad_sites_by_family[family_index].insert(variant.get_position());
     }
 
     ++locus_count;
-    for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
-      std::string gts = variant.getGenotype(*sample_iter);
-      if (gts.size() == 0)
+    int gt_a, gt_b;
+    for (int i = 0; i < vcf_samples.size(); i++){
+      if (variant.sample_call_missing(i) || !variant.sample_call_phased(i))
 	continue;
-      assert(gts.size() == 3);
-      if (gts[1] == '|'){
-        int gt_1 = gts[0]-'0';
-        int gt_2 = gts[2]-'0';
+      variant.get_genotype(i, gt_a, gt_b);
+      if (gt_a != gt_b){
+	char a1 = variant.get_allele(gt_a)[0];
+	char a2 = variant.get_allele(gt_b)[0];
 
-        // Only Heterozygous SNPs are informative
-        if (gt_1 != gt_2){
-          char a1 = variant.alleles[gt_1][0];
-          char a2 = variant.alleles[gt_2][0];
-	  
-	  // IMPORTANT NOTE: VCFs are 1-based, but BAMs are 0-based. Decrease VCF coordinate by 1 for consistency
-          snps_by_sample[sample_indices[*sample_iter]].push_back(SNP(variant.position-1, a1, a2)); 
-        }
-      }
-      else {
-	//printErrorAndDie("SNP panel VCF must contain phased genotypes and therefore utilize the | genotype separator");
+	// IMPORTANT NOTE: VCFs are 1-based, but BAMs are 0-based. Decrease VCF coordinate by 1 for consistency
+	snps_by_sample[i].push_back(SNP(variant.get_position()-1, a1, a2));
       }
     }
   }

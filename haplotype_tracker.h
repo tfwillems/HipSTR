@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "vcflib/src/Variant.h"
+#include "vcf_reader.h"
 #include "pedigree.h"
 
 class DiploidEditDistance {
@@ -126,9 +126,10 @@ class HaplotypeTracker {
   std::string chrom_;
   std::vector<NuclearFamily> families_;
   std::vector<std::string> samples_;
+  std::vector<int> vcf_indices_;
   std::map<std::string, int> sample_indices_;
   std::vector<DiploidHaplotype> snp_haplotypes_;
-  vcflib::VariantCallFile snp_vcf_;
+  VCF::VCFReader snp_vcf_;
   int32_t window_size_;
   int32_t num_snps_;
   std::deque<int32_t> positions_;
@@ -164,27 +165,32 @@ class HaplotypeTracker {
       snp_haplotypes_[i].reset();
   }
 
-  void add_snp(vcflib::Variant& variant);
+  void add_snp(VCF::Variant& variant);
 
  public:
-  HaplotypeTracker(std::vector<NuclearFamily>& families, std::string& snp_vcf_file, int32_t window_size){
+ HaplotypeTracker(std::vector<NuclearFamily>& families, std::string& snp_vcf_file, int32_t window_size):
+  snp_vcf_(snp_vcf_file){
     chrom_       = "";
     families_    = families;
     window_size_ = window_size;
     samples_     = std::vector<std::string>();
-    for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++)
+    vcf_indices_ = std::vector<int>();
+    for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
+      family_iter->load_vcf_indices(snp_vcf_);
       samples_.insert(samples_.end(),  family_iter->get_samples().begin(),  family_iter->get_samples().end());
-    for (unsigned int i = 0; i < samples_.size(); i++)
+    }
+    for (unsigned int i = 0; i < samples_.size(); i++){
+      if (!snp_vcf_.has_sample(samples_[i]))
+	printErrorAndDie("No sample data available in VCF");
+      vcf_indices_.push_back(snp_vcf_.get_sample_index(samples_[i]));
       sample_indices_[samples_[i]] = i;
+    }
 
     snp_haplotypes_    = std::vector<DiploidHaplotype>(samples_.size(), DiploidHaplotype());
     num_snps_          = 0;
     positions_         = std::deque<int32_t>();
     prev_window_start_ = -1;
     prev_window_end_   = -1;
-
-    if (!snp_vcf_.open(snp_vcf_file))
-      printErrorAndDie("Failed to open input SNP VCF file");
   }
 
   const std::vector<NuclearFamily>& families(){

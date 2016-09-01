@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "error.h"
-#include "vcflib/src/Variant.h"
+#include "vcf_reader.h"
 
 class NuclearFamily {
  private:
@@ -18,6 +18,7 @@ class NuclearFamily {
   std::string mother_, father_;
   std::vector<std::string> children_;
   std::vector<std::string> samples_;
+  std::vector<int> vcf_indices_;
 
  public:
   NuclearFamily(std::string family_id, std::string mother, std::string father, std::vector<std::string> children){
@@ -28,6 +29,19 @@ class NuclearFamily {
     samples_.push_back(mother_);
     samples_.push_back(father_);
     samples_.insert(samples_.end(), children_.begin(), children_.end());
+  }
+
+  void load_vcf_indices(VCF::VCFReader& vcf_reader){
+    vcf_indices_.clear();
+    for (int i = 0; i < samples_.size(); i++){
+      if (!vcf_reader.has_sample(samples_[i]))
+	printErrorAndDie("No sample data available in VCF");
+      vcf_indices_.push_back(vcf_reader.get_sample_index(samples_[i]));
+    }
+  }
+
+  void clear_vcf_indices(){
+    vcf_indices_.clear();
   }
 
   const std::string& get_family_id() const { return family_id_; }
@@ -45,32 +59,25 @@ class NuclearFamily {
     return false;
   }
 
-  bool is_missing_genotype(vcflib::Variant& variant) const {
-    for (auto sample_iter = samples_.begin(); sample_iter != samples_.end(); sample_iter++){
-      std::string s = *sample_iter;
-      if (variant.getGenotype(s).empty())
+  bool is_missing_genotype(VCF::Variant& variant) const {
+    if (vcf_indices_.empty())
+      printErrorAndDie("No VCF indices were preloaded in the NuclearFamily");
+    for (auto index_iter = vcf_indices_.begin(); index_iter != vcf_indices_.end(); index_iter++)
+      if (variant.sample_call_missing(*index_iter))
 	return true;
-    }
     return false;
   }
 
-  bool is_mendelian(vcflib::Variant& variant) const {
-    if (is_missing_genotype(variant))
-      return false;
+  bool is_mendelian(VCF::Variant& variant) const {
+    if (vcf_indices_.empty())
+      printErrorAndDie("No VCF indices were preloaded in the NuclearFamily");
 
-    std::string s = father_;
-    std::string father_gt = variant.getGenotype(s);
-    s = mother_;
-    std::string mother_gt = variant.getGenotype(s);
-    assert(father_gt.size() == 3 && mother_gt.size() == 3);
-    int f_1 = father_gt[0]-'0', f_2 = father_gt[2]-'0';
-    int m_1 = mother_gt[0]-'0', m_2 = mother_gt[2]-'0';
+    int m_1, m_2, f_1, f_2, c_1, c_2;
+    variant.get_genotype(vcf_indices_[0], m_1, m_2);
+    variant.get_genotype(vcf_indices_[1], f_1, f_2);
 
-    for (auto child_iter = children_.begin(); child_iter != children_.end(); child_iter++){
-      std::string s = *child_iter;
-      std::string child_gt = variant.getGenotype(s);
-      assert(child_gt.size() == 3);
-      int c_1 = child_gt[0]-'0', c_2 = child_gt[2]-'0';
+    for (int i = 2; i < vcf_indices_.size(); i++){
+      variant.get_genotype(vcf_indices_[i], c_1, c_2);
       if ((c_1 != m_1 && c_1 != m_2) || (c_2 != f_1 && c_2 != f_2))
 	if ((c_1 != f_1 && c_1 != f_2) || (c_2 != m_1 && c_2 != m_2))
 	  return false;

@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "bamtools/include/api/BamAlignment.h"
-#include "vcflib/src/Variant.h"
+#include "vcf_reader.h"
 
 #include "bam_processor.h"
 #include "base_quality.h"
@@ -14,15 +14,13 @@
 #include "haplotype_tracker.h"
 #include "region.h"
 
-
 const std::string HAPLOTYPE_TAG = "HP";
 const double FROM_HAP_LL        = -0.01;   // Log-likelihood read comes from a haplotype if it matches BAM HP tag
 const double OTHER_HAP_LL       = -1000.0; // Log-likelihood read comes from a haplotype if it differs from BAM HP tag
 
 class SNPBamProcessor : public BamProcessor {
 private:
-  bool have_snp_vcf_;
-  vcflib::VariantCallFile phased_snp_vcf_;
+  VCF::VCFReader* phased_snp_vcf_;
   int32_t match_count_, mismatch_count_;
 
   // Used to enforce pedigree requirements on SNPs used for phasing
@@ -49,16 +47,18 @@ private:
 
 public:
  SNPBamProcessor(bool use_bam_rgs, bool remove_pcr_dups):BamProcessor(use_bam_rgs, remove_pcr_dups){
-    have_snp_vcf_    = false;
     match_count_     = 0;
     mismatch_count_  = 0;
     total_snp_phase_info_time_  = 0;
     locus_snp_phase_info_time_  = -1;
     bams_from_10x_              = false;
+    phased_snp_vcf_             = NULL;
     haplotype_tracker_          = NULL;
   }
 
   ~SNPBamProcessor(){
+    if (phased_snp_vcf_ != NULL)
+      delete phased_snp_vcf_;
     if (haplotype_tracker_ != NULL)
       delete haplotype_tracker_;
   }
@@ -84,24 +84,22 @@ public:
   }
 
   void set_input_snp_vcf(std::string& vcf_file){
-    if(!phased_snp_vcf_.open(vcf_file))
-      printErrorAndDie("Failed to open input SNP VCF file");
-    have_snp_vcf_ = true;
+    if (phased_snp_vcf_ != NULL)
+      delete phased_snp_vcf_;
+    phased_snp_vcf_ = new VCF::VCFReader(vcf_file);
   }
 
   void use_pedigree_to_filter_snps(std::vector<NuclearFamily>& families, std::string snp_vcf_file){
-    if (!have_snp_vcf_)
+    if (phased_snp_vcf_ == NULL)
       printErrorAndDie("Cannot enforce pedigree structure on SNPs if no SNP VCF has been specified");
     if (haplotype_tracker_ != NULL)
       delete haplotype_tracker_;
 
-    vcflib::VariantCallFile pedigree_snp_vcf;
-    if (!pedigree_snp_vcf.open(snp_vcf_file))
-      printErrorAndDie("Failed to open SNP VCF");
+    VCF::VCFReader pedigree_vcf_reader(snp_vcf_file);
 
     // Keep only those families where all members are present in the VCF
     families_.clear();
-    std::set<std::string> snp_samples(pedigree_snp_vcf.sampleNames.begin(), pedigree_snp_vcf.sampleNames.end());
+    std::set<std::string> snp_samples(pedigree_vcf_reader.get_samples().begin(), pedigree_vcf_reader.get_samples().end());
     for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++)
       if (!family_iter->is_missing_sample(snp_samples))
 	families_.push_back(*family_iter);
