@@ -13,3 +13,6 @@
 [submodule "fastahack"]
 	path = fastahack
 	url = https://github.com/ekg/fastahack.git
+[submodule "htslib"]
+	path = htslib
+	url = https://github.com/samtools/htslib.git
