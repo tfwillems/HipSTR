@@ -10,6 +10,11 @@
 #include "mutation_model.h"
 #include "vcf_input.h"
 
+std::string DenovoScanner::BPDIFFS_KEY = "BPDIFFS";
+std::string DenovoScanner::START_KEY   = "START";
+std::string DenovoScanner::END_KEY     = "END";
+std::string DenovoScanner::PERIOD_KEY  = "PERIOD";
+
 void update_streaming_log_sum_exp(double log_val, double& max_val, double& total){
   if (log_val <= max_val)
       total += fasterexp(log_val - max_val);

@@ -42,7 +42,7 @@ class DenovoScanner {
  private:
   const static int MIN_SECOND_BEST_SCORE = 100;
   const static int MAX_BEST_SCORE        = 10;
-  std::string BPDIFFS_KEY = "BPDIFFS", START_KEY = "START", END_KEY = "END", PERIOD_KEY = "PERIOD";
+  static std::string BPDIFFS_KEY, START_KEY, END_KEY, PERIOD_KEY;
 
   int32_t window_size_;
   std::vector<NuclearFamily> families_;
