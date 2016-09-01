@@ -39,8 +39,6 @@ To build, use Make:
     % cd HipSTR
     % make
 
-On Mac, before running Make, change the line in *vcflib/smithwaterman/Makefile* from `LDFLAGS=-Wl,-s` to `LDFLAGS=-Wl`
-
 ## Quick Start
 To run HipSTR in its most broadly applicable mode, run it on **all samples concurrently** using the syntax:
 ```
