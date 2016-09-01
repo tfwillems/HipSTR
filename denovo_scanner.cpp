@@ -29,25 +29,18 @@ double finish_streaming_log_sum_exp(double max_val, double total){
   return max_val + fasterlog(total);
 }
 
-void DiploidGenotypePrior::compute_allele_freqs(vcflib::Variant& variant, std::vector<NuclearFamily>& families){
+void DiploidGenotypePrior::compute_allele_freqs(VCF::Variant& variant, std::vector<NuclearFamily>& families){
   allele_freqs_ = std::vector<double>(num_alleles_, 1.0); // Use a one sample pseudocount
 
   // Iterate over all founders in the families to compute allele counts
   double total_count = num_alleles_;
+  int gt_a, gt_b;
   for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
     for (int i = 0; i < 2; i++){
       std::string sample = (i == 0 ? family_iter->get_mother() : family_iter->get_father());
-      std::string gts = variant.getGenotype(sample);
-      if (gts.size() == 0)
+      if (variant.sample_call_missing(sample))
 	continue;
-
-      size_t separator_index = gts.find("|");
-      if (separator_index == std::string::npos)
-	separator_index = gts.find("/");
-      if (separator_index == std::string::npos || separator_index+1 == gts.size())
-	printErrorAndDie("Failed to find valid separator in genotype: " + gts);
-      int gt_a = std::atoi(gts.substr(0, separator_index).c_str());
-      int gt_b = std::atoi(gts.substr(separator_index+1).c_str());
+      variant.get_genotype(sample, gt_a, gt_b);
       allele_freqs_[gt_a]++;
       allele_freqs_[gt_b]++;
       total_count += 2;
@@ -91,19 +84,31 @@ void DenovoScanner::write_vcf_header(std::string& full_command){
 }
 
 
-void DenovoScanner::initialize_vcf_record(vcflib::Variant& str_variant){
+void DenovoScanner::initialize_vcf_record(VCF::Variant& str_variant){
   // VCF line format = CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE_1 SAMPLE_2 ... SAMPLE_N
-  denovo_vcf_ << str_variant.sequenceName << "\t" << str_variant.position << "\t" << str_variant.id << "\t" << str_variant.ref << "\t";
-  str_variant.printAlt(denovo_vcf_);
+  denovo_vcf_ << str_variant.get_chromosome() << "\t" << str_variant.get_position() << "\t" << str_variant.get_id() << "\t" << str_variant.get_allele(0) << "\t";
+  if (str_variant.num_alleles() > 1){
+    denovo_vcf_ << str_variant.get_allele(1);
+    for (int i = 2; i < str_variant.num_alleles(); i++)
+      denovo_vcf_ << "," << str_variant.get_allele(i);
+  }
+  else
+    denovo_vcf_ << ".";
   denovo_vcf_ << "\t" << "." << "\t" << "." << "\t";
 
   // INFO field
-  denovo_vcf_ << "BPDIFFS=" << (int)str_variant.getInfoValueFloat(BPDIFFS_KEY, 0);
-  for (int i = 2; i < str_variant.alleles.size(); i++)
-    denovo_vcf_ << "," <<  (int)str_variant.getInfoValueFloat(BPDIFFS_KEY, i-1);
-  denovo_vcf_ << ";START="  << (int32_t)str_variant.getInfoValueFloat(START_KEY)
-	      << ";END="    << (int32_t)str_variant.getInfoValueFloat(END_KEY)
-	      << ";PERIOD=" << (int)str_variant.getInfoValueFloat(PERIOD_KEY);
+  int start;  str_variant.get_INFO_value_single_int(START_KEY, start);
+  int end;    str_variant.get_INFO_value_single_int(END_KEY, end);
+  int period; str_variant.get_INFO_value_single_int(PERIOD_KEY, period);
+  std::vector<int> bp_diffs; str_variant.get_INFO_value_multiple_ints(BPDIFFS_KEY, bp_diffs);
+  assert(bp_diffs.size()+1 == str_variant.num_alleles());
+
+  denovo_vcf_ << "BPDIFFS=" << bp_diffs[0];
+  for (int i = 2; i < str_variant.num_alleles(); i++)
+    denovo_vcf_ << "," <<  bp_diffs[i-1];
+  denovo_vcf_ << ";START="  << start
+	      << ";END="    << end
+	      << ";PERIOD=" << period;
 
   // FORMAT field
   denovo_vcf_ << "\t" << "CHILDREN:NOMUT:ANYMUT:DENOVO:OTHER";
@@ -135,26 +140,24 @@ void DenovoScanner::add_family_to_record(NuclearFamily& family, double total_ll_
     denovo_vcf_ << "," << total_lls_one_other[i];
 }
 
-void DenovoScanner::scan(std::string& snp_vcf_file, vcflib::VariantCallFile& str_vcf, std::set<std::string>& sites_to_skip,
+void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std::set<std::string>& sites_to_skip,
 			 std::ostream& logger){
   HaplotypeTracker haplotype_tracker(families_, snp_vcf_file, window_size_);
-  vcflib::Variant str_variant(str_vcf);
+  VCF::Variant str_variant;
   int32_t num_strs  = 0;
-  while (str_vcf.getNextVariant(str_variant)){
+  while (str_vcf.get_next_variant(str_variant)){
     num_strs++;
-    int num_alleles = str_variant.alleles.size();
-    if (str_variant.alleles.back().compare(".") == 0)
-      num_alleles--;
+    int num_alleles = str_variant.num_alleles();
     if (num_alleles <= 1)
       continue;
 
-    logger << "Processing STR region " << str_variant.sequenceName << ":"
-	   << (int32_t)str_variant.getInfoValueFloat(START_KEY)    << "-"
-	   << (int32_t)str_variant.getInfoValueFloat(END_KEY)      << " with " << num_alleles << " alleles" << "\n";
+    int start;  str_variant.get_INFO_value_single_int(START_KEY, start);
+    int end;    str_variant.get_INFO_value_single_int(END_KEY, end);
+    logger << "Processing STR region " << str_variant.get_chromosome() << ":" << start << "-" << end << " with " << num_alleles << " alleles" << "\n";
 
     PhasedGL phased_gls(str_vcf, str_variant);
     logger << "\t";
-    haplotype_tracker.advance(str_variant.sequenceName, str_variant.position, sites_to_skip, logger);
+    haplotype_tracker.advance(str_variant.get_chromosome(), str_variant.get_position(), sites_to_skip, logger);
 
     MutationModel mut_model(str_variant);
     DiploidGenotypePrior dip_gt_priors(str_variant, families_);

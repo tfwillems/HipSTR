@@ -29,9 +29,7 @@ TODO:
 #include <ostream>
 #include <stdexcept>
 
-extern "C" {
 #include "htslib/htslib/bgzf.h"
-}
 
 class bgzf_streambuf : public std::streambuf {
  private:

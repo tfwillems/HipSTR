@@ -4,13 +4,13 @@
 #include <random>
 #include <string>
 
-#include "../vcflib/src/Variant.h"
 #include "../fastahack/Fasta.h"
 
 #include "../bgzf_streams.h"
 #include "../error.h"
 #include "../seqio.h"
 #include "../stringops.h"
+#include "../vcf_reader.h"
 
 bool file_exists(std::string path){
   return (access(path.c_str(), F_OK) != -1);
@@ -86,9 +86,7 @@ int main(int argc, char** argv){
 
   bgzfostream fastq_writer;
   fastq_writer.open(fastq_out.c_str());
-  vcflib::VariantCallFile vcf;
-  if(!vcf.open(vcf_file))
-    printErrorAndDie("Failed to open input VCF file: " + vcf_file);
+  VCF::VCFReader vcf(vcf_file);
 
   FastaReference* fasta_ref = NULL;
   if (is_file(fasta_dir)){
@@ -98,10 +96,10 @@ int main(int argc, char** argv){
 
   std::string chrom_seq  = "";
   std::string prev_chrom = "";
-  vcflib::Variant variant(vcf);
+  VCF::Variant variant;
   int64_t read_count = 0;
-  while (vcf.getNextVariant(variant)){
-    std::string var_chrom = variant.sequenceName;
+  while (vcf.get_next_variant(variant)){
+    std::string var_chrom = variant.get_chromosome();
 
     // Load new FASTA sequence if necessary
     if (var_chrom.compare(prev_chrom) != 0){
@@ -113,8 +111,8 @@ int main(int argc, char** argv){
       assert(chrom_seq.size() != 0);
     }
 
-    int32_t str_start       = variant.position-1;
-    int32_t str_stop        = variant.position-1 + variant.ref.size()-1; // Inclusive stop coordinate
+    int32_t str_start       = variant.get_position()-1;
+    int32_t str_stop        = variant.get_position()-1 + variant.get_allele(0).size()-1; // Inclusive stop coordinate
     int32_t lstart          = std::max(0, str_start-read_length);
     int32_t rend            = std::min((int32_t)(chrom_seq.size()-1), str_stop+read_length);
     std::string left_flank  = uppercase(chrom_seq.substr(lstart, str_start-lstart));
@@ -126,7 +124,7 @@ int main(int argc, char** argv){
 
     int gt = 0;
     std::string qual_string = get_qual_string(read_length);
-    for (auto iter = variant.alleles.begin(); iter != variant.alleles.end(); iter++){
+    for (auto iter = variant.get_alleles().begin(); iter != variant.get_alleles().end(); iter++){
       if (iter->compare(".") == 0)
 	continue;
 
@@ -135,7 +133,7 @@ int main(int argc, char** argv){
       int32_t pos           = (int)left_flank.size() - lflank_len;
       while (lflank_len > 0){
 	// Write out the STR read information
-	fastq_writer << "@" << var_chrom << "_" << variant.position << "_" << gt << "_" << read_count << "\n"
+	fastq_writer << "@" << var_chrom << "_" << variant.get_position() << "_" << gt << "_" << read_count << "\n"
 		     << haplotype.substr(pos, read_length) << "\n"
 		     << "+\n" 
 		     << qual_string << "\n";
@@ -149,7 +147,7 @@ int main(int argc, char** argv){
 	}
 
 	// Write out the mate pair information
-	fastq_writer << "@" << var_chrom << "_" << variant.position << "_" << gt << "_" << read_count << "\n"
+	fastq_writer << "@" << var_chrom << "_" << variant.get_position() << "_" << gt << "_" << read_count << "\n"
 		     << uppercase(chrom_seq.substr(mate_pos, read_length)) << "\n"
 		     << "+\n"
 		     << qual_string << "\n";

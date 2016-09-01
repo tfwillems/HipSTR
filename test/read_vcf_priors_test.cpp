@@ -2,11 +2,10 @@
 #include <map>
 #include <vector>
 
-#include "../vcflib/src/Variant.h"
-
 #include "../error.h"
 #include "../region.h"
 #include "../vcf_input.h"
+#include "../vcf_reader.h"
 
 int main(int argc, char* argv[]){
   if (argc != 3)
@@ -18,21 +17,21 @@ int main(int argc, char* argv[]){
   std::vector<Region> regions;  
   readRegions(region_file, regions, 1000, "", std::cerr);
 
-  vcflib::VariantCallFile ref_vcf;
-  if(!ref_vcf.open(vcf_file))
-    printErrorAndDie("Failed to open VCF");
+  VCF::VCFReader ref_vcf(vcf_file);
 
   // Populate map with samples in VCF header
+  const std::vector<std::string>& samples = ref_vcf.get_samples();
   std::map<std::string, int> sample_indices;
-  for (unsigned int i = 0; i < ref_vcf.sampleNames.size(); i++)
-    sample_indices[ref_vcf.sampleNames[i]] = i;
+  for (unsigned int i = 0; i < samples.size(); i++)
+    sample_indices[samples[i]] = i;
 
   std::vector<std::string> alleles;
   std::vector<bool> got_priors;
   int32_t pos;
   for (unsigned int i = 0; i < regions.size(); i++){
     bool success;
-    double* priors = extract_vcf_alleles_and_log_priors(&ref_vcf, &(regions[i]), sample_indices, alleles, got_priors, pos, success, std::cerr);
+    printErrorAndDie("VCF priors test not implemented");
+    double* priors;// = extract_vcf_alleles_and_log_priors(&ref_vcf, &(regions[i]), sample_indices, alleles, got_priors, pos, success, std::cerr);
 
     if (success){
       std::cerr << "Position=" << pos << std::endl;

@@ -4,6 +4,21 @@
 
 namespace VCF {
 
+  void Variant::get_genotype(std::string& sample, int& gt_a, int& gt_b){
+    int sample_index = vcf_reader_->get_sample_index(sample);
+    if (sample_index == -1)
+      gt_a = gt_b = -1;
+    else {
+      gt_a = gt_1_[sample_index];
+      gt_b = gt_2_[sample_index];
+    }
+  }
+
+  bool Variant::sample_call_missing(const std::string& sample){
+    int sample_index = vcf_reader_->get_sample_index(sample);
+    return (sample_index == -1 ? true : missing_[sample_index]);
+  }
+
   void Variant::extract_alleles(){
     for (int i = 0; i < vcf_record_->n_allele; i++)
       alleles_.push_back(vcf_record_->d.allele[i]);
@@ -108,7 +123,7 @@ bool VCFReader::get_next_variant(Variant& variant){
   if ((tbx_iter_ != NULL) && tbx_itr_next(vcf_input_, tbx_input_, tbx_iter_, &vcf_line_) >= 0){
     if (vcf_parse(&vcf_line_, vcf_header_, vcf_record_) < 0)
       printErrorAndDie("Failed to parse VCF record");
-    variant = Variant(vcf_header_, vcf_record_);
+    variant = Variant(vcf_header_, vcf_record_, this);
     return true;
   }
   
@@ -123,7 +138,7 @@ bool VCFReader::get_next_variant(Variant& variant){
     if ((tbx_iter_ != NULL) && tbx_itr_next(vcf_input_, tbx_input_, tbx_iter_, &vcf_line_) >= 0){
       if (vcf_parse(&vcf_line_, vcf_header_, vcf_record_) < 0)
 	printErrorAndDie("Failed to parse VCF record");
-      variant = Variant(vcf_header_, vcf_record_);
+      variant = Variant(vcf_header_, vcf_record_, this);
       return true;
     }
   }

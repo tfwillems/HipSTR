@@ -11,19 +11,17 @@
 
 #include "bgzf_streams.h"
 #include "pedigree.h"
-#include "vcflib/src/Variant.h"
+#include "vcf_reader.h"
 
 class DiploidGenotypePrior {
  private:
   int num_alleles_;
   std::vector<double> allele_freqs_, log_allele_freqs_;
 
-  void compute_allele_freqs(vcflib::Variant& variant, std::vector<NuclearFamily>& families);
+  void compute_allele_freqs(VCF::Variant& variant, std::vector<NuclearFamily>& families);
  public:
-  DiploidGenotypePrior(vcflib::Variant& str_variant, std::vector<NuclearFamily>& families){
-    num_alleles_ = str_variant.alleles.size();
-    if (str_variant.alleles.back().compare(".") == 0)
-      num_alleles_--;
+  DiploidGenotypePrior(VCF::Variant& str_variant, std::vector<NuclearFamily>& families){
+    num_alleles_ = str_variant.num_alleles();
     assert(num_alleles_ > 0);
     compute_allele_freqs(str_variant, families);
   }
@@ -49,7 +47,7 @@ class DenovoScanner {
   bgzfostream denovo_vcf_;
 
   void write_vcf_header(std::string& full_command);
-  void initialize_vcf_record(vcflib::Variant& str_variant);
+  void initialize_vcf_record(VCF::Variant& str_variant);
   void add_family_to_record(NuclearFamily& family, double total_ll_no_denovo, std::vector<double>& total_lls_one_denovo, std::vector<double>& total_lls_one_other);
 
  public:
@@ -62,7 +60,7 @@ class DenovoScanner {
     write_vcf_header(full_command);
   }
 
-  void scan(std::string& snp_vcf_file, vcflib::VariantCallFile& str_vcf, std::set<std::string>& sites_to_skip,
+  void scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std::set<std::string>& sites_to_skip,
 	    std::ostream& logger);
 
   void finish(){ denovo_vcf_.close(); }

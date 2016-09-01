@@ -18,6 +18,7 @@ const double MIN_ALLELE_PRIOR   = 0.0001;
 // we look for entries a window around the locus. The size of this window is controlled by this parameter
 const int32_t pad = 50;
 
+/*
 void read_vcf_alleles(vcflib::VariantCallFile* ref_vcf, Region* region, std::vector<std::string>& alleles, int32_t& pos, bool& success){
     assert(alleles.size() == 0 && ref_vcf != NULL);
     if (!ref_vcf->setRegion(region->chrom(), region->start()-pad, region->stop()+pad)){
@@ -56,6 +57,7 @@ void read_vcf_alleles(vcflib::VariantCallFile* ref_vcf, Region* region, std::vec
     success = false;
     pos     = -1;
 }
+*/
 
 /*
  * Searchs for an entry in the provided VCF that matches the region. If found, stores the alleles in the provided vector
@@ -64,6 +66,7 @@ void read_vcf_alleles(vcflib::VariantCallFile* ref_vcf, Region* region, std::vec
  * Method exits with an error if no VCF entry is found, if the VCF doesn't containg PGP allele priors in the FORMAT field or if it only contains a subset of the samples.
  * The user is responsible for freeing the returned array when it is no longer needed.
  */
+/*
 double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
 					   std::vector<std::string>& alleles, std::vector<bool>& got_priors, int32_t& pos, bool& success, std::ostream& logger){
   assert(alleles.size() == 0 && got_priors.size() == 0);
@@ -156,9 +159,15 @@ double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Reg
     logger << "WARNING: VCF only contained allele priors for " << sample_count << " out of " << num_samples << " samples";
   return log_allele_priors;
 }
+*/
 
 
+bool PhasedGL::build(VCF::VCFReader& vcf_file, VCF::Variant& variant){
+  printErrorAndDie("PhasedGL not yet implemented");
+}
 
+
+/*
 bool PhasedGL::build(vcflib::VariantCallFile& vcf_file, vcflib::Variant& variant){
   if (vcf_file.formatTypes.find(GT_KEY) == vcf_file.formatTypes.end())
     return false;
@@ -188,3 +197,4 @@ bool PhasedGL::build(vcflib::VariantCallFile& vcf_file, vcflib::Variant& variant
   }
   return true;
 }
+*/

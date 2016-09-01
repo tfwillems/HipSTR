@@ -6,10 +6,9 @@
 #include <string>
 #include <vector>
 
-#include "vcflib/src/Variant.h"
-
 #include "error.h"
 #include "region.h"
+#include "vcf_reader.h"
 
 extern const std::string GENOTYPE_KEY;
 extern const std::string PHASED_GL_KEY;
@@ -19,12 +18,14 @@ extern std::string STOP_INFO_TAG;
 extern const double MIN_ALLELE_PRIOR;
 extern const int32_t pad;
 
+/*
 void read_vcf_alleles(vcflib::VariantCallFile* ref_vcf, Region* region, std::vector<std::string>& alleles, int32_t& pos, bool& success);
 
 
 double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
 					   std::vector<std::string>& alleles, std::vector<bool>& got_priors, int32_t& pos, bool& success, std::ostream& logger);
- 
+*/
+
 class PhasedGL{
  private:
   int num_alleles_;
@@ -32,7 +33,7 @@ class PhasedGL{
   std::map<std::string, int> sample_indices_;
   std::vector< std::vector<double> > phased_gls_;
 
-  bool build(vcflib::VariantCallFile& vcf_file, vcflib::Variant& variant);
+  bool build(VCF::VCFReader& vcf_file, VCF::Variant& variant);
 
  public:
   PhasedGL(){
@@ -40,7 +41,7 @@ class PhasedGL{
     num_samples_ = 0;
   }
 
-  PhasedGL(vcflib::VariantCallFile& vcf_file, vcflib::Variant& variant){
+  PhasedGL(VCF::VCFReader& vcf_file, VCF::Variant& variant){
     if (!build(vcf_file, variant))
       printErrorAndDie("Failed to construct PhasedGL instance from VCF record");
   }

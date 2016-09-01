@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include <fstream>
 #include <iostream>
 #include <set>
 #include <string>
@@ -13,8 +14,7 @@
 #include "pedigree.h"
 #include "stringops.h"
 #include "version.h"
-
-#include "vcflib/src/Variant.h"
+#include "vcf_reader.h"
 
 bool file_exists(std::string path){
   return (access(path.c_str(), F_OK) != -1);
@@ -169,26 +169,22 @@ int main(int argc, char** argv){
     printErrorAndDie("FAM file " + fam_file + " does not exist. Please ensure that the path provided to --fam is valid");
   
   // Check that the SNP VCF file exists, has a tabix index and then open it
-  vcflib::VariantCallFile snp_vcf;
   if (!file_exists(snp_vcf_file))
     printErrorAndDie("SNP VCF file " + snp_vcf_file + " does not exist. Please ensure that the path provided to --snp-vcf is valid");  
   if (!file_exists(snp_vcf_file + ".tbi"))
     printErrorAndDie("No .tbi index found for the SNP VCF file. Please index using tabix and rerun DenovoFinder");
-  if (!snp_vcf.open(snp_vcf_file))
-    printErrorAndDie("Failed to open the input SNP VCF file");
+  VCF::VCFReader snp_vcf(snp_vcf_file);
 
   // Check that the STR VCF file exists, has a tabix index and then open it
-  vcflib::VariantCallFile str_vcf;
   if (!file_exists(str_vcf_file))
     printErrorAndDie("STR VCF file " + str_vcf_file + " does not exist. Please ensure that the path provided to --str-vcf is valid");
   if (!file_exists(str_vcf_file + ".tbi"))
     printErrorAndDie("No .tbi index found for the STR VCF file. Please index using tabix and rerun DenovoFinder");
-  if (!str_vcf.open(str_vcf_file))
-    printErrorAndDie("Failed to open the input STR VCF file");
+  VCF::VCFReader str_vcf(str_vcf_file);
   
   // Restrict the analysis to a given chromosome, if requested
   if (!chrom.empty())
-    if (!str_vcf.setRegion(chrom, 0))
+    if (!str_vcf.set_region(chrom, 0))
       printErrorAndDie("Failed to set the region to chromosome " + chrom + " in the STR VCF. Please check the STR VCF and rerun the analysis");
 
   std::ofstream log_;
@@ -209,8 +205,8 @@ int main(int argc, char** argv){
 
   // Determine which samples have both SNP and STR data
   std::set<std::string> samples_with_data;
-  std::set<std::string> snp_samples(snp_vcf.sampleNames.begin(), snp_vcf.sampleNames.end()), str_samples(str_vcf.sampleNames.begin(), str_vcf.sampleNames.end());
-  for (auto sample_iter = snp_samples.begin(); sample_iter != snp_samples.end(); sample_iter++)
+  std::set<std::string> str_samples(str_vcf.get_samples().begin(), str_vcf.get_samples().end());
+  for (auto sample_iter = snp_vcf.get_samples().begin(); sample_iter != snp_vcf.get_samples().end(); sample_iter++)
     if (str_samples.find(*sample_iter) != str_samples.end())
       samples_with_data.insert(*sample_iter);
 

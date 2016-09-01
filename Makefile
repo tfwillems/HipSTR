@@ -38,14 +38,12 @@ OBJ_RNASEQ  := $(SRC_RNASEQ:.cpp=.o)
 OBJ_DENOVO  := $(SRC_DENOVO:.cpp=.o)
 
 BAMTOOLS_ROOT=bamtools
-VCFLIB_ROOT=vcflib
 CEPHES_ROOT=cephes
 HTSLIB_ROOT=htslib
 
-LIBS              = -L./ -lm -lhts -L$(BAMTOOLS_ROOT)/lib -L$(VCFLIB_ROOT)/tabixpp/ -Lvcflib/tabixpp/htslib/ -lz -L$(CEPHES_ROOT)/
-INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I$(VCFLIB_ROOT)/include/ -I$(VCFLIB_ROOT)/tabixpp/htslib/
+LIBS              = -L./ -lm -lhts -L$(BAMTOOLS_ROOT)/lib -lz -L$(CEPHES_ROOT)/
+INCLUDE           = -I$(BAMTOOLS_ROOT)/src
 BAMTOOLS_LIB      = $(BAMTOOLS_ROOT)/lib/libbamtools.a
-VCFLIB_LIB        = vcflib/libvcflib.a
 FASTA_HACK_LIB    = fastahack/Fasta.o
 CEPHES_LIB        = cephes/libprob.a
 
@@ -95,10 +93,10 @@ include $(subst .cpp,.d,$(SRC))
 BamSieve: $(OBJ_COMMON) $(OBJ_SIEVE) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(FASTA_HACK_LIB) $(CEPHES_LIB) $(HTSLIB_LIB) $(OBJ_SEQALN)
+HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB) $(CEPHES_LIB) $(HTSLIB_LIB) $(OBJ_SEQALN)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-DenovoFinder: $(OBJ_DENOVO) $(VCFLIB_LIB) $(HTSLIB_LIB)
+DenovoFinder: $(OBJ_DENOVO) $(HTSLIB_LIB)
 	$(CXX) $(LDFALGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 exploratory/RNASeq: $(OBJ_COMMON) $(OBJ_RNASEQ) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB)
@@ -107,40 +105,40 @@ exploratory/RNASeq: $(OBJ_COMMON) $(OBJ_RNASEQ) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB
 test/haplotype_test: test/haplotype_test.cpp SeqAlignment/Haplotype.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NeedlemanWunsch.cpp SeqAlignment/RepeatBlock.cpp error.cpp stringops.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/em_stutter_test: test/em_stutter_test.cpp em_stutter_genotyper.cpp genotyper_bam_processor.cpp error.cpp mathops.cpp stringops.cpp stutter_model.cpp $(VCFLIB_LIB)
+test/em_stutter_test: test/em_stutter_test.cpp em_stutter_genotyper.cpp genotyper_bam_processor.cpp error.cpp mathops.cpp stringops.cpp stutter_model.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/fast_ops_test: test/fast_ops_test.cpp mathops.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
-test/read_vcf_alleles_test: test/read_vcf_alleles_test.cpp error.cpp region.cpp vcf_input.cpp $(VCFLIB_LIB)
+test/read_vcf_alleles_test: test/read_vcf_alleles_test.cpp error.cpp region.cpp vcf_input.cpp vcf_reader.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/read_vcf_priors_test: test/read_vcf_priors_test.cpp error.cpp region.cpp vcf_input.cpp $(VCFLIB_LIB)
+test/read_vcf_priors_test: test/read_vcf_priors_test.cpp error.cpp region.cpp vcf_input.cpp vcf_reader.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/snp_tree_test: snp_tree.cpp error.cpp test/snp_tree_test.cpp haplotype_tracker.cpp vcf_reader.cpp $(VCFLIB_LIB)
+test/snp_tree_test: snp_tree.cpp error.cpp test/snp_tree_test.cpp haplotype_tracker.cpp vcf_reader.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp error.cpp snp_tree.cpp haplotype_tracker.cpp vcf_reader.cpp $(VCFLIB_LIB)
+test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp error.cpp snp_tree.cpp haplotype_tracker.cpp vcf_reader.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 
 exploratory/Clipper: exploratory/count_trimmed_bases.cpp error.cpp zalgorithm.cpp $(BAMTOOLS_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-exploratory/10X: base_quality.cpp exploratory/calc_10x_barcode_phasings.cpp error.cpp mathops.cpp snp_phasing_quality.cpp snp_tree.cpp haplotype_tracker.cpp vcf_reader.cpp $(BAMTOOLS_LIB) $(VCFLIB_LIB)
+exploratory/10X: base_quality.cpp exploratory/calc_10x_barcode_phasings.cpp error.cpp mathops.cpp snp_phasing_quality.cpp snp_tree.cpp haplotype_tracker.cpp vcf_reader.cpp $(BAMTOOLS_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-exploratory/Mapper: error.cpp seqio.cpp stringops.cpp exploratory/mapping_efficiency.cpp $(BAMTOOLS_LIB) $(VCFLIB_LIB) $(CEPHES_LIB)
+exploratory/Mapper: error.cpp seqio.cpp stringops.cpp vcf_reader.cpp exploratory/mapping_efficiency.cpp $(BAMTOOLS_LIB) $(CEPHES_LIB) $(FASTA_HACK_LIB) fastahack/split.o
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 # Build each object file independently
-%.o: %.cpp $(BAMTOOLS_LIB)  $(VCFLIB_LIB)
+%.o: %.cpp $(BAMTOOLS_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ -c $<
 
 # Auto-Generate header dependencies for each CPP file.
-%.d: %.cpp $(BAMTOOLS_LIB)  $(VCFLIB_LIB)
+%.d: %.cpp $(BAMTOOLS_LIB)
 	$(CXX) -c -MP -MD $(CXXFLAGS) $(INCLUDE) $< > $@
 
 # Rebuild BAMTools if needed
@@ -148,12 +146,6 @@ $(BAMTOOLS_LIB):
 	git submodule update --init --recursive bamtools
 	git submodule update --recursive bamtools
 	( cd bamtools && mkdir build && cd build && cmake .. && $(MAKE) )
-
-# Rebuild VCFLIB if needed               
-$(VCFLIB_LIB):
-	git submodule update --init --recursive vcflib
-	git submodule update --recursive vcflib
-	cd vcflib && $(MAKE)
 
 # Rebuild fastahack if needed
 $(FASTA_HACK_LIB):

@@ -10,13 +10,13 @@
 #include <vector>
 
 #include "bamtools/include/api/BamAlignment.h"
-#include "vcflib/src/Variant.h"
 
 #include "base_quality.h"
 #include "read_pooler.h"
 #include "region.h"
 #include "stutter_model.h"
 #include "vcf_input.h"
+#include "vcf_reader.h"
 
 #include "SeqAlignment/AlignmentData.h"
 #include "SeqAlignment/AlignmentTraceback.h"
@@ -73,7 +73,7 @@ class SeqStutterGenotyper{
   double* log_allele_priors_;
 
   // VCF containing STR and SNP genotypes for a reference panel
-  vcflib::VariantCallFile* ref_vcf_;
+  VCF::VCFReader* ref_vcf_;
 
   // If this flag is set, reads with identical sequences are pooled and their base emission error
   // probabilities averaged. Each unique sequence is then only aligned once using these
@@ -192,7 +192,7 @@ class SeqStutterGenotyper{
 		      std::vector< std::vector<double> >& log_p2, 
 		      std::vector<std::string>& sample_names, std::string& chrom_seq,
 		      bool pool_identical_seqs,
-		      StutterModel& stutter_model, vcflib::VariantCallFile* ref_vcf, std::ostream& logger){
+		      StutterModel& stutter_model, VCF::VCFReader* ref_vcf, std::ostream& logger){
     assert(alignments.size() == log_p1.size() && alignments.size() == log_p2.size() && alignments.size() == sample_names.size());
     log_p1_                = NULL;
     log_p2_                = NULL;
@@ -205,6 +205,7 @@ class SeqStutterGenotyper{
     pool_index_            = NULL;
     haplotype_             = NULL;
     second_mate_           = NULL;
+    ref_vcf_               = ref_vcf;
     MAX_REF_FLANK_LEN      = 30;
     pos_                   = -1;
     pool_identical_seqs_   = pool_identical_seqs;
@@ -216,12 +217,15 @@ class SeqStutterGenotyper{
     total_posterior_time_  = 0;
     total_bootstrap_time_  = 0;
 
+    require_one_read_ = true;
+    /* TO DO: Properly set this flag based on whether the VCF has the required FORMAT fields
     // True iff no allele priors are available (for imputation)
     if (ref_vcf == NULL)
       require_one_read_ = true;
     else
       require_one_read_ = (ref_vcf->formatTypes.find(PGP_KEY) == ref_vcf->formatTypes.end());
-    
+    */
+
     region_       = region.copy();
     num_samples_  = alignments.size();
     sample_names_ = sample_names;
@@ -244,6 +248,8 @@ class SeqStutterGenotyper{
     delete [] log_allele_priors_;
     delete [] pool_index_;
     delete [] second_mate_;
+    if (ref_vcf_ != NULL)
+      delete ref_vcf_;
     for (auto trace_iter = trace_cache_.begin(); trace_iter != trace_cache_.end(); trace_iter++)
       delete trace_iter->second;
     trace_cache_.clear();

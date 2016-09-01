@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "bamtools/include/api/BamAlignment.h"
-#include "vcflib/src/Variant.h"
 #include "bgzf_streams.h"
 #include "em_stutter_genotyper.h"
 #include "process_timer.h"
@@ -16,6 +15,7 @@
 #include "seq_stutter_genotyper.h"
 #include "snp_bam_processor.h"
 #include "stutter_model.h"
+#include "vcf_reader.h"
 #include "SeqAlignment/HTMLCreator.h"
 
 
@@ -44,8 +44,7 @@ private:
   int num_genotype_success_, num_genotype_fail_;
 
   // VCF containg SNP and STR genotypes for a reference panel
-  bool have_ref_vcf_;
-  vcflib::VariantCallFile ref_vcf_;
+  VCF::VCFReader* ref_vcf_;
 
   bool output_viz_;
   bgzfostream viz_out_;
@@ -90,7 +89,6 @@ public:
     output_str_gts_        = false;
     output_viz_            = false;
     read_stutter_models_   = false;
-    have_ref_vcf_          = false;
     viz_left_alns_         = false;
     pool_seqs_             = false;
     use_seq_aligner_       = use_seq_aligner;
@@ -117,12 +115,15 @@ public:
     max_flank_indel_frac_  = 1.0;
     recalc_stutter_model_  = false;
     def_stutter_model_     = NULL;
+    ref_vcf_               = NULL;
   }
 
   ~GenotyperBamProcessor(){
     for (auto iter = stutter_models_.begin(); iter != stutter_models_.end(); iter++)
       delete iter->second;
     stutter_models_.clear();
+    if (ref_vcf_ != NULL)
+      delete ref_vcf_;
     if (def_stutter_model_ != NULL)
       delete def_stutter_model_;
   }
@@ -163,9 +164,9 @@ public:
   }
 
   void set_ref_vcf(std::string& ref_vcf_file){
-    if(!ref_vcf_.open(ref_vcf_file))
-      printErrorAndDie("Failed to open VCF file for reference panel");
-    have_ref_vcf_ = true;
+    if (ref_vcf_ != NULL)
+      delete ref_vcf_;
+    ref_vcf_ = new VCF::VCFReader(ref_vcf_file);
   }
 
   void set_input_stutter(std::string& model_file){

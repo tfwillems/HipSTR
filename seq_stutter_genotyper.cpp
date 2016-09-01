@@ -292,8 +292,11 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
     pos_ = -1;
   }
   else if (ref_vcf_ != NULL){
+    printErrorAndDie("Reference VCF functionality not implemented");
     bool success = false;
     std::vector<bool> got_priors;
+
+    /* TO DO: Rework to use new VCF structures
     if (ref_vcf_->formatTypes.find(PGP_KEY) == ref_vcf_->formatTypes.end()){
       // Read alleles from VCF
       logger << "Reading STR alleles from VCF" << std::endl;
@@ -306,6 +309,7 @@ void SeqStutterGenotyper::init(std::vector< std::vector<BamTools::BamAlignment> 
       log_allele_priors_ = extract_vcf_alleles_and_log_priors(ref_vcf_, region_, sample_indices_, alleles_, got_priors, pos_, success, logger);
       assert(got_priors.size() == num_samples_);
     }
+    */
 
     num_alleles_ = alleles_.size();
     if (success){

@@ -2,11 +2,10 @@
 #include <string>
 #include <vector>
 
-#include "../vcflib/src/Variant.h"
-
 #include "../error.h"
 #include "../region.h"
 #include "../vcf_input.h"
+#include "../vcf_reader.h"
 
 int main(int argc, char* argv[]){
   if (argc != 3)
@@ -18,15 +17,14 @@ int main(int argc, char* argv[]){
   std::vector<Region> regions;  
   readRegions(region_file, regions, 1000, "", std::cerr);
 
-  vcflib::VariantCallFile ref_vcf;
-  if(!ref_vcf.open(vcf_file))
-    printErrorAndDie("Failed to open VCF");
+  VCF::VCFReader ref_vcf(vcf_file);
 
   std::vector<std::string> alleles;
   int32_t pos;
   for (unsigned int i = 0; i < regions.size(); i++){
     bool success;
-    read_vcf_alleles(&ref_vcf, &regions[i], alleles, pos, success);
+    printErrorAndDie("VCF alleles test not implemented");
+    //read_vcf_alleles(&ref_vcf, &regions[i], alleles, pos, success);
     if (success){
       std::cerr << "Position=" << pos << std::endl;
       std::cerr << "Alleles:" << std::endl;

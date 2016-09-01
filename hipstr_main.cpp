@@ -10,13 +10,13 @@
 #include <time.h>
 
 #include "bamtools/include/api/BamAlignment.h"
-#include "vcflib/src/Variant.h"
 
 #include "error.h"
 #include "genotyper_bam_processor.h"
 #include "pedigree.h"
 #include "seqio.h"
 #include "stringops.h"
+#include "vcf_reader.h"
 #include "version.h"
 
 bool file_exists(std::string path){
@@ -582,10 +582,8 @@ int main(int argc, char** argv){
       printErrorAndDie("--fam option only applies if --snp-vcf option has been specified as well");
 
     // Determine what samples are in the SNP VCF
-    vcflib::VariantCallFile snp_vcf;
-    if(!snp_vcf.open(snp_vcf_file))
-      printErrorAndDie("Failed to open input SNP VCF file");
-    std::set<std::string> samples_with_data(snp_vcf.sampleNames.begin(), snp_vcf.sampleNames.end());
+    VCF::VCFReader snp_vcf(snp_vcf_file);
+    std::set<std::string> samples_with_data(snp_vcf.get_samples().begin(), snp_vcf.get_samples().end());
 
     std::vector<NuclearFamily> families;
     extract_pedigree_nuclear_families(fam_file, samples_with_data, families, bam_processor.logger());

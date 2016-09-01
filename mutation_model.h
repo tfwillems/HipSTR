@@ -3,18 +3,18 @@
 
 #include <math.h>
 
-#include "vcflib/src/Variant.h"
+#include "vcf_reader.h"
 
 class MutationModel {
   double log_mut_prior_;
 
  public:
-  MutationModel(vcflib::Variant& str_variant){
-    assert(str_variant.alleles.size() > 1);
+  MutationModel(VCF::Variant& str_variant){
+    assert(str_variant.num_alleles() > 1);
     
     // The allele on each haplotype can mutate to N-1 alleles, so assuming a 
     // uniform prior each mutation has a prior of 1/(2*(N-1))
-    log_mut_prior_ = -log10(2) - log10(str_variant.alleles.size()-1); 
+    log_mut_prior_ = -log10(2) - log10(str_variant.num_alleles()-1);
   }
 
   /*
