@@ -4,6 +4,10 @@
 
 namespace VCF {
 
+  const std::vector<std::string>& Variant::get_samples(){
+    return vcf_reader_->get_samples();
+  }
+
   void Variant::get_genotype(std::string& sample, int& gt_a, int& gt_b){
     int sample_index = vcf_reader_->get_sample_index(sample);
     if (sample_index == -1)

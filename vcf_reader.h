@@ -53,7 +53,9 @@ public:
 
   const std::vector<std::string>& get_alleles() { return alleles_;         }
   const std::string& get_allele(int allele)     { return alleles_[allele]; }
-  int num_alleles() const { return alleles_.size();}
+  const std::vector<std::string>& get_samples();
+  int num_alleles() const { return alleles_.size(); }
+  int num_samples() const { return num_samples_;    }
 
   bool is_biallelic_snp(){
     if (vcf_record_ != NULL)
@@ -114,20 +116,37 @@ public:
     int mem        = 0;
     int* info_vals = NULL;
     if (bcf_get_info_int32(vcf_header_, vcf_record_, fieldname.c_str(), &info_vals, &mem) != 1)
-      printErrorAndDie("Failed to extract single INFO value from VCF record");
+      printErrorAndDie("Failed to extract single INFO value from the VCF record");
     val = info_vals[0];
     free(info_vals);
   }
 
   void get_INFO_value_multiple_ints(const std::string& fieldname, std::vector<int>& vals){
+    vals.clear();
     int mem         = 0;
     int* info_vals  = NULL;
     int num_entries = bcf_get_info_int32(vcf_header_, vcf_record_, fieldname.c_str(), &info_vals, &mem);
     if (num_entries <= 1)
-      printErrorAndDie("Failed to extract multiple INFO value from VCF record");
+      printErrorAndDie("Failed to extract multiple INFO values from the VCF record");
     for (int i = 0; i < num_entries; i++)
       vals.push_back(info_vals[i]);
     free(info_vals);
+  }
+
+  void get_FORMAT_value_multiple_floats(const std::string& fieldname, std::vector< std::vector<float> >& vals){
+    vals.clear();
+    int mem            = 0;
+    float* format_vals = NULL;
+    int num_entries    = bcf_get_format_float(vcf_header_, vcf_record_, fieldname.c_str(), &format_vals, &mem);
+    if (num_entries <= num_samples())
+      printErrorAndDie("Failed to extract multiple FORMAT values from the VCF record");
+    int entries_per_sample = num_entries/num_samples();
+    float* ptr = format_vals;
+    for (int i = 0; i < num_samples(); i++){
+      vals.push_back(std::vector<float>(ptr, ptr+entries_per_sample));
+      ptr += entries_per_sample;
+    }
+    free(format_vals);
   }
 
   void get_genotype(std::string& sample, int& gt_a, int& gt_b);

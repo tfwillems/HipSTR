@@ -155,7 +155,7 @@ void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std
     int end;    str_variant.get_INFO_value_single_int(END_KEY, end);
     logger << "Processing STR region " << str_variant.get_chromosome() << ":" << start << "-" << end << " with " << num_alleles << " alleles" << "\n";
 
-    PhasedGL phased_gls(str_vcf, str_variant);
+    PhasedGL phased_gls(str_variant);
     logger << "\t";
     haplotype_tracker.advance(str_variant.get_chromosome(), str_variant.get_position(), sites_to_skip, logger);
 

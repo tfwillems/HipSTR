@@ -161,40 +161,22 @@ double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Reg
 }
 */
 
-
-bool PhasedGL::build(VCF::VCFReader& vcf_file, VCF::Variant& variant){
-  printErrorAndDie("PhasedGL not yet implemented");
-}
-
-
-/*
-bool PhasedGL::build(vcflib::VariantCallFile& vcf_file, vcflib::Variant& variant){
-  if (vcf_file.formatTypes.find(GT_KEY) == vcf_file.formatTypes.end())
-    return false;
-  if (vcf_file.formatTypes.find(PHASED_GL_KEY) == vcf_file.formatTypes.end())
+bool PhasedGL::build(VCF::Variant& variant){
+  if (!variant.has_format_field(PHASED_GL_KEY))
     return false;
 
-  num_samples_ = 0;
-  num_alleles_ = variant.alleles.size();
-  if (variant.alleles.back().compare(".") == 0)
-    num_alleles_--;
-
-  for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
-    if (variant.getGenotype(*sample_iter).empty())
+  std::vector< std::vector<float> > values;
+  variant.get_FORMAT_value_multiple_floats(PHASED_GL_KEY, values);
+  num_samples_         = 0;
+  num_alleles_         = variant.num_alleles();
+  int vcf_sample_index = 0;
+  const std::vector<std::string>& samples = variant.get_samples();
+  for (auto sample_iter = samples.begin(); sample_iter != samples.end(); ++sample_iter, ++vcf_sample_index){
+    if (variant.sample_call_missing(vcf_sample_index))
       continue;
-
-    phased_gls_.push_back(std::vector<double>());
+    phased_gls_.push_back(values[vcf_sample_index]);
     sample_indices_[*sample_iter] = num_samples_++;
-    size_t gl_index  = 0;
-    for (size_t i = 0; i < num_alleles_; ++i){
-      for (size_t j = 0; j < num_alleles_; ++j, ++gl_index){
-        // NOTE: We'd like to use the getSampleValueFloat method from vcflib, but it doesn't work if the number of
-        // fields isn't equal to the number of alleles. Instead, have to use this ugly internal hack
-        double gl = std::stod(variant.samples[*sample_iter][PHASED_GL_KEY].at(gl_index));
-        phased_gls_.back().push_back(gl);
-      }
-    }
   }
+
   return true;
 }
-*/

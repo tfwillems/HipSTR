@@ -31,9 +31,9 @@ class PhasedGL{
   int num_alleles_;
   int num_samples_;
   std::map<std::string, int> sample_indices_;
-  std::vector< std::vector<double> > phased_gls_;
+  std::vector< std::vector<float> > phased_gls_;
 
-  bool build(VCF::VCFReader& vcf_file, VCF::Variant& variant);
+  bool build(VCF::Variant& variant);
 
  public:
   PhasedGL(){
@@ -41,8 +41,8 @@ class PhasedGL{
     num_samples_ = 0;
   }
 
-  PhasedGL(VCF::VCFReader& vcf_file, VCF::Variant& variant){
-    if (!build(vcf_file, variant))
+  PhasedGL(VCF::Variant& variant){
+    if (!build(variant))
       printErrorAndDie("Failed to construct PhasedGL instance from VCF record");
   }
 
@@ -55,7 +55,7 @@ class PhasedGL{
     return (sample_iter == sample_indices_.end() ? -1 : sample_iter->second);
   }
 
-  double get_gl(const std::string& sample, int gt_a, int gt_b){
+  float get_gl(const std::string& sample, int gt_a, int gt_b){
     auto sample_iter = sample_indices_.find(sample);
     if (sample_iter == sample_indices_.end())
       printErrorAndDie("No data available for sample " + sample + " in PhasedGL instance");
@@ -68,7 +68,7 @@ class PhasedGL{
     return phased_gls_[sample_iter->second][gt_index];
   }
 
-  double get_gl(int sample_index, int gt_a, int gt_b){
+  float get_gl(int sample_index, int gt_a, int gt_b){
     return phased_gls_[sample_index][gt_a*num_alleles_ + gt_b];
   }
 };
