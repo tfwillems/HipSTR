@@ -23,8 +23,7 @@ int main(int argc, char* argv[]){
   int32_t pos;
   for (unsigned int i = 0; i < regions.size(); i++){
     bool success;
-    printErrorAndDie("VCF alleles test not implemented");
-    //read_vcf_alleles(&ref_vcf, &regions[i], alleles, pos, success);
+    read_vcf_alleles(&ref_vcf, &regions[i], alleles, pos, success);
     if (success){
       std::cerr << "Position=" << pos << std::endl;
       std::cerr << "Alleles:" << std::endl;

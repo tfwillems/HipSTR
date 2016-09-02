@@ -17,7 +17,7 @@ extern "C" {
 
 namespace VCF {
 
-  class VCFReader;
+class VCFReader;
 
 class Variant {
 private:

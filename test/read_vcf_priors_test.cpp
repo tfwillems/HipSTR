@@ -30,8 +30,7 @@ int main(int argc, char* argv[]){
   int32_t pos;
   for (unsigned int i = 0; i < regions.size(); i++){
     bool success;
-    printErrorAndDie("VCF priors test not implemented");
-    double* priors;// = extract_vcf_alleles_and_log_priors(&ref_vcf, &(regions[i]), sample_indices, alleles, got_priors, pos, success, std::cerr);
+    double* priors = extract_vcf_alleles_and_log_priors(&ref_vcf, &(regions[i]), sample_indices, alleles, got_priors, pos, success, std::cerr);
 
     if (success){
       std::cerr << "Position=" << pos << std::endl;

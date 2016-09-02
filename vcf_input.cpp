@@ -11,20 +11,20 @@ const std::string PHASED_GL_KEY = "PHASEDGL";
 std::string PGP_KEY             = "PGP";
 std::string START_INFO_TAG      = "START";
 std::string STOP_INFO_TAG       = "END";
-const double MIN_ALLELE_PRIOR   = 0.0001;
+const float MIN_ALLELE_PRIOR    = 0.0001;
 
 // Because HipSTR extends putative STR regions if there are nearby indels, the STR coordinates in the VCF may
 // not exactly match the original reference region coordinates. As a result, when looking for a particular STR region,
 // we look for entries a window around the locus. The size of this window is controlled by this parameter
 const int32_t pad = 50;
 
-/*
-void read_vcf_alleles(vcflib::VariantCallFile* ref_vcf, Region* region, std::vector<std::string>& alleles, int32_t& pos, bool& success){
+void read_vcf_alleles(VCF::VCFReader* ref_vcf, Region* region, std::vector<std::string>& alleles, int32_t& pos, bool& success){
     assert(alleles.size() == 0 && ref_vcf != NULL);
-    if (!ref_vcf->setRegion(region->chrom(), region->start()-pad, region->stop()+pad)){
+    int32_t pad_start = (region->start() < pad ? 0 : region->start()-pad);
+    if (!ref_vcf->set_region(region->chrom(), pad_start, region->stop()+pad)){
       // Retry setting region if chr is in chromosome name
       if (region->chrom().size() <= 3 || region->chrom().substr(0, 3).compare("chr") != 0 
-	  || !ref_vcf->setRegion(region->chrom().substr(3), region->start()-pad, region->stop()+pad)){
+	  || !ref_vcf->set_region(region->chrom().substr(3), pad_start, region->stop()+pad)){
 	success = false;
 	pos     = -1;
 	return;
@@ -32,32 +32,29 @@ void read_vcf_alleles(vcflib::VariantCallFile* ref_vcf, Region* region, std::vec
     }
    
     // Extract STR and ensure the coordinates match
-    vcflib::Variant variant(*ref_vcf);
-    while (ref_vcf->getNextVariant(variant)){
+    VCF::Variant variant;
+    while (ref_vcf->get_next_variant(variant)){
       // Skip variants without the appropriate INFO fields (as they're not STRs)
-      if (ref_vcf->infoTypes.find(START_INFO_TAG) == ref_vcf->infoTypes.end())
-	continue;
-      if (ref_vcf->infoTypes.find(STOP_INFO_TAG) == ref_vcf->infoTypes.end())
+      if (!variant.has_info_field(START_INFO_TAG) || !variant.has_info_field(STOP_INFO_TAG))
 	continue;
 
-      int32_t str_start = (int32_t)variant.getInfoValueFloat(START_INFO_TAG);
-      int32_t str_stop  = (int32_t)variant.getInfoValueFloat(STOP_INFO_TAG);
+      int32_t str_start, str_stop;
+      variant.get_INFO_value_single_int(START_INFO_TAG, str_start);
+      variant.get_INFO_value_single_int(STOP_INFO_TAG, str_stop);
       if (str_start == region->start()+1 && str_stop == region->stop()){
 	success = true;
-	pos     = variant.position-1;
-	alleles.insert(alleles.end(), variant.alleles.begin(), variant.alleles.end());
-	if (alleles.back().compare(".") == 0)
-	  alleles.pop_back();
+	pos     = variant.get_position()-1;
+	alleles.insert(alleles.end(), variant.get_alleles().begin(), variant.get_alleles().end());
 	return;
       }
-      if (variant.position > region->start()+pad)
+      if (variant.get_position() > region->start()+pad)
 	break;
     }
 
     success = false;
     pos     = -1;
 }
-*/
+
 
 /*
  * Searchs for an entry in the provided VCF that matches the region. If found, stores the alleles in the provided vector
@@ -66,34 +63,32 @@ void read_vcf_alleles(vcflib::VariantCallFile* ref_vcf, Region* region, std::vec
  * Method exits with an error if no VCF entry is found, if the VCF doesn't containg PGP allele priors in the FORMAT field or if it only contains a subset of the samples.
  * The user is responsible for freeing the returned array when it is no longer needed.
  */
-/*
-double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
+
+double* extract_vcf_alleles_and_log_priors(VCF::VCFReader* ref_vcf, Region* region, std::map<std::string, int>& sample_indices,
 					   std::vector<std::string>& alleles, std::vector<bool>& got_priors, int32_t& pos, bool& success, std::ostream& logger){
   assert(alleles.size() == 0 && got_priors.size() == 0);
   got_priors.resize(sample_indices.size(), false);
+  int32_t pad_start = (region->start() < pad ? 0 : region->start()-pad);
 
-  if (ref_vcf->formatTypes.find(PGP_KEY) == ref_vcf->formatTypes.end())
-    printErrorAndDie("VCF doesn't contain the PGP format field required for setting allele priors");
-  if (!ref_vcf->setRegion(region->chrom(), region->start()-pad, region->stop()+pad)){
+  if (!ref_vcf->set_region(region->chrom(), pad_start, region->stop()+pad)){
     // Retry setting region if chr is in chromosome name
     if (region->chrom().size() <= 3 || region->chrom().substr(0, 3).compare("chr") != 0 
-	|| !ref_vcf->setRegion(region->chrom().substr(3), region->start()-pad, region->stop()+pad)){
+	|| !ref_vcf->set_region(region->chrom().substr(3), pad_start, region->stop()+pad)){
       success = false;
       pos     = -1;
       return NULL;
     }
   }
-  vcflib::Variant variant(*ref_vcf);
+  VCF::Variant variant;
   bool matches_region = false;
-  while(ref_vcf->getNextVariant(variant)){
+  while(ref_vcf->get_next_variant(variant)){
     // Skip variants without the appropriate INFO fields (as they're not STRs)
-    if (ref_vcf->infoTypes.find(START_INFO_TAG) == ref_vcf->infoTypes.end())
+    if (!variant.has_info_field(START_INFO_TAG) || !variant.has_info_field(STOP_INFO_TAG) || !variant.has_format_field(PGP_KEY))
       continue;
-    if (ref_vcf->infoTypes.find(STOP_INFO_TAG) == ref_vcf->infoTypes.end())
-      continue;
-    
-    int32_t str_start = (int32_t)variant.getInfoValueFloat(START_INFO_TAG);
-    int32_t str_stop  = (int32_t)variant.getInfoValueFloat(STOP_INFO_TAG);
+
+    int32_t str_start, str_stop;
+    variant.get_INFO_value_single_int(START_INFO_TAG, str_start);
+    variant.get_INFO_value_single_int(STOP_INFO_TAG, str_stop);
     if (str_start == region->start()+1 && str_stop == region->stop()){
       matches_region = true;
       break;
@@ -107,12 +102,12 @@ double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Reg
 
   // Extract and store the number of alleles and each of their sequences
   success = true;
-  pos     = variant.position-1;
-  alleles.insert(alleles.end(), variant.alleles.begin(), variant.alleles.end());
+  pos     = variant.get_position()-1;
+  alleles.insert(alleles.end(), variant.get_alleles().begin(), variant.get_alleles().end());
   
   // Allocate allele prior storage
   size_t num_samples  = sample_indices.size();
-  size_t num_alleles  = variant.alleles.size();
+  size_t num_alleles  = variant.get_alleles().size();
   double* log_allele_priors = new double[num_alleles*num_alleles*num_samples];
 
   // Initialize array with what is equivalent to log of uniform prior
@@ -121,36 +116,36 @@ double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Reg
 
   // Extract priors for each sample
   size_t sample_count = 0;
-  std::vector<double> gp_probs; gp_probs.reserve(num_alleles*num_alleles);
-  for (auto sample_iter = variant.sampleNames.begin(); sample_iter != variant.sampleNames.end(); ++sample_iter){
+  std::vector< std::vector<float> > gp_probs;
+  variant.get_FORMAT_value_multiple_floats(PGP_KEY, gp_probs);
+  int vcf_sample_index = 0;
+  int exp_num_vals     = num_alleles*num_alleles;
+  for (auto sample_iter = variant.get_samples().begin(); sample_iter != variant.get_samples().end(); ++sample_iter, ++vcf_sample_index){
     if (sample_indices.find(*sample_iter) == sample_indices.end())
       continue;
-    int sample_index = sample_indices.find(*sample_iter)->second;
+    int sample_index = sample_indices[*sample_iter];
+    float total      = 0.0;
     got_priors[sample_index] = true;
-    size_t gp_index  = 0;
-    double total     = 0.0;
 
-    for (size_t i = 0; i < num_alleles; ++i){
-      for (size_t j = 0; j < num_alleles; ++j, ++gp_index){
-	// NOTE: We'd like to use the getSampleValueFloat method from vcflib, but it doesn't work if the number of 
-	// fields isn't equal to the number of alleles.Instead, have to use this ugly internal hack
-	double prob = std::stod(variant.samples[*sample_iter][PGP_KEY].at(gp_index));
-	gp_probs.push_back(std::max(prob, MIN_ALLELE_PRIOR));
-	total += gp_probs.back();
-      }
+    if (gp_probs[vcf_sample_index].size() != exp_num_vals)
+      printErrorAndDie("Number of items in PGP FORMAT field does not match the expected value");
+
+    std::vector<float>& probs = gp_probs[vcf_sample_index];
+    for (int i = 0; i < probs.size(); i++){
+      probs[i] = std::max(probs[i], MIN_ALLELE_PRIOR);
+      total += probs[i];
     }
 
     // Normalize and log-transform priors and store at appropriate index
-    gp_index = 0;
+    size_t gp_index = 0;
     double* log_prior_ptr = log_allele_priors + sample_index;
     for (size_t i = 0; i < num_alleles; ++i){
       for (size_t j = 0; j < num_alleles; ++j, ++gp_index){
-	*log_prior_ptr = log(gp_probs[gp_index]/total);
+	*log_prior_ptr = log(probs[gp_index]/total);
 	log_prior_ptr += num_samples;
       }
     }
 
-    gp_probs.clear();
     sample_count++;
   }
     
@@ -159,7 +154,6 @@ double* extract_vcf_alleles_and_log_priors(vcflib::VariantCallFile* ref_vcf, Reg
     logger << "WARNING: VCF only contained allele priors for " << sample_count << " out of " << num_samples << " samples";
   return log_allele_priors;
 }
-*/
 
 bool PhasedGL::build(VCF::Variant& variant){
   if (!variant.has_format_field(PHASED_GL_KEY))
