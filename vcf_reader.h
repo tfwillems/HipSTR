@@ -46,6 +46,7 @@ public:
     vcf_reader_  = vcf_reader;
     num_samples_ = bcf_hdr_nsamples(vcf_header_);
     bcf_unpack(vcf_record_, BCF_UN_ALL);
+    extract_alleles();
     extract_genotypes();
   }
   
@@ -72,7 +73,7 @@ public:
 
   int32_t get_position(){
     if (vcf_record_ != NULL)
-      return vcf_record_->pos;
+      return vcf_record_->pos+1;
     else
       return -1;
   }
