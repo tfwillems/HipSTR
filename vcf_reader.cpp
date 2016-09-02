@@ -58,32 +58,6 @@ namespace VCF {
     free(gts_);
   }
 
-/*
-  int mem = 0;
-  float* quals = NULL;
-  std::string QUAL_KEY = "Q";
-  //bcf_get_format_float(vcf_header_, vcf_record_, QUAL_KEY.c_str(), &quals, &mem);
-  mem = 0;
-  int32_t* depths = NULL;
-  std::string DP_KEY = "DP";
-  //bcf_get_format_int32(vcf_header_, vcf_record_, DP_KEY.c_str(), &depths, &mem);
-  free(quals);
-  free(depths);
-  
-  std::string PERIOD_KEY="PERIOD";
-  //std::cout << has_info_field(PERIOD_KEY);
-  if (has_info_field(PERIOD_KEY)){
-  int mem = 0;
-  int32_t* periods = NULL;
-  bcf_get_info_int32(vcf_header_, vcf_record_, PERIOD_KEY.c_str(), &periods, &mem);
-  //std::cout << periods[0] << std::endl;
-  free(periods);
-  }
-*/
-
-
-
-
 void VCFReader::open(std::string& filename){
   const char* cfilename = filename.c_str();
     
