@@ -34,7 +34,7 @@ void EMStutterGenotyper::write_vcf_header(std::string& full_command, std::vector
       << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\""  << "Number of reads with SNP phasing information"           << "\">" << "\n"
       << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""   << "Fractional reads supporting each haploid genotype"      << "\">" << "\n"
       << "##FORMAT=<ID=" << "BPDOSE"      << ",Number=1,Type=Float,Description=\""    << "Posterior mean base pair difference from reference"     << "\">" << "\n"
-      << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=.,Type=Integer,Description=\""  << "Base pair difference observed in each read"             << "\">" << "\n";
+      << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=1,Type=String,Description=\""   << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n";
   if (output_gls)
     out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "log-10 genotype likelihoods" << "\">" << "\n";
   if (output_pls)
@@ -526,11 +526,10 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
     }
 
     if (output_allreads){
-      if (bps_per_sample[sample_index].size() > 0){
-	out << ":" << bps_per_sample[sample_index][0];
-	for (unsigned int j = 1; j < bps_per_sample[sample_index].size(); j++)
-	  out << "," << bps_per_sample[sample_index][j];
-      }
+      if (bps_per_sample[sample_index].size() > 0)
+	out << ":" << condense_read_counts(bps_per_sample[sample_index]);
+      else
+	out << ":.";
     }
 
     if (output_gls){

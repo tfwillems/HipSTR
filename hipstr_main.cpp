@@ -134,7 +134,6 @@ void parse_command_line_args(int argc, char** argv,
   }
 
   int print_help           = 0;
-  int condense_read_fields = 1;
   int pool_seqs            = 1;
   int viz_left_alns        = 0;
   int print_version        = 0;
@@ -150,7 +149,6 @@ void parse_command_line_args(int argc, char** argv,
     {"bam-samps",       required_argument, 0, 'g'},
     {"bam-libs",        required_argument, 0, 'q'},
     {"lib-from-samp",    no_argument, &bam_lib_from_samp,    1},
-    {"full-read-fields", no_argument, &condense_read_fields, 0},
     {"min-mapq",        required_argument, 0, 'e'},
     {"min-reads",       required_argument, 0, 'i'},
     {"read-qual-trim",  required_argument, 0, 'j'},
@@ -322,7 +320,6 @@ void parse_command_line_args(int argc, char** argv,
   }
   if (viz_left_alns)
     bam_processor.visualize_left_alns();
-  SeqStutterGenotyper::condense_read_count_fields = (condense_read_fields == 0 ? false : true);
 }
 
 int main(int argc, char** argv){

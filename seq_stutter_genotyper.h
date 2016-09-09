@@ -120,10 +120,6 @@ class SeqStutterGenotyper : public Genotyper {
   // the genotypes match the ML genotype
   void compute_bootstrap_qualities(int num_iter, std::vector<double>& bootstrap_qualities);
 
-  // Convert a list of integers into a string with key|count pairs separated by semicolons
-  // eg. -1,0,-1,2,2,1 will be converted into -1|2;0|1;1|1;2|2
-  std::string condense_read_counts(std::vector<int>& read_diffs);
-
   // Retrace the alignment for each read and store the associated pointers in the provided vector
   // Reads which were unaligned will have a NULL pointer
   void retrace_alignments(std::ostream& logger, std::vector<AlignmentTrace*>& traced_alns);
@@ -152,18 +148,12 @@ class SeqStutterGenotyper : public Genotyper {
 
 
  public:
-  
-  // In the VCF format fields for ALLREADS and MALLREADS, condense the fields into size|count
-  // instead of a long comma-separated list of sizes e.g. -2,-2,0,-2,0 will be converted to -2|3;0|2
-  static bool condense_read_count_fields;
-
   SeqStutterGenotyper(Region& region, bool haploid,
 		      std::vector<Alignment>& alignments, std::vector<bool>& use_to_generate_haps, std::vector<int>& bp_diffs,
 		      std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,
 		      std::vector<std::string>& sample_names, std::string& chrom_seq,
 		      bool pool_identical_seqs,
 		      StutterModel& stutter_model, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(region, haploid, sample_names, log_p1, log_p2){
-    assert(num_reads_ == alns_.size() && num_reads_ == bp_diffs_.size() && num_reads_ == use_for_haps_.size());
     alns_                  = alignments;
     bp_diffs_              = bp_diffs;
     use_for_haps_          = use_to_generate_haps;
@@ -189,7 +179,7 @@ class SeqStutterGenotyper : public Genotyper {
     else
       require_one_read_ = (ref_vcf->formatTypes.find(PGP_KEY) == ref_vcf->formatTypes.end());
     */
-
+    assert(num_reads_ == alns_.size() && num_reads_ == bp_diffs_.size() && num_reads_ == use_for_haps_.size());
     init(stutter_model, chrom_seq, logger);
   }
 

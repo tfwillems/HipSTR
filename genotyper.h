@@ -2,6 +2,7 @@
 #define GENOTYPER_H_
 
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -29,6 +30,23 @@ class Genotyper{
 
   // Total log-likelihoods for each sample
   double* sample_total_LLs_;
+
+  // Convert a list of integers into a string with key|count pairs separated by semicolons
+  // e.g. -1,0,-1,2,2,1 will be converted into -1|2;0|1;1|1;2|2
+  std::string condense_read_counts(std::vector<int>& read_diffs){
+    if (read_diffs.size() == 0)
+      return ".";
+    std::map<int, int> diff_counts;
+    for (unsigned int i = 0; i < read_diffs.size(); i++)
+      diff_counts[read_diffs[i]]++;
+    std::stringstream res;
+    for (auto iter = diff_counts.begin(); iter != diff_counts.end(); iter++){
+      if (iter != diff_counts.begin())
+	res << ";";
+      res << iter->first << "|" << iter->second;
+    }
+    return res.str();
+  }
 
  public:
   Genotyper(Region& region, bool haploid, std::vector<std::string>& sample_names,
