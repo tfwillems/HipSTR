@@ -31,24 +31,28 @@ class Alignment {
   int32_t start_;
   int32_t stop_;
   std::vector<CigarElement> cigar_list_;
+  std::string name_;
   std::string base_qualities_;
   std::string sequence_;
   std::string alignment_;
 
  public:
   Alignment(int32_t start, int32_t stop,
+	    const std::string& name,
 	    const std::string& base_qualities,
 	    const std::string& sequence,
 	    const std::string& alignment){
     start_          = start; 
     stop_           = stop;
+    name_           = name;
     base_qualities_ = base_qualities;
     sequence_       = sequence;
     alignment_      = alignment;
     cigar_list_     = std::vector<CigarElement>();
   }
 
-  Alignment(){
+  Alignment(const std::string& name){
+    name_           = name;
     start_          = 0; 
     stop_           = -1;
     base_qualities_ = "";
@@ -57,6 +61,7 @@ class Alignment {
     cigar_list_     = std::vector<CigarElement>();
   }
 
+  inline const std::string& get_name()   const { return name_;   }
   inline int32_t get_start()             const { return start_;  }
   inline int32_t get_stop()              const { return stop_;   }
   inline void set_start(int32_t start)         { start_ = start; }

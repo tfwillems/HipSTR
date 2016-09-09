@@ -31,6 +31,76 @@ int getUsedPhysicalMemoryKB(){
   return result;
 }
 
+/*
+  Left align BamAlignments in the provided vector and store those that successfully realign in the provided vector.
+  Also extracts other information for successfully realigned reads into provided vectors.
+ */
+void GenotyperBamProcessor::left_align_reads(Region& region, std::string& chrom_seq, std::vector< std::vector<BamTools::BamAlignment> >& alignments,
+					     std::vector< std::vector<double> >& log_p1,       std::vector< std::vector<double> >& log_p2,
+					     std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
+					     std::vector< Alignment>& left_alns, std::vector<int>& bp_diffs, std::vector<bool>& use_for_hap_generation,
+					     std::ostream& logger){
+  locus_left_aln_time_ = clock();
+  logger << "Left aligning reads..." << std::endl;
+  std::map<std::string, int> seq_to_alns;
+  int32_t align_fail_count = 0, total_reads = 0;
+  int bp_diff;
+  left_alns.clear(); filt_log_p1.clear(); filt_log_p2.clear();
+  bp_diffs.clear(); use_for_hap_generation.clear();
+
+  for (unsigned int i = 0; i < alignments.size(); ++i){
+    filt_log_p1.push_back(std::vector<double>());
+    filt_log_p2.push_back(std::vector<double>());
+
+    for (unsigned int j = 0; j < alignments[i].size(); ++j, ++total_reads){
+      // Trim alignment if it extends very far upstream or downstream of the STR. For tractability, we limit it to 40bp
+      trimAlignment(alignments[i][j], (region.start() > 40 ? region.start()-40 : 1), region.stop()+40);
+      if (alignments[i][j].Length == 0)
+        continue;
+
+      auto iter      = seq_to_alns.find(alignments[i][j].QueryBases);
+      bool have_prev = (iter != seq_to_alns.end());
+      if (have_prev)
+        have_prev &= left_alns[iter->second].get_sequence().size() == alignments[i][j].QueryBases.size();
+
+      if (!have_prev){
+        left_alns.push_back(Alignment(alignments[i][j].Name));
+        if (matchesReference(alignments[i][j]))
+          convertAlignment(alignments[i][j], chrom_seq, left_alns.back());
+        else if (!realign(alignments[i][j], chrom_seq, left_alns.back())){
+	  // Failed to realign read
+          align_fail_count++;
+          left_alns.pop_back();
+          continue;
+	}
+	seq_to_alns[alignments[i][j].QueryBases] = left_alns.size()-1;
+      }
+      else {
+        // Reuse alignments if the sequence has already been observed and didn't lead to a soft-clipped alignment
+        // Soft-clipping is problematic because it complicates base quality extration (but not really that much)
+        Alignment& prev_aln = left_alns[iter->second];
+        assert(prev_aln.get_sequence().size() == alignments[i][j].QueryBases.size());
+	std::string bases = uppercase(alignments[i][j].QueryBases);
+        Alignment new_aln(prev_aln.get_start(), prev_aln.get_stop(), alignments[i][j].Name, alignments[i][j].Qualities, bases, prev_aln.get_alignment());
+        new_aln.set_cigar_list(prev_aln.get_cigar_list());
+        left_alns.push_back(new_aln);
+      }
+
+      left_alns.back().check_CIGAR_string(alignments[i][j].Name); // Ensure alignment is properly formatted
+      filt_log_p1[i].push_back(log_p1[i][j]);
+      filt_log_p2[i].push_back(log_p2[i][j]);
+      bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region.start()-region.period(), region.stop()+region.period(), bp_diff);
+      bp_diffs.push_back(got_size ? bp_diff : -999);
+      use_for_hap_generation.push_back(BamProcessor::passes_filters(alignments[i][j]));
+    }
+  }
+
+  locus_left_aln_time_  = (clock() - locus_left_aln_time_)/CLOCKS_PER_SEC;
+  total_left_aln_time_ += locus_left_aln_time_;
+  if (align_fail_count != 0)
+    logger << "Failed to left align " << align_fail_count << " out of " << total_reads << " reads" << std::endl;
+}
+
 void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 						      std::vector< std::vector<double> >& log_p1s,
 						      std::vector< std::vector<double> >& log_p2s,
@@ -108,8 +178,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   else {
     // Learn stutter model using length-based EM algorithm
     log("Building EM stutter genotyper");
-    length_genotyper = new EMStutterGenotyper(region.chrom(), region.start(), region.stop(), haploid, str_bp_lengths,
-					      str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
+    length_genotyper = new EMStutterGenotyper(region, haploid, str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, 0);
     log("Training EM stutter genotyper");
     trained = length_genotyper->train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false, logger());
     if (trained){
@@ -138,7 +207,14 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 	if (ref_vcf_ != NULL)
 	  reference_panel_vcf = ref_vcf_;
 
-	seq_genotyper = new SeqStutterGenotyper(region, haploid, alignments, log_p1s, log_p2s, rg_names, chrom_seq, pool_seqs_,
+	std::vector<Alignment> left_alignments;
+	std::vector< std::vector<double> > filt_log_p1s, filt_log_p2s;
+	std::vector<bool> use_to_generate_haps;
+	std::vector<int> bp_diffs;
+	left_align_reads(region, chrom_seq, alignments, log_p1s, log_p2s, filt_log_p1s,
+			 filt_log_p2s, left_alignments, bp_diffs, use_to_generate_haps, logger());
+	
+	seq_genotyper = new SeqStutterGenotyper(region, haploid, left_alignments, use_to_generate_haps, bp_diffs, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq, pool_seqs_,
 						*stutter_model, reference_panel_vcf, logger());
 
 	if (output_str_gts_){
@@ -166,14 +242,12 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
       else {
 	// Use length-based genotyper
 	if (length_genotyper == NULL){
-	  length_genotyper = new EMStutterGenotyper(region.chrom(), region.start(), region.stop(), haploid,
-						    str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, region.period(), 0);
+	  length_genotyper = new EMStutterGenotyper(region, haploid, str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, 0);
 	  length_genotyper->set_stutter_model(*stutter_model);
 	}
 
 	if (output_str_gts_){
-	  bool use_pop_freqs = false;
-	  if (length_genotyper->genotype(use_pop_freqs)){
+	  if (length_genotyper->genotype(chrom_seq, logger())){
 	    num_genotype_success_++;
 	    if (output_str_gts_)
 	      length_genotyper->write_vcf_record(ref_allele, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, output_all_reads_, str_vcf_);
@@ -196,14 +270,14 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     logger() << " Genotyping          = " << locus_genotype_time()       << " seconds\n";
     if (use_seq_aligner_ && output_str_gts_){
       assert(seq_genotyper != NULL);
-      logger() << "\t" << " Left alignment        = "  << seq_genotyper->left_aln_time()   << " seconds\n"
+      logger() << "\t" << " Left alignment        = "  << locus_left_aln_time_             << " seconds\n"
 	       << "\t" << " Haplotype generation  = "  << seq_genotyper->hap_build_time()  << " seconds\n"
 	       << "\t" << " Haplotype alignment   = "  << seq_genotyper->hap_aln_time()    << " seconds\n"
 	       << "\t" << " Posterior computation = "  << seq_genotyper->posterior_time()  << " seconds\n"
 	       << "\t" << " Alignment traceback   = "  << seq_genotyper->aln_trace_time()  << " seconds\n"
 	       << "\t" << " Bootstrap computation = "  << seq_genotyper->bootstrap_time()  << " seconds\n";
 
-      process_timer_.add_time("Left alignment",        seq_genotyper->left_aln_time());
+      process_timer_.add_time("Left alignment",        locus_left_aln_time_);
       process_timer_.add_time("Haplotype generation",  seq_genotyper->hap_build_time());
       process_timer_.add_time("Haplotype alignment",   seq_genotyper->hap_aln_time());
       process_timer_.add_time("Posterior computation", seq_genotyper->posterior_time());

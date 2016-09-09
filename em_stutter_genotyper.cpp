@@ -327,7 +327,8 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
   return false;
 }
 
-bool EMStutterGenotyper::genotype(bool use_pop_freqs){
+bool EMStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger){
+  bool use_pop_freqs = false;
   if (stutter_model_ == NULL)
     printErrorAndDie("Must specify stutter model before running genotype()");
   recalc_log_sample_posteriors(use_pop_freqs);
@@ -445,7 +446,7 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
   }
 
   //VCF line format = CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE_1 SAMPLE_2 ... SAMPLE_N
-  out << chrom_ << "\t" << start_ << "\t" << ".";
+  out << region_->chrom() << "\t" << region_->start() << "\t" << ".";
 
   // Add reference allele and alternate alleles
   out << "\t" << get_allele(ref_allele, bps_per_allele_[0]) << "\t";
@@ -467,9 +468,9 @@ void EMStutterGenotyper::write_vcf_record(std::string& ref_allele, std::vector<s
       << "OUTFRAME_PGEOM="  << stutter_model_->get_parameter(false, 'P') << ";" 
       << "OUTFRAME_UP="     << stutter_model_->get_parameter(false, 'U') << ";" 
       << "OUTFRAME_DOWN="   << stutter_model_->get_parameter(false, 'D') << ";"
-      << "START="           << start_     << ";"
-      << "END="             << end_       << ";"
-      << "PERIOD="          << motif_len_ << ";";
+      << "START="           << region_->start()   << ";"
+      << "END="             << region_->stop()    << ";"
+      << "PERIOD="          << region_->period()  << ";";
 
   if (num_alleles_ > 1){
    out << "BPDIFFS=" << bps_per_allele_[1];

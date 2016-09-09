@@ -12,6 +12,7 @@
 #include "bamtools/include/api/BamAlignment.h"
 
 #include "base_quality.h"
+#include "genotyper.h"
 #include "read_pooler.h"
 #include "region.h"
 #include "stutter_model.h"
@@ -23,28 +24,15 @@
 #include "SeqAlignment/Haplotype.h"
 #include "SeqAlignment/HapBlock.h"
 
-class SeqStutterGenotyper{
+class SeqStutterGenotyper : public Genotyper {
  private:
-  // Locus information
-  Region* region_;
-
-  unsigned int num_reads_; // Total number of reads across all samples
-  int num_samples_;        // Total number of samples
-  int motif_len_;          // # bp in STR motif
-  int num_alleles_;        // Number of valid alleles
   int MAX_REF_FLANK_LEN;
-  double* log_p1_;                 // Log of SNP phasing likelihoods for each read
-  double* log_p2_;
-  int* sample_label_;              // Sample index for each read
-  int* pool_index_;                // Pool index for each read
   BaseQuality base_quality_;
   ReadPooler pooler_;
-
+  int* pool_index_;                               // Pool index for each read
   std::vector<int> bp_diffs_;                     // Base pair difference of each read from reference
-  std::vector< std::vector<Alignment> > alns_;    // Vector of left-aligned alignments
-  std::vector< std::vector<bool> > use_for_haps_; // True iff we should use the alignment for identifying candidate haplotypes
-  std::vector<std::string> sample_names_;         // List of sample names
-  std::map<std::string, int> sample_indices_;     // Mapping from sample name to index
+  std::vector<Alignment> alns_;                   // Vector of left-aligned alignments
+  std::vector<bool> use_for_haps_;                // True iff we should use the alignment for identifying candidate haplotypes
   std::vector<HapBlock*> hap_blocks_;             // Haplotype blocks
   Haplotype* haplotype_;                          // Potential STR haplotypes
   std::vector<bool> call_sample_;                 // True iff we should try to genotype the sample with the associated index
@@ -62,16 +50,6 @@ class SeqStutterGenotyper{
   // Iterates through reads and then alleles by their indices
   double* log_aln_probs_;
 
-  // Iterates through allele_1, allele_2 and then samples by their indices
-  double* log_sample_posteriors_; 
-
-  // Total log-likelihoods for each sample
-  double* sample_total_LLs_;
-  
-  // Iterates through allele_1, allele_2 and then samples by their indices
-  // Only used if per-allele priors have been specified for each sample
-  double* log_allele_priors_;
-
   // VCF containing STR and SNP genotypes for a reference panel
   VCF::VCFReader* ref_vcf_;
 
@@ -84,12 +62,8 @@ class SeqStutterGenotyper{
   // In an imputation-only setting, this should be set to false
   bool require_one_read_;
 
-  // True iff the underlying marker is haploid
-  bool haploid_;
-
   // Timing statistics (in seconds)
   double total_hap_build_time_;
-  double total_left_aln_time_;
   double total_hap_aln_time_;
   double total_posterior_time_;
   double total_aln_trace_time_;
@@ -123,10 +97,7 @@ class SeqStutterGenotyper{
   double calc_log_sample_posteriors(std::vector<int>& read_weights);
 
   // Set up the relevant data structures. Invoked by the constructor 
-  void init(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
-	    std::vector< std::vector<double> >& log_p1,
-	    std::vector< std::vector<double> >& log_p2,
-	    std::vector<std::string>& sample_names, StutterModel& stutter_model, std::string& chrom_seq, std::ostream& logger);
+  void init(StutterModel& stutter_model, std::string& chrom_seq, std::ostream& logger);
 
   // Extract the sequences for each allele and the VCF start position
   void get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles);
@@ -187,21 +158,17 @@ class SeqStutterGenotyper{
   static bool condense_read_count_fields;
 
   SeqStutterGenotyper(Region& region, bool haploid,
-		      std::vector< std::vector<BamTools::BamAlignment> >& alignments,
-		      std::vector< std::vector<double> >& log_p1, 
-		      std::vector< std::vector<double> >& log_p2, 
+		      std::vector<Alignment>& alignments, std::vector<bool>& use_to_generate_haps, std::vector<int>& bp_diffs,
+		      std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,
 		      std::vector<std::string>& sample_names, std::string& chrom_seq,
 		      bool pool_identical_seqs,
-		      StutterModel& stutter_model, VCF::VCFReader* ref_vcf, std::ostream& logger){
-    assert(alignments.size() == log_p1.size() && alignments.size() == log_p2.size() && alignments.size() == sample_names.size());
-    log_p1_                = NULL;
-    log_p2_                = NULL;
+		      StutterModel& stutter_model, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(region, haploid, sample_names, log_p1, log_p2){
+    assert(num_reads_ == alns_.size() && num_reads_ == bp_diffs_.size() && num_reads_ == use_for_haps_.size());
+    alns_                  = alignments;
+    bp_diffs_              = bp_diffs;
+    use_for_haps_          = use_to_generate_haps;
     seed_positions_        = NULL;
     log_aln_probs_         = NULL;
-    log_sample_posteriors_ = NULL;
-    sample_total_LLs_      = NULL;
-    log_allele_priors_     = NULL;
-    sample_label_          = NULL;
     pool_index_            = NULL;
     haplotype_             = NULL;
     second_mate_           = NULL;
@@ -209,15 +176,12 @@ class SeqStutterGenotyper{
     MAX_REF_FLANK_LEN      = 30;
     pos_                   = -1;
     pool_identical_seqs_   = pool_identical_seqs;
-    haploid_               = haploid;
-    total_hap_build_time_  = 0;
-    total_left_aln_time_   = 0;
-    total_hap_aln_time_    = 0;
-    total_aln_trace_time_  = 0;
-    total_posterior_time_  = 0;
-    total_bootstrap_time_  = 0;
+    total_hap_build_time_  = total_hap_aln_time_    = 0;
+    total_aln_trace_time_  = total_posterior_time_  = total_bootstrap_time_  = 0;
+    ref_vcf_               = ref_vcf;
+    alleles_from_bams_     = true;
 
-    require_one_read_ = true;
+    require_one_read_      = true;
     /* TO DO: Properly set this flag based on whether the VCF has the required FORMAT fields
     // True iff no allele priors are available (for imputation)
     if (ref_vcf == NULL)
@@ -226,26 +190,12 @@ class SeqStutterGenotyper{
       require_one_read_ = (ref_vcf->formatTypes.find(PGP_KEY) == ref_vcf->formatTypes.end());
     */
 
-    region_       = region.copy();
-    num_samples_  = alignments.size();
-    sample_names_ = sample_names;
-    for (unsigned int i = 0; i < sample_names.size(); i++)
-      sample_indices_.insert(std::pair<std::string,int>(sample_names[i], i));
-    ref_vcf_            = ref_vcf;
-    alleles_from_bams_  = true;
-    init(alignments, log_p1, log_p2, sample_names, stutter_model, chrom_seq, logger);
+    init(stutter_model, chrom_seq, logger);
   }
 
   ~SeqStutterGenotyper(){
-    delete region_;
-    delete [] log_p1_;
-    delete [] log_p2_;
-    delete [] sample_label_;
     delete [] seed_positions_;
     delete [] log_aln_probs_;
-    delete [] log_sample_posteriors_;
-    delete [] sample_total_LLs_;
-    delete [] log_allele_priors_;
     delete [] pool_index_;
     delete [] second_mate_;
     if (ref_vcf_ != NULL)
@@ -275,7 +225,7 @@ class SeqStutterGenotyper{
 
 
   double hap_build_time() { return total_hap_build_time_;  }
-  double left_aln_time()  { return total_left_aln_time_;   }
+  //double left_aln_time()  { return total_left_aln_time_;   }
   double hap_aln_time()   { return total_hap_aln_time_;    }
   double posterior_time() { return total_posterior_time_;  }
   double aln_trace_time() { return total_aln_trace_time_;  }

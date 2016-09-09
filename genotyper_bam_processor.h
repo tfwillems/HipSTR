@@ -2,6 +2,7 @@
 #define GENOTYPER_BAM_PROCESSOR_H_
 
 #include <fstream>
+#include <iostream>
 #include <map>
 #include <set>
 #include <string>
@@ -16,6 +17,8 @@
 #include "snp_bam_processor.h"
 #include "stutter_model.h"
 #include "vcf_reader.h"
+#include "SeqAlignment/AlignmentData.h"
+#include "SeqAlignment/AlignmentOps.h"
 #include "SeqAlignment/HTMLCreator.h"
 
 
@@ -63,6 +66,7 @@ private:
 
   // Timing statistics (in seconds)
   double total_stutter_time_,  locus_stutter_time_;
+  double total_left_aln_time_, locus_left_aln_time_;
   double total_genotype_time_, locus_genotype_time_;
 
   // True iff we should recalculate the stutter model after performing haplotype alignments
@@ -82,6 +86,13 @@ private:
 
   // If it is not null, this stutter model will be used for each locus
   StutterModel* def_stutter_model_;
+
+
+  void left_align_reads(Region& region, std::string& chrom_seq, std::vector< std::vector<BamTools::BamAlignment> >& alignments,
+			std::vector< std::vector<double> >& log_p1,       std::vector< std::vector<double> >& log_p2,
+			std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
+			std::vector< Alignment>& left_alns, std::vector<int>& bp_diffs, std::vector<bool>& use_for_hap_generation,
+			std::ostream& logger);
 
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups, bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
@@ -110,6 +121,8 @@ public:
     output_mall_reads_     = true;
     total_stutter_time_    = 0;
     locus_stutter_time_    = -1;
+    total_left_aln_time_   = 0;
+    locus_left_aln_time_   = -1;
     total_genotype_time_   = 0;
     locus_genotype_time_   = -1;
     max_flank_indel_frac_  = 1.0;
@@ -130,6 +143,8 @@ public:
 
   double total_stutter_time()  { return total_stutter_time_;  }
   double locus_stutter_time()  { return locus_stutter_time_;  }
+  double total_left_aln_time() { return total_left_aln_time_; }
+  double locus_left_aln_time() { return locus_left_aln_time_; }
   double total_genotype_time() { return total_genotype_time_; }
   double locus_genotype_time() { return locus_genotype_time_; }
 

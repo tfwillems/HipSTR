@@ -36,7 +36,7 @@ class AlignmentTrace {
   std::vector< std::pair<int32_t,int32_t> > flank_indel_data_;
 
  public:
-  AlignmentTrace(int num_haplotype_blocks){
+ AlignmentTrace(int num_haplotype_blocks): trace_vs_ref_("TRACE"){
     hap_aln_        = "";
     flank_ins_size_ = 0;
     flank_del_size_ = 0;

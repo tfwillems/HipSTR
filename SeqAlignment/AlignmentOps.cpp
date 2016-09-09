@@ -115,7 +115,7 @@ bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Align
     std::string base_qualities = alignment.Qualities.substr(num_head_sclips, read_seq.size()-num_head_sclips-num_back_sclips);
     std::string sequence       = uppercase(read_seq.substr(num_head_sclips, read_seq.size()-num_head_sclips-num_back_sclips));
     std::string alignment_seq  = uppercase(read_al.substr(num_head_sclips+num_lead, read_al.size()-num_head_sclips-num_lead-num_trail-num_back_sclips));
-    new_alignment = Alignment(start_position, end_position, base_qualities, sequence, alignment_seq);
+    new_alignment = Alignment(start_position, end_position, alignment.Name, base_qualities, sequence, alignment_seq);
 
     // Add CIGAR data while approriately trimming for clipped bases
     int head = num_head_sclips, tail = num_back_sclips;
@@ -293,7 +293,7 @@ void convertAlignment(BamTools::BamAlignment& alignment, std::string& ref_sequen
   std::string read_sequence = uppercase(alignment.QueryBases);
   int32_t seq_index = 0, ref_index = alignment.Position;
   std::stringstream aln_ss;
-  new_alignment = Alignment(alignment.Position, alignment.GetEndPosition()-1, alignment.Qualities, read_sequence, "");
+  new_alignment = Alignment(alignment.Position, alignment.GetEndPosition()-1, alignment.Name, alignment.Qualities, read_sequence, "");
   for (auto cigar_iter = alignment.CigarData.begin(); cigar_iter != alignment.CigarData.end(); cigar_iter++){
     int32_t cigar_index    = 0;
     char prev_cigar_type   = '=';
