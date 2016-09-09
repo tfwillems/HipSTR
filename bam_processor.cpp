@@ -468,44 +468,32 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 
   // Separate the reads based on their associated read groups
   std::map<std::string, int> rg_indices;
-  for (unsigned int i = 0; i < paired_str_alns.size(); ++i){
-    std::string rg = use_bam_rgs_ ? get_read_group(paired_str_alns[i], rg_to_sample): rg_to_sample[paired_str_alns[i].Filename];
+  for (unsigned int type = 0; type < 2; ++type){
+    std::vector<BamTools::BamAlignment>& aln_src  = (type == 0 ? paired_str_alns : unpaired_str_alns);
+    for (unsigned int i = 0; i < aln_src.size(); ++i){
+      std::string rg = use_bam_rgs_ ? get_read_group(aln_src[i], rg_to_sample): rg_to_sample[aln_src[i].Filename];
+      int rg_index;
+      auto index_iter = rg_indices.find(rg);
+      if (index_iter == rg_indices.end()){
+	rg_index = rg_indices.size();
+	rg_indices[rg] = rg_index;
+	rg_names.push_back(rg);
+	paired_strs_by_rg.push_back(std::vector<BamTools::BamAlignment>());
+	unpaired_strs_by_rg.push_back(std::vector<BamTools::BamAlignment>());
+	mate_pairs_by_rg.push_back(std::vector<BamTools::BamAlignment>());
+      }
+      else
+	rg_index = index_iter->second;
 
-    int rg_index;
-    auto index_iter = rg_indices.find(rg);
-    if (index_iter == rg_indices.end()){
-      rg_index = rg_indices.size();
-      rg_indices[rg] = rg_index;
-      rg_names.push_back(rg);
-      paired_strs_by_rg.push_back(std::vector<BamTools::BamAlignment>());
-      unpaired_strs_by_rg.push_back(std::vector<BamTools::BamAlignment>());
-      mate_pairs_by_rg.push_back(std::vector<BamTools::BamAlignment>());
+      // Record STR read and its mate pair
+      if (type == 0){
+	paired_strs_by_rg[rg_index].push_back(aln_src[i]);
+	mate_pairs_by_rg[rg_index].push_back(mate_alns[i]);
+      }
+      // Record unpaired STR read
+      else
+	unpaired_strs_by_rg[rg_index].push_back(aln_src[i]);
     }
-    else
-      rg_index = index_iter->second;
-
-    // Record STR read and its mate pair
-    paired_strs_by_rg[rg_index].push_back(paired_str_alns[i]);
-    mate_pairs_by_rg[rg_index].push_back(mate_alns[i]);
-  }
-  for (unsigned int i = 0; i < unpaired_str_alns.size(); ++i){
-    std::string rg = use_bam_rgs_ ? get_read_group(unpaired_str_alns[i], rg_to_sample): rg_to_sample[unpaired_str_alns[i].Filename];
-
-    int rg_index;
-    auto index_iter = rg_indices.find(rg);
-    if (index_iter == rg_indices.end()){
-      rg_index = rg_indices.size();
-      rg_indices[rg] = rg_index;
-      rg_names.push_back(rg);
-      paired_strs_by_rg.push_back(std::vector<BamTools::BamAlignment>());
-      unpaired_strs_by_rg.push_back(std::vector<BamTools::BamAlignment>());
-      mate_pairs_by_rg.push_back(std::vector<BamTools::BamAlignment>());
-    }
-    else
-      rg_index = index_iter->second;
-
-    // Record unpaired STR read
-    unpaired_strs_by_rg[rg_index].push_back(unpaired_str_alns[i]);
   }
 
   locus_read_filter_time_  = (clock() - locus_read_filter_time_)/CLOCKS_PER_SEC;
