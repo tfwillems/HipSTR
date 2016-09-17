@@ -22,8 +22,14 @@ class EMStutterGenotyper: public Genotyper {
   std::vector<int> reads_per_sample_; // Number of reads for each sample
   double* log_gt_priors_;
 
+  bool use_pop_freqs_;
+
   // Iterates through allele_1, allele_2, and then reads and phases 1 or 2 by their indices
   double* log_read_phase_posteriors_; 
+
+  void calc_hap_aln_probs(double* log_aln_probs);
+
+  void init_log_sample_priors(double* log_sample_ptr);
   
   // Initialization functions for the EM algorithm
   void init_log_gt_priors();
@@ -34,7 +40,6 @@ class EMStutterGenotyper: public Genotyper {
   void recalc_stutter_model();
   
   // Functions for the E step of the EM algorithm
-  double recalc_log_sample_posteriors(bool use_pop_freqs);  
   void recalc_log_read_phase_posteriors();
 
   std::string get_allele(std::string& ref_allele, int bp_diff);
@@ -44,9 +49,10 @@ class EMStutterGenotyper: public Genotyper {
 		    std::vector< std::vector<int> >& num_bps,
 		    std::vector< std::vector<double> >& log_p1,
 		    std::vector< std::vector<double> >& log_p2,
-		    std::vector<std::string>& sample_names, int ref_allele): Genotyper(region, haploid, sample_names, log_p1, log_p2){
+		    std::vector<std::string>& sample_names, int ref_allele): Genotyper(region, haploid, true, sample_names, log_p1, log_p2){
     assert(num_bps.size() == log_p1.size() && num_bps.size() == log_p2.size() && num_bps.size() == sample_names.size());
-    motif_len_ = region_->period();
+    motif_len_     = region_->period();
+    use_pop_freqs_ = false;
 
     // Compute the set of allele sizes
     std::set<int> allele_sizes;
@@ -77,6 +83,7 @@ class EMStutterGenotyper: public Genotyper {
     log_gt_priors_             = new double[num_alleles_]; 
     log_sample_posteriors_     = new double[num_alleles_*num_alleles_*num_samples_]; 
     log_read_phase_posteriors_ = new double[num_alleles_*num_alleles_*num_reads_*2]; 
+    log_aln_probs_             = new double[num_reads_*num_alleles_];
 
     // Iterate through all reads and store the relevant information
     unsigned int read_index = 0;

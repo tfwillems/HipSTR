@@ -164,100 +164,29 @@ void EMStutterGenotyper::recalc_stutter_model(){
   stutter_model_ = new StutterModel(in_pgeom_hat, in_pup_hat, in_pdown_hat, out_pgeom_hat, out_pup_hat, out_pdown_hat, motif_len_);
 }
 
-/*
-  Returns the total log-likelihood given the current stutter model
- */
-double EMStutterGenotyper::recalc_log_sample_posteriors(bool use_pop_freqs){
-  std::vector<double> sample_max_LLs(num_samples_, -DBL_MAX);
-  double* LL_ptr = log_sample_posteriors_;
+void EMStutterGenotyper::init_log_sample_priors(double* log_sample_ptr){
+  // Initialize using the standard Genotyper approach
+  Genotyper::init_log_sample_priors(log_sample_ptr);
 
-  if (use_pop_freqs){
-    // If per-allele priors have been set for each sample, use them
-    // Otherwise we'll set them in the for loop below on a per-allele basis
-    if (log_allele_priors_ != NULL)
-      std::memcpy(log_sample_posteriors_, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
-  }
-  else {
-    if (!haploid_){
-      // Each genotype has an equal total prior, but heterozygotes have two possible phasings. Therefore,
-      // i)   Phased heterozygotes have a prior of 1/(n(n+1))
-      // ii)  Homozygotes have a prior of 2/(n(n+1))
-      // iii) Total prior is n*2/(n(n+1)) + n(n-1)*1/(n(n+1)) = 2/(n+1) + (n-1)/(n+1) = 1
-
-      // Set all elements to het prior
-      double log_hetz_prior = -int_log(num_alleles_) - int_log(num_alleles_+1);
-      std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), log_hetz_prior);
-
-      // Fix homozygotes
-      double log_homoz_prior = int_log(2) - int_log(num_alleles_) - int_log(num_alleles_+1);
-      for (unsigned int i = 0; i < num_alleles_; i++){
-	double* LL_ptr = log_sample_posteriors_ + i*num_alleles_*num_samples_ + i*num_samples_;
-	std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
-      }
-    }
-    else {
-      // Set all elements to impossible
-      std::fill(log_sample_posteriors_, log_sample_posteriors_+(num_alleles_*num_alleles_*num_samples_), -DBL_MAX/2);
-
-      // Fix homozygotes using a uniform prior
-      double log_homoz_prior = -int_log(num_alleles_);
-      for (unsigned int i = 0; i < num_alleles_; i++){
-        double* LL_ptr = log_sample_posteriors_ + i*num_alleles_*num_samples_ + i*num_samples_;
-	std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
-      }
-    }
-  }
-
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-    int len_1 = bps_per_allele_[index_1];
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-      int len_2 = bps_per_allele_[index_2];
-      if (use_pop_freqs && log_allele_priors_ == NULL) {
+  // If we're using priors based on allele frequencies, we need to reinitialize the values
+  if (use_pop_freqs_ && log_allele_priors_ == NULL){
+    double* LL_ptr = log_sample_ptr;
+    for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
+      for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
 	if (!haploid_)
 	  std::fill(LL_ptr, LL_ptr+num_samples_, log_gt_priors_[index_1]+log_gt_priors_[index_2]); // Initialize LL's with log genotype priors
-	else {
-	  // In haploid mode, homoz prior is just the current allele frequency while hetz genotypes are disallowed
-	  std::fill(LL_ptr, LL_ptr+num_samples_, (index_1 == index_2 ? log_gt_priors_[index_1] : -DBL_MAX/2));
-	}
+	else
+	  std::fill(LL_ptr, LL_ptr+num_samples_, (index_1 == index_2 ? log_gt_priors_[index_1] : -DBL_MAX/2)); // Homoz prior is the allele frequency while hetz genotypes are disallowed
+	LL_ptr += num_samples_;
       }
-
-      for (int read_index = 0; read_index < num_reads_; ++read_index){
-	LL_ptr[sample_label_[read_index]] += std::min(0.0,
-						      fast_log_sum_exp(
-						       LOG_ONE_HALF + log_p1_[read_index]+stutter_model_->log_stutter_pmf(len_1, bps_per_allele_[allele_index_[read_index]]),
-						       LOG_ONE_HALF + log_p2_[read_index]+stutter_model_->log_stutter_pmf(len_2, bps_per_allele_[allele_index_[read_index]])));
-	assert(LL_ptr[sample_label_[read_index]] <= TOLERANCE);
-      }
-      // Update the per-sample maximum LLs
-      for (int sample_index = 0; sample_index < num_samples_; ++sample_index)
-	sample_max_LLs[sample_index] = std::max(sample_max_LLs[sample_index], LL_ptr[sample_index]);
-
-      LL_ptr += num_samples_;
     }
   }
+}
 
-  // Compute the normalizing factor for each sample using logsumexp trick
-  std::fill(sample_total_LLs_, sample_total_LLs_ + num_samples_, 0.0);
-  LL_ptr = log_sample_posteriors_;
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2)
-      for (int sample_index = 0; sample_index < num_samples_; ++sample_index, ++LL_ptr)
-	sample_total_LLs_[sample_index] += exp(*LL_ptr - sample_max_LLs[sample_index]);
-  for (int sample_index = 0; sample_index < num_samples_; ++sample_index){
-    sample_total_LLs_[sample_index] = sample_max_LLs[sample_index] + log(sample_total_LLs_[sample_index]);    
-    assert(sample_total_LLs_[sample_index] <= TOLERANCE);
-  }
-  // Compute the total log-likelihood given the current parameters
-  double total_LL = sum(sample_total_LLs_, sample_total_LLs_ + num_samples_);
-
-  // Normalize each genotype LL to generate valid log posteriors
-  LL_ptr = log_sample_posteriors_;
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
-    for(int index_2 = 0; index_2 < num_alleles_; ++index_2)
-      for (int sample_index = 0; sample_index < num_samples_; ++sample_index, ++LL_ptr)
-	*LL_ptr -= sample_total_LLs_[sample_index];
-
-  return total_LL;
+void EMStutterGenotyper::calc_hap_aln_probs(double* log_aln_probs){
+  for (int read_index = 0; read_index < num_reads_; ++read_index)
+    for (int allele_id = 0; allele_id < num_alleles_; ++allele_id, ++log_aln_probs)
+      *log_aln_probs = stutter_model_->log_stutter_pmf(bps_per_allele_[allele_id], bps_per_allele_[allele_index_[read_index]]);
 }
 
 void EMStutterGenotyper::recalc_log_read_phase_posteriors(){
@@ -287,10 +216,12 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
   int num_iter   = 1;
   bool converged = false;
   double LL      = -DBL_MAX;
+  use_pop_freqs_ = true;
 
   while (num_iter <= max_iter && !converged){
     // E-step
-    double new_LL = recalc_log_sample_posteriors(true);
+    calc_hap_aln_probs(log_aln_probs_);
+    double new_LL = calc_log_sample_posteriors();
     recalc_log_read_phase_posteriors();
     if (disp_stats){
       logger << "Iteration " << num_iter << ": LL = " << new_LL << "\n" << *stutter_model_;
@@ -327,11 +258,18 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
   return false;
 }
 
+
+// ***** TO DO: Old posterior calcs used fast-log-sum-exp. New generalized one will not. Need to either reimplement base class methods
+// or observe how timing affects things
+
+// *****
+
 bool EMStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger){
-  bool use_pop_freqs = false;
+  use_pop_freqs_ = false;
   if (stutter_model_ == NULL)
     printErrorAndDie("Must specify stutter model before running genotype()");
-  recalc_log_sample_posteriors(use_pop_freqs);
+  calc_hap_aln_probs(log_aln_probs_);
+  calc_log_sample_posteriors();
   recalc_log_read_phase_posteriors();
   return true;
 }

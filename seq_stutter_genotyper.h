@@ -47,9 +47,6 @@ class SeqStutterGenotyper : public Genotyper {
   // -1 denotes that no seed position was determined for the read
   int* seed_positions_;
 
-  // Iterates through reads and then alleles by their indices
-  double* log_aln_probs_;
-
   // VCF containing STR and SNP genotypes for a reference panel
   VCF::VCFReader* ref_vcf_;
 
@@ -65,7 +62,6 @@ class SeqStutterGenotyper : public Genotyper {
   // Timing statistics (in seconds)
   double total_hap_build_time_;
   double total_hap_aln_time_;
-  double total_posterior_time_;
   double total_aln_trace_time_;
   double total_bootstrap_time_;
 
@@ -75,26 +71,8 @@ class SeqStutterGenotyper : public Genotyper {
   // True iff both the indexed read and its mate overlap the STR and the current read's index is greater
   bool* second_mate_;
 
-  // Read weights used to calculate posteriors (See calc_log_sample_posteriors function)
-  // Used to account for special cases in which both reads in a pair overlap the STR by setting
-  // the weight for the second read to zero. Elsewhere, the alignments probabilities for the two reads are summed
-  std::vector<int> read_weights_;
-
   /* Compute the alignment probabilites between each read and each haplotype */
   double calc_align_probs();
-
-  /* Returns the log-prior for homozygous genotypes, while accounting for the number of alleles and the ploidy */
-  double log_homozygous_prior();
-
-  /* Returns the log-prior for heterozygous genotypes, while accounting for the number of alleles and the ploidy */
-  double log_heterozygous_prior();
-
-  /* Initialize the priors required for computed sample genotype posteriors */
-  void init_log_sample_priors(double* log_sample_ptr);
-
-  /* Compute the posteriors for each sample using the haplotype probabilites, stutter model and read weights */
-  double calc_log_sample_posteriors();  
-  double calc_log_sample_posteriors(std::vector<int>& read_weights);
 
   // Set up the relevant data structures. Invoked by the constructor 
   void init(StutterModel& stutter_model, std::string& chrom_seq, std::ostream& logger);
@@ -112,9 +90,6 @@ class SeqStutterGenotyper : public Genotyper {
   // Designed to remove alleles who aren't the MAP genotype of any samples
   // However, it does not modify any of the haplotype-related data structures
   void remove_alleles(std::vector<int>& allele_indices);
-
-  // Determine the genotype associated with each sample based on the current genotype posteriors
-  void get_optimal_genotypes(double* log_posterior_ptr, std::vector< std::pair<int, int> >& gts);
 
   // Compute bootstrapped quality scores by resampling reads and determining how frequently
   // the genotypes match the ML genotype
@@ -153,12 +128,11 @@ class SeqStutterGenotyper : public Genotyper {
 		      std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,
 		      std::vector<std::string>& sample_names, std::string& chrom_seq,
 		      bool pool_identical_seqs,
-		      StutterModel& stutter_model, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(region, haploid, sample_names, log_p1, log_p2){
+		      StutterModel& stutter_model, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(region, haploid, false, sample_names, log_p1, log_p2){
     alns_                  = alignments;
     bp_diffs_              = bp_diffs;
     use_for_haps_          = use_to_generate_haps;
     seed_positions_        = NULL;
-    log_aln_probs_         = NULL;
     pool_index_            = NULL;
     haplotype_             = NULL;
     second_mate_           = NULL;
@@ -167,7 +141,7 @@ class SeqStutterGenotyper : public Genotyper {
     pos_                   = -1;
     pool_identical_seqs_   = pool_identical_seqs;
     total_hap_build_time_  = total_hap_aln_time_    = 0;
-    total_aln_trace_time_  = total_posterior_time_  = total_bootstrap_time_  = 0;
+    total_aln_trace_time_  = total_bootstrap_time_  = 0;
     ref_vcf_               = ref_vcf;
     alleles_from_bams_     = true;
 
@@ -185,17 +159,14 @@ class SeqStutterGenotyper : public Genotyper {
 
   ~SeqStutterGenotyper(){
     delete [] seed_positions_;
-    delete [] log_aln_probs_;
     delete [] pool_index_;
     delete [] second_mate_;
     if (ref_vcf_ != NULL)
       delete ref_vcf_;
     for (auto trace_iter = trace_cache_.begin(); trace_iter != trace_cache_.end(); trace_iter++)
       delete trace_iter->second;
-    trace_cache_.clear();
     for (unsigned int i = 0; i < hap_blocks_.size(); i++)
       delete hap_blocks_[i];
-    hap_blocks_.clear();
     delete haplotype_;
   }
   
@@ -215,9 +186,7 @@ class SeqStutterGenotyper : public Genotyper {
 
 
   double hap_build_time() { return total_hap_build_time_;  }
-  //double left_aln_time()  { return total_left_aln_time_;   }
   double hap_aln_time()   { return total_hap_aln_time_;    }
-  double posterior_time() { return total_posterior_time_;  }
   double aln_trace_time() { return total_aln_trace_time_;  }
   double bootstrap_time() { return total_bootstrap_time_;  }
 
