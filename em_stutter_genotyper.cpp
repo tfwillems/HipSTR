@@ -258,12 +258,6 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
   return false;
 }
 
-
-// ***** TO DO: Old posterior calcs used fast-log-sum-exp. New generalized one will not. Need to either reimplement base class methods
-// or observe how timing affects things
-
-// *****
-
 bool EMStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger){
   use_pop_freqs_ = false;
   if (stutter_model_ == NULL)
