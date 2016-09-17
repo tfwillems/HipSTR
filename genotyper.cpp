@@ -1,11 +1,9 @@
 #include <assert.h>
 #include <cfloat>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstring>
 #include <time.h>
 
 #include <algorithm>
-#include <string>
 
 #include "genotyper.h"
 #include "mathops.h"
