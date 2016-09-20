@@ -31,7 +31,9 @@ class SeqStutterGenotyper : public Genotyper {
   ReadPooler pooler_;
   int* pool_index_;                               // Pool index for each read
   std::vector<int> bp_diffs_;                     // Base pair difference of each read from reference
-  std::vector<Alignment> alns_;                   // Vector of left-aligned alignments
+
+  typedef std::vector<Alignment> AlnList;
+  AlnList alns_;                                  // Vector of left-aligned alignments
   std::vector<bool> use_for_haps_;                // True iff we should use the alignment for identifying candidate haplotypes
   std::vector<HapBlock*> hap_blocks_;             // Haplotype blocks
   Haplotype* haplotype_;                          // Potential STR haplotypes

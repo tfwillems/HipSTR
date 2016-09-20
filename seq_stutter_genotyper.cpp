@@ -241,7 +241,7 @@ void SeqStutterGenotyper::init(StutterModel& stutter_model, std::string& chrom_s
     logger << "Generating putative haplotypes..." << std::endl;
 
     // Select only those alignments marked as good for haplotype generation
-    std::vector< std::vector<Alignment> > gen_hap_alns(num_samples_);
+    std::vector<AlnList> gen_hap_alns(num_samples_);
     for (unsigned int read_index = 0; read_index < num_reads_; read_index++)
       if (use_for_haps_[read_index])
 	gen_hap_alns[sample_label_[read_index]].push_back(alns_[read_index]);
@@ -285,7 +285,7 @@ void SeqStutterGenotyper::calc_hap_aln_probs(Haplotype* haplotype, double* log_a
 
   if (pool_identical_seqs_){
     // Align each pooled read to each haplotype
-    std::vector<Alignment>& pooled_alns = pooler_.get_alignments();
+    AlnList& pooled_alns = pooler_.get_alignments();
     double* log_pool_aln_probs = new double[pooled_alns.size()*num_alleles];
     int* pool_seed_positions   = new int[pooled_alns.size()];
     hap_aligner.process_reads(pooled_alns, 0, &base_quality_, log_pool_aln_probs, pool_seed_positions);
@@ -924,9 +924,8 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector<int> num_reads_strand_one(num_samples_, 0), num_reads_strand_two(num_samples_, 0);
   std::vector< std::vector<int> > bps_per_sample(num_samples_), ml_bps_per_sample(num_samples_);
   std::vector< std::vector<double> > log_read_phases(num_samples_), posterior_bps_per_sample(num_samples_);
-  std::vector< std::vector<Alignment> > max_LL_alns_strand_one(num_samples_), max_LL_alns_strand_two(num_samples_);
-  std::vector< std::vector<Alignment> > left_alns_strand_one(num_samples_), left_alns_strand_two(num_samples_);
-  std::vector< std::vector<Alignment> > orig_alns_strand_one(num_samples_), orig_alns_strand_two(num_samples_);
+  std::vector<AlnList> max_LL_alns_strand_one(num_samples_), left_alns_strand_one(num_samples_), orig_alns_strand_one(num_samples_);
+  std::vector<AlnList> max_LL_alns_strand_two(num_samples_), left_alns_strand_two(num_samples_), orig_alns_strand_two(num_samples_);
 
   HapAligner hap_aligner(haplotype_);
   double* read_LL_ptr = log_aln_probs_;
@@ -1254,29 +1253,17 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   // Render HTML of Smith-Waterman alignments (or haplotype alignments)
   if (output_viz){
     // Combine alignments from both strands after ordering them by position independently
-    std::vector< std::vector<Alignment> > max_LL_alns(num_samples_);
-    for (unsigned int i = 0; i < max_LL_alns_strand_one.size(); i++){
-      std::sort(orig_alns_strand_one[i].begin(),  orig_alns_strand_one[i].end());
-      std::sort(orig_alns_strand_two[i].begin(),  orig_alns_strand_two[i].end());
-      std::sort(left_alns_strand_one[i].begin(),  left_alns_strand_one[i].end());
-      std::sort(left_alns_strand_two[i].begin(),  left_alns_strand_two[i].end());
-      std::sort(max_LL_alns_strand_one[i].begin(), max_LL_alns_strand_one[i].end());
-      std::sort(max_LL_alns_strand_two[i].begin(), max_LL_alns_strand_two[i].end());
-
-      max_LL_alns[i].insert(max_LL_alns[i].end(), orig_alns_strand_one[i].begin(), orig_alns_strand_one[i].end());
-      orig_alns_strand_one[i].clear();
-      max_LL_alns[i].insert(max_LL_alns[i].end(), orig_alns_strand_two[i].begin(), orig_alns_strand_two[i].end());
-      orig_alns_strand_two[i].clear();
-
-      max_LL_alns[i].insert(max_LL_alns[i].end(), left_alns_strand_one[i].begin(), left_alns_strand_one[i].end());
-      left_alns_strand_one[i].clear();
-      max_LL_alns[i].insert(max_LL_alns[i].end(), left_alns_strand_two[i].begin(), left_alns_strand_two[i].end());
-      left_alns_strand_two[i].clear();
-
-      max_LL_alns[i].insert(max_LL_alns[i].end(), max_LL_alns_strand_one[i].begin(), max_LL_alns_strand_one[i].end());
-      max_LL_alns_strand_one[i].clear();
-      max_LL_alns[i].insert(max_LL_alns[i].end(), max_LL_alns_strand_two[i].begin(), max_LL_alns_strand_two[i].end());
-      max_LL_alns_strand_two[i].clear();
+    std::vector<AlnList> max_LL_alns(num_samples_);
+    for (unsigned int i = 0; i < num_samples_; i++){
+      for (unsigned int j = 0; j < 3; j++){
+	AlnList& aln_ref_one = (j == 0 ? orig_alns_strand_one[i] : (j == 1 ? left_alns_strand_one[i] : max_LL_alns_strand_one[i]));
+	AlnList& aln_ref_two = (j == 0 ? orig_alns_strand_two[i] : (j == 1 ? left_alns_strand_two[i] : max_LL_alns_strand_two[i]));
+	std::sort(aln_ref_one.begin(), aln_ref_one.end());
+	std::sort(aln_ref_two.begin(), aln_ref_two.end());
+	max_LL_alns[i].insert(max_LL_alns[i].end(), aln_ref_one.begin(), aln_ref_one.end());
+	max_LL_alns[i].insert(max_LL_alns[i].end(), aln_ref_two.begin(), aln_ref_two.end());
+	aln_ref_one.clear(); aln_ref_two.clear();
+      }
     }
 
     std::stringstream locus_info;
@@ -1346,14 +1333,7 @@ void SeqStutterGenotyper::compute_bootstrap_qualities(int num_iter, std::vector<
   std::vector<int> ML_gt_counts(num_samples_, 0);
   std::uniform_int_distribution<int> unif_dist;
   std::default_random_engine gen;
-  double log_homoz_prior, log_hetz_prior;
-  if (haploid_)
-    log_homoz_prior = -int_log(num_alleles_);
-  else {
-    log_hetz_prior  = -int_log(num_alleles_) - int_log(num_alleles_+1);
-    log_homoz_prior = int_log(2) - int_log(num_alleles_) - int_log(num_alleles_+1);
-  }
-
+  double log_homoz_prior = log_homozygous_prior(), log_hetz_prior = log_heterozygous_prior();
   for (unsigned int i = 0; i < num_samples_; i++){
     int num_sample_reads = reads_by_sample[i].size();
 
