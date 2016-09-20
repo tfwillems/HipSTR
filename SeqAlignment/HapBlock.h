@@ -134,6 +134,17 @@ class HapBlock {
     printErrorAndDie("Sequence not contained in haplotype block");
     return -1;
   }
+
+  HapBlock* remove_alleles(std::vector<int>& allele_indices){
+    std::set<int> bad_alleles(allele_indices.begin(), allele_indices.end());
+    assert(bad_alleles.find(0) == bad_alleles.end());
+
+    HapBlock* new_block = new HapBlock(start_, end_, ref_seq_);
+    for (unsigned int i = 0; i < alt_seqs_.size(); i++)
+      if (bad_alleles.find(i+1) == bad_alleles.end())
+        new_block->add_alternate(alt_seqs_[i]);
+    return new_block;
+  }
 };
 
 #endif
