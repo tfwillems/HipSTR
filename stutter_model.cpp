@@ -52,41 +52,6 @@ double StutterModel::log_stutter_pmf(int sample_bps, int read_bps){
   return log_pmf;
 }
 
-
-/*
-  Returns the read's log-likelihood given that it contains at least the provided number of base pairs
-*/
-double StutterModel::log_stutter_geq(int sample_bps, int min_read_bps){
-  std::vector<double> log_probs;
-  int min_bp_diff = min_read_bps - sample_bps;
-  
-  // Incorporate all potential in-frame stutters
-  int next_rep_diff = (min_bp_diff < 0 || min_bp_diff % motif_len_ == 0 ? min_bp_diff/motif_len_:  1 + min_bp_diff/motif_len_);
-  if (next_rep_diff < 0){
-    log_probs.push_back(in_log_down_ + log_geom_leq(in_geom_, -next_rep_diff));
-    log_probs.push_back(log_equal_);
-    log_probs.push_back(in_log_up_);    
-  }
-  else if (next_rep_diff == 0){
-    log_probs.push_back(log_equal_);
-    log_probs.push_back(in_log_up_);
-  }
-  else
-    log_probs.push_back(in_log_up_ + log_geom_geq(in_geom_, next_rep_diff));
-  
-  // Incorporate all potential out-of-frame stutters
-  int next_outframe_diff = min_bp_diff + (min_bp_diff % motif_len_ == 0);
-  int eff_diff = next_outframe_diff - (next_outframe_diff/motif_len_);
-  if (eff_diff < 0){
-    log_probs.push_back(out_log_down_ + log_geom_leq(out_geom_, -eff_diff));
-    log_probs.push_back(out_log_up_);
-  }
-  else
-    log_probs.push_back(out_log_up_ + log_geom_geq(out_geom_, eff_diff));
-  
-  return log_sum_exp(log_probs);
-}
-
 void StutterModel::write(std::ostream& output){
   output << in_geom_  << "\t" << in_down_  << "\t" << in_up_  << "\t" 
 	 << out_geom_ << "\t" << out_down_ << "\t" << out_up_ << "\t" << motif_len_ << std::endl;

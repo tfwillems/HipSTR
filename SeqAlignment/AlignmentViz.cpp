@@ -44,90 +44,6 @@ void getMaxInsertionSizes(std::vector<Alignment>& alignments,
   }
 }
 
-void overlayHaplotypeRegions(std::vector<HapBlock*> blocks,
-			     std::map<int32_t,int>& max_insertions,
-			     int32_t min_start,
-			     std::vector<std::string>& results){
-  int max_num_seqs = 0;
-  for (unsigned int i = 0; i < blocks.size(); i++)
-    max_num_seqs = std::max(max_num_seqs, blocks[i]->num_options());
-
-  std::vector<int> max_reg_sizes;
-  std::map<int32_t,int>::iterator insertion_iter = max_insertions.begin();
-  for (unsigned int i = 0; i < blocks.size(); i++){
-    // Skip reference-only haplotype blocks
-    if (blocks[i]->num_options() == 1){
-      max_reg_sizes.push_back(-1);
-      continue;
-    }
-
-    while (insertion_iter->first < blocks[i]->start())
-      insertion_iter++;
-    int size = blocks[i]->end()-blocks[i]->start();
-
-    while(insertion_iter->first <= blocks[i]->end()){
-      size += insertion_iter->second;
-      insertion_iter++;
-    }
-    max_reg_sizes.push_back(size);
-  }
-
-  // Create N rows, where N is the maximum number of sequences across all regions
-  for (int n = 0; n < max_num_seqs; n++){
-    std::cerr << n << std::endl;
-
-    std::stringstream result;
-    int32_t position = min_start;
-    int block_index  = 0;
-    std::map<int32_t,int>::iterator insertion_iter = max_insertions.begin();
-    for (std::vector<HapBlock*>::iterator block_iter = blocks.begin(); block_iter != blocks.end(); block_iter++){
-      // Skip haplotype blocks that only have 1 potential sequence (stretch of reference sequence)
-      if ((*block_iter)->num_options() == 1){
-	block_index++;
-	continue;
-      }
-
-      // Spaces before/between regions
-      std::cerr << "Start position" << std::endl;
-      for (int32_t i = position; i < (*block_iter)->start(); i++){
-	if (insertion_iter != max_insertions.end() && (i == insertion_iter->first)){
-	  for (int j = 0; j < insertion_iter->second; j++)
-	    result << SPACE_CHAR;
-	  insertion_iter++;
-	}
-	result << SPACE_CHAR;
-      }
-      std::cerr << "End position" << std::endl;
-      
-      // Write region sequence
-      if (n < blocks[block_index]->num_options())
-	result << blocks[block_index]->get_seq(n);
-      
-      // Right pad region with spaces for non-maximal length sequences
-      if (n < blocks[block_index]->num_options())
-	for (int i = 0; i < max_reg_sizes[block_index]-blocks[block_index]->get_seq(n).size(); i++)
-	  result << NOT_APP_CHAR;
-      else
-	for (int i = 0; i < max_reg_sizes[block_index]; i++)
-	  result << SPACE_CHAR;
-      
-      // Discard insertions within region
-      if ((*block_iter)->start() == (*block_iter)->end())
-	while(insertion_iter != max_insertions.end() && insertion_iter->first <= (*block_iter)->end())
-	  insertion_iter++;
-      else
-	while (insertion_iter != max_insertions.end() && insertion_iter->first < (*block_iter)->end())
-	  insertion_iter++;
-      
-      // Update variables for next iteration
-      position = (*block_iter)->end();
-      block_index++;
-    }
-    results.push_back(result.str());
-  }
-  std::cerr << "Done" << std::endl;
-}
-
 void overlayAlignments(std::vector<Alignment>& alignments, 
 		       std::map<int32_t,int>& max_insertions, 
 		       std::vector<std::string>& results, 
@@ -309,18 +225,8 @@ void visualizeAlignments(std::vector< std::vector<Alignment> >& alns, std::vecto
   std::string ref_alignment = arrangeReferenceString(chrom_seq, max_insertions, locus_id, 
 						     hap_blocks[1]->start(), hap_blocks[1]->end(), min_start, max_stop,
 						     draw_locus_id, output);
-  /*
-  // Arrange haplotype blocks
-  std::vector<std::string> hap_results;
-  overlayHaplotypeRegions(hap_blocks, max_insertions, min_start, hap_results);
-  std::vector<std::string> hap_samples;
-  for (int i = 0; i < hap_results.size(); i++)
-    hap_samples.push_back("Blocks");
-  return;
-  */
-    
+
   // Write to HTML
-  //writeAlignmentStrings(ref_alignment, output, locus_id, hap_results,   hap_samples,  sample_info, false);
   writeAlignmentStrings(ref_alignment, output, locus_id, align_results, alignment_samples, sample_info, true);
   output << locus_id << "\t" << "ALL" << "\t"
 	 << "\t</table> "

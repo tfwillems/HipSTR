@@ -82,12 +82,6 @@ class BaseQuality {
     return sum;
   }
 
-  char closest_char(double log_prob_e){
-    int index = (int)floor(-10*(log_prob_e+LOG_3)/LOG_10);
-    assert(index >= 0 && index <= MAX_QUAL_INDEX);
-    return index + MIN_BASE_QUALITY;
-  }
-
   std::string median_base_qualities(const std::vector<const std::string*>& qualities);
 
   void deduce_quality_encodings(BamTools::BamMultiReader& reader);

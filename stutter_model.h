@@ -29,9 +29,6 @@ class StutterModel {
   
   int motif_len_;
 
-  inline double log_geom_geq(double p, int n){ return (n-1)*log(1-p);    }
-  inline double log_geom_leq(double p, int n){ return log(1-pow(1-p,n)); }
-
  public:
   StutterModel(double inframe_geom,  double inframe_up,  double inframe_down, 
 	       double outframe_geom, double outframe_up, double outframe_down, int motif_len){
@@ -69,8 +66,6 @@ class StutterModel {
   double get_parameter(bool in_frame, char parameter);
 
   double log_stutter_pmf(int sample_bps, int read_bps);
-
-  double log_stutter_geq(int sample_bps, int min_read_bps);
 
   int period(){ return motif_len_; }
   void set_period(int period){ motif_len_ = period; }
