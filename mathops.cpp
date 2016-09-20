@@ -83,3 +83,17 @@ double expected_value(std::vector<double>& log_likelihoods, std::vector<int>& va
     total += exp(log_likelihoods[i]-total_LL)*vals[i];
   return total;
 }
+
+void update_streaming_log_sum_exp(double log_val, double& max_val, double& total){
+  if (log_val <= max_val)
+    total += fasterexp(log_val - max_val);
+  else {
+    total  *= fasterexp(max_val-log_val);
+    total  += 1.0;
+    max_val = log_val;
+  }
+}
+
+double finish_streaming_log_sum_exp(double max_val, double total){
+  return max_val + fasterlog(total);
+}
