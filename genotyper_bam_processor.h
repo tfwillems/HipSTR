@@ -40,9 +40,6 @@ private:
   bgzfostream str_vcf_;
   std::vector<std::string> samples_to_genotype_;
 
-  // Flag for type of genotyper to use
-  bool use_seq_aligner_;
-
   // Counters for genotyping success;
   int num_genotype_success_, num_genotype_fail_;
 
@@ -95,14 +92,13 @@ private:
 			std::ostream& logger);
 
 public:
- GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups, bool use_seq_aligner):SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
+ GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups):SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
     output_stutter_models_ = false;
     output_str_gts_        = false;
     output_viz_            = false;
     read_stutter_models_   = false;
     viz_left_alns_         = false;
     pool_seqs_             = false;
-    use_seq_aligner_       = use_seq_aligner;
     haploid_chroms_        = std::set<std::string>();
     num_em_converge_       = 0;
     num_em_fail_           = 0;
@@ -154,8 +150,6 @@ public:
   void hide_all_reads()     { output_all_reads_  = false;   }
   void hide_pall_reads()    { output_pall_reads_ = false;   }
   void hide_mall_reads()    { output_mall_reads_ = false;   }
-  void use_seq_aligner()    { use_seq_aligner_   = true;    }
-  void use_len_model()      { use_seq_aligner_   = false;   }
   void visualize_left_alns(){ viz_left_alns_     = true;    }
   void pool_sequences()     { pool_seqs_         = true;    }
 
@@ -215,10 +209,7 @@ public:
     std::sort(samples_to_genotype_.begin(), samples_to_genotype_.end());
     
     // Write VCF header
-    if (use_seq_aligner_)
-      SeqStutterGenotyper::write_vcf_header(full_command, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, str_vcf_);
-    else
-      EMStutterGenotyper::write_vcf_header(full_command, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, str_vcf_);
+    SeqStutterGenotyper::write_vcf_header(full_command, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, str_vcf_);
   }
 
   void analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
@@ -243,7 +234,7 @@ public:
              << " SNP info extraction = " << total_snp_phase_info_time() << " seconds\n"
              << " Stutter estimation  = " << total_stutter_time()        << " seconds\n"
              << " Genotyping          = " << total_genotype_time()       << " seconds\n";
-    if (use_seq_aligner_ && output_str_gts_)
+    if (output_str_gts_)
       logger() << "\t" << " Left alignment        = "  << process_timer_.get_total_time("Left alignment")        << " seconds\n"
                << "\t" << " Haplotype generation  = "  << process_timer_.get_total_time("Haplotype generation")  << " seconds\n"
                << "\t" << " Haplotype alignment   = "  << process_timer_.get_total_time("Haplotype alignment")   << " seconds\n"
