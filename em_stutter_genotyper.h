@@ -103,17 +103,6 @@ class EMStutterGenotyper: public Genotyper {
     delete stutter_model_;
   }  
   
-  void set_stutter_model(double inframe_geom,  double inframe_up,  double inframe_down,
-			 double outframe_geom, double outframe_up, double outframe_down){
-    delete stutter_model_;
-    stutter_model_ = new StutterModel(inframe_geom,  inframe_up,  inframe_down, outframe_geom, outframe_up, outframe_down, motif_len_);
-  }
-
-  void set_stutter_model(StutterModel& stutter_model){
-    delete stutter_model_;
-    stutter_model_ = stutter_model.copy();
-  }
-  
   bool train(int max_iter, double min_LL_abs_change, double min_LL_frac_change, bool disp_stats, std::ostream& logger);
 
   StutterModel* get_stutter_model(){
