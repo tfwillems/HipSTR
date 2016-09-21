@@ -42,8 +42,6 @@ class EMStutterGenotyper: public Genotyper {
   // Functions for the E step of the EM algorithm
   void recalc_log_read_phase_posteriors();
 
-  std::string get_allele(std::string& ref_allele, int bp_diff);
-
  public:
  EMStutterGenotyper(Region& region, bool haploid,
 		    std::vector< std::vector<int> >& num_bps,
@@ -104,11 +102,6 @@ class EMStutterGenotyper: public Genotyper {
     delete [] log_read_phase_posteriors_;
     delete stutter_model_;
   }  
-
-  static void write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out);
-
-  void write_vcf_record(std::string& ref_allele, std::vector<std::string>& sample_names,
-			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads, std::ostream& out);
   
   void set_stutter_model(double inframe_geom,  double inframe_up,  double inframe_down,
 			 double outframe_geom, double outframe_up, double outframe_down){

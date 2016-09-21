@@ -112,9 +112,6 @@ This mode is very similar to mode #2, except that we provide an additional VCF f
          --str-vcf          str_calls.vcf.gz
 ```
 
-
-### Imputation
-
 ### Phasing
 HipSTR utilizes phased SNP haplotypes to phase the resulting STR genotypes. To do so, it looks for pairs of reads in which the STR-containing read or its mate pair overlap a samples's heterozygous SNP. In these instances, the quality score for the overlapping base can be used to determine the likelihood that the read came from each haplotype. Alternatively, when this information is not available, we assign the read an equal likelihood of coming from either strand. These likelihoods are incorporated into the HipSTR genotyping model which outputs phased genotypes. The quality of a phasing is reflected in the *PQ* FORMAT field, which provides the posterior probability of each sample's phased genotype. For homozygous genotypes, this value will always equal the *Q* FORMAT field as phasing is irrelevant. However, for heterozygous genotypes, if *PQ ~ Q*, it indicates that one of the two phasings is much more favorable. Alterneatively, if none of a sample's reads overlap heterozygous SNPs, both phasings will be equally probable and *PQ ~ Q/2*. To enable the use of physical phasing, supply HipSTR with the `--snp-vcf` option and a SNP VCF containing **phased** haplotypes. The schematic below outlines the concepts underlying HipSTR's physical phasing model:
 
@@ -124,8 +121,7 @@ HipSTR utilizes phased SNP haplotypes to phase the resulting STR genotypes. To d
 HipSTR doesn't currently have multi-threaded support, but there are several options available to accelerate analyses:
 
 1. Analyze each chromosome in parallel using the **--chrom** option. For example, **--chrom chr2** will only genotype the BED regions on chr2
-2. Utilize the length-based genotyper instead of the sequence-based genotyper using the **--len-genotyper** flag. This will vastly accelerate analyses, but it only considers the sizes of indels in reads independently. As a result, it is incapable of determining the exact sequence of an STR and is susceptible to alignment errors
-3. If you have hundreds of BAM files, we recommend that you merge them into a more manageable number (10-100) using the `samtools merge` command. Large numbers of BAMs can lead to slow disk IO and poor performance
+2. If you have hundreds of BAM files, we recommend that you merge them into a more manageable number (10-100) using the `samtools merge` command. Large numbers of BAMs can lead to slow disk IO and poor performance
 
 ## Call Filtering
 Although **HipSTR** mitigates many of the most common sources of STR genotyping errors, it's still extremely important to filter the resulting VCFs to discard low quality calls. To facilitate this process, the VCF output contains various FORMAT and INFO fields that are usually indicators of problematic calls. The INFO fields indicate the aggregate data for a locus and, if certain flags are raised, may suggest that the entire locus should be discarded. In contrast, FORMAT fields are available on a per-sample basis for each locus and, if certain flags are raised, suggest that some samples' genotypes should be discarded. The list below includes some of these fields and how they can be informative:
