@@ -2,6 +2,7 @@
 #define GENOTYPER_H_
 
 #include <algorithm>
+#include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
@@ -89,7 +90,7 @@ class Genotyper {
   }
 
   // Determine the genotype associated with each sample based on the current genotype posteriors
-  void get_optimal_genotypes(double* log_posterior_ptr, std::vector< std::pair<int, int> >& gts);
+  void get_optimal_haplotypes(double* log_posterior_ptr, std::vector< std::pair<int, int> >& gts);
 
  public:
   Genotyper(Region& region, bool haploid, bool fast_log_sum_exp, std::vector<std::string>& sample_names,
@@ -149,6 +150,20 @@ class Genotyper {
   double posterior_time() { return total_posterior_time_;  }
 
   virtual bool genotype(std::string& chrom_seq, std::ostream& logger) = 0;
+
+  static void write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out);
+
+  void calc_PLs(const std::vector<double>& gls, std::vector<int>& pls);
+
+  double calc_gl_diff(const std::vector<double>& gls, int gt_a, int gt_b);
+
+  void extract_genotypes_and_likelihoods(int num_variants, std::vector<int>& hap_to_allele, double* log_posterior_ptr,
+					 std::vector< std::pair<int,int>  >& best_haplotypes,
+					 std::vector< std::pair<int,int>  >& best_gts,
+					 std::vector<double>& log_phased_posteriors, std::vector<double>& log_unphased_posteriors,
+					 bool calc_gls,        std::vector< std::vector<double> >& gls, std::vector<double>& gl_diffs,
+					 bool calc_pls,        std::vector< std::vector<int> >& pls,
+					 bool calc_phased_gls, std::vector< std::vector<double> >& phased_gls);
 };
 
 #endif

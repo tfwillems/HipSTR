@@ -33,12 +33,22 @@ int max_index(double* vals, unsigned int num_vals){
   return best_index;
 }
 
+void SeqStutterGenotyper::haps_to_alleles(int hap_block_index, std::vector<int>& allele_indices){
+  assert(allele_indices.empty());
+  allele_indices.reserve(haplotype_->num_combs());
+  haplotype_->reset();
+  do {
+    allele_indices.push_back(haplotype_->cur_index(hap_block_index));
+  } while (haplotype_->next());
+  haplotype_->reset();
+}
+
 void SeqStutterGenotyper::get_unspanned_alleles(std::vector<int>& allele_indices, std::ostream& logger){
   assert(allele_indices.size() == 0);
 
   // Extract each sample's MAP genotype
-  std::vector< std::pair<int,int> > gts;
-  get_optimal_genotypes(log_sample_posteriors_, gts);
+  std::vector< std::pair<int,int> > haps;
+  get_optimal_haplotypes(log_sample_posteriors_, haps);
 
   std::vector<AlignmentTrace*> traced_alns;
   retrace_alignments(logger, traced_alns);
@@ -59,15 +69,15 @@ void SeqStutterGenotyper::get_unspanned_alleles(std::vector<int>& allele_indices
     if (trace->traced_aln().get_start() < str_block->start())
       if (trace->traced_aln().get_stop() > str_block->end())
 	if (trace->stutter_size(str_block_index) == 0){
-	  int gt_a    = gts[sample_label_[read_index]].first;
-	  int gt_b    = gts[sample_label_[read_index]].second;
-	  int best_gt = gt_a;
-	  if (!haploid_ && (gt_a != gt_b)){
-	    double v1 = log_p1_[read_index]+read_LL_ptr[gt_a], v2 = log_p2_[read_index]+read_LL_ptr[gt_b];
+	  int hap_a    = haps[sample_label_[read_index]].first;
+	  int hap_b    = haps[sample_label_[read_index]].second;
+	  int best_hap = hap_a;
+	  if (!haploid_ && (hap_a != hap_b)){
+	    double v1 = log_p1_[read_index]+read_LL_ptr[hap_a], v2 = log_p2_[read_index]+read_LL_ptr[hap_b];
 	    if (abs(v1-v2) > TOLERANCE)
-	      best_gt = (v1 > v2 ? gt_a : gt_b);
+	      best_hap = (v1 > v2 ? hap_a : hap_b);
 	  }
-	  spanned[best_gt] = true;
+	  spanned[best_hap] = true;
 	}
     read_LL_ptr += num_alleles_;
   }
@@ -93,7 +103,7 @@ void SeqStutterGenotyper::get_uncalled_alleles(std::vector<int>& allele_indices)
 
   // Extract each sample's MAP genotype
   std::vector< std::pair<int,int> > gts;
-  get_optimal_genotypes(log_sample_posteriors_, gts);
+  get_optimal_haplotypes(log_sample_posteriors_, gts);
 
   // Mark all alleles with a call by a valid sample
   std::vector<bool> called(num_alleles_, false);
@@ -477,68 +487,6 @@ bool SeqStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger)
   return true;
 }
 
-void SeqStutterGenotyper::write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out){
-  out << "##fileformat=VCFv4.1" << "\n"
-      << "##command=" << full_command << "\n";
-
-  // Info field descriptors
-  out << "##INFO=<ID=" << "INFRAME_PGEOM"  << ",Number=1,Type=Float,Description=\""   << "Parameter for in-frame geometric step size distribution"                      << "\">\n"
-      << "##INFO=<ID=" << "INFRAME_UP"     << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame increase in obs. STR size"        << "\">\n"
-      << "##INFO=<ID=" << "INFRAME_DOWN"   << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an in-frame decrease in obs. STR size"        << "\">\n"
-      << "##INFO=<ID=" << "OUTFRAME_PGEOM" << ",Number=1,Type=Float,Description=\""   << "Parameter for out-of-frame geometric step size distribution"                  << "\">\n"
-      << "##INFO=<ID=" << "OUTFRAME_UP"    << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame increase in read's STR size"  << "\">\n"
-      << "##INFO=<ID=" << "OUTFRAME_DOWN"  << ",Number=1,Type=Float,Description=\""   << "Probability that stutter causes an out-of-frame decrease in read's STR size"  << "\">\n"
-      << "##INFO=<ID=" << "BPDIFFS"        << ",Number=A,Type=Integer,Description=\"" << "Base pair difference of each alternate allele from the reference allele"      << "\">\n"
-      << "##INFO=<ID=" << "START"          << ",Number=1,Type=Integer,Description=\"" << "Inclusive start coodinate for the repetitive portion of the reference allele" << "\">\n"
-      << "##INFO=<ID=" << "END"            << ",Number=1,Type=Integer,Description=\"" << "Inclusive end coordinate for the repetitive portion of the reference allele"  << "\">\n"
-      << "##INFO=<ID=" << "PERIOD"         << ",Number=1,Type=Integer,Description=\"" << "Length of STR motif"                                                          << "\">\n"
-      << "##INFO=<ID=" << "AN"             << ",Number=1,Type=Integer,Description=\"" << "Total number of alleles in called genotypes"                                  << "\">\n"
-      << "##INFO=<ID=" << "REFAC"          << ",Number=1,Type=Integer,Description=\"" << "Reference allele count"                                                       << "\">\n"
-      << "##INFO=<ID=" << "AC"             << ",Number=A,Type=Integer,Description=\"" << "Alternate allele counts"                                                      << "\">\n"
-      << "##INFO=<ID=" << "NSKIP"          << ",Number=1,Type=Integer,Description=\"" << "Number of samples not genotyped due to various issues"                        << "\">\n"
-      << "##INFO=<ID=" << "NFILT"          << ",Number=1,Type=Integer,Description=\"" << "Number of samples whose genotypes were filtered due to various issues"        << "\">\n"
-      << "##INFO=<ID=" << "DP"             << ",Number=1,Type=Integer,Description=\"" << "Total number of valid reads used to genotype all samples"                     << "\">\n"
-      << "##INFO=<ID=" << "DSNP"           << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with SNP phasing information"                           << "\">\n"
-      << "##INFO=<ID=" << "DFILT"          << ",Number=1,Type=Integer,Description=\"" << "Total number of reads filtered due to various issues"                         << "\">\n"
-      << "##INFO=<ID=" << "DSTUTTER"       << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with a stutter indel in the STR region"                 << "\">\n"
-      << "##INFO=<ID=" << "DFLANKINDEL"    << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with an indel in the regions flanking the STR"          << "\">\n";
-
-  // Format field descriptors
-  out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""  << "Genotype" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "GB"          << ",Number=1,Type=String,Description=\""  << "Base pair differences of genotype from reference"              << "\">" << "\n"
-      << "##FORMAT=<ID=" << "Q"           << ",Number=1,Type=Float,Description=\""   << "Posterior probability of unphased genotype"                    << "\">" << "\n"
-      << "##FORMAT=<ID=" << "PQ"          << ",Number=1,Type=Float,Description=\""   << "Posterior probability of phased genotype"                      << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\"" << "Number of valid reads used for sample's genotype"              << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\"" << "Number of reads with SNP phasing information"                  << "\">" << "\n"
-      << "##FORMAT=<ID=" << "PSNP"        << ",Number=1,Type=String,Description=\""  << "Number of reads with SNPs supporting each haploid genotype"    << "\">" << "\n"
-      << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""  << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
-      << "##FORMAT=<ID=" << "BQ"          << ",Number=1,Type=Float,Description=\""   << "Bootstrapped quality score"                                    << "\">" << "\n"
-      << "##FORMAT=<ID=" << "GLDIFF"      << ",Number=1,Type=Float,Description=\""   << "Difference in likelihood between the reported and next best genotypes" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DFILT"       << ",Number=1,Type=Integer,Description=\"" << "Number of reads filtered due to various issues"                << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DSTUTTER"    << ",Number=1,Type=Integer,Description=\"" << "Number of reads with a stutter indel in the STR region"        << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DFLANKINDEL" << ",Number=1,Type=Integer,Description=\"" << "Number of reads with an indel in the regions flanking the STR" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "BPDOSE"      << ",Number=1,Type=Float,Description=\""   << "Posterior mean base pair difference from reference"            << "\">" << "\n"
-      << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=1,Type=String,Description=\""  << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "MALLREADS"   << ",Number=1,Type=String,Description=\""
-      << "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probs" << "\">" << "\n";
-
-  if (output_gls)
-    out << "##FORMAT=<ID=" << "GL"       << ",Number=G,Type=Float,Description=\""   << "log-10 genotype likelihoods" << "\">" << "\n";
-  if (output_pls)
-    out << "##FORMAT=<ID=" << "PL"       << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
-  if (output_phased_gls)
-    out << "##FORMAT=<ID=" << "PHASEDGL" << ",Number=.,Type=Float,Description=\""
-	<< "log-10 genotype likelihood for each phased genotype. Value for phased genotype X|Y is stored at a 0-based index of X*A + Y, where A is the number of alleles. Identical to GL for haploid genotypes"
-	<< "\">" << "\n";
-
-  // Sample names
-  out << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
-  for (unsigned int i = 0; i < sample_names.size(); i++)
-    out << "\t" << sample_names[i];
-  out << "\n";
-}
-
 void SeqStutterGenotyper::get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles){
   assert(alleles.size() == 0);
 
@@ -697,8 +645,8 @@ void SeqStutterGenotyper::retrace_alignments(std::ostream& logger, std::vector<A
   double trace_start = clock();
   assert(traced_alns.size() == 0);
   traced_alns.reserve(num_reads_);
-  std::vector< std::pair<int, int> > gts;
-  get_optimal_genotypes(log_sample_posteriors_, gts);
+  std::vector< std::pair<int, int> > haps;
+  get_optimal_haplotypes(log_sample_posteriors_, haps);
 
   HapAligner hap_aligner(haplotype_);
   double* read_LL_ptr = log_aln_probs_;
@@ -709,15 +657,15 @@ void SeqStutterGenotyper::retrace_alignments(std::ostream& logger, std::vector<A
       continue;
     }
 
-    int gt_a    = gts[sample_label_[read_index]].first;
-    int gt_b    = gts[sample_label_[read_index]].second;
-    int best_gt = ((LOG_ONE_HALF+log_p1_[read_index]+read_LL_ptr[gt_a] >  LOG_ONE_HALF+log_p2_[read_index]+read_LL_ptr[gt_b]) ? gt_a : gt_b);
+    int hap_a    = haps[sample_label_[read_index]].first;
+    int hap_b    = haps[sample_label_[read_index]].second;
+    int best_hap = ((LOG_ONE_HALF+log_p1_[read_index]+read_LL_ptr[hap_a] >  LOG_ONE_HALF+log_p2_[read_index]+read_LL_ptr[hap_b]) ? hap_a : hap_b);
 
     AlignmentTrace* trace = NULL;
-    std::pair<int,int> trace_key(pool_index_[read_index], best_gt);
+    std::pair<int,int> trace_key(pool_index_[read_index], best_hap);
     auto trace_iter = trace_cache_.find(trace_key);
     if (trace_iter == trace_cache_.end()){
-      trace  = hap_aligner.trace_optimal_aln(alns_[read_index], seed_positions_[read_index], best_gt, &base_quality_);
+      trace  = hap_aligner.trace_optimal_aln(alns_[read_index], seed_positions_[read_index], best_hap, &base_quality_);
       trace_cache_[trace_key] = trace;
     }
     else
@@ -837,85 +785,17 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector<int> masked_reads;
   filter_alignments(logger, masked_reads);
 
-  // Extract each sample's posterior base pair dosage, MAP genotype, the associated phased genotype posterior
-  // and the genotype likelihoods
-  std::vector< std::pair<int,int> > gts(num_samples_, std::pair<int,int>(-1,-1));
-  std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX), bp_dosages;
-  std::vector<int> dip_bpdiffs;
-  std::vector< std::vector<double> > log_post_probs(num_samples_), gls(num_samples_), phased_gls(num_samples_);
-  std::vector< std::vector<int> > pls(num_samples_);
-  double* log_post_ptr = log_sample_posteriors_;
-
-  // The genotype likelihoods should not contain the priors we used during the posterior calculation
-  // To obtain the true likelihoods, we subtract out the priors from the posteriors using these values.
-  // Not correct if we used non-uniform genotype priors, but GLs and PLs can't be output under this circumstance anyways (see assert above)
-  double hom_ll_correction = log_homozygous_prior();
-  double het_ll_correction = (haploid_ ? 0 : log_heterozygous_prior()); // If haploid, don't correct hetz genotypes as they're impossible
-
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-      double ll_correction = (index_1 == index_2 ? hom_ll_correction : het_ll_correction);
-      dip_bpdiffs.push_back(allele_bp_diffs[index_1]+allele_bp_diffs[index_2]);
-      for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index, ++log_post_ptr){
-	if (*log_post_ptr > log_phased_posteriors[sample_index]){
-	  log_phased_posteriors[sample_index] = *log_post_ptr;
-	  gts[sample_index] = std::pair<int,int>(index_1, index_2);
-	}
-	log_post_probs[sample_index].push_back(*log_post_ptr);
-	if (index_2 <= index_1){
-	  if (!haploid_ || (index_1 == index_2)){
-	    double gl_base_e = sample_total_LLs_[sample_index] + LOG_ONE_HALF - ll_correction
-	      + log_sum_exp(*log_post_ptr, log_sample_posteriors_[index_2*num_alleles_*num_samples_ + index_1*num_samples_ + sample_index]);
-	    gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
-	  }
-	}
-
-	if (!haploid_ || (index_1 == index_2))
-	  phased_gls[sample_index].push_back((*log_post_ptr + sample_total_LLs_[sample_index] - ll_correction)*LOG_E_BASE_10);
-      }
-    }
-  }
-
-  std::vector<double> gl_diffs;
-  for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++){
-    bp_dosages.push_back((!haploid_ ? 1.0 : 0.5)*expected_value(log_post_probs[sample_index], dip_bpdiffs));
-    double max_gl    = *(std::max_element(gls[sample_index].begin(), gls[sample_index].end()));
-    double second_gl = -DBL_MAX;
-    for (unsigned int j = 0; j < gls[sample_index].size(); j++){
-      pls[sample_index].push_back(std::min(999, (int)(-10*(gls[sample_index][j]-max_gl))));
-      if (gls[sample_index][j] < max_gl)
-	second_gl = std::max(second_gl, gls[sample_index][j]);
-    }
-
-    if (num_alleles_ == 1)
-      gl_diffs.push_back(-1000);
-    else {
-      int gl_index;
-      if (haploid_)
-	gl_index = gts[sample_index].first;
-      else {
-	int min_gt = std::min(gts[sample_index].first, gts[sample_index].second);
-	int max_gt = std::max(gts[sample_index].first, gts[sample_index].second);
-	gl_index   = max_gt*(max_gt+1)/2 + min_gt;
-      }
-      if (second_gl == -DBL_MAX) second_gl = max_gl;
-      gl_diffs.push_back((abs(max_gl-gls[sample_index][gl_index]) < TOLERANCE) ? (max_gl-second_gl) : gls[sample_index][gl_index]-max_gl);
-    }
-  }
-
-  // Extract the total posterior for the unphased genotype
-  std::vector<double> log_unphased_posteriors;
-  for (unsigned int sample_index = 0; sample_index < num_samples_; sample_index++){
-    int gt_a = gts[sample_index].first, gt_b = gts[sample_index].second;
-    if (gt_a == gt_b)
-      log_unphased_posteriors.push_back(log_phased_posteriors[sample_index]);
-    else {
-      double log_p1  = log_phased_posteriors[sample_index];
-      double log_p2  = log_sample_posteriors_[gt_b*num_alleles_*num_samples_ + gt_a*num_samples_ + sample_index];
-      double log_tot = log_sum_exp(log_p1, log_p2);
-      log_unphased_posteriors.push_back(log_tot);
-    }
-  }
+  // Extract the optimal genotyps and their associated likelihoods
+  std::vector< std::pair<int,int> > haplotypes, gts;
+  std::vector<double> log_phased_posteriors, log_unphased_posteriors, gl_diffs;
+  std::vector< std::vector<double> > gls, phased_gls;
+  std::vector< std::vector<int> > pls;
+  int hap_block_index = 1; // TO DO: Determine this dynamically
+  std::vector<int> hap_to_allele;
+  haps_to_alleles(hap_block_index, hap_to_allele);
+  int num_variants = haplotype_->get_block(hap_block_index)->num_options();
+  extract_genotypes_and_likelihoods(num_variants, hap_to_allele, log_sample_posteriors_, haplotypes, gts, log_phased_posteriors, log_unphased_posteriors,
+				    true, gls, gl_diffs, output_pls, pls, output_phased_gls, phased_gls);
 
   // Extract information about each read and group by sample
   assert(bp_diffs_.size() == num_reads_);
@@ -936,28 +816,29 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     }
 
     // Extract read's phase posterior conditioned on the determined sample genotype
-    int gt_a = gts[sample_label_[read_index]].first;
-    int gt_b = gts[sample_label_[read_index]].second;
-    double total_read_LL = log_sum_exp(LOG_ONE_HALF+log_p1_[read_index]+read_LL_ptr[gt_a], LOG_ONE_HALF+log_p2_[read_index]+read_LL_ptr[gt_b]);
-    double log_phase_one = LOG_ONE_HALF + log_p1_[read_index] + read_LL_ptr[gt_a] - total_read_LL; 
+    int hap_a = gts[sample_label_[read_index]].first;
+    int hap_b = gts[sample_label_[read_index]].second;
+    double total_read_LL = log_sum_exp(LOG_ONE_HALF+log_p1_[read_index]+read_LL_ptr[hap_a], LOG_ONE_HALF+log_p2_[read_index]+read_LL_ptr[hap_b]);
+    double log_phase_one = LOG_ONE_HALF + log_p1_[read_index] + read_LL_ptr[hap_a] - total_read_LL; 
     log_read_phases[sample_label_[read_index]].push_back(log_phase_one);
 
     // Determine which of the two genotypes each read is associated with
     int read_strand = 0;
-    if (!haploid_ && ((gt_a != gt_b) || (abs(log_p1_[read_index]- log_p2_[read_index]) > TOLERANCE))){
-      double v1 = log_p1_[read_index]+read_LL_ptr[gt_a], v2 = log_p2_[read_index]+read_LL_ptr[gt_b];
+    if (!haploid_ && ((hap_a != hap_b) || (abs(log_p1_[read_index]- log_p2_[read_index]) > TOLERANCE))){
+      double v1 = log_p1_[read_index]+read_LL_ptr[hap_a], v2 = log_p2_[read_index]+read_LL_ptr[hap_b];
       if (abs(v1-v2) > TOLERANCE)
 	read_strand = (v1 > v2 ? 0 : 1);
     }
 
     // Retrace alignment and ensure that it's of sufficient quality
     double trace_start = clock();
-    int best_gt = (read_strand == 0 ? gt_a : gt_b);
+    int best_hap = (read_strand == 0 ? hap_a : hap_b);
+    int best_gt  = (read_strand == 0 ? gts[sample_label_[read_index]].first: gts[sample_label_[read_index]].second);
     AlignmentTrace* trace = NULL;
-    std::pair<int,int> trace_key(pool_index_[read_index], best_gt);
+    std::pair<int,int> trace_key(pool_index_[read_index], best_hap);
     auto trace_iter = trace_cache_.find(trace_key);
     if (trace_iter == trace_cache_.end()){
-      trace  = hap_aligner.trace_optimal_aln(alns_[read_index], seed_positions_[read_index], best_gt, &base_quality_);
+      trace  = hap_aligner.trace_optimal_aln(alns_[read_index], seed_positions_[read_index], best_hap, &base_quality_);
       trace_cache_[trace_key] = trace;
     }
     else
@@ -1155,7 +1036,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       out << ".";
       continue;
     }
-
     
     int sample_index    = sample_iter->second;
     double phase1_reads = (num_aligned_reads[sample_index] == 0 ? 0 : exp(log_sum_exp(log_read_phases[sample_index])));
@@ -1183,8 +1063,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	  << ":" << num_reads_with_stutter[sample_index]                                            // Total reads with a non-zero stutter artifact in ML alignment
 	  << ":" << num_reads_with_flank_indels[sample_index]                                       // Total reads with an indel in flank in ML alignment
 	  << ":" << phase1_reads << "|" << phase2_reads                                             // Reads per allele
-	  << ":" << num_reads_strand_one[sample_index] << "|" << num_reads_strand_two[sample_index] // Reads with SNPs supporting each haploid genotype
-	  << ":" << bp_dosages[sample_index];                                                       // Posterior STR dosage (in base pairs)
+	  << ":" << num_reads_strand_one[sample_index] << "|" << num_reads_strand_two[sample_index]; // Reads with SNPs supporting each haploid genotype
 
       // Difference in GL between the current and next best genotype
       if (num_alleles_ == 1)
@@ -1199,8 +1078,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	  << ":" << num_aligned_reads[sample_index]                                                 // Total reads used to genotype (after filtering)
 	  << ":" << masked_reads[sample_index]                                                      // Total masked reads
 	  << ":" << num_reads_with_stutter[sample_index]                                            // Total reads with a non-zero stutter artifact in ML alignment
-	  << ":" << num_reads_with_flank_indels[sample_index]                                       // Total reads with an indel in flank in ML alignment
-	  << ":" << bp_dosages[sample_index];                                                       // Posterior STR dosage (in base pairs)
+	  << ":" << num_reads_with_flank_indels[sample_index];                                      // Total reads with an indel in flank in ML alignment
 
       // Difference in GL between the current and next best genotype
       if (num_alleles_ == 1)
@@ -1268,9 +1146,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     std::stringstream locus_info;
     locus_info << region_->chrom() << "\t" << region_->start()+1 << "\t" << region_->stop();
-    double viz_start = clock();
     visualizeAlignments(max_LL_alns, sample_names_, sample_results, hap_blocks_, chrom_seq, locus_info.str(), true, html_output);
-    logger << "Visualization time: " << (clock() - viz_start)/CLOCKS_PER_SEC << std::endl;
   }
 }
 
@@ -1322,7 +1198,7 @@ void SeqStutterGenotyper::compute_bootstrap_qualities(int num_iter, std::vector<
 
   // Extract the original ML genotypes
   std::vector< std::pair<int, int> > ML_gts;
-  get_optimal_genotypes(log_sample_posteriors_, ML_gts);
+  get_optimal_haplotypes(log_sample_posteriors_, ML_gts);
 
   // Partition the aligned reads by sample
   std::vector< std::vector<int> > reads_by_sample(num_samples_);

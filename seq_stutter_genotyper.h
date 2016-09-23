@@ -123,6 +123,9 @@ class SeqStutterGenotyper : public Genotyper {
   // These alleles should likely be removed
   void get_unspanned_alleles(std::vector<int>& allele_indices, std::ostream& logger);
 
+  // Determines the allele index in the given haplotype block that is associated with each haplotype configuration
+  // Stores the results in the provided vector
+  void haps_to_alleles(int hap_block_index, std::vector<int>& allele_indices);
 
  public:
   SeqStutterGenotyper(Region& region, bool haploid,
@@ -172,8 +175,6 @@ class SeqStutterGenotyper : public Genotyper {
     delete haplotype_;
   }
   
-  static void write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out);
-
   /*
    *  Returns true iff the read with the associated retraced maximum log-likelihood alignment should be used in genotyping
    *  Considers factors such as indels in the regions flanking the STR block and the total number of matched bases

@@ -209,7 +209,7 @@ public:
     std::sort(samples_to_genotype_.begin(), samples_to_genotype_.end());
     
     // Write VCF header
-    SeqStutterGenotyper::write_vcf_header(full_command, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, str_vcf_);
+    Genotyper::write_vcf_header(full_command, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, str_vcf_);
   }
 
   void analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
