@@ -84,7 +84,8 @@ double expected_value(std::vector<double>& log_likelihoods, std::vector<int>& va
   return total;
 }
 
-void update_streaming_log_sum_exp(double log_val, double& max_val, double& total){
+
+void fast_update_streaming_log_sum_exp(double log_val, double& max_val, double& total){
   if (log_val <= max_val)
     total += fasterexp(log_val - max_val);
   else {
@@ -94,6 +95,20 @@ void update_streaming_log_sum_exp(double log_val, double& max_val, double& total
   }
 }
 
-double finish_streaming_log_sum_exp(double max_val, double total){
+double fast_finish_streaming_log_sum_exp(double max_val, double total){
   return max_val + fasterlog(total);
+}
+
+void update_streaming_log_sum_exp(double log_val, double& max_val, double& total){
+  if (log_val <= max_val)
+    total += exp(log_val - max_val);
+  else {
+    total  *= exp(max_val-log_val);
+    total  += 1.0;
+    max_val = log_val;
+  }
+}
+
+double finish_streaming_log_sum_exp(double max_val, double total){
+  return max_val + log(total);
 }
