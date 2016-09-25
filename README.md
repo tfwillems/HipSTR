@@ -1,5 +1,5 @@
 # HipSTR [![Build Status](https://travis-ci.org/tfwillems/HipSTR.svg?branch=master)](https://travis-ci.org/tfwillems/HipSTR)
-**H**aplotype-based **i**mputation, **p**hasing and genotyping of **STR**s  
+**H**aplotype-based **p**hasing and genotyping of **STR**s  
 #### Author: Thomas Willems <twillems@mit.edu> <br> License: GNU v2
 
 [Introduction](#introduction)  
