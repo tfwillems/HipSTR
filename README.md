@@ -4,7 +4,7 @@
 
 [Introduction](#introduction)  
 [Installation](#installation)  
-[Quick Start](#quick-start) 
+[Quick Start](#quick-start)  
 [Tutorial](#tutorial)  
 [In-depth Usage](#in-depth-usage)  
 [Phasing](#phasing)   
