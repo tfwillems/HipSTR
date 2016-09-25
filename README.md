@@ -4,9 +4,9 @@
 
 [Introduction](#introduction)  
 [Installation](#installation)  
-[Quick Start](#quick-start)  
+[Quick Start](#quick-start) 
+[Tutorial](#tutorial)  
 [In-depth Usage](#in-depth-usage)  
-[Imputation](#imputation)   
 [Phasing](#phasing)   
 [Speed](#speed)  
 [Call Filtering](#call-filtering)  
@@ -58,6 +58,9 @@ For each region in *str_regions.bed*, **HipSTR** will:
 2. Use the stutter model and haplotype-based alignment algorithm to genotype each individual
 3. Output the resulting STR genotypes to *str_calls.vcf.gz*, a [bgzipped] (http://www.htslib.org/doc/tabix.html) [VCF](#str-vcf) file. This VCF will contain calls for each sample in any of the BAM files' read groups. 
 
+## Tutorial
+To demonstrate how you can quickly apply HipSTR to whole-genome sequencing datasets, we've built a simple [tutorial](https://hipstr-tool.github.io/HipSTR-tutorial/). In less than 10 minutes, this tutorial will teach you how to genotype ~600 STRs in a deeply sequenced trio of individuals and inspect the results.
+
 ## In-depth Usage
 **HipSTR** has a variety of usage options designed to accomodate scenarios in which the sequencing data varies in terms of the number of samples and the coverage. Most scenarios will fall into one of the following categories:
 
@@ -91,7 +94,7 @@ This mode is identical to the one suggested in the **Quick Start** section as it
 
 <a id="mode-2"></a>
 #### 2. External stutter models + STR calling with de novo allele generation
-The sole difference in this mode is that we no longer output stutter models using the **--stutter-out** option and instead input them from a file using the **--stutter-in** file. For more details on the stutter model file format, see [below](#stutter-file). For humans, we've provided a file containing stutter models for each STR locus under PCR or PCR-free conditions at [FILL ME IN](www.google.com)
+The sole difference in this mode is that we no longer output stutter models using the **--stutter-out** option and instead input them from a file using the **--stutter-in** file. For more details on the stutter model file format, see [below](#stutter-file).
 ```
 ./HipSTR --bams             run1.bam,run2.bam,run3.bam,run4.bam
          --fasta            /data/
@@ -102,7 +105,7 @@ The sole difference in this mode is that we no longer output stutter models usin
 
 <a id="mode-3"></a>
 #### 3. External stutter models + STR calling with a reference panel
-This mode is very similar to mode #2, except that we provide an additional VCF file containing known STR genotypes at each locus using the **--str-vcf** option. **HipSTR** will not identify any additional candidate STR alleles in the BAMs when this option is specified, so it's best to use a VCF that contains STR genotypes for a wide range of populations and individuals. For humans, we've provided such a file based on the [1000 Genomes Project](http://www.1000genomes.org/) at [FILL ME IN](www.google.com)
+This mode is very similar to mode #2, except that we provide an additional VCF file containing known STR genotypes at each locus using the **--str-vcf** option. **HipSTR** will not identify any additional candidate STR alleles in the BAMs when this option is specified, so it's best to use a VCF that contains STR genotypes for a wide range of populations and individuals. 
 ```
 ./HipSTR --bams             run1.bam,run2.bam,run3.bam,run4.bam
          --fasta            /data/
@@ -247,7 +250,6 @@ For other model organisms, we recommend that you
 
 1. Use [Tandem Repeats Finder](https://tandem.bu.edu/trf/trf.html) or other tools to scan the reference genome for STRs
 2. Reformat the resulting output to conform with the format outlined above
-3. We've provdided a simple pipeline that accomplishes this [here](www.google.com)
 
 <a id="str-vcf"></a>
 ### VCF file
