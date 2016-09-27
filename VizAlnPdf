@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 
-if [ "$#" -eq 5 ]; then
+if [ "$#" -eq 6 ]; then
     # Make sure tabix is installed
     hash tabix 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires tabix. Please check that it's appropriately installed"; exit 1; }
 
@@ -46,14 +46,13 @@ msg
     stop=`expr $start + 100`
     sample=$4
     f=$5
-    tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | cut -f 1-4 --complement | python ${parent_path}/html_alns_to_pdf.py $f
-
+    tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | awk -v N=$6 'NR%N == 0 || $7 == "class=\"samplename\"" || $4 == "ALL"' | cut -f 1-4 --complement | python ${parent_path}/html_alns_to_pdf.py $f
     rm $f.svg
     open $f.pdf
 else
     cat <<usage
-Usage: VizAlnPdf alns.html.gz chrom start sample out
-           Generate a PDF containing a sample's alignments at an STR locus
+Usage: VizAlnPdf alns.html.gz chrom start sample out n
+           Generate a PDF containing every Nth alignment for a sample at an STR locus
            Requires tabix and a bgzipped file with a corresponding .tbi index
            Writes the results to out.pdf and opens the resulting PDF
 usage
