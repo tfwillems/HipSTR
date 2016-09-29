@@ -63,20 +63,21 @@ class Haplotype {
   
   inline const std::string& get_seq(int block_index)     { return blocks_[block_index]->get_seq(counts_[block_index]); }
   inline const std::string& get_aln_info()               { return hap_aln_info_[counter_]; }
+  inline char get_first_char()                     const { return blocks_[0]->get_seq(counts_[0])[0]; }
+  inline char get_last_char()                      const { return blocks_.back()->get_seq(counts_[blocks_.size()-1]).back(); }
   inline HapBlock* get_block(int block_index)            { return blocks_[block_index]; }
-  inline HapBlock* get_first_block()                     { return blocks_.front(); }
-  inline HapBlock* get_last_block()                      { return blocks_.back();  }
-  inline char get_first_char()                           { return blocks_[0]->get_seq(counts_[0])[0]; }
-  inline char get_last_char()                            { return blocks_.back()->get_seq(counts_[blocks_.size()-1]).back(); }
-  inline int num_blocks()                          const { return blocks_.size(); }
-  inline int num_combs()                           const { return ncombs_; }
+  inline HapBlock* get_first_block()                     { return blocks_.front();      }
+  inline HapBlock* get_last_block()                      { return blocks_.back();       }
+  inline int num_blocks()                          const { return blocks_.size();       }
+  inline int num_combs()                           const { return ncombs_;              }
+  inline int last_changed()                        const { return last_changed_;        }
+  inline int max_size()                            const { return max_size_;            }
+  inline int cur_size()                            const { return cur_size_;            }
+  inline int cur_index()                           const { return counter_;             }
+  inline int cur_index(int block_index)            const { return counts_[block_index]; }
+  inline bool reversed()                           const { return inc_rev_;             }
   int num_options(int block_index)                 const { return blocks_[block_index]->num_options(); }
 
-  inline int last_changed()                        const { return last_changed_; }
-  inline int max_size()                            const { return max_size_; }
-  inline int cur_size()                            const { return cur_size_; }
-  inline int cur_index(int block_index)            const { return counts_[block_index]; }
-  inline bool reversed()                           const { return inc_rev_; }
 
 
   void get_coordinates(int hap_pos, int& block, int& block_pos){
@@ -105,8 +106,7 @@ class Haplotype {
     out << std::endl;
   }
   
-  void print_block_structure(int max_ref_len,
-			     int max_other_len, 
+  void print_block_structure(int max_ref_len, int max_other_len,
 			     std::ostream& out);
 
   // Prevent haplotype from being changed using next()
