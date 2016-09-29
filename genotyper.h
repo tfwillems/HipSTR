@@ -34,10 +34,6 @@ class Genotyper {
   std::map<std::string, int> sample_indices_;  // Mapping from sample name to index
 
   // Iterates through allele_1, allele_2 and then samples by their indices
-  // Only used if per-allele priors have been specified for each sample
-  double* log_allele_priors_;
-
-  // Iterates through allele_1, allele_2 and then samples by their indices
   double* log_sample_posteriors_; 
 
   // Iterates through reads and then alleles by their indices
@@ -128,7 +124,6 @@ class Genotyper {
     // These data structures need to be allocated once the number of alleles is known
     // within the derived classes
     log_sample_posteriors_ = NULL;
-    log_allele_priors_     = NULL;
     log_aln_probs_         = NULL;
   }
 
@@ -141,8 +136,6 @@ class Genotyper {
     
     if (log_sample_posteriors_ != NULL)
       delete [] log_sample_posteriors_;
-    if (log_allele_priors_ != NULL)
-      delete [] log_allele_priors_;
     if (log_aln_probs_ != NULL)
       delete [] log_aln_probs_;
   }

@@ -30,18 +30,14 @@ double Genotyper::log_heterozygous_prior(){
 }
 
 void Genotyper::init_log_sample_priors(double* log_sample_ptr){
-  if (log_allele_priors_ != NULL)
-    std::memcpy(log_sample_ptr, log_allele_priors_, num_alleles_*num_alleles_*num_samples_*sizeof(double));
-  else {
-    // Set all elements to the het prior
-    std::fill(log_sample_ptr, log_sample_ptr+(num_alleles_*num_alleles_*num_samples_), log_heterozygous_prior());
+  // Set all elements to the het prior
+  std::fill(log_sample_ptr, log_sample_ptr+(num_alleles_*num_alleles_*num_samples_), log_heterozygous_prior());
 
-    // Fix homozygotes
-    double log_homoz_prior = log_homozygous_prior();
-    for (unsigned int i = 0; i < num_alleles_; i++){
-      double* LL_ptr = log_sample_ptr + i*num_alleles_*num_samples_ + i*num_samples_;
-      std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
-    }
+  // Fix homozygotes
+  double log_homoz_prior = log_homozygous_prior();
+  for (unsigned int i = 0; i < num_alleles_; i++){
+    double* LL_ptr = log_sample_ptr + i*num_alleles_*num_samples_ + i*num_samples_;
+    std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
   }
 }
 
@@ -190,17 +186,13 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
       log_unphased_posteriors.push_back(log_sum_exp(log_phased_prob, alt_log_phased_prob));
     }
   }
-
-  std::cerr << best_haplotypes.size() << " " << best_gts.size() << " " << log_phased_posteriors.size() << " " << log_unphased_posteriors.size() << " " << num_samples_ << std::endl;
   assert(best_haplotypes.size() == num_samples_ && best_gts.size() == num_samples_);
   assert(log_phased_posteriors.size() == num_samples_ && log_unphased_posteriors.size() == num_samples_);
 
   // Compute GLs and phased GLs if necessary
   if (calc_gls || calc_phased_gls || calc_pls){
-    assert(log_allele_priors_ == NULL);
     // The genotype likelihoods should not contain the priors we used during the posterior calculation
     // To obtain the true likelihoods, we subtract out the priors from the posteriors using these values.
-    // Not correct if we used non-uniform genotype priors, but GLs and PLs can't be output under this circumstance anyways (see assert above)
     gls = std::vector< std::vector<double> >(num_samples_);
     if (calc_phased_gls)
       phased_gls = std::vector< std::vector<double> >(num_samples_);

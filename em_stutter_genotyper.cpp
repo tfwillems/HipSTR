@@ -125,7 +125,7 @@ void EMStutterGenotyper::init_log_sample_priors(double* log_sample_ptr){
   Genotyper::init_log_sample_priors(log_sample_ptr);
 
   // If we're using priors based on allele frequencies, we need to reinitialize the values
-  if (use_pop_freqs_ && log_allele_priors_ == NULL){
+  if (use_pop_freqs_){
     double* LL_ptr = log_sample_ptr;
     for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
       for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
@@ -165,8 +165,7 @@ void EMStutterGenotyper::recalc_log_read_phase_posteriors(){
 
 bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double min_LL_frac_change, bool disp_stats, std::ostream& logger){
   // Initialization
-  if (log_allele_priors_ == NULL)
-    init_log_gt_priors();
+  init_log_gt_priors();
   init_stutter_model();
 
   int num_iter   = 1;
@@ -195,8 +194,7 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
     }
 
     // M-step
-    if (log_allele_priors_ == NULL)
-      recalc_log_gt_priors();
+    recalc_log_gt_priors();
     recalc_stutter_model();
     
     double abs_change  = new_LL - LL;
