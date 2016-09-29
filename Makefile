@@ -49,7 +49,7 @@ CEPHES_LIB        = cephes/libprob.a
 HTSLIB_LIB        = $(HTSLIB_ROOT)/libhts.a
 
 .PHONY: all
-all: version BamSieve HipSTR DenovoFinder test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
+all: version BamSieve HipSTR DenovoFinder test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/snp_tree_test test/vcf_snp_tree_test exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
 	rm version.cpp
 	touch version.cpp
 
@@ -74,7 +74,7 @@ version:
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
 clean:
-	rm -f *.o *.d BamSieve HipSTR DenovoFinder test/allele_expansion_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/read_vcf_priors_test test/snp_tree_test test/vcf_snp_tree_test SeqAlignment/*.o exploratory/RNASeq exploratory/Clipper exploratory/Mapper exploratory/10X
+	rm -f *.o *.d BamSieve HipSTR DenovoFinder test/allele_expansion_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/snp_tree_test test/vcf_snp_tree_test SeqAlignment/*.o exploratory/RNASeq exploratory/Clipper exploratory/Mapper exploratory/10X
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -113,9 +113,6 @@ test/fast_ops_test: test/fast_ops_test.cpp mathops.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^
 
 test/read_vcf_alleles_test: test/read_vcf_alleles_test.cpp error.cpp region.cpp vcf_input.cpp vcf_reader.cpp $(HTSLIB_LIB)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
-
-test/read_vcf_priors_test: test/read_vcf_priors_test.cpp error.cpp region.cpp vcf_input.cpp vcf_reader.cpp $(HTSLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/snp_tree_test: snp_tree.cpp error.cpp test/snp_tree_test.cpp haplotype_tracker.cpp vcf_reader.cpp $(HTSLIB_LIB)
