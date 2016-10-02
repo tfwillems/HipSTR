@@ -9,10 +9,10 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
 				    std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 				    std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
 				    std::vector<std::string>& rg_names, Region& region, 
-				    std::string& ref_allele, std::string& chrom_seq, std::ostream& out){
+				    std::string& chrom_seq, std::ostream& out){
   // Only use specialized function for 10X genomics BAMs if flag has been set
   if(bams_from_10x_){
-    process_10x_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, region, ref_allele, chrom_seq, out);
+    process_10x_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, region, chrom_seq, out);
     return;
   }
 
@@ -96,7 +96,7 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
   total_snp_phase_info_time_ += locus_snp_phase_info_time_;
 
   // Run any additional analyses using phasing probabilities
-  analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region, ref_allele, chrom_seq, 0);
+  analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region, chrom_seq);
 }
 
 int SNPBamProcessor::get_haplotype(BamTools::BamAlignment& aln){
@@ -121,7 +121,7 @@ void SNPBamProcessor::process_10x_reads(std::vector< std::vector<BamTools::BamAl
 					std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
 					std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
 					std::vector<std::string>& rg_names, Region& region,
-					std::string& ref_allele, std::string& chrom_seq, std::ostream& out){
+					std::string& chrom_seq, std::ostream& out){
   locus_snp_phase_info_time_ = clock();
   assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
   if (paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
@@ -181,6 +181,6 @@ void SNPBamProcessor::process_10x_reads(std::vector< std::vector<BamTools::BamAl
   total_snp_phase_info_time_ += locus_snp_phase_info_time_;
 
   // Run any additional analyses using phasing probabilities
-  analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region, ref_allele, chrom_seq, 0);
+  analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region, chrom_seq);
 }
 

@@ -139,12 +139,6 @@ std::string BamProcessor::trim_alignment_name(BamTools::BamAlignment& aln){
   return aln_name;
 }
 
-std::string get_str_ref_allele(uint32_t start, uint32_t end, std::string& chrom_seq){
-  std::locale loc;
-  std::string seq = chrom_seq.substr(start-1, end-start+1);
-  return uppercase(seq);
-}
-
 void BamProcessor::modify_and_write_alns(std::vector<BamTools::BamAlignment>& alignments,
 					 std::map<std::string, std::string>& rg_to_sample,
 					 Region& region,
@@ -570,8 +564,7 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
     if (rem_pcr_dups_)
       remove_pcr_duplicates(base_quality_, use_bam_rgs_, rg_to_library, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, logger());
 
-    std::string ref_allele = get_str_ref_allele(region_iter->start(), region_iter->stop(), chrom_seq);
-    process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, *region_iter, ref_allele, chrom_seq, out);
+    process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, *region_iter, chrom_seq, out);
   }
 
   if (fasta_ref != NULL)

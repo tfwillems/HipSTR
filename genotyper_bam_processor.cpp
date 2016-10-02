@@ -104,7 +104,7 @@ void GenotyperBamProcessor::left_align_reads(Region& region, std::string& chrom_
 void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
 						      std::vector< std::vector<double> >& log_p1s,
 						      std::vector< std::vector<double> >& log_p2s,
-						      std::vector<std::string>& rg_names, Region& region, std::string& ref_allele, std::string& chrom_seq, int iter){
+						      std::vector<std::string>& rg_names, Region& region, std::string& chrom_seq){
   int32_t total_reads = 0;
   for (unsigned int i = 0; i < alignments.size(); i++)
     total_reads += alignments[i].size();
