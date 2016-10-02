@@ -293,13 +293,11 @@ PQ        | Posterior probability of phased genotype
 DP        | Number of valid reads used for sample's genotype
 DSNP      | Number of reads with SNP phasing information
 PDP       | Fractional reads supporting each haploid genotype
-BQ        | Bootstrapped quality score
 GLDIFF    | Difference in likelihood between the reported and next best genotypes
 DSNP      | Total number of reads with SNP information
 DFILT     | Number of reads filtered due to various issues
 DSTUTTER  | Number of reads with a stutter indel in the STR region
 DFLANKINDEL | Number of reads with an indel in the regions flanking the STR
-BPDOSE    | Posterior mean base pair difference from reference
 ALLREADS  | Base pair difference observed in each read's Needleman-Wunsch alignment
 MALLREADS | Maximum likelihood bp diff in each read based on haplotype alignments
 PALLREADS | Expected base pair diff in each read based on haplotype alignment probs
