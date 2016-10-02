@@ -717,26 +717,21 @@ void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
 
 
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, std::string& chrom_seq,
-                                           bool output_bootstrap_qualities, bool output_gls, bool output_pls, bool output_phased_gls,
-                                           bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
+					   bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads,
+					   bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
                                            std::ostream& html_output, std::ostream& out, std::ostream& logger){
-  std::vector< std::vector<double> > bootstrap_qualities;
-  int bootstrap_iter = 100;
-  if (output_bootstrap_qualities)
-    compute_bootstrap_qualities(bootstrap_iter, bootstrap_qualities);
-
   for (int block_index = 0; block_index < haplotype_->num_blocks(); block_index++){
     if (haplotype_->get_block(block_index)->get_repeat_info() != NULL){
       Region region = *region_; // TO DO: Extract dynamically
-      write_vcf_record(sample_names, block_index, region, chrom_seq, bootstrap_qualities[block_index], output_bootstrap_qualities, output_gls, output_pls, output_phased_gls,
+      write_vcf_record(sample_names, block_index, region, chrom_seq, output_gls, output_pls, output_phased_gls,
 		       output_allreads, output_pallreads, output_mallreads, output_viz, max_flank_indel_frac, viz_left_alns, html_output, out, logger);
     }
   }
 }
 
-void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, Region& region, std::string& chrom_seq, std::vector<double>& bootstrap_qualities,
-					   bool output_bootstrap_qualities, bool output_gls, bool output_pls, bool output_phased_gls,
-					   bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
+void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, Region& region, std::string& chrom_seq, bool output_gls,
+					   bool output_pls, bool output_phased_gls, bool output_allreads, bool output_pallreads, bool output_mallreads,
+					   bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
 					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
   // Extract the alleles and position for the current haplotype block
   int32_t pos;
@@ -849,9 +844,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     read_LL_ptr += num_alleles_;
   }
-
-  if (output_bootstrap_qualities)
-    assert(bootstrap_qualities.size() == num_samples_);
  
   // Compute allele counts for samples of interest
   std::set<std::string> samples_of_interest(sample_names.begin(), sample_names.end());
@@ -968,7 +960,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
   // Add FORMAT field
   out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DFILT:DSTUTTER:DFLANKINDEL:PDP:PSNP:GLDIFF" : "\tGT:GB:Q:DP:DFILT:DSTUTTER:DFLANKINDEL:GLDIFF");
-  if (output_bootstrap_qualities) out << ":BQ";
   if (output_allreads)            out << ":ALLREADS";
   if (output_pallreads)           out << ":PALLREADS";
   if (output_mallreads)           out << ":MALLREADS";
@@ -1054,9 +1045,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       else
 	out << ":" << gl_diffs[sample_index];
     }
-
-    if (output_bootstrap_qualities)
-      out << ":" << bootstrap_qualities[sample_index];
 
     // Add bp diffs from regular left-alignment
     if (output_allreads)
@@ -1189,96 +1177,4 @@ bool SeqStutterGenotyper::recompute_stutter_models(std::string& chrom_seq, std::
   }
   trace_cache_.clear();
   return genotype(chrom_seq, logger);
-}
-
-void SeqStutterGenotyper::compute_bootstrap_qualities(int num_iter, std::vector< std::vector<double> >& bootstrap_qualities){
-  assert(bootstrap_qualities.empty());
-  double bootstrap_start = clock();
-
-  //Find the ML combination of haplotypes for each sample
-  std::vector< std::pair<int, int> > best_haplotypes;
-  get_optimal_haplotypes(best_haplotypes);
-
-  // Determine the mapping from haplotype to allele
-  std::vector< std::vector<int> > hap_to_allele(haplotype_->num_blocks());
-  for (int block_index = 0; block_index < haplotype_->num_blocks(); block_index++)
-    haps_to_alleles(block_index, hap_to_allele[block_index]);
-
-  // Partition the aligned reads by sample
-  std::vector< std::vector<int> > reads_by_sample(num_samples_);
-  for (unsigned int i = 0; i < num_reads_; i++)
-    if (seed_positions_[i] >= 0)
-      reads_by_sample.at(sample_label_[i]).push_back(i);
-
-  std::vector< std::vector<int> > ML_gt_counts(haplotype_->num_blocks(), std::vector<int>(num_samples_, 0));
-  std::uniform_int_distribution<int> unif_dist;
-  std::default_random_engine gen;
-  double log_homoz_prior = log_homozygous_prior(), log_hetz_prior = log_heterozygous_prior();
-  for (unsigned int i = 0; i < num_samples_; i++){
-    int num_sample_reads = reads_by_sample[i].size();
-
-    // Precompute all read LLs for each of the sample's diploid genotypes
-    double* read_gt_LLs = new double[num_alleles_*num_alleles_*num_sample_reads];
-    double* ptr         = read_gt_LLs;
-    for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-      for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-	for (auto read_index = reads_by_sample[i].begin(); read_index != reads_by_sample[i].end(); ++read_index, ++ptr){
-	  double* read_LL_ptr = log_aln_probs_ + *read_index*num_alleles_;
-	  *ptr = log_sum_exp(LOG_ONE_HALF + log_p1_[*read_index] + read_LL_ptr[index_1],
-			     LOG_ONE_HALF + log_p2_[*read_index] + read_LL_ptr[index_2]);
-	}
-      }
-    }
-
-    for (int j = 0; j < num_iter; j++){
-      // Bootstrap reads for the sample
-      std::vector<int> bootstrap_weights(num_sample_reads, 0);
-      for (unsigned int k = 0; k < num_sample_reads; k++)
-	bootstrap_weights[unif_dist(gen) % num_sample_reads]++;
-
-      // Recompute the genotype posteriors using bootstrapped read weights
-      // and determine the most likely haplotype pair
-      double* read_LL_ptr = read_gt_LLs;
-      std::pair<int, int> bootstrap_hap(0, 0);
-      double bootstrap_max_LL = -10e6;
-      for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-	for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-	  if (haploid_ && (index_1 != index_2))
-	    continue;
-	  double gt_LL = (index_1 == index_2 ? log_homoz_prior: log_hetz_prior);
-	  for (int read_index = 0; read_index < num_sample_reads; ++read_index, ++read_LL_ptr)
-	    gt_LL += bootstrap_weights[read_index]*(*read_LL_ptr);
-	  if (gt_LL > bootstrap_max_LL){
-	    bootstrap_hap    = std::pair<int,int>(index_1, index_2);
-	    bootstrap_max_LL = gt_LL;
-	  }
-	}
-      }
-
-      // For each haplotype block, increment the count if the bootstrapped
-      // ML genotype (unordered) matches the ML genotype
-      for (int block_index = 0; block_index < haplotype_->num_blocks(); block_index++){
-	int mlgt_a = hap_to_allele[block_index][best_haplotypes[i].first];
-	int mlgt_b = hap_to_allele[block_index][best_haplotypes[i].second];
-	int bsgt_a = hap_to_allele[block_index][bootstrap_hap.first];
-	int bsgt_b = hap_to_allele[block_index][bootstrap_hap.second];
-
-	if (bsgt_a == mlgt_a && bsgt_b == mlgt_b)
-	  ML_gt_counts[block_index][i]++;
-	else if (bsgt_a == mlgt_b && bsgt_b == mlgt_a)
-	  ML_gt_counts[block_index][i]++;
-      }
-    }
-    delete [] read_gt_LLs;
-  }
-
-  // Compute the boostrapped qualities as the fraction of iterations in which the genotype matched
-  for (int block_index = 0; block_index < haplotype_->num_blocks(); block_index++){
-    bootstrap_qualities.push_back(std::vector<double>());
-    for (unsigned int i = 0; i < num_samples_; i++)
-      bootstrap_qualities.back().push_back(1.0*ML_gt_counts[block_index][i]/num_iter);
-  }
-
-  double bootstrap_time  = (clock() - bootstrap_start)/CLOCKS_PER_SEC;
-  total_bootstrap_time_ += bootstrap_time;
 }

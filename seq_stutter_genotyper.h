@@ -59,7 +59,6 @@ class SeqStutterGenotyper : public Genotyper {
   double total_hap_build_time_;
   double total_hap_aln_time_;
   double total_aln_trace_time_;
-  double total_bootstrap_time_;
 
   // Cache of traced back alignments
   std::map<std::pair<int,int>, AlignmentTrace*> trace_cache_;
@@ -83,10 +82,6 @@ class SeqStutterGenotyper : public Genotyper {
   // Designed to remove alleles who aren't the MAP genotype of any samples
   // However, it does not modify any of the haplotype-related data structures
   void remove_alleles(std::vector< std::vector<int> >& allele_indices);
-
-  // Compute bootstrapped quality scores by resampling reads and determining how frequently
-  // the genotypes match the ML genotype
-  void compute_bootstrap_qualities(int num_iter, std::vector< std::vector<double> >& bootstrap_qualities);
 
   // Retrace the alignment for each read and store the associated pointers in the provided vector
   // Reads which were unaligned will have a NULL pointer
@@ -126,9 +121,9 @@ class SeqStutterGenotyper : public Genotyper {
   void add_and_remove_alleles(std::vector< std::vector<int> >& alleles_to_remove,
 			      std::vector< std::vector<std::string> >& alleles_to_add);
 
-  void write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, Region& region, std::string& chrom_seq, std::vector<double>& bootstrap_qualities,
-			bool output_bootstrap_qualities, bool output_gls, bool output_pls, bool output_phased_gls,
-			bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
+  void write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, Region& region, std::string& chrom_seq,
+			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads, bool output_pallreads,
+			bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 
   Region* region_;
@@ -153,7 +148,7 @@ class SeqStutterGenotyper : public Genotyper {
     initialized_           = false;
     pool_identical_seqs_   = pool_identical_seqs;
     total_hap_build_time_  = total_hap_aln_time_    = 0;
-    total_aln_trace_time_  = total_bootstrap_time_  = 0;
+    total_aln_trace_time_  = 0;
     ref_vcf_               = ref_vcf;
     alleles_from_bams_     = true;
     assert(num_reads_ == alns_.size() && num_reads_ == bp_diffs_.size() && num_reads_ == use_for_haps_.size());
@@ -179,15 +174,14 @@ class SeqStutterGenotyper : public Genotyper {
   bool use_read(AlignmentTrace* trace);
 
   void write_vcf_record(std::vector<std::string>& sample_names, std::string& chrom_seq,
-			bool output_bootstrap_qualities, bool output_gls, bool output_pls, bool output_phased_gls,
-			bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
+			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads, bool output_pallreads,
+			bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 
 
   double hap_build_time() { return total_hap_build_time_;  }
   double hap_aln_time()   { return total_hap_aln_time_;    }
   double aln_trace_time() { return total_aln_trace_time_;  }
-  double bootstrap_time() { return total_bootstrap_time_;  }
 
   bool genotype(std::string& chrom_seq, std::ostream& logger);
 

@@ -49,7 +49,6 @@ private:
   bool output_viz_;
   bgzfostream viz_out_;
 
-  bool output_bstrap_quals_;    // Output the BQ FORMAT field to the VCF
   bool output_gls_;             // Output the GL FORMAT field to the VCF
   bool output_pls_;             // Output the PL FORMAT field to the VCF
   bool output_phased_gls_;      // Ooutput the PHASEDGL FORMAT field to the VCF
@@ -108,7 +107,6 @@ public:
     ABS_LL_CONVERGE        = 0.01;
     FRAC_LL_CONVERGE       = 0.001;
     MIN_TOTAL_READS        = 100;
-    output_bstrap_quals_   = true;
     output_gls_            = false;
     output_pls_            = false;
     output_phased_gls_     = false;
@@ -239,8 +237,7 @@ public:
                << "\t" << " Haplotype generation  = "  << process_timer_.get_total_time("Haplotype generation")  << " seconds\n"
                << "\t" << " Haplotype alignment   = "  << process_timer_.get_total_time("Haplotype alignment")   << " seconds\n"
 	       << "\t" << " Posterior computation = "  << process_timer_.get_total_time("Posterior computation") << " seconds\n"
-               << "\t" << " Alignment traceback   = "  << process_timer_.get_total_time("Alignment traceback")   << " seconds\n"
-	       << "\t" << " Bootstrap computation = "  << process_timer_.get_total_time("Bootstrap computation") << " seconds\n";
+               << "\t" << " Alignment traceback   = "  << process_timer_.get_total_time("Alignment traceback")   << " seconds\n";
   }
 
   // EM parameters for length-based stutter learning
