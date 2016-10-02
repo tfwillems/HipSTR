@@ -1,6 +1,7 @@
 #ifndef GENOTYPER_H_
 #define GENOTYPER_H_
 
+#include <assert.h>
 #include <algorithm>
 #include <iostream>
 #include <map>
@@ -8,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "region.h"
 #include "mathops.h"
 
 class Genotyper {
@@ -22,7 +22,6 @@ class Genotyper {
   }
 
  protected:
-  Region* region_;            // Locus information
   unsigned int num_reads_;    // Total number of reads across all samples
   int num_samples_;           // Total number of samples
   int num_alleles_;           // Number of valid alleles
@@ -86,10 +85,10 @@ class Genotyper {
   }
 
   // Determine the genotype associated with each sample based on the current genotype posteriors
-  void get_optimal_haplotypes(double* log_posterior_ptr, std::vector< std::pair<int, int> >& gts);
+  void get_optimal_haplotypes(std::vector< std::pair<int, int> >& gts);
 
  public:
-  Genotyper(Region& region, bool haploid, bool fast_log_sum_exp, std::vector<std::string>& sample_names,
+  Genotyper(bool haploid, bool fast_log_sum_exp, std::vector<std::string>& sample_names,
 	    std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2){
     assert(log_p1.size() == log_p2.size() && log_p1.size() == sample_names.size());
     num_reads_ = 0;
@@ -97,7 +96,6 @@ class Genotyper {
       num_reads_ += log_p1[i].size();
 
     num_alleles_      = -1;
-    region_           = region.copy();
     haploid_          = haploid;
     logsumexp_agg     = (fast_log_sum_exp ? &Genotyper::fast_log_sum_exp_aggregator : &Genotyper::slow_log_sum_exp_aggregator);
     num_samples_      = log_p1.size();
@@ -128,7 +126,6 @@ class Genotyper {
   }
 
   ~Genotyper(){
-    delete region_;
     delete [] log_p1_;
     delete [] log_p2_;
     delete [] sample_label_;
@@ -150,7 +147,7 @@ class Genotyper {
 
   double calc_gl_diff(const std::vector<double>& gls, int gt_a, int gt_b);
 
-  void extract_genotypes_and_likelihoods(int num_variants, std::vector<int>& hap_to_allele, double* log_posterior_ptr,
+  void extract_genotypes_and_likelihoods(int num_variants, std::vector<int>& hap_to_allele,
 					 std::vector< std::pair<int,int>  >& best_haplotypes,
 					 std::vector< std::pair<int,int>  >& best_gts,
 					 std::vector<double>& log_phased_posteriors, std::vector<double>& log_unphased_posteriors,

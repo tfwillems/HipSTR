@@ -91,9 +91,10 @@ double Genotyper::calc_log_sample_posteriors(std::vector<int>& read_weights){
   return total_LL;
 }
 
-void Genotyper::get_optimal_haplotypes(double* log_posterior_ptr, std::vector< std::pair<int, int> >& gts){
+void Genotyper::get_optimal_haplotypes(std::vector< std::pair<int, int> >& gts){
   assert(gts.size() == 0);
   gts = std::vector< std::pair<int,int> > (num_samples_, std::pair<int,int>(-1,-1));
+  double* log_posterior_ptr = log_sample_posteriors_;
   std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX);
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
@@ -137,7 +138,7 @@ double Genotyper::calc_gl_diff(const std::vector<double>& gls, int gt_a, int gt_
   return ((abs(max_gl-gls[gl_index]) < TOLERANCE) ? (max_gl-second_gl) : gls[gl_index]-max_gl);
 }
 
-void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<int>& hap_to_allele, double* log_posterior_ptr,
+void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<int>& hap_to_allele,
 						  std::vector< std::pair<int,int>  >& best_haplotypes,
 						  std::vector< std::pair<int,int>  >& best_gts,
 						  std::vector<double>& log_phased_posteriors, std::vector<double>& log_unphased_posteriors,
@@ -148,7 +149,7 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
   assert(best_haplotypes.empty() && best_gts.empty() && gls.empty() && pls.empty() && phased_gls.empty());
 
   // Use the standard genotyper approach to find the ML combination of haplotypes
-  get_optimal_haplotypes(log_posterior_ptr, best_haplotypes);
+  get_optimal_haplotypes(best_haplotypes);
 
   // Extract the ML alleles for the variant
   for (int sample_index = 0; sample_index < num_samples_; sample_index++)
@@ -157,6 +158,7 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
   // Marginalize over all haplotypes to compute the genotype posteriors and use streaming log-sum-exp to aggregate values
   std::vector< std::vector<double>  > max_log_phased_posteriors   (num_samples_, std::vector<double>(num_variants*num_variants, -DBL_MAX/2));
   std::vector< std::vector<double>  > total_log_phased_posteriors (num_samples_, std::vector<double>(num_variants*num_variants, 0.0));
+  double* log_posterior_ptr = log_sample_posteriors_;
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
     for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
       int gt_index = num_variants*hap_to_allele[index_1] + hap_to_allele[index_2];
@@ -202,19 +204,20 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
     int gt_index = 0;
     for (int index_1 = 0; index_1 < num_variants; ++index_1){
       for (int index_2 = 0; index_2 < num_variants; ++index_2, ++gt_index){
-	int alt_gt_index = index_2*num_variants + index_1;
-	double ll_correction = (index_1 == index_2 ? hom_ll_correction : het_ll_correction) + nconfig_correction;
+	int alt_gt_index              = index_2*num_variants + index_1;
+	double gl_ll_correction       = (index_1 == index_2 ? hom_ll_correction : het_ll_correction) + nconfig_correction;
+	double phasedgl_ll_correction = (index_1 == index_2 ? hom_ll_correction : het_ll_correction);
 	for (int sample_index = 0; sample_index < num_samples_; sample_index++){
 	  if (index_2 <= index_1){
 	    if (!haploid_ || (index_1 == index_2)){
-	      double gl_base_e = sample_total_LLs_[sample_index] - ll_correction + fast_log_sum_exp(total_log_phased_posteriors[sample_index][gt_index],
+	      double gl_base_e = sample_total_LLs_[sample_index] - gl_ll_correction + fast_log_sum_exp(total_log_phased_posteriors[sample_index][gt_index],
 												    total_log_phased_posteriors[sample_index][alt_gt_index]);
 	      gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
 	    }
 	  }
 	  if (calc_phased_gls)
 	    if (!haploid_ || (index_1 == index_2))
-	      phased_gls[sample_index].push_back((total_log_phased_posteriors[sample_index][gt_index] + sample_total_LLs_[sample_index] - ll_correction)*LOG_E_BASE_10);
+	      phased_gls[sample_index].push_back((total_log_phased_posteriors[sample_index][gt_index] + sample_total_LLs_[sample_index] - phasedgl_ll_correction)*LOG_E_BASE_10);
 	}
       }
     }
@@ -286,7 +289,7 @@ void Genotyper::write_vcf_header(std::string& full_command, std::vector<std::str
     out << "##FORMAT=<ID=" << "PL"       << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
   if (output_phased_gls)
     out << "##FORMAT=<ID=" << "PHASEDGL" << ",Number=.,Type=Float,Description=\""
-	<< "log-10 genotype likelihood for each phased genotype. Value for phased genotype X|Y is stored at a 0-based index of X*A + Y, where A is the number of alleles. Identical to GL for haploid genotypes"
+	<< "log-10 genotype likelihood for each phased genotype. Value for phased genotype X|Y is stored at a 0-based index of X*A + Y, where A is the number of alleles. Not applicable to haploid genotypes"
 	<< "\">" << "\n";
 
   // Sample names

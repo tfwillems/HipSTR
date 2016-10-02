@@ -41,9 +41,7 @@ class SeqStutterGenotyper : public Genotyper {
                                                   // Based on the deletion boundaries in the sample's reads
 
   bool alleles_from_bams_; // Flag that determines if we examine BAMs for candidate alleles
-
-  std::vector<std::string> alleles_; // Vector of indexed alleles
-  int32_t pos_;                      // Position of reported alleles in VCF     
+  bool initialized_;       // True iff initialization succeeded and genotyping can proceed
 
   // 0-based seed index for each read
   // -1 denotes that no seed position was determined for the read
@@ -57,10 +55,6 @@ class SeqStutterGenotyper : public Genotyper {
   // probabilities. Should result in significant speedup but may introduce genotyping errors
   bool pool_identical_seqs_;
 
-  // True iff we only report genotypes for samples with >= 1 read
-  // In an imputation-only setting, this should be set to false
-  bool require_one_read_;
-
   // Timing statistics (in seconds)
   double total_hap_build_time_;
   double total_hap_aln_time_;
@@ -73,43 +67,40 @@ class SeqStutterGenotyper : public Genotyper {
   // True iff both the indexed read and its mate overlap the STR and the current read's index is greater
   bool* second_mate_;
 
-  /* Compute the alignment probabilites between each read and each haplotype */
-  double calc_align_probs();
-
   // Set up the relevant data structures. Invoked by the constructor 
   void init(StutterModel& stutter_model, std::string& chrom_seq, std::ostream& logger);
 
+  void reorder_alleles(std::vector<std::string>& alleles,
+		       std::vector<int>& old_to_new, std::vector<int>& new_to_old);
+
   // Extract the sequences for each allele and the VCF start position
-  void get_alleles(std::string& chrom_seq, std::vector<std::string>& alleles);
+  void get_alleles(Region& region, int block_index, std::string& chrom_seq,
+		   int32_t& pos, std::vector<std::string>& alleles);
 
   void debug_sample(int sample_index, std::ostream& logger);
   
-  // Identify a list of alleles that aren't the MAP genotype for any sample
-  // Doesn't include the reference allele (index = 0)
-  void get_uncalled_alleles(std::vector<int>& allele_indices);
-
   // Modify the internal structures to remove the alleles at the associated indices
   // Designed to remove alleles who aren't the MAP genotype of any samples
   // However, it does not modify any of the haplotype-related data structures
-  void remove_alleles(std::vector<int>& allele_indices);
+  void remove_alleles(std::vector< std::vector<int> >& allele_indices);
 
   // Compute bootstrapped quality scores by resampling reads and determining how frequently
   // the genotypes match the ML genotype
-  void compute_bootstrap_qualities(int num_iter, std::vector<double>& bootstrap_qualities);
+  void compute_bootstrap_qualities(int num_iter, std::vector< std::vector<double> >& bootstrap_qualities);
 
   // Retrace the alignment for each read and store the associated pointers in the provided vector
   // Reads which were unaligned will have a NULL pointer
-  void retrace_alignments(std::ostream& logger, std::vector<AlignmentTrace*>& traced_alns);
+  void retrace_alignments(std::vector<AlignmentTrace*>& traced_alns);
 
   // Filter reads based on their retraced ML alignments
   void filter_alignments(std::ostream& logger, std::vector<int>& masked_reads);
 
   // Identify additional candidate STR alleles using the sequences observed
   // in reads with stutter artifacts
-  void get_stutter_candidate_alleles(std::ostream& logger, std::vector<std::string>& candidate_seqs);
+  void get_stutter_candidate_alleles(int block_index, std::ostream& logger, std::vector<std::string>& candidate_seqs);
 
   // Align each read to each of the candidate alleles, and store the results in the provided arrays
-  void calc_hap_aln_probs(Haplotype* haplotype, double* log_aln_probs, int* seed_positions);
+  void calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype);
 
   // Identify alleles present in stutter artifacts
   // Align each read to these alleles and incorporate these alignment probabilities and
@@ -119,13 +110,28 @@ class SeqStutterGenotyper : public Genotyper {
   // Exploratory function related to identifying indels in the flanking sequences
   void analyze_flank_indels(std::ostream& logger);
 
-  // Exploratory function related to identifying alleles without any spanning reads
-  // These alleles should likely be removed
-  void get_unspanned_alleles(std::vector<int>& allele_indices, std::ostream& logger);
-
   // Determines the allele index in the given haplotype block that is associated with each haplotype configuration
   // Stores the results in the provided vector
   void haps_to_alleles(int hap_block_index, std::vector<int>& allele_indices);
+
+
+  // If CHECK_CALLED,  identifies any alleles that are not in any samples' ML genotypes
+  // If CHECK_SPANNED, identifies any alleles that are not spanned by any reads without stutter artifacts
+  // Adds any identifed alleles to the provided vector, separated by haplotype block index
+  void get_unused_alleles(bool check_spanned, bool check_called,
+			  std::vector< std::vector<int> >& allele_indices, int& num_aff_blocks, int& num_aff_alleles);
+
+  // Add and/or remove the provided alleles to the underlying haplotype structures. Realigns each read to any novel alleles
+  // and updates the alignment probabilities and genotype posteriors accordingly.
+  void add_and_remove_alleles(std::vector< std::vector<int> >& alleles_to_remove,
+			      std::vector< std::vector<std::string> >& alleles_to_add);
+
+  void write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, Region& region, std::string& chrom_seq, std::vector<double>& bootstrap_qualities,
+			bool output_bootstrap_qualities, bool output_gls, bool output_pls, bool output_phased_gls,
+			bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
+			std::ostream& html_output, std::ostream& out, std::ostream& logger);
+
+  Region* region_;
 
  public:
   SeqStutterGenotyper(Region& region, bool haploid,
@@ -133,7 +139,8 @@ class SeqStutterGenotyper : public Genotyper {
 		      std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,
 		      std::vector<std::string>& sample_names, std::string& chrom_seq,
 		      bool pool_identical_seqs,
-		      StutterModel& stutter_model, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(region, haploid, false, sample_names, log_p1, log_p2){
+		      StutterModel& stutter_model, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(haploid, false, sample_names, log_p1, log_p2){
+    region_                = region.copy();
     alns_                  = alignments;
     bp_diffs_              = bp_diffs;
     use_for_haps_          = use_to_generate_haps;
@@ -143,31 +150,21 @@ class SeqStutterGenotyper : public Genotyper {
     second_mate_           = NULL;
     ref_vcf_               = ref_vcf;
     MAX_REF_FLANK_LEN      = 30;
-    pos_                   = -1;
+    initialized_           = false;
     pool_identical_seqs_   = pool_identical_seqs;
     total_hap_build_time_  = total_hap_aln_time_    = 0;
     total_aln_trace_time_  = total_bootstrap_time_  = 0;
     ref_vcf_               = ref_vcf;
     alleles_from_bams_     = true;
-
-    require_one_read_      = true;
-    /* TO DO: Properly set this flag based on whether the VCF has the required FORMAT fields
-    // True iff no allele priors are available (for imputation)
-    if (ref_vcf == NULL)
-      require_one_read_ = true;
-    else
-      require_one_read_ = (ref_vcf->formatTypes.find(PGP_KEY) == ref_vcf->formatTypes.end());
-    */
     assert(num_reads_ == alns_.size() && num_reads_ == bp_diffs_.size() && num_reads_ == use_for_haps_.size());
     init(stutter_model, chrom_seq, logger);
   }
 
   ~SeqStutterGenotyper(){
+    delete region_;
     delete [] seed_positions_;
     delete [] pool_index_;
     delete [] second_mate_;
-    if (ref_vcf_ != NULL)
-      delete ref_vcf_;
     for (auto trace_iter = trace_cache_.begin(); trace_iter != trace_cache_.end(); trace_iter++)
       delete trace_iter->second;
     for (unsigned int i = 0; i < hap_blocks_.size(); i++)
@@ -181,10 +178,9 @@ class SeqStutterGenotyper : public Genotyper {
    */
   bool use_read(AlignmentTrace* trace);
 
-  void write_vcf_record(std::vector<std::string>& sample_names, bool print_info, std::string& chrom_seq,
+  void write_vcf_record(std::vector<std::string>& sample_names, std::string& chrom_seq,
 			bool output_bootstrap_qualities, bool output_gls, bool output_pls, bool output_phased_gls,
-			bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac,
-			bool visualize_left_alns,
+			bool output_allreads, bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 
 

@@ -43,13 +43,13 @@ class EMStutterGenotyper: public Genotyper {
   void recalc_log_read_phase_posteriors();
 
  public:
- EMStutterGenotyper(Region& region, bool haploid,
+ EMStutterGenotyper(bool haploid, int motif_length,
 		    std::vector< std::vector<int> >& num_bps,
 		    std::vector< std::vector<double> >& log_p1,
 		    std::vector< std::vector<double> >& log_p2,
-		    std::vector<std::string>& sample_names, int ref_allele): Genotyper(region, haploid, true, sample_names, log_p1, log_p2){
+		    std::vector<std::string>& sample_names, int ref_allele): Genotyper(haploid, true, sample_names, log_p1, log_p2){
     assert(num_bps.size() == log_p1.size() && num_bps.size() == log_p2.size() && num_bps.size() == sample_names.size());
-    motif_len_     = region_->period();
+    motif_len_     = motif_length;
     use_pop_freqs_ = false;
 
     // Compute the set of allele sizes

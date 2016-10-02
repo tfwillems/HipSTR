@@ -135,7 +135,7 @@ class HapBlock {
     return -1;
   }
 
-  HapBlock* remove_alleles(std::vector<int>& allele_indices){
+  virtual HapBlock* remove_alleles(std::vector<int>& allele_indices){
     std::set<int> bad_alleles(allele_indices.begin(), allele_indices.end());
     assert(bad_alleles.find(0) == bad_alleles.end());
 

@@ -23,6 +23,11 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
 				  const char* seq_0, int seq_len, const double* base_log_wrong, const double* base_log_correct,
 				  double* match_matrix, double* insert_matrix, double* deletion_matrix,
 				  int* best_artifact_size, int* best_artifact_pos, double& left_prob){
+  // True iff we should reuse alignment information from the previous haplotype to accelerate computations
+  bool reuse_alns = true;
+  if (haplotype->cur_index() == 0 || !realign_to_hap_[haplotype->cur_index()-1] || haplotype->last_changed() == -1)
+    reuse_alns = false;
+
   // NOTE: Input matrix structure: Row = Haplotype position, Column = Read index
   double* L_log_probs = new double[seq_len];
  
@@ -47,7 +52,7 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
     bool stutter_block           = (haplotype->get_block(block_index)->get_repeat_info()) != NULL;
 
     // Skip any blocks to the left of the last changed block (as we can reuse the alignments)
-    if (haplotype->last_changed() != -1 && block_index < haplotype->last_changed()){
+    if (reuse_alns && block_index < haplotype->last_changed()){
       haplotype_index += block_seq.size() + (block_index == 0 ? -1 : 0);
       matrix_index     = seq_len*haplotype_index;
       if (stutter_block)
@@ -74,7 +79,9 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
       // If this haplotype and its predecessor have a suffix match that exceeds the maximum
       // haplotype bases used for a subset of the read position, we can reuse the match probabilities
       // for those positions as they're identical
-      if (haplotype->last_changed() != -1){
+      if (false && reuse_alns){
+	// TO DO: Generalize this to multi-block haplotypes. Need to check that old matrix indices haven't been overwritten and ...
+	assert(haplotype->num_blocks() == 3);
 	int suffix_match_length = haplotype->get_block(block_index)->suffix_match_len(block_option);
 	int old_matrix_index    = seq_len*(haplotype_index+haplotype->get_block(block_index)->get_seq(block_option-1).size()-1);
 	int num_copies          = std::min(seq_len, suffix_match_length + rep_info->max_deletion());
@@ -591,6 +598,11 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
   std::reverse(base_log_correct+seed_base+1, base_log_correct+base_seq_len);
 
   do {
+    if (!realign_to_hap_[fw_haplotype_->cur_index()]){
+      prob_ptr++;
+      continue;
+    }
+
     // Perform alignment to current haplotype
     double l_prob, r_prob;
     int max_index;

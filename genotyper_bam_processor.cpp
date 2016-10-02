@@ -178,7 +178,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   else {
     // Learn stutter model using length-based EM algorithm
     log("Building EM stutter genotyper");
-    length_genotyper = new EMStutterGenotyper(region, haploid, str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, 0);
+    length_genotyper = new EMStutterGenotyper(haploid, region.period(), str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, 0);
     log("Training EM stutter genotyper");
     trained = length_genotyper->train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false, logger());
     if (trained){
@@ -226,7 +226,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 
 	  if (pass){
 	    num_genotype_success_++;
-	    seq_genotyper->write_vcf_record(samples_to_genotype_, true, chrom_seq, output_bstrap_quals_, output_gls_, output_pls_, output_phased_gls_,
+	    seq_genotyper->write_vcf_record(samples_to_genotype_, chrom_seq, output_bstrap_quals_, output_gls_, output_pls_, output_phased_gls_,
 					    output_all_reads_, output_pall_reads_, output_mall_reads_, output_viz_, max_flank_indel_frac_,
 					    viz_left_alns_, viz_out_, str_vcf_, logger());
 	  }

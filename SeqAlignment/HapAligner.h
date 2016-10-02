@@ -1,6 +1,7 @@
 #ifndef HAP_ALIGNER_H_
 #define HAP_ALIGNER_H_
 
+#include <assert.h>
 #include <string>
 #include <vector>
 
@@ -13,7 +14,7 @@ class HapAligner {
  private:
   Haplotype* fw_haplotype_;
   Haplotype* rev_haplotype_;
-
+  std::vector<bool> realign_to_hap_;
   std::vector<HapBlock*> rev_blocks_;
 
   /**
@@ -27,11 +28,8 @@ class HapAligner {
 			int* best_artifact_size, int* best_artifact_pos, double& left_prob);
 
   /**
-   * Compute the log-probability of the alignment given the 
-   * alignment matrices for the left and right segments.
-   *
-   * Stores the index of the haplotype position with which the seed base
-   * is aligned in the maximum likelihood alignment
+   * Compute the log-probability of the alignment given the alignment matrices for the left and right segments.
+   * Stores the index of the haplotype position with which the seed base is aligned in the maximum likelihood alignment
    **/
   double compute_aln_logprob(int base_seq_len, int seed_base,
 			     char seed_char, double log_seed_wrong, double log_seed_correct,
@@ -45,9 +43,11 @@ class HapAligner {
 		      AlignmentTrace& trace);
 
  public:
-  HapAligner(Haplotype* haplotype){
-    fw_haplotype_  = haplotype;
-    rev_haplotype_ = haplotype->reverse(rev_blocks_);
+  HapAligner(Haplotype* haplotype, std::vector<bool>& realign_to_haplotype){
+    assert(realign_to_haplotype.size() == haplotype->num_combs());
+    fw_haplotype_   = haplotype;
+    rev_haplotype_  = haplotype->reverse(rev_blocks_);
+    realign_to_hap_ = realign_to_haplotype;
   }
 
   ~HapAligner(){
@@ -58,8 +58,7 @@ class HapAligner {
   }
 
   /** 
-   * Returns the 0-based index into the sequence string that should be 
-   * used as the seed for alignment. Returns -1 iff no valid seed exists 
+   * Returns the 0-based index into the sequence string that should be used as the seed for alignment or -1 if no valid seed exists
    **/
   int calc_seed_base(Alignment& alignment);
 
