@@ -158,7 +158,6 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
   }
 
   bool haploid = (haploid_chroms_.find(region.chrom()) != haploid_chroms_.end());
-  bool trained = false;
   StutterModel* stutter_model          = NULL;
   EMStutterGenotyper* length_genotyper = NULL;
   locus_stutter_time_ = clock();
@@ -180,7 +179,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     log("Building EM stutter genotyper");
     length_genotyper = new EMStutterGenotyper(haploid, region.period(), str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, 0);
     log("Training EM stutter genotyper");
-    trained = length_genotyper->train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false, logger());
+    bool trained = length_genotyper->train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false, logger());
     if (trained){
       if (output_stutter_models_)
 	length_genotyper->get_stutter_model()->write_model(region.chrom(), region.start(), region.stop(), stutter_model_out_);
@@ -199,43 +198,41 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
 
   SeqStutterGenotyper* seq_genotyper = NULL;
   locus_genotype_time_ = clock();
-  if (output_str_gts_){
-    if (stutter_model != NULL) {
-      VCF::VCFReader* reference_panel_vcf = NULL;
-      if (ref_vcf_ != NULL)
-	reference_panel_vcf = ref_vcf_;
+  if (output_str_gts_ && stutter_model != NULL) {
+    VCF::VCFReader* reference_panel_vcf = NULL;
+    if (ref_vcf_ != NULL)
+      reference_panel_vcf = ref_vcf_;
 
-      std::vector<Alignment> left_alignments;
-      std::vector< std::vector<double> > filt_log_p1s, filt_log_p2s;
-      std::vector<bool> use_to_generate_haps;
-      std::vector<int> bp_diffs;
-      left_align_reads(region, chrom_seq, alignments, log_p1s, log_p2s, filt_log_p1s,
-		       filt_log_p2s, left_alignments, bp_diffs, use_to_generate_haps, logger());
+    std::vector<Alignment> left_alignments;
+    std::vector< std::vector<double> > filt_log_p1s, filt_log_p2s;
+    std::vector<bool> use_to_generate_haps;
+    std::vector<int> bp_diffs;
+    left_align_reads(region, chrom_seq, alignments, log_p1s, log_p2s, filt_log_p1s,
+		     filt_log_p2s, left_alignments, bp_diffs, use_to_generate_haps, logger());
 
-      seq_genotyper = new SeqStutterGenotyper(region, haploid, left_alignments, use_to_generate_haps, bp_diffs, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq, pool_seqs_,
-					      *stutter_model, reference_panel_vcf, logger());
+    seq_genotyper = new SeqStutterGenotyper(region, haploid, left_alignments, use_to_generate_haps, bp_diffs, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq, pool_seqs_,
+					    *stutter_model, reference_panel_vcf, logger());
 
-      if (output_str_gts_){
-	if (seq_genotyper->genotype(chrom_seq, logger())) {
-	  bool pass = true;
+    if (output_str_gts_){
+      if (seq_genotyper->genotype(chrom_seq, logger())) {
+	bool pass = true;
 
-	  // If appropriate, recalculate the stutter model using the haplotype ML alignments,
-	  // realign the reads and regenotype the samples
-	  if (recalc_stutter_model_)
-	    pass = seq_genotyper->recompute_stutter_models(chrom_seq, logger(), MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
+	// If appropriate, recalculate the stutter model using the haplotype ML alignments,
+	// realign the reads and regenotype the samples
+	if (recalc_stutter_model_)
+	  pass = seq_genotyper->recompute_stutter_models(chrom_seq, logger(), MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
 
-	  if (pass){
-	    num_genotype_success_++;
-	    seq_genotyper->write_vcf_record(samples_to_genotype_, chrom_seq, output_gls_, output_pls_, output_phased_gls_,
-					    output_all_reads_, output_pall_reads_, output_mall_reads_, output_viz_, max_flank_indel_frac_,
-					    viz_left_alns_, viz_out_, str_vcf_, logger());
-	  }
-	  else
-	    num_genotype_fail_++;
+	if (pass){
+	  num_genotype_success_++;
+	  seq_genotyper->write_vcf_record(samples_to_genotype_, chrom_seq, output_gls_, output_pls_, output_phased_gls_,
+					  output_all_reads_, output_pall_reads_, output_mall_reads_, output_viz_, max_flank_indel_frac_,
+					  viz_left_alns_, viz_out_, str_vcf_, logger());
 	}
 	else
 	  num_genotype_fail_++;
       }
+      else
+	num_genotype_fail_++;
     }
   }
   locus_genotype_time_  = (clock() - locus_genotype_time_)/CLOCKS_PER_SEC;
