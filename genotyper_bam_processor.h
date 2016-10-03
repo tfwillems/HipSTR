@@ -90,6 +90,10 @@ private:
 			std::vector< Alignment>& left_alns, std::vector<int>& bp_diffs, std::vector<bool>& use_for_hap_generation,
 			std::ostream& logger);
 
+  StutterModel* learn_stutter_model(std::vector<BamAlnList>& alignments,
+				    std::vector< std::vector<double> >& log_p1s, std::vector< std::vector<double> >& log_p2s,
+				    bool haploid, std::vector<std::string>& rg_names, Region& region);
+
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups):SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
     output_stutter_models_ = false;

@@ -101,6 +101,61 @@ void GenotyperBamProcessor::left_align_reads(Region& region, std::string& chrom_
     logger << "Failed to left align " << align_fail_count << " out of " << total_reads << " reads" << std::endl;
 }
 
+StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>& alignments,
+							 std::vector< std::vector<double> >& log_p1s,
+							 std::vector< std::vector<double> >& log_p2s,
+							 bool haploid, std::vector<std::string>& rg_names, Region& region){
+  std::vector< std::vector<int> > str_bp_lengths(alignments.size());
+  std::vector< std::vector<double> > str_log_p1s(alignments.size()), str_log_p2s(alignments.size());
+  int inf_reads = 0;
+
+  // Extract bp differences and phasing probabilities for each read if we need to train a stutter model
+  for (unsigned int i = 0; i < alignments.size(); ++i){
+    for (unsigned int j = 0; j < alignments[i].size(); ++j){
+      int bp_diff;
+      bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region.start()-region.period(), region.stop()+region.period(), bp_diff);
+      if (got_size){
+	if (bp_diff < -(int)(region.stop()-region.start()+1)) {
+	  log("WARNING: Excluding read with bp difference greater than reference allele: " +alignments[i][j].Name);
+	  continue;
+	}
+	inf_reads++;
+	str_bp_lengths[i].push_back(bp_diff);
+	if (log_p1s.size() == 0){
+	  str_log_p1s[i].push_back(0); str_log_p2s[i].push_back(0); // Assign equal phasing LLs as no SNP info is available
+	}
+	else {
+	  str_log_p1s[i].push_back(log_p1s[i][j]); str_log_p2s[i].push_back(log_p2s[i][j]);
+	}
+      }
+    }
+  }
+
+  if (inf_reads < MIN_TOTAL_READS){
+    logger() << "Skipping locus with too few reads: TOTAL=" << inf_reads << ", MIN=" << MIN_TOTAL_READS << std::endl;
+    return NULL;
+  }
+
+  log("Building EM stutter genotyper");
+  EMStutterGenotyper length_genotyper(haploid, region.period(), str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, 0);
+  log("Training EM stutter genotyper");
+  bool trained = length_genotyper.train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false, logger());
+  if (trained){
+    if (output_stutter_models_)
+      length_genotyper.get_stutter_model()->write_model(region.chrom(), region.start(), region.stop(), stutter_model_out_);
+    num_em_converge_++;
+    StutterModel* stutter_model = length_genotyper.get_stutter_model()->copy();
+    logger() << "Learned stutter model: " << *stutter_model << std::endl;
+    return stutter_model;
+  }
+  else {
+    num_em_fail_++;
+    logger() << "Stutter model training failed for locus " << region.chrom() << ":" << region.start() << "-" << region.stop()
+	     << " with " << inf_reads << " informative reads" << std::endl;
+    return NULL;
+  }
+}
+
 void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
 						      std::vector< std::vector<double> >& log_p1s,
 						      std::vector< std::vector<double> >& log_p2s,
@@ -120,46 +175,8 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
   }
 
   assert(alignments.size() == log_p1s.size() && alignments.size() == log_p2s.size() && alignments.size() == rg_names.size());
-  std::vector< std::vector<int> > str_bp_lengths(alignments.size());
-  std::vector< std::vector<double> > str_log_p1s(alignments.size()), str_log_p2s(alignments.size());
-  int inf_reads = 0;
-
-  // Extract bp differences and phasing probabilities for each read if we 
-  // need to utilize the length-based EM genotyper for stutter model training or genotyping
-  int skip_count = 0;
-  if ((def_stutter_model_ == NULL) && !read_stutter_models_){
-    for (unsigned int i = 0; i < alignments.size(); ++i){
-      for (unsigned int j = 0; j < alignments[i].size(); ++j){
-	int bp_diff;
-	bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region.start()-region.period(), region.stop()+region.period(), bp_diff);
-	if (got_size){
-	  if (bp_diff < -(int)(region.stop()-region.start()+1)) {
-	    log("WARNING: Excluding read with bp difference greater than reference allele: " +alignments[i][j].Name);
-	    continue;
-	  }
-	  inf_reads++;
-	  str_bp_lengths[i].push_back(bp_diff);
-	  if (log_p1s.size() == 0){
-	    str_log_p1s[i].push_back(0); str_log_p2s[i].push_back(0); // Assign equal phasing LLs as no SNP info is available
-	  }
-	  else {
-	    str_log_p1s[i].push_back(log_p1s[i][j]); str_log_p2s[i].push_back(log_p2s[i][j]);
-	  }
-	}
-	else
-	  skip_count++;
-      }
-    }
-  }
-
-  if (total_reads-skip_count < MIN_TOTAL_READS){
-    logger() << "Skipping locus with too few reads: TOTAL=" << total_reads-skip_count << ", MIN=" << MIN_TOTAL_READS << std::endl;
-    return;
-  }
-
   bool haploid = (haploid_chroms_.find(region.chrom()) != haploid_chroms_.end());
-  StutterModel* stutter_model          = NULL;
-  EMStutterGenotyper* length_genotyper = NULL;
+  StutterModel* stutter_model = NULL;
   locus_stutter_time_ = clock();
   if (def_stutter_model_ != NULL){
     log("Using default stutter model");
@@ -176,28 +193,13 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
   }
   else {
     // Learn stutter model using length-based EM algorithm
-    log("Building EM stutter genotyper");
-    length_genotyper = new EMStutterGenotyper(haploid, region.period(), str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, 0);
-    log("Training EM stutter genotyper");
-    bool trained = length_genotyper->train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false, logger());
-    if (trained){
-      if (output_stutter_models_)
-	length_genotyper->get_stutter_model()->write_model(region.chrom(), region.start(), region.stop(), stutter_model_out_);
-      num_em_converge_++;
-      stutter_model = length_genotyper->get_stutter_model()->copy();
-      logger() << "Learned stutter model: " << *stutter_model << std::endl;
-    }
-    else {
-      num_em_fail_++;
-      logger() << "Stutter model training failed for locus " << region.chrom() << ":" << region.start() << "-" << region.stop()
-	       << " with " << inf_reads << " informative reads" << std::endl;
-    }
+    stutter_model = learn_stutter_model(alignments, log_p1s, log_p2s, haploid, rg_names, region);
   }
   locus_stutter_time_  = (clock() - locus_stutter_time_)/CLOCKS_PER_SEC;;
   total_stutter_time_ += locus_stutter_time_;
 
-  SeqStutterGenotyper* seq_genotyper = NULL;
   locus_genotype_time_ = clock();
+  SeqStutterGenotyper* seq_genotyper = NULL;
   if (output_str_gts_ && stutter_model != NULL) {
     VCF::VCFReader* reference_panel_vcf = NULL;
     if (ref_vcf_ != NULL)
@@ -266,7 +268,6 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
 
   delete seq_genotyper;
   delete stutter_model;
-  delete length_genotyper;
 }
  
 
