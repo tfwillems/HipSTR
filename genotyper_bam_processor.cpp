@@ -91,7 +91,9 @@ void GenotyperBamProcessor::left_align_reads(Region& region, std::string& chrom_
       filt_log_p2[i].push_back(log_p2[i][j]);
       bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region.start()-region.period(), region.stop()+region.period(), bp_diff);
       bp_diffs.push_back(got_size ? bp_diff : -999);
-      use_for_hap_generation.push_back(BamProcessor::passes_filters(alignments[i][j]));
+
+      int region_index; // TO DO: Extract this dynamically
+      use_for_hap_generation.push_back(BamProcessor::passes_filters(alignments[i][j], region_index));
     }
   }
 

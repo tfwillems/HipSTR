@@ -34,9 +34,8 @@ class BamProcessor {
   void get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::BamAlignment& aln_2, const BamTools::RefVector& ref_vector,
 			  std::vector< std::pair<std::string, int32_t> >& p1, std::vector< std::pair<std::string, int32_t> >& p2);
 
-  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, std::vector<Region>::iterator region_iter,
-			     std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
-			     std::vector<std::string>& rg_names,
+  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, Region& region,
+			     std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library, std::vector<std::string>& rg_names,
 			     std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
 			     BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer);
 
@@ -44,8 +43,10 @@ class BamProcessor {
 
  std::string trim_alignment_name(BamTools::BamAlignment& aln);
 
- void modify_and_write_alns(BamAlnList& alignments, std::map<std::string, std::string>& rg_to_sample, Region& region,
+ void modify_and_write_alns(BamAlnList& alignments, std::map<std::string, std::string>& rg_to_sample,
 			    BamTools::BamWriter& writer);
+
+ bool spans_a_region(const std::vector<Region>& regions, BamTools::BamAlignment& alignment);
 
  protected:
  BaseQuality base_quality_;
@@ -99,7 +100,7 @@ class BamProcessor {
  virtual void process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 			    std::vector<BamAlnList>& mate_pairs_by_rg,
 			    std::vector<BamAlnList>& unpaired_strs_by_rg,
-			    std::vector<std::string>& rg_names, Region& region, std::string& chrom_seq,
+			    std::vector<std::string>& rg_names, RegionGroup& region_group, std::string& chrom_seq,
 			    std::ostream& out){
    log("Doing nothing with reads");
  }
@@ -125,14 +126,12 @@ class BamProcessor {
    return (log_to_file_ ? log_ : std::cerr);
  }
 
- static void add_passes_filters_tag(BamTools::BamAlignment& aln, bool passes);
+ static void add_passes_filters_tag(BamTools::BamAlignment& aln, std::string& passes);
 
- static bool passes_filters(BamTools::BamAlignment& aln);
+ static bool passes_filters(BamTools::BamAlignment& aln, int region_index);
 
  static const std::string PASSES_FILTERS_TAG_NAME;
  static const std::string PASSES_FILTERS_TAG_TYPE;
- static const int8_t      PASSES_FILTERS_TRUE;
- static const int8_t      PASSES_FILTERS_FALSE;
 
  int32_t MAX_MATE_DIST;
  int32_t MIN_BP_BEFORE_INDEL;

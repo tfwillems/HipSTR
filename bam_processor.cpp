@@ -20,22 +20,20 @@ const std::string PRIMARY_ALN_SCORE_TAG = "AS";
 const std::string SUBOPT_ALN_SCORE_TAG  = "XS";
 
 const std::string BamProcessor::PASSES_FILTERS_TAG_NAME = "PF";
-const std::string BamProcessor::PASSES_FILTERS_TAG_TYPE = "c";
-const int8_t BamProcessor::PASSES_FILTERS_TRUE          = 1;
-const int8_t BamProcessor::PASSES_FILTERS_FALSE         = 0;
+const std::string BamProcessor::PASSES_FILTERS_TAG_TYPE = "Z";
 
-void BamProcessor::add_passes_filters_tag(BamTools::BamAlignment& aln, bool passes){
+void BamProcessor::add_passes_filters_tag(BamTools::BamAlignment& aln, std::string& passes){
   if (aln.HasTag(PASSES_FILTERS_TAG_NAME))
     aln.RemoveTag(PASSES_FILTERS_TAG_NAME);
-  if(!aln.AddTag(PASSES_FILTERS_TAG_NAME, PASSES_FILTERS_TAG_TYPE, (passes ? PASSES_FILTERS_TRUE : PASSES_FILTERS_FALSE)))
+  if(!aln.AddTag(PASSES_FILTERS_TAG_NAME, PASSES_FILTERS_TAG_TYPE, passes))
     printErrorAndDie("Failed to add passes filters tag to BAM alignment");
 }
 
-bool BamProcessor::passes_filters(BamTools::BamAlignment& aln){
-  int8_t passes;
+bool BamProcessor::passes_filters(BamTools::BamAlignment& aln, int region_index){
+  std::string passes;
   if (!aln.GetTag(PASSES_FILTERS_TAG_NAME, passes))
     printErrorAndDie("Failed to extract passes filters tag from BAM alignment");
-  return passes == PASSES_FILTERS_TRUE;
+  return passes[region_index] == '1';
 }
 
 void BamProcessor::extract_mappings(BamTools::BamAlignment& aln, const BamTools::RefVector& ref_vector,
@@ -139,7 +137,7 @@ std::string BamProcessor::trim_alignment_name(BamTools::BamAlignment& aln){
   return aln_name;
 }
 
-void BamProcessor::modify_and_write_alns(BamAlnList& alignments, std::map<std::string, std::string>& rg_to_sample, Region& region,
+void BamProcessor::modify_and_write_alns(BamAlnList& alignments, std::map<std::string, std::string>& rg_to_sample,
 					 BamTools::BamWriter& writer){
   for (auto read_iter = alignments.begin(); read_iter != alignments.end(); read_iter++){
     // Add RG to BAM record based on file
@@ -153,7 +151,23 @@ void BamProcessor::modify_and_write_alns(BamAlnList& alignments, std::map<std::s
 
 }
 
-void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, std::vector<Region>::iterator region_iter,
+// Returns true if the alignment spans at least one region in the group.
+// Reads that don't actually span the region but start/end with a soft clip are also counted as spanning,
+// as the clipped sequence frequently extends past the region
+bool BamProcessor::spans_a_region(const std::vector<Region>& regions, BamTools::BamAlignment& alignment){
+  for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
+    if (alignment.Position > region_iter->stop() || alignment.GetEndPosition() < region_iter->start())
+      continue;
+    if (alignment.Position > region_iter->start() && !startsWithSoftClip(alignment))
+      continue;
+    if (alignment.GetEndPosition() < region_iter->stop() && !endsWithSoftClip(alignment))
+      continue;
+    return true;
+  }
+  return false;
+}
+
+void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, RegionGroup& region_group,
 					 std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library, std::vector<std::string>& rg_names,
 					 std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
 					 BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer){
@@ -164,8 +178,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 
   BamAlnList region_alignments, filtered_alignments;
   int32_t read_count = 0;
-  int32_t not_spanning = 0, mapping_quality = 0, flank_len = 0, unique_mapping = 0;
-  int32_t bp_before_indel = 0, end_match_window = 0, num_end_matches = 0, read_has_N = 0, hard_clip = 0, soft_clip = 0, split_alignment = 0, low_qual_score = 0;
+  int32_t not_spanning = 0, mapping_quality = 0, unique_mapping = 0;
+  int32_t read_has_N = 0, hard_clip = 0, soft_clip = 0, split_alignment = 0, low_qual_score = 0;
   BamTools::BamAlignment alignment;
 
   const BamTools::RefVector& ref_vector = reader.GetReferenceData();
@@ -175,14 +189,15 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   const std::string FILTER_TAG_TYPE = "Z";
   TOO_MANY_READS = false;
 
+  const std::vector<Region>& regions = region_group.regions();
   while (reader.GetNextAlignmentCore(alignment)){
     // Discard reads that don't overlap the STR region and whose mate pair has no chance of overlapping the region
-    if (alignment.Position > region_iter->stop() || alignment.GetEndPosition() < region_iter->start()){
+    if (alignment.Position > region_group.stop() || alignment.GetEndPosition() < region_group.start()){
       if (!alignment.IsPaired() || alignment.MatePosition == alignment.Position)
 	continue;
-      if (alignment.MatePosition > region_iter->stop())
+      if (alignment.MatePosition > region_group.stop())
 	continue;
-      if (alignment.MatePosition+alignment.Length+50 < region_iter->start())
+      if (alignment.MatePosition+alignment.Length+50 < region_group.start())
 	continue;
     }
 
@@ -201,10 +216,10 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     assert(alignment.CigarData.size() > 0 && alignment.RefID != -1);
 
     // Only apply tests to putative STR reads that overlap the STR region
-    if (alignment.Position < region_iter->stop() && alignment.GetEndPosition() >= region_iter->start()){
+    if (alignment.Position < region_group.stop() && alignment.GetEndPosition() >= region_group.start()){
       bool pass_one = false; // Denotes if read passed first set of simpler filters
-      bool pass_two = false; // Denotes if read passed sceond set of additional filters
-                             // Meant to signify if reads that pass first set should be used to generate haplotypes
+      std::string pass_two(regions.size(), '0'); // Denotes if read passed sceond set of additional filters for each region
+                                                 // Meant to signify if reads that pass first set should be used to generate haplotypes
       std::string filter = "";
       read_count++;
 
@@ -216,7 +231,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	}
 	int32_t length = alignment.Length;
 	trimLowQualityEnds(alignment, BASE_QUAL_TRIM);
-	if ((alignment.Length == 0) || (alignment.Length < length/2) || (alignment.Position > region_iter->stop() || alignment.GetEndPosition() < region_iter->start())){
+	if ((alignment.Length == 0) || (alignment.Length < length/2) || (alignment.Position > region_group.stop() || alignment.GetEndPosition() < region_group.start())){
 	  read_count--;
 	  continue;
 	}
@@ -243,15 +258,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	low_qual_score++;
 	filter.append("LOW_BASE_QUALS");
       }
-      // Ignore read if it does not span the left boundary of the STR
-      // Don't filter reads with left softclips b/c they frequently span the STR
-      else if (REQUIRE_SPANNING && ((alignment.Position > region_iter->start()) && !startsWithSoftClip(alignment))){
-	not_spanning++;
-	filter.append("NOT_SPANNING");
-      }
-      // Ignore read if it does not span the right boundary of the STR
-      // Don't filter reads with right softclips b/c they frequently span the STR
-      else if (REQUIRE_SPANNING && ((alignment.GetEndPosition() < region_iter->stop()) && !endsWithSoftClip(alignment))){
+      else if (REQUIRE_SPANNING && !spans_a_region(regions, alignment)){
 	not_spanning++;
 	filter.append("NOT_SPANNING");
       }
@@ -259,34 +266,37 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	pass_one = true;
 
       if (pass_one){
-	if ((MIN_FLANK > 0) && (alignment.Position > (region_iter->start()-MIN_FLANK) || alignment.GetEndPosition() < (region_iter->stop()+MIN_FLANK)))
-	  flank_len++;
-	else
-	  pass_two = true;
+	// Determine whether we can use the read for haplotype generation for each region in the group
+	int region_index = 0;
+	for (auto region_iter = regions.begin(); region_iter != regions.end(); ++region_iter, ++region_index){
+	  if ((MIN_FLANK > 0) && (alignment.Position > (region_iter->start()-MIN_FLANK) || alignment.GetEndPosition() < (region_iter->stop()+MIN_FLANK)))
+	    continue;
 
-	// Ignore read if there is another location within MAXIMAL_END_MATCH_WINDOW bp for which it has a longer end match
-	if (pass_two && MAXIMAL_END_MATCH_WINDOW > 0){
-	  bool maximum_end_matches = AlignmentFilters::HasLargestEndMatches(alignment, chrom_seq, 0, MAXIMAL_END_MATCH_WINDOW, MAXIMAL_END_MATCH_WINDOW);
-	  if (!maximum_end_matches){
-	    end_match_window++;
-	    pass_two = false;
+	  // Ignore read if there is another location within MAXIMAL_END_MATCH_WINDOW bp for which it has a longer end match
+	  if (MAXIMAL_END_MATCH_WINDOW > 0){
+	    bool maximum_end_matches = AlignmentFilters::HasLargestEndMatches(alignment, chrom_seq, 0, MAXIMAL_END_MATCH_WINDOW, MAXIMAL_END_MATCH_WINDOW);
+	    if (!maximum_end_matches){
+	      pass_two = std::string(regions.size(), '0');//std::vector<bool>(regions.size(), false);
+	      break;
+	    }
 	  }
-	}
-	// Ignore read if it doesn't match perfectly for at least MIN_READ_END_MATCH bases on each end
-	if (pass_two && MIN_READ_END_MATCH > 0){
-	  std::pair<int,int> match_lens = AlignmentFilters::GetNumEndMatches(alignment, chrom_seq, 0);
-	  if (match_lens.first < MIN_READ_END_MATCH || match_lens.second < MIN_READ_END_MATCH){
-	    num_end_matches++;
-	    pass_two = false;
+	  // Ignore read if it doesn't match perfectly for at least MIN_READ_END_MATCH bases on each end
+	  if (MIN_READ_END_MATCH > 0){
+	    std::pair<int,int> match_lens = AlignmentFilters::GetNumEndMatches(alignment, chrom_seq, 0);
+	    if (match_lens.first < MIN_READ_END_MATCH || match_lens.second < MIN_READ_END_MATCH){
+	      pass_two = std::string(regions.size(), '0');//std::vector<bool>(regions.size(), false);
+	      break;
+	    }
 	  }
-	}
-	// Ignore read if there is an indel within the first MIN_BP_BEFORE_INDEL bps from each end
-	if (pass_two && MIN_BP_BEFORE_INDEL > 0){
-	  std::pair<int, int> num_bps = AlignmentFilters::GetEndDistToIndel(alignment);
-	  if ((num_bps.first != -1 && num_bps.first < MIN_BP_BEFORE_INDEL) || (num_bps.second != -1 && num_bps.second < MIN_BP_BEFORE_INDEL)){
-	    bp_before_indel++;
-	    pass_two = false;
+	  // Ignore read if there is an indel within the first MIN_BP_BEFORE_INDEL bps from each end
+	  if (MIN_BP_BEFORE_INDEL > 0){
+	    std::pair<int, int> num_bps = AlignmentFilters::GetEndDistToIndel(alignment);
+	    if ((num_bps.first != -1 && num_bps.first < MIN_BP_BEFORE_INDEL) || (num_bps.second != -1 && num_bps.second < MIN_BP_BEFORE_INDEL)){
+	      pass_two = std::string(regions.size(), '0');//std::vector<bool>(regions.size(), false);
+	      break;
+	    }
 	  }
+	  pass_two[region_index] = '1';
 	}
       }
 
@@ -427,24 +437,19 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	   << "\n\t" << read_has_N       << " had an 'N' base call"
 	   << "\n\t" << mapping_quality  << " had too low of a mapping quality"
 	   << "\n\t" << low_qual_score   << " had low base quality scores"
-	   << "\n\t" << not_spanning     << " did not span the STR";
-  if (false)
-    logger() << "\n\t" << flank_len        << " had too bps in one or more flanks"
-	     << "\n\t" << bp_before_indel  << " had too few bp before the first indel"
-	     << "\n\t" << end_match_window << " did not have the maximal number of end matches within the specified window"
-	     << "\n\t" << num_end_matches  << " had too few bp matches along the ends";
-  logger() << "\n\t" << unique_mapping   << " did not have a unique mapping";
+	   << "\n\t" << not_spanning     << " did not span the STR"
+	   << "\n\t" << unique_mapping   << " did not have a unique mapping";
   if (REQUIRE_PAIRED_READS)
     logger() << "\n\t" << num_filt_unpaired_reads << " did not have a mate pair";
   logger() << "\n" << (paired_str_alns.size()+unpaired_str_alns.size()) << " PASSED ALL FILTERS" << "\n" << std::endl;
     
   // Output the reads passing all filters to a BAM file (if requested)
   if (pass_writer.IsOpen())
-    modify_and_write_alns(region_alignments, rg_to_sample, *region_iter, pass_writer);
+    modify_and_write_alns(region_alignments, rg_to_sample, pass_writer);
 
   // Output reads that overlapped the STR but were filtered to a BAM file (if requested)
   if (filt_writer.IsOpen())
-    modify_and_write_alns(filtered_alignments, rg_to_sample, *region_iter, filt_writer);
+    modify_and_write_alns(filtered_alignments, rg_to_sample, filt_writer);
 
   // Separate the reads based on their associated read groups
   std::map<std::string, int> rg_indices;
@@ -543,7 +548,8 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string
 
     std::vector<std::string> rg_names;
     std::vector<BamAlnList> paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg;
-    read_and_filter_reads(reader, chrom_seq, region_iter, rg_to_sample, rg_to_library, rg_names,
+    RegionGroup region_group(*region_iter);
+    read_and_filter_reads(reader, chrom_seq, region_group, rg_to_sample, rg_to_library, rg_names,
 			  paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, pass_writer, filt_writer);
 
     if (rem_pcr_dups_)
