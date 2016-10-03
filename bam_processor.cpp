@@ -265,13 +265,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	pass_one = true;
 
       if (pass_one){
-	int num_hard_clips, num_soft_clips;
-	AlignmentFilters::GetNumClippedBases(alignment, num_hard_clips, num_soft_clips);
-	if (num_hard_clips > MAX_HARD_CLIPS)
-	  hard_clip++;
-	else if (num_soft_clips > MAX_SOFT_CLIPS)
-	  soft_clip++;
-	else if ((MIN_FLANK > 0) && (alignment.Position > (region_iter->start()-MIN_FLANK) || alignment.GetEndPosition() < (region_iter->stop()+MIN_FLANK)))
+	if ((MIN_FLANK > 0) && (alignment.Position > (region_iter->start()-MIN_FLANK) || alignment.GetEndPosition() < (region_iter->stop()+MIN_FLANK)))
 	  flank_len++;
 	else
 	  pass_two = true;
@@ -441,9 +435,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	   << "\n\t" << low_qual_score   << " had low base quality scores"
 	   << "\n\t" << not_spanning     << " did not span the STR";
   if (false)
-    logger() << "\n\t" << hard_clip        << " had too many hard clipped bases"
-	     << "\n\t" << soft_clip        << " had too many soft clipped bases"
-	     << "\n\t" << flank_len        << " had too bps in one or more flanks"
+    logger() << "\n\t" << flank_len        << " had too bps in one or more flanks"
 	     << "\n\t" << bp_before_indel  << " had too few bp before the first indel"
 	     << "\n\t" << end_match_window << " did not have the maximal number of end matches within the specified window"
 	     << "\n\t" << num_end_matches  << " had too few bp matches along the ends";
