@@ -2,6 +2,7 @@
 #define REGION_H_
 
 #include <assert.h>
+#include <algorithm>
 #include <iostream>
 #include <map>
 #include <set>
@@ -64,4 +65,36 @@ void orderRegions(std::vector<Region>& input_regions,
 		  std::vector< std::vector<Region> >& output_regions, 
 		  std::map<std::string, int>& chrom_order);
 
+class RegionGroup {
+  std::vector<Region> regions_;
+  std::string chrom_;
+  int32_t start_;
+  int32_t stop_;
+
+ public:
+  RegionGroup(Region& region){
+    regions_.push_back(region);
+    chrom_ = region.chrom();
+    start_ = region.start();
+    stop_  = region.stop();
+  }
+
+  const std::vector<Region>& regions(){
+    return regions_;
+  }
+
+  const std::string& chrom() const { return chrom_;          }
+  int32_t  start()           const { return start_;          }
+  int32_t  stop()            const { return stop_;           }
+  int      num_regions()     const { return regions_.size(); }
+
+  void add_region(Region& region){
+    if (region.chrom().compare(chrom_) != 0)
+      printErrorAndDie("RegionGroup can only consist of regions on a single chromosome");
+    start_ = std::min(start_, region.start());
+    stop_  = std::max(stop_,  region.stop());
+    regions_.push_back(region);
+    std::sort(regions_.begin(), regions_.end());
+  }
+};
 #endif
