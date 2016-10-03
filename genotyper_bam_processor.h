@@ -84,7 +84,7 @@ private:
   StutterModel* def_stutter_model_;
 
 
-  void left_align_reads(Region& region, std::string& chrom_seq, std::vector< std::vector<BamTools::BamAlignment> >& alignments,
+  void left_align_reads(Region& region, std::string& chrom_seq, std::vector<BamAlnList>& alignments,
 			std::vector< std::vector<double> >& log_p1,       std::vector< std::vector<double> >& log_p2,
 			std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
 			std::vector< Alignment>& left_alns, std::vector<int>& bp_diffs, std::vector<bool>& use_for_hap_generation,
@@ -210,7 +210,7 @@ public:
     Genotyper::write_vcf_header(full_command, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, str_vcf_);
   }
 
-  void analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
+  void analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
 				 std::vector< std::vector<double> >& log_p1s,
 				 std::vector< std::vector<double> >& log_p2s,
 				 std::vector<std::string>& rg_names, Region& region, std::string& chrom_seq);

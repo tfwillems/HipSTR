@@ -5,9 +5,9 @@
 #include "snp_phasing_quality.h"
 #include "snp_tree.h"
 
-void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
-				    std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
-				    std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
+void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
+				    std::vector<BamAlnList>& mate_pairs_by_rg,
+				    std::vector<BamAlnList>& unpaired_strs_by_rg,
 				    std::vector<std::string>& rg_names, Region& region, 
 				    std::string& chrom_seq, std::ostream& out){
   // Only use specialized function for 10X genomics BAMs if flag has been set
@@ -21,7 +21,7 @@ void SNPBamProcessor::process_reads(std::vector< std::vector<BamTools::BamAlignm
   if (paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
     return;
   
-  std::vector<  std::vector<BamTools::BamAlignment> > alignments(paired_strs_by_rg.size());
+  std::vector<BamAlnList> alignments(paired_strs_by_rg.size());
   std::vector< std::vector<double> > log_p1s, log_p2s;
   bool got_snp_info = false;
   if (phased_snp_vcf_ != NULL){
@@ -117,9 +117,9 @@ int SNPBamProcessor::get_haplotype(BamTools::BamAlignment& aln){
 ** These BAMs contain haplotype tags, which can be used in place of the physical-phasing + VCF approach
 ** used in the standard process_reads function
  */
-void SNPBamProcessor::process_10x_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
-					std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
-					std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
+void SNPBamProcessor::process_10x_reads(std::vector<BamAlnList>& paired_strs_by_rg,
+					std::vector<BamAlnList>& mate_pairs_by_rg,
+					std::vector<BamAlnList>& unpaired_strs_by_rg,
 					std::vector<std::string>& rg_names, Region& region,
 					std::string& chrom_seq, std::ostream& out){
   locus_snp_phase_info_time_ = clock();
@@ -127,7 +127,7 @@ void SNPBamProcessor::process_10x_reads(std::vector< std::vector<BamTools::BamAl
   if (paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
     return;
 
-  std::vector<  std::vector<BamTools::BamAlignment> > alignments(paired_strs_by_rg.size());
+  std::vector<BamAlnList> alignments(paired_strs_by_rg.size());
   std::vector< std::vector<double> > log_p1s, log_p2s;
   int32_t phased_reads = 0, total_reads = 0;
   for (unsigned int i = 0; i < paired_strs_by_rg.size(); i++){

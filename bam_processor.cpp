@@ -139,9 +139,7 @@ std::string BamProcessor::trim_alignment_name(BamTools::BamAlignment& aln){
   return aln_name;
 }
 
-void BamProcessor::modify_and_write_alns(std::vector<BamTools::BamAlignment>& alignments,
-					 std::map<std::string, std::string>& rg_to_sample,
-					 Region& region,
+void BamProcessor::modify_and_write_alns(BamAlnList& alignments, std::map<std::string, std::string>& rg_to_sample, Region& region,
 					 BamTools::BamWriter& writer){
   for (auto read_iter = alignments.begin(); read_iter != alignments.end(); read_iter++){
     // Add RG to BAM record based on file
@@ -155,27 +153,23 @@ void BamProcessor::modify_and_write_alns(std::vector<BamTools::BamAlignment>& al
 
 }
 
-void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, 
-					 std::vector<Region>::iterator region_iter,
-					 std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
-					 std::vector<std::string>& rg_names,
-					 std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
-					 std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
-					 std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
+void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, std::vector<Region>::iterator region_iter,
+					 std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library, std::vector<std::string>& rg_names,
+					 std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
 					 BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer){
   locus_read_filter_time_ = clock();
 
   bool pass_to_bam     = pass_writer.IsOpen();
   bool filtered_to_bam = filt_writer.IsOpen();
 
-  std::vector<BamTools::BamAlignment> region_alignments, filtered_alignments;
+  BamAlnList region_alignments, filtered_alignments;
   int32_t read_count = 0;
   int32_t not_spanning = 0, mapping_quality = 0, flank_len = 0, unique_mapping = 0;
   int32_t bp_before_indel = 0, end_match_window = 0, num_end_matches = 0, read_has_N = 0, hard_clip = 0, soft_clip = 0, split_alignment = 0, low_qual_score = 0;
   BamTools::BamAlignment alignment;
 
   const BamTools::RefVector& ref_vector = reader.GetReferenceData();
-  std::vector<BamTools::BamAlignment> paired_str_alns, mate_alns, unpaired_str_alns;
+  BamAlnList paired_str_alns, mate_alns, unpaired_str_alns;
   std::map<std::string, BamTools::BamAlignment> potential_strs, potential_mates;
   const std::string FILTER_TAG_NAME = "FT";
   const std::string FILTER_TAG_TYPE = "Z";
@@ -455,7 +449,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   // Separate the reads based on their associated read groups
   std::map<std::string, int> rg_indices;
   for (unsigned int type = 0; type < 2; ++type){
-    std::vector<BamTools::BamAlignment>& aln_src  = (type == 0 ? paired_str_alns : unpaired_str_alns);
+    BamAlnList& aln_src  = (type == 0 ? paired_str_alns : unpaired_str_alns);
     for (unsigned int i = 0; i < aln_src.size(); ++i){
       std::string rg = use_bam_rgs_ ? get_read_group(aln_src[i], rg_to_sample): rg_to_sample[aln_src[i].Filename];
       int rg_index;
@@ -464,9 +458,9 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	rg_index = rg_indices.size();
 	rg_indices[rg] = rg_index;
 	rg_names.push_back(rg);
-	paired_strs_by_rg.push_back(std::vector<BamTools::BamAlignment>());
-	unpaired_strs_by_rg.push_back(std::vector<BamTools::BamAlignment>());
-	mate_pairs_by_rg.push_back(std::vector<BamTools::BamAlignment>());
+	paired_strs_by_rg.push_back(BamAlnList());
+	unpaired_strs_by_rg.push_back(BamAlnList());
+	mate_pairs_by_rg.push_back(BamAlnList());
       }
       else
 	rg_index = index_iter->second;
@@ -486,8 +480,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   total_read_filter_time_ += locus_read_filter_time_;
 }
 
-void BamProcessor::process_regions(BamTools::BamMultiReader& reader, 
-				   std::string& region_file, std::string& fasta_dir,
+void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string& region_file, std::string& fasta_dir,
 				   std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
 				   BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer,
 				   std::ostream& out, int32_t max_regions, std::string chrom){
@@ -549,7 +542,7 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader,
     total_bam_seek_time_ += locus_bam_seek_time_;
 
     std::vector<std::string> rg_names;
-    std::vector< std::vector<BamTools::BamAlignment> > paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg;
+    std::vector<BamAlnList> paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg;
     read_and_filter_reads(reader, chrom_seq, region_iter, rg_to_sample, rg_to_library, rg_names,
 			  paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, pass_writer, filt_writer);
 

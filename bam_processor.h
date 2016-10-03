@@ -15,6 +15,9 @@
 #include "region.h"
 
 class BamProcessor {
+ protected:
+  typedef std::vector<BamTools::BamAlignment> BamAlnList;
+
  private:
   bool use_bam_rgs_;
   bool rem_pcr_dups_;
@@ -31,22 +34,17 @@ class BamProcessor {
   void get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::BamAlignment& aln_2, const BamTools::RefVector& ref_vector,
 			  std::vector< std::pair<std::string, int32_t> >& p1, std::vector< std::pair<std::string, int32_t> >& p2);
 
-  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq,
-			     std::vector<Region>::iterator region_iter,
+  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, std::vector<Region>::iterator region_iter,
 			     std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
 			     std::vector<std::string>& rg_names,
-			     std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
-			     std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
-			     std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
+			     std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
 			     BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer);
 
  std::string get_read_group(BamTools::BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping);
 
  std::string trim_alignment_name(BamTools::BamAlignment& aln);
 
- void modify_and_write_alns(std::vector<BamTools::BamAlignment>& alignments,
-			    std::map<std::string, std::string>& rg_to_sample,
-			    Region& region,
+ void modify_and_write_alns(BamAlnList& alignments, std::map<std::string, std::string>& rg_to_sample, Region& region,
 			    BamTools::BamWriter& writer);
 
  protected:
@@ -98,9 +96,9 @@ class BamProcessor {
 		      BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer,
 		      std::ostream& out, int32_t max_regions, std::string chrom);
   
- virtual void process_reads(std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
-			    std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
-			    std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg,
+ virtual void process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
+			    std::vector<BamAlnList>& mate_pairs_by_rg,
+			    std::vector<BamAlnList>& unpaired_strs_by_rg,
 			    std::vector<std::string>& rg_names, Region& region, std::string& chrom_seq,
 			    std::ostream& out){
    log("Doing nothing with reads");

@@ -35,10 +35,10 @@ int getUsedPhysicalMemoryKB(){
   Left align BamAlignments in the provided vector and store those that successfully realign in the provided vector.
   Also extracts other information for successfully realigned reads into provided vectors.
  */
-void GenotyperBamProcessor::left_align_reads(Region& region, std::string& chrom_seq, std::vector< std::vector<BamTools::BamAlignment> >& alignments,
+void GenotyperBamProcessor::left_align_reads(Region& region, std::string& chrom_seq, std::vector<BamAlnList>& alignments,
 					     std::vector< std::vector<double> >& log_p1,       std::vector< std::vector<double> >& log_p2,
 					     std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
-					     std::vector< Alignment>& left_alns, std::vector<int>& bp_diffs, std::vector<bool>& use_for_hap_generation,
+					     std::vector<Alignment>& left_alns, std::vector<int>& bp_diffs, std::vector<bool>& use_for_hap_generation,
 					     std::ostream& logger){
   locus_left_aln_time_ = clock();
   logger << "Left aligning reads..." << std::endl;
@@ -101,7 +101,7 @@ void GenotyperBamProcessor::left_align_reads(Region& region, std::string& chrom_
     logger << "Failed to left align " << align_fail_count << " out of " << total_reads << " reads" << std::endl;
 }
 
-void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<BamTools::BamAlignment> >& alignments,
+void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
 						      std::vector< std::vector<double> >& log_p1s,
 						      std::vector< std::vector<double> >& log_p2s,
 						      std::vector<std::string>& rg_names, Region& region, std::string& chrom_seq){
@@ -213,27 +213,25 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector< std::vector<B
     seq_genotyper = new SeqStutterGenotyper(region, haploid, left_alignments, use_to_generate_haps, bp_diffs, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq, pool_seqs_,
 					    *stutter_model, reference_panel_vcf, logger());
 
-    if (output_str_gts_){
-      if (seq_genotyper->genotype(chrom_seq, logger())) {
-	bool pass = true;
+    if (seq_genotyper->genotype(chrom_seq, logger())) {
+      bool pass = true;
 
-	// If appropriate, recalculate the stutter model using the haplotype ML alignments,
-	// realign the reads and regenotype the samples
-	if (recalc_stutter_model_)
-	  pass = seq_genotyper->recompute_stutter_models(chrom_seq, logger(), MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
+      // If appropriate, recalculate the stutter model using the haplotype ML alignments,
+      // realign the reads and regenotype the samples
+      if (recalc_stutter_model_)
+	pass = seq_genotyper->recompute_stutter_models(chrom_seq, logger(), MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
 
-	if (pass){
-	  num_genotype_success_++;
-	  seq_genotyper->write_vcf_record(samples_to_genotype_, chrom_seq, output_gls_, output_pls_, output_phased_gls_,
-					  output_all_reads_, output_pall_reads_, output_mall_reads_, output_viz_, max_flank_indel_frac_,
-					  viz_left_alns_, viz_out_, str_vcf_, logger());
-	}
-	else
-	  num_genotype_fail_++;
+      if (pass){
+	num_genotype_success_++;
+	seq_genotyper->write_vcf_record(samples_to_genotype_, chrom_seq, output_gls_, output_pls_, output_phased_gls_,
+					output_all_reads_, output_pall_reads_, output_mall_reads_, output_viz_, max_flank_indel_frac_,
+					viz_left_alns_, viz_out_, str_vcf_, logger());
       }
       else
 	num_genotype_fail_++;
     }
+    else
+      num_genotype_fail_++;
   }
   locus_genotype_time_  = (clock() - locus_genotype_time_)/CLOCKS_PER_SEC;
   total_genotype_time_ += locus_genotype_time_;
