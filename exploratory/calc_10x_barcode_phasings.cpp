@@ -149,7 +149,9 @@ int main(int argc, char** argv){
       std::cerr << "Processing region " << chrom << " " << start << " " << end << ", # reads = " << read_count << std::endl;
 
       std::map<std::string, unsigned int> sample_indices;
-      if (create_snp_trees(chrom, start, end + READ_PAD, 1, 1, &vcf_reader, NULL, sample_indices, snp_trees, std::cerr)){
+      std::vector<Region> skip_regions;
+      int32_t skip_pad = 0;
+      if (create_snp_trees(chrom, start, end + READ_PAD, skip_regions, skip_pad, &vcf_reader, NULL, sample_indices, snp_trees, std::cerr)){
 	std::cerr << "Built SNP tree" << std::endl;
 	assert(snp_trees.size() > 0);  
 	

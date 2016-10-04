@@ -35,10 +35,10 @@ int getUsedPhysicalMemoryKB(){
   Left align BamAlignments in the provided vector and store those that successfully realign in the provided vector.
   Also extracts other information for successfully realigned reads into provided vectors.
  */
-void GenotyperBamProcessor::left_align_reads(Region& region, std::string& chrom_seq, std::vector<BamAlnList>& alignments,
+void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::string& chrom_seq, std::vector<BamAlnList>& alignments,
 					     std::vector< std::vector<double> >& log_p1,       std::vector< std::vector<double> >& log_p2,
 					     std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
-					     std::vector<Alignment>& left_alns, std::vector<int>& bp_diffs, std::vector<bool>& use_for_hap_generation,
+					     std::vector<Alignment>& left_alns,
 					     std::ostream& logger){
   locus_left_aln_time_ = clock();
   logger << "Left aligning reads..." << std::endl;
@@ -46,15 +46,15 @@ void GenotyperBamProcessor::left_align_reads(Region& region, std::string& chrom_
   int32_t align_fail_count = 0, total_reads = 0;
   int bp_diff;
   left_alns.clear(); filt_log_p1.clear(); filt_log_p2.clear();
-  bp_diffs.clear(); use_for_hap_generation.clear();
 
+  std::vector<bool> passes_region_filters; passes_region_filters.reserve(region_group.num_regions());
   for (unsigned int i = 0; i < alignments.size(); ++i){
     filt_log_p1.push_back(std::vector<double>());
     filt_log_p2.push_back(std::vector<double>());
 
     for (unsigned int j = 0; j < alignments[i].size(); ++j, ++total_reads){
       // Trim alignment if it extends very far upstream or downstream of the STR. For tractability, we limit it to 40bp
-      trimAlignment(alignments[i][j], (region.start() > 40 ? region.start()-40 : 1), region.stop()+40);
+      trimAlignment(alignments[i][j], (region_group.start() > 40 ? region_group.start()-40 : 1), region_group.stop()+40);
       if (alignments[i][j].Length == 0)
         continue;
 
@@ -86,14 +86,13 @@ void GenotyperBamProcessor::left_align_reads(Region& region, std::string& chrom_
         left_alns.push_back(new_aln);
       }
 
-      left_alns.back().check_CIGAR_string(alignments[i][j].Name); // Ensure alignment is properly formatted
+      left_alns.back().check_CIGAR_string(); // Ensure alignment is properly formatted
       filt_log_p1[i].push_back(log_p1[i][j]);
       filt_log_p2[i].push_back(log_p2[i][j]);
-      bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region.start()-region.period(), region.stop()+region.period(), bp_diff);
-      bp_diffs.push_back(got_size ? bp_diff : -999);
 
-      int region_index; // TO DO: Extract this dynamically
-      use_for_hap_generation.push_back(BamProcessor::passes_filters(alignments[i][j], region_index));
+      passes_region_filters.clear();
+      BamProcessor::passes_filters(alignments[i][j], passes_region_filters);
+      left_alns.back().set_hap_gen_info(passes_region_filters);
     }
   }
 
@@ -161,7 +160,7 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
 void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
 						      std::vector< std::vector<double> >& log_p1s,
 						      std::vector< std::vector<double> >& log_p2s,
-						      std::vector<std::string>& rg_names, Region& region, std::string& chrom_seq){
+						      std::vector<std::string>& rg_names, RegionGroup& region_group, std::string& chrom_seq){
   int32_t total_reads = 0;
   for (unsigned int i = 0; i < alignments.size(); i++)
     total_reads += alignments[i].size();
@@ -176,8 +175,10 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
     return;
   }
 
+  Region region = region_group.regions().front(); // TO DO: Extract this dynamically
+
   assert(alignments.size() == log_p1s.size() && alignments.size() == log_p2s.size() && alignments.size() == rg_names.size());
-  bool haploid = (haploid_chroms_.find(region.chrom()) != haploid_chroms_.end());
+  bool haploid = (haploid_chroms_.find(region_group.chrom()) != haploid_chroms_.end());
   StutterModel* stutter_model = NULL;
   locus_stutter_time_ = clock();
   if (def_stutter_model_ != NULL){
@@ -209,12 +210,10 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
 
     std::vector<Alignment> left_alignments;
     std::vector< std::vector<double> > filt_log_p1s, filt_log_p2s;
-    std::vector<bool> use_to_generate_haps;
-    std::vector<int> bp_diffs;
-    left_align_reads(region, chrom_seq, alignments, log_p1s, log_p2s, filt_log_p1s,
-		     filt_log_p2s, left_alignments, bp_diffs, use_to_generate_haps, logger());
+    left_align_reads(region_group, chrom_seq, alignments, log_p1s, log_p2s, filt_log_p1s,
+		     filt_log_p2s, left_alignments, logger());
 
-    seq_genotyper = new SeqStutterGenotyper(region, haploid, left_alignments, use_to_generate_haps, bp_diffs, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq, pool_seqs_,
+    seq_genotyper = new SeqStutterGenotyper(region, haploid, left_alignments, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq, pool_seqs_,
 					    *stutter_model, reference_panel_vcf, logger());
 
     if (seq_genotyper->genotype(chrom_seq, logger())) {

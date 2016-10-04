@@ -38,7 +38,7 @@ private:
   void process_10x_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 			 std::vector<BamAlnList>& mate_pairs_by_rg,
 			 std::vector<BamAlnList>& unpaired_strs_by_rg,
-			 std::vector<std::string>& rg_names, Region& region, std::string& chrom_seq,
+			 std::vector<std::string>& rg_names, RegionGroup& region_group, std::string& chrom_seq,
 			 std::ostream& out);
 
   // Extract the haplotype for an alignment based on the HP tag
@@ -69,13 +69,13 @@ public:
   void process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 		     std::vector<BamAlnList>& mate_pairs_by_rg,
 		     std::vector<BamAlnList>& unpaired_strs_by_rg,
-		     std::vector<std::string>& rg_names, Region& region, std::string& chrom_seq,
+		     std::vector<std::string>& rg_names, RegionGroup& region_group, std::string& chrom_seq,
 		     std::ostream& out);
 
   virtual void analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
 					 std::vector< std::vector<double> >& log_p1s, 
 					 std::vector< std::vector<double> >& log_p2s,
-					 std::vector<std::string>& rg_names, Region& region, std::string& chrom_seq){
+					 std::vector<std::string>& rg_names, RegionGroup& region_group, std::string& chrom_seq){
     log("Ignoring read phasing probabilties");
   }
 

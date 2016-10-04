@@ -35,6 +35,7 @@ class Alignment {
   std::string base_qualities_;
   std::string sequence_;
   std::string alignment_;
+  std::vector<bool> use_for_haps_;
 
  public:
   Alignment(int32_t start, int32_t stop,
@@ -49,6 +50,7 @@ class Alignment {
     sequence_       = sequence;
     alignment_      = alignment;
     cigar_list_     = std::vector<CigarElement>();
+    use_for_haps_   = std::vector<bool>();
   }
 
   Alignment(const std::string& name){
@@ -59,6 +61,7 @@ class Alignment {
     sequence_       = "";
     alignment_      = "";
     cigar_list_     = std::vector<CigarElement>();
+    use_for_haps_   = std::vector<bool>();
   }
 
   inline const std::string& get_name()   const { return name_;   }
@@ -75,13 +78,13 @@ class Alignment {
     return false;
   }
 
-  void check_CIGAR_string(std::string& name){
+  void check_CIGAR_string(){
     unsigned int num = 0;
     for (std::vector<CigarElement>::const_iterator iter = cigar_list_.begin(); iter != cigar_list_.end(); iter++)
       if (iter->get_type() != 'D' && iter->get_type() != 'H')
 	num += iter->get_num();
     if (num != sequence_.size()){
-      std::cerr << "CIGAR check failed for read " << name << ": "
+      std::cerr << "CIGAR check failed for read " << name_ << ": "
 		<< num << " " << sequence_.size() << std::endl
 		<< sequence_  << std::endl
 		<< alignment_ << std::endl
@@ -131,6 +134,7 @@ class Alignment {
   inline void set_base_qualities(const std::string& base_qualities)       { base_qualities_.assign(base_qualities); }
   inline void set_sequence(const std::string& sequence)                   { sequence_.assign(sequence);             }
   inline void set_alignment(const std::string& alignment)                 { alignment_.assign(alignment);           }
+  inline void set_hap_gen_info(const std::vector<bool>& use_for_haps)     { use_for_haps_ = use_for_haps;           }
   inline void add_cigar_element(CigarElement e)                           { cigar_list_.push_back(e);               }
   inline void set_cigar_list(const std::vector<CigarElement>& cigar_list) {
     cigar_list_.clear();
@@ -142,6 +146,7 @@ class Alignment {
   inline const std::string& get_sequence()                 const { return sequence_;       }
   inline const std::string& get_alignment()                const { return alignment_;      }
   inline const std::vector<CigarElement>& get_cigar_list() const { return cigar_list_;     }
+  bool use_for_hap_generation(int region_index) const { return use_for_haps_[region_index]; }
 
   std::string getCigarString() const {
     std::stringstream cigar_str;

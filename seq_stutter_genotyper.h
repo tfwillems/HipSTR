@@ -30,11 +30,9 @@ class SeqStutterGenotyper : public Genotyper {
   BaseQuality base_quality_;
   ReadPooler pooler_;
   int* pool_index_;                               // Pool index for each read
-  std::vector<int> bp_diffs_;                     // Base pair difference of each read from reference
 
   typedef std::vector<Alignment> AlnList;
   AlnList alns_;                                  // Vector of left-aligned alignments
-  std::vector<bool> use_for_haps_;                // True iff we should use the alignment for identifying candidate haplotypes
   std::vector<HapBlock*> hap_blocks_;             // Haplotype blocks
   Haplotype* haplotype_;                          // Potential STR haplotypes
   std::vector<bool> call_sample_;                 // True iff we should try to genotype the sample with the associated index
@@ -130,15 +128,11 @@ class SeqStutterGenotyper : public Genotyper {
 
  public:
   SeqStutterGenotyper(Region& region, bool haploid,
-		      std::vector<Alignment>& alignments, std::vector<bool>& use_to_generate_haps, std::vector<int>& bp_diffs,
-		      std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,
-		      std::vector<std::string>& sample_names, std::string& chrom_seq,
-		      bool pool_identical_seqs,
+		      std::vector<Alignment>& alignments, std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,
+		      std::vector<std::string>& sample_names, std::string& chrom_seq, bool pool_identical_seqs,
 		      StutterModel& stutter_model, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(haploid, false, sample_names, log_p1, log_p2){
     region_                = region.copy();
     alns_                  = alignments;
-    bp_diffs_              = bp_diffs;
-    use_for_haps_          = use_to_generate_haps;
     seed_positions_        = NULL;
     pool_index_            = NULL;
     haplotype_             = NULL;
@@ -151,7 +145,7 @@ class SeqStutterGenotyper : public Genotyper {
     total_aln_trace_time_  = 0;
     ref_vcf_               = ref_vcf;
     alleles_from_bams_     = true;
-    assert(num_reads_ == alns_.size() && num_reads_ == bp_diffs_.size() && num_reads_ == use_for_haps_.size());
+    assert(num_reads_ == alns_.size());
     init(stutter_model, chrom_seq, logger);
   }
 

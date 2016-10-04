@@ -36,6 +36,15 @@ bool BamProcessor::passes_filters(BamTools::BamAlignment& aln, int region_index)
   return passes[region_index] == '1';
 }
 
+void BamProcessor::passes_filters(BamTools::BamAlignment& aln, std::vector<bool>& region_passes){
+  assert(region_passes.empty());
+  std::string passes;
+  if (!aln.GetTag(PASSES_FILTERS_TAG_NAME, passes))
+    printErrorAndDie("Failed to extract passes filters tag from BAM alignment");
+  for (int i = 0; i < passes.size(); i++)
+    region_passes.push_back(passes[i] == '1' ? true : false);
+}
+
 void BamProcessor::extract_mappings(BamTools::BamAlignment& aln, const BamTools::RefVector& ref_vector,
 				    std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs){
   assert(chrom_pos_pairs.size() == 0);
@@ -548,14 +557,14 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string
 
     std::vector<std::string> rg_names;
     std::vector<BamAlnList> paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg;
-    RegionGroup region_group(*region_iter);
+    RegionGroup region_group(*region_iter); // TO DO: Extend region groups to have multiple regions
     read_and_filter_reads(reader, chrom_seq, region_group, rg_to_sample, rg_to_library, rg_names,
 			  paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, pass_writer, filt_writer);
 
     if (rem_pcr_dups_)
       remove_pcr_duplicates(base_quality_, use_bam_rgs_, rg_to_library, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, logger());
 
-    process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, *region_iter, chrom_seq, out);
+    process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, region_group, chrom_seq, out);
   }
 
   if (fasta_ref != NULL)

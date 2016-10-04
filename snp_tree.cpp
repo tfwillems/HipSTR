@@ -10,8 +10,12 @@ std::ostream& operator<<(std::ostream& out, SNP& snp) {
   return out;
 }
 
-bool in_region(VCF::Variant& variant, uint32_t region_start, uint32_t region_end){
-  return variant.get_position() >= region_start && variant.get_position() <= region_end;
+bool in_any_region(VCF::Variant& variant, const std::vector<Region>& skip_regions, int32_t skip_padding){
+  for (auto region_iter = skip_regions.begin(); region_iter != skip_regions.end(); region_iter++)
+    if (variant.get_position() >= region_iter->start() - skip_padding)
+      if (variant.get_position() <= region_iter->stop() + skip_padding)
+	return true;
+  return false;
 }
 
 void filter_snps(std::vector<SNP>& snps, std::set<int32_t>& bad_sites){
@@ -22,7 +26,7 @@ void filter_snps(std::vector<SNP>& snps, std::set<int32_t>& bad_sites){
   snps.resize(insert_index);
 }
 
-bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, uint32_t skip_start, uint32_t skip_stop, VCF::VCFReader* snp_vcf, HaplotypeTracker* tracker,
+bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, const std::vector<Region>& skip_regions, int32_t skip_padding, VCF::VCFReader* snp_vcf, HaplotypeTracker* tracker,
                       std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees, std::ostream& logger){
   logger << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
@@ -47,7 +51,7 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, ui
   uint32_t locus_count = 0, skip_count = 0;
   while (snp_vcf->get_next_variant(variant)){
     //if (locus_count % 1000 == 0)   std::cout << "\rProcessing locus #" << locus_count << " (skipped " << skip_count << ") at position " << variant.position << std::flush;
-    if (!variant.is_biallelic_snp() || in_region(variant, skip_start, skip_stop)){
+    if (!variant.is_biallelic_snp() || in_any_region(variant, skip_regions, skip_padding)){
       skip_count++;
       continue;
     }

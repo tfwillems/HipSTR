@@ -84,10 +84,10 @@ private:
   StutterModel* def_stutter_model_;
 
 
-  void left_align_reads(Region& region, std::string& chrom_seq, std::vector<BamAlnList>& alignments,
+  void left_align_reads(RegionGroup& region_group, std::string& chrom_seq, std::vector<BamAlnList>& alignments,
 			std::vector< std::vector<double> >& log_p1,       std::vector< std::vector<double> >& log_p2,
 			std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
-			std::vector< Alignment>& left_alns, std::vector<int>& bp_diffs, std::vector<bool>& use_for_hap_generation,
+			std::vector< Alignment>& left_alns,
 			std::ostream& logger);
 
   StutterModel* learn_stutter_model(std::vector<BamAlnList>& alignments,
@@ -217,7 +217,7 @@ public:
   void analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
 				 std::vector< std::vector<double> >& log_p1s,
 				 std::vector< std::vector<double> >& log_p2s,
-				 std::vector<std::string>& rg_names, Region& region, std::string& chrom_seq);
+				 std::vector<std::string>& rg_names, RegionGroup& region, std::string& chrom_seq);
   void finish(){
     SNPBamProcessor::finish();
     if (output_str_gts_)

@@ -34,7 +34,7 @@ class BamProcessor {
   void get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::BamAlignment& aln_2, const BamTools::RefVector& ref_vector,
 			  std::vector< std::pair<std::string, int32_t> >& p1, std::vector< std::pair<std::string, int32_t> >& p2);
 
-  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, Region& region,
+  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, RegionGroup& region,
 			     std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library, std::vector<std::string>& rg_names,
 			     std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
 			     BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer);
@@ -129,6 +129,8 @@ class BamProcessor {
  static void add_passes_filters_tag(BamTools::BamAlignment& aln, std::string& passes);
 
  static bool passes_filters(BamTools::BamAlignment& aln, int region_index);
+
+ static void passes_filters(BamTools::BamAlignment& aln, std::vector<bool>& region_passes);
 
  static const std::string PASSES_FILTERS_TAG_NAME;
  static const std::string PASSES_FILTERS_TAG_TYPE;

@@ -1,7 +1,7 @@
 #include "error.h"
 #include "extract_indels.h"
 
-bool ExtractCigar(std::vector<CigarElement>& cigar_data, const int& cigar_start, 
+bool ExtractCigar(const std::vector<CigarElement>& cigar_data, const int& cigar_start,
 		  const int& region_start, const int& region_end,
 		  int& bp_diff_from_ref) {
   std::vector<BamTools::CigarOp> cigar_ops;

@@ -234,8 +234,10 @@ void SeqStutterGenotyper::init(StutterModel& stutter_model, std::string& chrom_s
   second_mate_  = new bool[num_reads_];
   int32_t min_start = INT_MAX, max_stop = INT_MIN;
   std::string prev_aln_name = "";
+  int region_index = 0; // TO DO: Extract this dynamically
+
   for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
-    if (use_for_haps_[read_index]){
+    if (alns_[read_index].use_for_hap_generation(region_index)){
       min_start = std::min(min_start, alns_[read_index].get_start());
       max_stop  = std::max(max_stop,  alns_[read_index].get_stop());
     }
@@ -275,7 +277,7 @@ void SeqStutterGenotyper::init(StutterModel& stutter_model, std::string& chrom_s
     // Select only those alignments marked as good for haplotype generation
     std::vector<AlnList> gen_hap_alns(num_samples_);
     for (unsigned int read_index = 0; read_index < num_reads_; read_index++)
-      if (use_for_haps_[read_index])
+      if (alns_[read_index].use_for_hap_generation(region_index))
 	gen_hap_alns[sample_label_[read_index]].push_back(alns_[read_index]);
 
     haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, gen_hap_alns, vcf_alleles, &stutter_model,
@@ -538,7 +540,7 @@ void SeqStutterGenotyper::debug_sample(int sample_index, std::ostream& logger){
     if(sample_label_[i] == sample_index && seed_positions_[i] >= 0){
       std::cerr << "\t" << "READ #" << i << ", SEED BASE=" << seed_positions_[i] << ", POOL INDEX=" << pool_index_[i] << ", IS_SECOND_MATE=" << second_mate_[i]
 		<< ", TOTAL QUAL CORRECT= " << alns_[i].sum_log_prob_correct(base_quality_) << ", "
-		<< bp_diffs_[i] << " " << max_index(read_LL_ptr, num_alleles_) << ", "
+		<< max_index(read_LL_ptr, num_alleles_) << ", "
 		<< log_p1_[i] << " " << log_p2_[i] <<  ", "
 		<< alns_[i].get_sequence().substr(0, seed_positions_[i])
 		<< " " << alns_[i].get_sequence().substr(seed_positions_[i]+1) << std::endl
@@ -762,7 +764,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 				    true, gls, gl_diffs, output_pls, pls, output_phased_gls, phased_gls);
 
   // Extract information about each read and group by sample
-  assert(bp_diffs_.size() == num_reads_);
   std::vector<int> num_aligned_reads(num_samples_, 0), num_reads_with_snps(num_samples_, 0);
   std::vector<int> num_reads_with_stutter(num_samples_, 0), num_reads_with_flank_indels(num_samples_, 0);
   std::vector<int> num_reads_strand_one(num_samples_, 0), num_reads_strand_two(num_samples_, 0);
@@ -774,6 +775,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector<bool> realign_to_haplotype(num_alleles_, true);
   HapAligner hap_aligner(haplotype_, realign_to_haplotype);
   double* read_LL_ptr = log_aln_probs_;
+  int bp_diff; bool got_size;
   for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
     if (seed_positions_[read_index] < 0){
       read_LL_ptr += num_alleles_;
@@ -831,7 +833,8 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     }
 
     // Extract the bp difference observed in read from left-alignment
-    bps_per_sample[sample_label_[read_index]].push_back(bp_diffs_[read_index]);
+    got_size = ExtractCigar(alns_[read_index].get_cigar_list(), alns_[read_index].get_start(), region.start()-region.period(), region.stop()+region.period(), bp_diff);
+    bps_per_sample[sample_label_[read_index]].push_back(got_size ? bp_diff : -999);
 
     // Extract the posterior bp differences observed in read from haplotype alignment
     posterior_bps_per_sample[sample_label_[read_index]].push_back(expected_value(read_LL_ptr, allele_bp_diffs));
