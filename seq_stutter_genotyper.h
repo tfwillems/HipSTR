@@ -38,7 +38,6 @@ class SeqStutterGenotyper : public Genotyper {
   std::vector<bool> call_sample_;                 // True iff we should try to genotype the sample with the associated index
                                                   // Based on the deletion boundaries in the sample's reads
 
-  bool alleles_from_bams_; // Flag that determines if we examine BAMs for candidate alleles
   bool initialized_;       // True iff initialization succeeded and genotyping can proceed
 
   // 0-based seed index for each read
@@ -108,7 +107,6 @@ class SeqStutterGenotyper : public Genotyper {
   // Stores the results in the provided vector
   void haps_to_alleles(int hap_block_index, std::vector<int>& allele_indices);
 
-
   // If CHECK_CALLED,  identifies any alleles that are not in any samples' ML genotypes
   // If CHECK_SPANNED, identifies any alleles that are not spanned by any reads without stutter artifacts
   // Adds any identifed alleles to the provided vector, separated by haplotype block index
@@ -138,14 +136,12 @@ class SeqStutterGenotyper : public Genotyper {
     pool_index_            = NULL;
     haplotype_             = NULL;
     second_mate_           = NULL;
-    ref_vcf_               = ref_vcf;
     MAX_REF_FLANK_LEN      = 30;
     initialized_           = false;
     pool_identical_seqs_   = pool_identical_seqs;
-    total_hap_build_time_  = total_hap_aln_time_    = 0;
+    total_hap_build_time_  = total_hap_aln_time_ = 0;
     total_aln_trace_time_  = 0;
     ref_vcf_               = ref_vcf;
-    alleles_from_bams_     = true;
     assert(num_reads_ == alns_.size());
     init(stutter_models, chrom_seq, logger);
   }
