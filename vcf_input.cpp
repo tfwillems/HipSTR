@@ -18,16 +18,15 @@ const float MIN_ALLELE_PRIOR    = 0.0001;
 // we look for entries a window around the locus. The size of this window is controlled by this parameter
 const int32_t pad = 50;
 
-void read_vcf_alleles(VCF::VCFReader* ref_vcf, Region* region, std::vector<std::string>& alleles, int32_t& pos, bool& success){
+bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector<std::string>& alleles, int32_t& pos){
     assert(alleles.size() == 0 && ref_vcf != NULL);
-    int32_t pad_start = (region->start() < pad ? 0 : region->start()-pad);
-    if (!ref_vcf->set_region(region->chrom(), pad_start, region->stop()+pad)){
+    int32_t pad_start = (region.start() < pad ? 0 : region.start()-pad);
+    if (!ref_vcf->set_region(region.chrom(), pad_start, region.stop()+pad)){
       // Retry setting region if chr is in chromosome name
-      if (region->chrom().size() <= 3 || region->chrom().substr(0, 3).compare("chr") != 0 
-	  || !ref_vcf->set_region(region->chrom().substr(3), pad_start, region->stop()+pad)){
-	success = false;
+      if (region.chrom().size() <= 3 || region.chrom().substr(0, 3).compare("chr") != 0
+	  || !ref_vcf->set_region(region.chrom().substr(3), pad_start, region.stop()+pad)){
 	pos     = -1;
-	return;
+	return false;
       }
     }
    
@@ -41,18 +40,17 @@ void read_vcf_alleles(VCF::VCFReader* ref_vcf, Region* region, std::vector<std::
       int32_t str_start, str_stop;
       variant.get_INFO_value_single_int(START_INFO_TAG, str_start);
       variant.get_INFO_value_single_int(STOP_INFO_TAG, str_stop);
-      if (str_start == region->start()+1 && str_stop == region->stop()){
-	success = true;
+      if (str_start == region.start()+1 && str_stop == region.stop()){
 	pos     = variant.get_position()-1;
 	alleles.insert(alleles.end(), variant.get_alleles().begin(), variant.get_alleles().end());
-	return;
+	return true;
       }
-      if (variant.get_position() > region->start()+pad)
+      if (variant.get_position() > region.start()+pad)
 	break;
     }
 
-    success = false;
-    pos     = -1;
+    pos = -1;
+    return false;
 }
 
 bool PhasedGL::build(VCF::Variant& variant){

@@ -22,8 +22,7 @@ int main(int argc, char* argv[]){
   std::vector<std::string> alleles;
   int32_t pos;
   for (unsigned int i = 0; i < regions.size(); i++){
-    bool success;
-    read_vcf_alleles(&ref_vcf, &regions[i], alleles, pos, success);
+    bool success = read_vcf_alleles(&ref_vcf, regions[i], alleles, pos);
     if (success){
       std::cerr << "Position=" << pos << std::endl;
       std::cerr << "Alleles:" << std::endl;

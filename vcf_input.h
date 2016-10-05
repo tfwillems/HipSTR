@@ -18,7 +18,7 @@ extern std::string STOP_INFO_TAG;
 extern const float MIN_ALLELE_PRIOR;
 extern const int32_t pad;
 
-void read_vcf_alleles(VCF::VCFReader* ref_vcf, Region* region, std::vector<std::string>& alleles, int32_t& pos, bool& success);
+bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector<std::string>& alleles, int32_t& pos);
 
 class PhasedGL{
  private:
