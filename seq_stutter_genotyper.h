@@ -65,13 +65,14 @@ class SeqStutterGenotyper : public Genotyper {
   bool* second_mate_;
 
   // Set up the relevant data structures. Invoked by the constructor 
-  void init(StutterModel& stutter_model, std::string& chrom_seq, std::ostream& logger);
+  bool build_haplotype(std::string& chrom_seq, std::vector<StutterModel*>& stutter_models, std::ostream& logger);
+  void init(std::vector<StutterModel *>& stutter_models, std::string& chrom_seq, std::ostream& logger);
 
   void reorder_alleles(std::vector<std::string>& alleles,
 		       std::vector<int>& old_to_new, std::vector<int>& new_to_old);
 
   // Extract the sequences for each allele and the VCF start position
-  void get_alleles(Region& region, int block_index, std::string& chrom_seq,
+  void get_alleles(const Region& region, int block_index, std::string& chrom_seq,
 		   int32_t& pos, std::vector<std::string>& alleles);
 
   void debug_sample(int sample_index, std::ostream& logger);
@@ -119,19 +120,19 @@ class SeqStutterGenotyper : public Genotyper {
   void add_and_remove_alleles(std::vector< std::vector<int> >& alleles_to_remove,
 			      std::vector< std::vector<std::string> >& alleles_to_add);
 
-  void write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, Region& region, std::string& chrom_seq,
+  void write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, const Region& region, std::string& chrom_seq,
 			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads, bool output_pallreads,
 			bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 
-  Region* region_;
+  RegionGroup* region_group_;
 
  public:
-  SeqStutterGenotyper(Region& region, bool haploid,
+  SeqStutterGenotyper(RegionGroup& region_group, bool haploid,
 		      std::vector<Alignment>& alignments, std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,
 		      std::vector<std::string>& sample_names, std::string& chrom_seq, bool pool_identical_seqs,
-		      StutterModel& stutter_model, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(haploid, false, sample_names, log_p1, log_p2){
-    region_                = region.copy();
+		      std::vector<StutterModel*>& stutter_models, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(haploid, false, sample_names, log_p1, log_p2){
+    region_group_          = region_group.copy();
     alns_                  = alignments;
     seed_positions_        = NULL;
     pool_index_            = NULL;
@@ -146,11 +147,11 @@ class SeqStutterGenotyper : public Genotyper {
     ref_vcf_               = ref_vcf;
     alleles_from_bams_     = true;
     assert(num_reads_ == alns_.size());
-    init(stutter_model, chrom_seq, logger);
+    init(stutter_models, chrom_seq, logger);
   }
 
   ~SeqStutterGenotyper(){
-    delete region_;
+    delete region_group_;
     delete [] seed_positions_;
     delete [] pool_index_;
     delete [] second_mate_;

@@ -227,69 +227,82 @@ void SeqStutterGenotyper::remove_alleles(std::vector< std::vector<int> >& allele
   add_and_remove_alleles(allele_indices, alleles_to_add);
 }
 
-void SeqStutterGenotyper::init(StutterModel& stutter_model, std::string& chrom_seq, std::ostream& logger){
-  // Allocate and initiate additional data structures
-  read_weights_.clear();
-  pool_index_   = new int[num_reads_];
-  second_mate_  = new bool[num_reads_];
-  int32_t min_start = INT_MAX, max_stop = INT_MIN;
-  std::string prev_aln_name = "";
-  int region_index = 0; // TO DO: Extract this dynamically
-
-  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
-    if (alns_[read_index].use_for_hap_generation(region_index)){
-      min_start = std::min(min_start, alns_[read_index].get_start());
-      max_stop  = std::max(max_stop,  alns_[read_index].get_stop());
-    }
-
-    pool_index_[read_index]   = (pool_identical_seqs_ ? pooler_.add_alignment(alns_[read_index]) : read_index);
-    second_mate_[read_index]  = (alns_[read_index].get_name().compare(prev_aln_name) == 0);
-    read_weights_.push_back(second_mate_[read_index] ? 0 : 1);
-    prev_aln_name = alns_[read_index].get_name();
-  }
-
+bool SeqStutterGenotyper::build_haplotype(std::string& chrom_seq, std::vector<StutterModel*>& stutter_models, std::ostream& logger){
   double locus_hap_build_time = clock();
-  std::vector<std::string> vcf_alleles, alleles;
-  int32_t pos;
-  if (min_start >= region_->start()-5 || max_stop < region_->stop()+5){
-    // No reads extend 5bp upstream and downstream of the STR
-    logger << "Skipping region as no reads extend +- 5bp from the STR boundary" << std::endl;
-  }
-  else if (ref_vcf_ != NULL){
-    std::vector<bool> got_priors;
-    // Read alleles from VCF
-    logger << "Reading STR alleles from VCF" << std::endl;
-    read_vcf_alleles(ref_vcf_, region_, alleles, pos, initialized_);
-    num_alleles_ = alleles.size();
+  assert(hap_blocks_.empty() && haplotype_ == NULL);
+  logger << "Generating candidate haplotypes..." << std::endl;
 
-    if (initialized_){
-      assert(num_alleles_ > 0);
-
-      // Construct the haplotype using the set of VCF alleles
-      haplotype_   = generate_haplotype(pos, *region_, MAX_REF_FLANK_LEN, chrom_seq, alleles, &stutter_model, hap_blocks_, logger);
-      call_sample_ = std::vector<bool>(num_samples_, true);
-    }
-  }
-  else {
-    // Generate putative haplotypes and determine the number of alleles
-    logger << "Generating putative haplotypes..." << std::endl;
-
+  HaplotypeGenerator hap_generator;
+  const std::vector<Region>& regions = region_group_->regions();
+  bool success = true;
+  for (int region_index = 0; region_index < regions.size(); region_index++){
     // Select only those alignments marked as good for haplotype generation
     std::vector<AlnList> gen_hap_alns(num_samples_);
     for (unsigned int read_index = 0; read_index < num_reads_; read_index++)
       if (alns_[read_index].use_for_hap_generation(region_index))
 	gen_hap_alns[sample_label_[read_index]].push_back(alns_[read_index]);
 
-    haplotype_   = generate_haplotype(*region_, MAX_REF_FLANK_LEN, chrom_seq, gen_hap_alns, vcf_alleles, &stutter_model,
-				      alleles_from_bams_, hap_blocks_, call_sample_, logger);
-    call_sample_ =  std::vector<bool>(num_samples_, true);
-    num_alleles_ = haplotype_->num_combs();
-    initialized_ = true;
-    assert(call_sample_.size() == num_samples_);
-  }
-  locus_hap_build_time  = (clock() - locus_hap_build_time)/CLOCKS_PER_SEC;
-  total_hap_build_time_ += locus_hap_build_time;
+    std::vector<std::string> vcf_alleles;
+    if (ref_vcf_ != NULL){
+      int32_t pos;
+      if (!read_vcf_alleles(ref_vcf_, regions[region_index], vcf_alleles, pos)){
+	logger << "Haplotype construction failed: The alleles could not be extracted from the reference VCF" << std::endl;
+	success = false;
+	break;
+      }
 
+      // Add the haplotype block based on the extracted VCF alleles
+      if (!hap_generator.add_vcf_haplotype_block(pos, chrom_seq, gen_hap_alns, vcf_alleles, stutter_models[region_index])){
+	logger << "Haplotype construction failed: " << hap_generator.failure_msg() << std::endl;
+	success = false;
+	break;
+      }
+    }
+    else {
+      // Add the haplotype block in which alleles are derived from the alignments
+      if (!hap_generator.add_haplotype_block(regions[region_index], chrom_seq, gen_hap_alns, vcf_alleles, stutter_models[region_index])){
+	logger << "Haplotype construction failed: " << hap_generator.failure_msg() << std::endl;
+	success = false;
+	break;
+      }
+    }
+  }
+
+  if (success){
+    if (hap_generator.fuse_haplotype_blocks(chrom_seq)){
+      // Copy over the constructed haplotype blocks and build the haplotype
+      hap_blocks_            = hap_generator.get_haplotype_blocks();
+      haplotype_             = new Haplotype(hap_blocks_);
+      num_alleles_           = haplotype_->num_combs();
+      call_sample_           = std::vector<bool>(num_samples_, true);
+      haplotype_->print_block_structure(30, 100, logger);
+    }
+    else {
+      logger << "Haplotype construction failed: " << hap_generator.failure_msg() << std::endl;
+      success = false;
+    }
+  }
+
+  locus_hap_build_time   = (clock() - locus_hap_build_time)/CLOCKS_PER_SEC;
+  total_hap_build_time_ += locus_hap_build_time;
+  return success;
+}
+
+void SeqStutterGenotyper::init(std::vector<StutterModel*>& stutter_models, std::string& chrom_seq, std::ostream& logger){
+  // Allocate and initiate additional data structures
+  read_weights_.clear();
+  pool_index_   = new int[num_reads_];
+  second_mate_  = new bool[num_reads_];
+  std::string prev_aln_name = "";
+
+  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
+    pool_index_[read_index]   = (pool_identical_seqs_ ? pooler_.add_alignment(alns_[read_index]) : read_index);
+    second_mate_[read_index]  = (alns_[read_index].get_name().compare(prev_aln_name) == 0);
+    read_weights_.push_back(second_mate_[read_index] ? 0 : 1);
+    prev_aln_name = alns_[read_index].get_name();
+  }
+
+  initialized_ = build_haplotype(chrom_seq, stutter_models, logger);
   if (initialized_){
     // Allocate the remaining data structures
     log_sample_posteriors_ = new double[num_alleles_*num_alleles_*num_samples_];
@@ -453,7 +466,7 @@ void SeqStutterGenotyper::reorder_alleles(std::vector<std::string>& alleles,
   }
 }
 
-void SeqStutterGenotyper::get_alleles(Region& region, int block_index, std::string& chrom_seq,
+void SeqStutterGenotyper::get_alleles(const Region& region, int block_index, std::string& chrom_seq,
 				      int32_t& pos, std::vector<std::string>& alleles){
   assert(alleles.size() == 0);
 
@@ -722,16 +735,15 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 					   bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads,
 					   bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
                                            std::ostream& html_output, std::ostream& out, std::ostream& logger){
-  for (int block_index = 0; block_index < haplotype_->num_blocks(); block_index++){
-    if (haplotype_->get_block(block_index)->get_repeat_info() != NULL){
-      Region region = *region_; // TO DO: Extract dynamically
-      write_vcf_record(sample_names, block_index, region, chrom_seq, output_gls, output_pls, output_phased_gls,
+  int region_index = 0;
+  for (int block_index = 0; block_index < haplotype_->num_blocks(); block_index++)
+    if (haplotype_->get_block(block_index)->get_repeat_info() != NULL)
+      write_vcf_record(sample_names, block_index, region_group_->regions()[region_index++], chrom_seq, output_gls, output_pls, output_phased_gls,
 		       output_allreads, output_pallreads, output_mallreads, output_viz, max_flank_indel_frac, viz_left_alns, html_output, out, logger);
-    }
-  }
+  assert(region_index == region_group_->num_regions());
 }
 
-void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, Region& region, std::string& chrom_seq, bool output_gls,
+void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, const Region& region, std::string& chrom_seq, bool output_gls,
 					   bool output_pls, bool output_phased_gls, bool output_allreads, bool output_pallreads, bool output_mallreads,
 					   bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
 					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
