@@ -43,7 +43,7 @@ private:
   // Counters for genotyping success;
   int num_genotype_success_, num_genotype_fail_;
 
-  // VCF containg SNP and STR genotypes for a reference panel
+  // VCF containing STR genotypes for a reference panel
   VCF::VCFReader* ref_vcf_;
 
   bool output_viz_;
@@ -87,12 +87,11 @@ private:
   void left_align_reads(RegionGroup& region_group, std::string& chrom_seq, std::vector<BamAlnList>& alignments,
 			std::vector< std::vector<double> >& log_p1,       std::vector< std::vector<double> >& log_p2,
 			std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
-			std::vector< Alignment>& left_alns,
-			std::ostream& logger);
+			std::vector< Alignment>& left_alns);
 
   StutterModel* learn_stutter_model(std::vector<BamAlnList>& alignments,
 				    std::vector< std::vector<double> >& log_p1s, std::vector< std::vector<double> >& log_p2s,
-				    bool haploid, std::vector<std::string>& rg_names, Region& region);
+				    bool haploid, std::vector<std::string>& rg_names, const Region& region);
 
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups):SNPBamProcessor(use_bam_rgs, remove_pcr_dups){

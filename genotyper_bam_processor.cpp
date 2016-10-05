@@ -38,10 +38,9 @@ int getUsedPhysicalMemoryKB(){
 void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::string& chrom_seq, std::vector<BamAlnList>& alignments,
 					     std::vector< std::vector<double> >& log_p1,       std::vector< std::vector<double> >& log_p2,
 					     std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
-					     std::vector<Alignment>& left_alns,
-					     std::ostream& logger){
+					     std::vector<Alignment>& left_alns){
   locus_left_aln_time_ = clock();
-  logger << "Left aligning reads..." << std::endl;
+  logger() << "Left aligning reads..." << std::endl;
   std::map<std::string, int> seq_to_alns;
   int32_t align_fail_count = 0, total_reads = 0;
   int bp_diff;
@@ -99,13 +98,13 @@ void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::str
   locus_left_aln_time_  = (clock() - locus_left_aln_time_)/CLOCKS_PER_SEC;
   total_left_aln_time_ += locus_left_aln_time_;
   if (align_fail_count != 0)
-    logger << "Failed to left align " << align_fail_count << " out of " << total_reads << " reads" << std::endl;
+    logger() << "Failed to left align " << align_fail_count << " out of " << total_reads << " reads" << std::endl;
 }
 
 StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>& alignments,
 							 std::vector< std::vector<double> >& log_p1s,
 							 std::vector< std::vector<double> >& log_p2s,
-							 bool haploid, std::vector<std::string>& rg_names, Region& region){
+							 bool haploid, std::vector<std::string>& rg_names, const Region& region){
   std::vector< std::vector<int> > str_bp_lengths(alignments.size());
   std::vector< std::vector<double> > str_log_p1s(alignments.size()), str_log_p2s(alignments.size());
   int inf_reads = 0;
@@ -175,46 +174,50 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
     return;
   }
 
-  Region region = region_group.regions().front(); // TO DO: Extract this dynamically
-
   assert(alignments.size() == log_p1s.size() && alignments.size() == log_p2s.size() && alignments.size() == rg_names.size());
   bool haploid = (haploid_chroms_.find(region_group.chrom()) != haploid_chroms_.end());
-  StutterModel* stutter_model = NULL;
-  locus_stutter_time_ = clock();
-  if (def_stutter_model_ != NULL){
-    log("Using default stutter model");
-    stutter_model = def_stutter_model_->copy();
-    stutter_model->set_period(region.period());
+  const std::vector<Region>& regions = region_group.regions();
+
+  // Learn the stutter model for each region
+  std::vector<StutterModel*> stutter_models;
+  locus_stutter_time_  = clock();
+  bool stutter_success = true;
+  for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
+    StutterModel* stutter_model = NULL;
+    if (def_stutter_model_ != NULL){
+      log("Using default stutter model");
+      stutter_model = def_stutter_model_->copy();
+      stutter_model->set_period(region_iter->period());
+    }
+    else if (read_stutter_models_){
+      // Attempt to extact model from dictionary
+      auto model_iter = stutter_models_.find(*region_iter);
+      if (model_iter != stutter_models_.end())
+	stutter_model = model_iter->second->copy();
+      else
+	logger() << "WARNING: No stutter model found for " << region_iter->chrom() << ":" << region_iter->start() << "-" << region_iter->stop() << std::endl;
+    }
+    else {
+      // Learn stutter model using length-based EM algorithm
+      stutter_model = learn_stutter_model(alignments, log_p1s, log_p2s, haploid, rg_names, *region_iter);
+    }
+    stutter_models.push_back(stutter_model);
+    stutter_success &= (stutter_model != NULL);
   }
-  else if (read_stutter_models_){
-    // Attempt to extact model from dictionary
-    auto model_iter = stutter_models_.find(region);
-    if (model_iter != stutter_models_.end())
-      stutter_model = model_iter->second->copy();
-    else
-      logger() << "WARNING: No stutter model found for " << region.chrom() << ":" << region.start() << "-" << region.stop() << std::endl;
-  }
-  else {
-    // Learn stutter model using length-based EM algorithm
-    stutter_model = learn_stutter_model(alignments, log_p1s, log_p2s, haploid, rg_names, region);
-  }
-  locus_stutter_time_  = (clock() - locus_stutter_time_)/CLOCKS_PER_SEC;;
+  locus_stutter_time_  = (clock() - locus_stutter_time_)/CLOCKS_PER_SEC;
   total_stutter_time_ += locus_stutter_time_;
 
+  // Genotype the regions, if requested
   locus_genotype_time_ = clock();
   SeqStutterGenotyper* seq_genotyper = NULL;
-  if (output_str_gts_ && stutter_model != NULL) {
-    VCF::VCFReader* reference_panel_vcf = NULL;
-    if (ref_vcf_ != NULL)
-      reference_panel_vcf = ref_vcf_;
-
+  if (output_str_gts_ && stutter_success) {
     std::vector<Alignment> left_alignments;
     std::vector< std::vector<double> > filt_log_p1s, filt_log_p2s;
     left_align_reads(region_group, chrom_seq, alignments, log_p1s, log_p2s, filt_log_p1s,
-		     filt_log_p2s, left_alignments, logger());
+		     filt_log_p2s, left_alignments);
 
-    seq_genotyper = new SeqStutterGenotyper(region, haploid, left_alignments, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq, pool_seqs_,
-					    *stutter_model, reference_panel_vcf, logger());
+    seq_genotyper = new SeqStutterGenotyper(region_group, haploid, left_alignments, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq, pool_seqs_,
+					    stutter_models, ref_vcf_, logger());
 
     if (seq_genotyper->genotype(chrom_seq, logger())) {
       bool pass = true;
@@ -244,7 +247,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
 	   << " Read filtering      = " << locus_read_filter_time()    << " seconds\n"
 	   << " SNP info extraction = " << locus_snp_phase_info_time() << " seconds\n"
 	   << " Stutter estimation  = " << locus_stutter_time()        << " seconds\n";
-  if (stutter_model != NULL){
+  if (stutter_success && output_str_gts_){
     logger() << " Genotyping          = " << locus_genotype_time()       << " seconds\n";
     if (output_str_gts_){
       assert(seq_genotyper != NULL);
@@ -268,7 +271,6 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
   */
 
   delete seq_genotyper;
-  delete stutter_model;
+  for (int i = 0; i < stutter_models.size(); i++)
+    delete stutter_models[i];
 }
- 
-
