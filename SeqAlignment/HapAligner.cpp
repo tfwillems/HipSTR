@@ -245,12 +245,44 @@ double HapAligner::compute_aln_logprob(int base_seq_len, int seed_base,
   return total_LL;
 }
 
+
+/*
+   Computes the position in the provided region that is the furthest from region boundaries and repetitive haplotype blocks.
+   Stores the resulting position and distance using the references. If no such position exists, both values are set to -1
+ */
+void HapAligner::calc_best_seed_position(int32_t region_start, int32_t region_end,
+					 int32_t& best_dist, int32_t& best_pos){
+  best_dist = best_pos = -1;
+  int32_t pos = region_start;
+  int repeat_index = 0;
+  while (repeat_index < repeat_starts_.size() && pos <= region_end){
+    if (pos < repeat_starts_[repeat_index]){
+      int32_t dist = 1 + (std::min(region_end, repeat_starts_[repeat_index]-1)-pos)/2;
+      if (dist >= best_dist){
+	best_dist = dist;
+	best_pos  = dist - 1 + pos;
+      }
+      pos = repeat_ends_[repeat_index++];
+    }
+    else if (pos < repeat_ends_[repeat_index])
+      pos = repeat_ends_[repeat_index++];
+    else
+      repeat_index++;
+  }
+  if (pos <= region_end){
+    int32_t dist = 1 + (region_end-pos)/2;
+    if (dist >= best_dist){
+      best_dist = dist;
+      best_pos  = dist - 1 + pos;
+    }
+  }
+}
+
 /* 
  * Identify the base with the largest minimum distance from an insertion, a deletion and a stutter block
  * as defined by its alignment to the reference genome
  */
 int HapAligner::calc_seed_base(Alignment& aln){
-  assert(fw_haplotype_->num_blocks() == 3);
   int32_t pos          = aln.get_start();
   int32_t repeat_start = fw_haplotype_->get_block(1)->start();
   int32_t repeat_stop  = fw_haplotype_->get_block(1)->end();
@@ -259,33 +291,18 @@ int HapAligner::calc_seed_base(Alignment& aln){
     switch(cigar_iter->get_type()){
     case '=': {
       int32_t min_region = pos, max_region = pos + cigar_iter->get_num() - 1; 
-      if (min_region >= repeat_start)
-	min_region = std::max(min_region, repeat_stop);
-      if (max_region < repeat_stop)
-	max_region = std::min(max_region, repeat_start-1);
 
       // Clip region so that the seed doesn't extend beyond the maximal sequence flanking the repeats
-      // Only this region will be used to construct putative haplotypes
-      min_region = std::max(min_region, fw_haplotype_->get_block(0)->start());
-      max_region = std::min(max_region, fw_haplotype_->get_block(2)->end());
+      // Only this region will be used to construct haplotypes
+      min_region = std::max(min_region, fw_haplotype_->get_first_block()->start());
+      max_region = std::min(max_region, fw_haplotype_->get_last_block()->end()-1);
 
       if (min_region <= max_region){
-	// Choose larger of valid two regions
-	if (min_region < repeat_start && max_region >= repeat_stop){
-	  if (repeat_start-1-min_region > max_region-repeat_stop){
-	    //min_region = min_region;
-	    max_region = repeat_start-1;
-	  }
-	  else {
-	    min_region = repeat_stop;
-	    //max_region = max_region;
-	  }
-	}
-	
-	int dist = 1 + (max_region-min_region)/2;
-	if (dist >= max_dist){
-	  max_dist  = dist;
-	  best_seed = cur_base + (min_region-pos) + (max_region-min_region)/2;	  
+	int32_t distance, dist_pos;
+	calc_best_seed_position(min_region, max_region, distance, dist_pos);
+	if (distance >= max_dist){
+	  max_dist  = distance;
+	  best_seed = cur_base + (dist_pos - pos);
 	}
       }
       pos      += cigar_iter->get_num();

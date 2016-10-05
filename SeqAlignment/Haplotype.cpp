@@ -55,7 +55,6 @@ void Haplotype::adjust_indels(std::string& ref_hap_al, std::string& alt_hap_al){
   }
 }
 
-
 void Haplotype::aln_haps_to_ref(){
   std::string ref_hap_seq = get_seq(), alt_hap_seq;
   std::string ref_hap_al, alt_hap_al;
@@ -225,7 +224,7 @@ unsigned int Haplotype::homopolymer_length(int block_index, int base_index){
   return llen + rlen + 1;
 }
 
-Haplotype* Haplotype::reverse( std::vector<HapBlock*>& rev_blocks){
+Haplotype* Haplotype::reverse(std::vector<HapBlock*>& rev_blocks){
   assert(rev_blocks.size() == 0);
   for (unsigned int i = 0; i < blocks_.size(); i++)
     rev_blocks.push_back(blocks_[i]->reverse());
@@ -235,7 +234,7 @@ Haplotype* Haplotype::reverse( std::vector<HapBlock*>& rev_blocks){
 
   // Set the haplotype alignments to the reverse of those in the current haplotype
   // Can't use the values obtained from the constructor as the reverse
-  // haplotype would have right align indels instead of left aligning them
+  // haplotype would have right aligned indels instead of left aligning them
   rev_hap->hap_aln_info_ = hap_aln_info_;
   for (auto iter = rev_hap->hap_aln_info_.begin(); iter != rev_hap->hap_aln_info_.end(); iter++)
     std::reverse(iter->begin(), iter->end());

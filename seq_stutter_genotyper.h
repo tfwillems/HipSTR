@@ -78,7 +78,6 @@ class SeqStutterGenotyper : public Genotyper {
   
   // Modify the internal structures to remove the alleles at the associated indices
   // Designed to remove alleles who aren't the MAP genotype of any samples
-  // However, it does not modify any of the haplotype-related data structures
   void remove_alleles(std::vector< std::vector<int> >& allele_indices);
 
   // Retrace the alignment for each read and store the associated pointers in the provided vector
@@ -88,16 +87,15 @@ class SeqStutterGenotyper : public Genotyper {
   // Filter reads based on their retraced ML alignments
   void filter_alignments(std::ostream& logger, std::vector<int>& masked_reads);
 
-  // Identify additional candidate STR alleles using the sequences observed
-  // in reads with stutter artifacts
+  // Identify additional candidate STR alleles using the sequences observed in reads with stutter artifacts
   void get_stutter_candidate_alleles(int block_index, std::ostream& logger, std::vector<std::string>& candidate_seqs);
 
-  // Align each read to each of the candidate alleles, and store the results in the provided arrays
+  // Aligns each read to each of the candidate haplotypes and stores the results in internal arrays
   void calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype);
 
-  // Identify alleles present in stutter artifacts
-  // Align each read to these alleles and incorporate these alignment probabilities and
-  // alleles into the relevant data structures
+  // Identify alleles present in stutter artifacts. Align each read to the new haplotypes
+  // containing these alleles and incorporate these alignment probabilities
+  // into the relevant data structures
   bool id_and_align_to_stutter_alleles(std::string& chrom_seq, std::ostream& logger);
 
   // Exploratory function related to identifying indels in the flanking sequences

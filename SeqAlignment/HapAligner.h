@@ -17,6 +17,9 @@ class HapAligner {
   std::vector<bool> realign_to_hap_;
   std::vector<HapBlock*> rev_blocks_;
 
+  std::vector<int32_t> repeat_starts_;
+  std::vector<int32_t> repeat_ends_;
+
   /**
    * Align the sequence contained in SEQ_0 -> SEQ_N using the recursion
    * 0 -> 1 -> 2 ... N
@@ -42,12 +45,24 @@ class HapAligner {
 		      double* l_insert_matrix, double* l_deletion_matrix, int* best_artifact_size, int* best_artifact_pos,
 		      AlignmentTrace& trace);
 
+  void calc_best_seed_position(int32_t region_start, int32_t region_end,
+			       int32_t& best_dist, int32_t& best_pos);
+
  public:
   HapAligner(Haplotype* haplotype, std::vector<bool>& realign_to_haplotype){
     assert(realign_to_haplotype.size() == haplotype->num_combs());
     fw_haplotype_   = haplotype;
     rev_haplotype_  = haplotype->reverse(rev_blocks_);
     realign_to_hap_ = realign_to_haplotype;
+
+
+    for (int i = 0; i < fw_haplotype_->num_blocks(); i++){
+      HapBlock* block = fw_haplotype_->get_block(i);
+      if (block->get_repeat_info() != NULL){
+	repeat_starts_.push_back(block->start());
+	repeat_ends_.push_back(block->end());
+      }
+    }
   }
 
   ~HapAligner(){

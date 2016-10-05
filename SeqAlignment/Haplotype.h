@@ -78,8 +78,6 @@ class Haplotype {
   inline bool reversed()                           const { return inc_rev_;             }
   int num_options(int block_index)                 const { return blocks_[block_index]->num_options(); }
 
-
-
   void get_coordinates(int hap_pos, int& block, int& block_pos){
     assert(hap_pos >= 0 && hap_pos < cur_size_);
     for (int i = 0; i < blocks_.size(); i++){

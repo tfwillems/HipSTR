@@ -13,7 +13,6 @@
 #include "../error.h"
 #include "../stringops.h"
 #include "RepeatStutterInfo.h"
-
 #include "StutterAlignerClass.h"
 
 class HapBlock {
