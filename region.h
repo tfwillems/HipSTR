@@ -72,7 +72,7 @@ class RegionGroup {
   int32_t stop_;
 
  public:
-  RegionGroup(Region& region){
+  RegionGroup(const Region& region){
     regions_.push_back(region);
     chrom_ = region.chrom();
     start_ = region.start();
@@ -88,7 +88,14 @@ class RegionGroup {
   int32_t  stop()            const { return stop_;           }
   int      num_regions()     const { return regions_.size(); }
 
-  void add_region(Region& region){
+  RegionGroup* copy() const {
+    RegionGroup* clone = new RegionGroup(regions_[0]);
+    for (int i = 1; i < regions_.size(); i++)
+      clone->add_region(regions_[i]);
+    return clone;
+  }
+
+  void add_region(const Region& region){
     if (region.chrom().compare(chrom_) != 0)
       printErrorAndDie("RegionGroup can only consist of regions on a single chromosome");
     start_ = std::min(start_, region.start());
