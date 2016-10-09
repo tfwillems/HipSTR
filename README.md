@@ -179,25 +179,25 @@ tabix -p bed aln.html.gz
 ```
 to generate a [tabix] (http://www.htslib.org/doc/tabix.html) index for the file so that we can rapidly extract alignments for a locus of interest. This command only needs to be run once after the file has been generated. 
 
-You could then visualize the calls for sample *ERR218433* at locus *chr1 51639636* using the command
+You could then visualize the calls for sample *NA12878* at locus *chr1 3784267* using the command
 ```
-./VizAln aln.html.gz chr1 51639636 ERR218433
+./VizAln aln.html.gz chr1 3784267 NA12878
 ```
 This command will automatically open a rendering of the alignments in your browser and might look something like:
-![Read more words!](https://raw.githubusercontent.com/tfwillems/HipSTR/master/examples/example_viz.png)
-The top bar represents the reference sequence and the red text indicates the name of the sample and its associated call at the locus. The remaining rows indicate the alignment for each read used in genotyping. In this particular example, 7 reads have a *4bp deletion*, 9 reads have a *8bp deletion* and 1 read has a *12bp deletion*. The solitary *12bp deletion* is likely the result of PCR stutter and HipSTR therefore genotypes this sample as *-4 | -8*
+![Read more words!](https://raw.githubusercontent.com/HipSTR-Tool/HipSTR-tutorial/master/viz_NA12878.png)
+The top bar represents the reference sequence and the red text indicates the name of the sample and its associated call at the locus. The remaining rows indicate the alignment for each read used in genotyping. In this particular example, 14 reads have an *8bp deletion* and 14 reads have a *4bp insertion*. HipSTR therefore genotypes this sample as *-8 | 4*
 
 If we wanted to inspect all calls for the same locus, we could  use the command 
 ```
-./VizAln aln.html.gz chr1 51639636
+./VizAln aln.html.gz chr1 3784267
 ```
 To facilitate rendering these images for publications, we've also created a similar script that converts
 these alignments into a PDF. This script can only be applied to one sample at a time, but the image above
 can be generated in a file alignments.pdf as follows:
 ```
-./VizAlnPdf aln.html.gz chr1 51639636 ERR218433 alignments 1
+./VizAlnPdf aln.html.gz chr1 3784267 NA12878 alignments 1
 ```
-NOTE: Because the **--viz-out** file can become fairly large if you're genotyping thousands of loci or thousands of samples, in some scenarios it may be best to rerun HipSTR using this option on the subset of loci in which you're interested.
+NOTE: Because the **--viz-out** file can become fairly large if you're genotyping thousands of loci or thousands of samples, in some scenarios it may be best to rerun HipSTR using this option on the subset of loci which you wish to visualize.
 
 ## File Formats
 <a id="bams"></a>
