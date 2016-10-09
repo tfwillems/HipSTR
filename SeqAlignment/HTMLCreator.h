@@ -10,8 +10,6 @@ const char DELETION_CHAR = '-';
 const char NOT_APP_CHAR  = '*';
 const char SPACE_CHAR    = ' ';
 
-void writeHeader(std::ostream& output);
-
 void writeReferenceString(std::string& reference_string, 
 			  std::ostream& output, 
 			  std::string locus_id, 
@@ -25,5 +23,4 @@ void writeAlignmentStrings(std::string& reference_string,
 			   std::vector<std::string>& alignment_samples, 
 			   std::map<std::string, std::string>& sample_info,
 			   bool highlight);
-
 #endif

@@ -6,128 +6,6 @@
 #include "HTMLCreator.h"
 #include "../stringops.h"
 
-std::map<char,std::string> initialize_colors(){
-  std::map<char,std::string> m;
-  m['A'] = "purple";
-  m['a'] = "purple";
-  m['C'] = "blue";
-  m['c'] = "blue";
-  m['G'] = "green";
-  m['g'] = "green";
-  m['T'] = "orange";
-  m['t'] = "orange";
-  m['N'] = "purple";
-  m['n'] = "purple";
-  m['-'] = "red";
-  m['*'] = "gray";
-  m[' '] = "white";
-  m['x'] = "white";
-  return m;
-}
-
-std::map<char, std::string> base_colors = initialize_colors();
-
-void writeHeader(std::ostream& output){
-  output << "#\t#\t#\tALL\t"
-	 << "<style type='text/css'> "
-
-	 <<  ".ref {"
-	 << " color: white;"
-	 << " font-family: Courier;"
-	 << "} "
-
-	 << "td {"
-	 << " text-align:center;"
-	 << " vertical-align:middle;"
-	 << " font-family: Courier;"
-	 << " font-size: 13px;"
-	 << "} "
-
-	 << ".locustd {"
-	 << " font-style: italic;"
-	 << " color: black;"
-	 << "} "
-
-	 << ".snptd {"
-	 << "  background-color: gold;"
-	 << "} "
-
-	 << ".inserttd {"
-	 << " background-color: red;"
-	 << "} "
-
-	 << ".spacertd {"
-	 << " color: white;"
-	 << "} "
-
-	 << ".reftable {"
-	 << " color: white;"
-	 << "} "
-
-	 << ".readtable {"
-	 << " font-weight: normal;"
-	 << "} "
-
-	 << "caption {"
-	 << " background: #dbb768;"
-	 << " color:black;"
-	 << " font-weight: bold;"
-	 << " font-size: 1.1em;"
-	 << " text-align: left;"
-	 << "} "
-
-	 << ".hover {"
-	 << " background-color: pink;"
-	 << "} "
-
-	 << ".Atd {"
-	 << " color: purple;"
-	 << "} "
-
-	 << ".Ctd {"
-	 << " color: blue;"
-	 << "} "
-
-	 << ".Gtd {"
-	 << " color: green;"
-	 << "} "
-
-	 << ".Ttd {"
-	 << " color: orange;"
-	 << "} "
-
-	 << ".vtd {"
-	 << " color: gray;"
-	 << "} "
-
-	 << ".-td {"
-	 << " color: red;"
-	 << "} "
-
-	 << ".Areftd {"
-	 << " background-color: purple;"
-	 << "} "
-
-	 << ".Creftd {"
-	 << " background-color: blue;"
-	 << "} "
-
-	 << ".Greftd {"
-	 << " background-color: green;"
-	 << "} "
-
-	 << ".Treftd {"
-	 << " background-color: orange;"
-	 << "} "
-
-	 << ".vreftd {"
-	 << " background-color: gray;"
-	 << "} "
-
-	 << "</style>" << "\n";
-}
-
-
 void writeReferenceString(std::string& reference_string, 
 			  std::ostream& output, 
 			  std::string locus_id, 
@@ -138,19 +16,9 @@ void writeReferenceString(std::string& reference_string,
     output << " <caption>" << locus_id << "</caption> ";
   output << "\n";
 
-  output << locus_id << "\t" << "ALL" << "\t" << "<tr style='font-weight: bold'>";
-  for (int i = 0; i < reference_string.size(); i++){
-    std::string color = base_colors[reference_string[i]];
-    if (within_locus[i]){
-      output << "<td class=\"locustd\" style='background-color:" << color << "'>" << reference_string[i] << "</td>";
-    }
-    else {
-      if (reference_string[i] == '*')
-	output << "<td class=\"" << 'v' << "reftd\">" << reference_string[i] << "</td>";
-      else
-	output << "<td class=\"" << reference_string[i] << "reftd\">" << reference_string[i] << "</td>";
-    }
-  }
+  output << locus_id << "\t" << "ALL" << "\t" << "<tr style='font-weight: bold' class=\"reference\">" << "0 ";
+  for (int i = 0; i < reference_string.size(); i++)
+    output << reference_string[i];
   output << "</tr>" << std::endl;
 }
 
@@ -170,35 +38,74 @@ void writeAlignmentStrings(std::string& reference_string,
 	vcf_ss << info_iter->second;
 
       std::string label = alignment_samples[i] + ": " + vcf_ss.str();
-      output << locus_id << "\t" << alignment_samples[i] << "\t" << "<tr> <td class=\"samplename\" style=\"text-align:left;\" colspan=\"" << label.size() << "\"> <font color=\"red\">" << label <<  "</font> </td> </tr>\n";
+      output << locus_id << "\t" << alignment_samples[i] << "\t"
+	     << "<tr> <td class=\"samplename\" style=\"text-align:left;\" colspan=\"" << label.size() 
+	     << "\"> <font color=\"red\">" << label <<  "</font> </td> </tr>\n";
     }
 
     output << locus_id << "\t" << alignment_samples[i] << "\t" << "<tr>";
     int j;
-    for (j = 0; j < alignment_strings[i].size(); j++){
+    for (j = 0; j < alignment_strings[i].size(); j++)
       if (alignment_strings[i][j] != SPACE_CHAR)
 	break;
-    }
-    if (j > 0)
-      output << "<td colspan=\"" << j << "\"> </td>";
+    output << j << " ";
 
     for (; j < alignment_strings[i].size(); j++){
       char c = alignment_strings[i][j]; 		
-      std::string color = base_colors[c];
       bool snp    = (tolower(c) != tolower(reference_string[j]) && reference_string[j] != NOT_APP_CHAR && c != NOT_APP_CHAR && c != SPACE_CHAR && c != DELETION_CHAR);
       bool insert = (c != NOT_APP_CHAR && c != SPACE_CHAR && reference_string[j] == NOT_APP_CHAR);
 
-      if (highlight && snp)
-	output << "<td class=\"snptd\"> <font color=\"" << color << "\">" << c << "</font></td>";
-      else if (highlight && insert)
-	output << "<td class=\"inserttd\"> <font color=\"" << color << "\">" << c << "</font></td>";
+      if (highlight && snp){
+	switch(c){
+	case 'A':
+	  output << "H";
+	  break;
+	case 'C':
+	  output << "I";
+	  break;
+	case 'G':
+	  output << "J";
+	  break;
+	case 'T':
+	  output << "K";
+	  break;
+	case 'N':
+	  output << "L";
+	  break;
+	default:
+	  printErrorAndDie("Invalid base for HTML creation: " + std::to_string(c));
+	  break;
+	}
+      }
+      else if (highlight && insert){
+	switch(c){
+	case 'A':
+	  output << "a";
+	  break;
+	case 'C':
+	  output << "c";
+	  break;
+	case 'G':
+	  output << "g";
+	  break;
+	case 'T':
+	  output << "t";
+	  break;
+	case 'N':
+	  output << "n";
+	  break;
+	default:
+	  printErrorAndDie("Invalid base for HTML creation: " + std::to_string(c));
+	  break;
+	}
+      }
       else if (c == SPACE_CHAR)
-	output << "<td class=\"spacertd\">x</td>";
-      else{
+	output << "x";
+      else {
 	if (c == '*')
-	  output << "<td class=\"" << 'v' << "td\">" << '*' << "</td>";
+	  output << "*";
 	else
-	  output << "<td class=\"" << c << "td\">" << c << "</td>";	  
+	  output << c;
       }
     }
     output << "</tr>\n";

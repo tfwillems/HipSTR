@@ -62,7 +62,7 @@ static-dist:
 	  DST="HipSTR-$${VER}-static-$$(uname -s)-$$(uname -m)" ; \
 	  mkdir "$${DST}" && \
             mkdir "$${DST}/scripts" && \
-            cp HipSTR BamSieve VizAln VizAlnPdf filter_html_alns.py html_alns_to_pdf.py README.md "$${DST}" && \
+            cp HipSTR BamSieve VizAln VizAlnPdf generate_aln_html.py html_alns_to_pdf.py README.md "$${DST}" && \
             cp scripts/filter_haploid_vcf.py scripts/filter_vcf.py "$${DST}/scripts" && \
             tar -czvf "$${DST}.tar.gz" "$${DST}" && \
             rm -r "$${DST}/" \

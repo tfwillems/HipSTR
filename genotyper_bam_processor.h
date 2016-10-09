@@ -170,7 +170,6 @@ public:
   void set_output_viz(std::string& viz_file){
     output_viz_ = true;
     viz_out_.open(viz_file.c_str());
-    writeHeader(viz_out_);
   }
 
   void set_ref_vcf(std::string& ref_vcf_file){
