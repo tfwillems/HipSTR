@@ -282,7 +282,7 @@ DSTUTTER       | Total number of reads with a stutter indel in the STR region
 DFLANKINDEL    | Total number of reads with an indel in the regions flanking the STR
 
 #### FORMAT fields
-*FORMAT* fields contain information about the genotype for each sample at the locus. In addition to the most probable phased genotype (*GT*), HipSTR reports information about the posterior likelihood of this genotype (*PQ*) and its unphased analog (*Q*). HipSTR also reports the expected base pair difference from the reference for the genotype by marginalizing over all genotype probabilities (*BPDOSE*), a value that may be useful in association studies. 
+*FORMAT* fields contain information about the genotype for each sample at the locus. In addition to the most probable phased genotype (*GT*), HipSTR reports information about the posterior likelihood of this genotype (*PQ*) and its unphased analog (*Q*). 
 
 FIELD     | DESCRIPTION
 --------- | -----------
