@@ -74,26 +74,7 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
       StutterAlignerClass* stutter_aligner = haplotype->get_block(block_index)->get_stutter_aligner(block_option);
 
       std::vector<double> block_probs(num_stutter_artifacts); // Reuse in each iteration to avoid reallocation penalty
-      int j = 0;
-
-      // If this haplotype and its predecessor have a suffix match that exceeds the maximum
-      // haplotype bases used for a subset of the read position, we can reuse the match probabilities
-      // for those positions as they're identical
-      if (false && reuse_alns){
-	// TO DO: Generalize this to multi-block haplotypes. Need to check that old matrix indices haven't been overwritten and ...
-	assert(haplotype->num_blocks() == 3);
-	int suffix_match_length = haplotype->get_block(block_index)->suffix_match_len(block_option);
-	int old_matrix_index    = seq_len*(haplotype_index+haplotype->get_block(block_index)->get_seq(block_option-1).size()-1);
-	int num_copies          = std::min(seq_len, suffix_match_length + rep_info->max_deletion());
-	for (; j < num_copies; ++j, ++matrix_index, ++old_matrix_index){
-	  match_matrix[matrix_index]    = match_matrix[old_matrix_index];
-	  insert_matrix[matrix_index]   = IMPOSSIBLE;
-	  deletion_matrix[matrix_index] = IMPOSSIBLE;
-	  // NOTE: No need to update artifact size and position as they're unchanged from last iteration
-	}
-      }
-
-      for (; j < seq_len; ++j, ++matrix_index){
+      for (int j = 0; j < seq_len; ++j, ++matrix_index){
 	// Consider valid range of insertions and deletions, including no stutter artifact
 	int art_idx    = 0;
 	double best_LL = IMPOSSIBLE;
@@ -284,8 +265,6 @@ void HapAligner::calc_best_seed_position(int32_t region_start, int32_t region_en
  */
 int HapAligner::calc_seed_base(Alignment& aln){
   int32_t pos          = aln.get_start();
-  int32_t repeat_start = fw_haplotype_->get_block(1)->start();
-  int32_t repeat_stop  = fw_haplotype_->get_block(1)->end();
   int best_seed = -1, cur_base = 0, max_dist = MIN_SEED_DIST;
   for (auto cigar_iter = aln.get_cigar_list().begin(); cigar_iter != aln.get_cigar_list().end(); cigar_iter++){
     switch(cigar_iter->get_type()){
