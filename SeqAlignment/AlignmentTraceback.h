@@ -14,18 +14,14 @@ class AlignmentTrace {
   private:
     int stutter_size_;         // Size of stutter artifact in STR block
     std::string str_seq_;      // Sequence in STR region
-    std::string full_str_seq_; // Hypothetical sequence in STR region if the read fully spanned the stutter block
-                               // Identical to str_seq if read spans STR region
   public:
-    STRTraceData(int stutter_size, std::string& str_seq, std::string& full_str_seq){
+    STRTraceData(int stutter_size, std::string& str_seq){
       stutter_size_ = stutter_size;
       str_seq_      = str_seq;
-      full_str_seq_ = full_str_seq;
     }
 
     int stutter_size()          { return stutter_size_; }
     std::string& str_seq()      { return str_seq_;      }
-    std::string& full_str_seq() { return full_str_seq_; }
   };
 
   std::string hap_aln_;      // Alignment string for read against its genotype's haplotype
@@ -60,9 +56,9 @@ class AlignmentTrace {
   void inc_flank_del()                    { flank_del_size_++;      }
   void set_hap_aln(std::string& aln)      { hap_aln_        = aln;  }
 
-  void add_str_data(int block_index, int stutter_size, std::string& str_seq, std::string& full_str_seq){
+  void add_str_data(int block_index, int stutter_size, std::string& str_seq){
     assert(str_data_[block_index] == NULL);
-    str_data_[block_index] = new STRTraceData(stutter_size, str_seq, full_str_seq);
+    str_data_[block_index] = new STRTraceData(stutter_size, str_seq);
   }
 
   std::vector< std::pair<int32_t,int32_t> >& flank_indel_data() { return flank_indel_data_; }

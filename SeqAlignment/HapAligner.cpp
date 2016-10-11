@@ -377,7 +377,7 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
     if (stutter_block){
       int* artifact_size_ptr = best_artifact_size + seq_len*block_index;
       int* artifact_pos_ptr  = best_artifact_pos  + seq_len*block_index;
-      std::stringstream str_ss, full_str_ss;
+      std::stringstream str_ss;
       const std::string& block_seq = haplotype->get_seq(block_index);
       int block_len    = block_seq.size();
       int stutter_size = artifact_size_ptr[seq_index];
@@ -387,7 +387,6 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
       for (; i < std::min(seq_index+1, artifact_pos_ptr[seq_index]); i++){
 	aln_ss      << "M";
 	str_ss      << read_seq[seq_index-i];
-	full_str_ss << read_seq[seq_index-i];
       }
       if (artifact_size_ptr[seq_index] < 0)
 	aln_ss << std::string(-artifact_size_ptr[seq_index], 'D');
@@ -395,33 +394,22 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
 	for (; i < std::min(seq_index+1, artifact_pos_ptr[seq_index] + artifact_size_ptr[seq_index]); i++){
 	  aln_ss      << "I";
 	  str_ss      << read_seq[seq_index-i];
-	  full_str_ss << read_seq[seq_index-i];
 	}
       for (; i < std::min(block_len + artifact_size_ptr[seq_index], seq_index+1); i++){
 	aln_ss      << "M";
 	str_ss      << read_seq[seq_index-i];
-	full_str_ss << read_seq[seq_index-i];
       }
       std::string str_seq = str_ss.str();
-
-      // Add the non-spanned stutter block bases to generate what would be the full STR sequence if the read were longer
-      // NOTE: Some weird edge case behavior can arise here if there's a stutter indel that's not spanned by the read.
-      // In these very rare instances, the extracted string won't necessarily be correct
-      int block_seq_index = std::min(block_len-1, block_len-1+artifact_size_ptr[seq_index]-i);
-      while (block_seq_index >= 0)
-	full_str_ss << block_seq[block_seq_index--];
-      std::string full_str_seq = full_str_ss.str();
 
       // Add STR data to trace instance
       if (haplotype->reversed()){
 	// Alignment for sequence to right of seed. Block indexes are reversed, but alignment is correct
-	trace.add_str_data(haplotype->num_blocks()-1-block_index, stutter_size, str_seq, full_str_seq);
+	trace.add_str_data(haplotype->num_blocks()-1-block_index, stutter_size, str_seq);
       }
       else {
 	// Alignment for sequence to left of seed. Block indexes are correct, but alignment is reversed
 	std::reverse(str_seq.begin(), str_seq.end());
-	std::reverse(full_str_seq.begin(), full_str_seq.end());
-	trace.add_str_data(block_index, stutter_size, str_seq, full_str_seq);
+	trace.add_str_data(block_index, stutter_size, str_seq);
       }
 
       if (block_len + artifact_size_ptr[seq_index] >= seq_index+1)
