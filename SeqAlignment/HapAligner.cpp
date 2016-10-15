@@ -19,6 +19,10 @@ const int32_t MIN_SEED_DIST = 5;
 // Large negative value to prevent impossible or undesirable configurations 
 const double IMPOSSIBLE = -1000000000;
 
+// Only consider a base as a SNP if the minimum log-probability that its sequence is correct
+// is above this threshold
+const double MIN_SNP_LOG_PROB_CORRECT = -0.0043648054;
+
 void HapAligner::align_seq_to_hap(Haplotype* haplotype,
 				  const char* seq_0, int seq_len, const double* base_log_wrong, const double* base_log_correct,
 				  double* match_matrix, double* insert_matrix, double* deletion_matrix,
@@ -351,7 +355,7 @@ inline int rev_triple_min_index(double v1, double v2, double v3){
 inline int     pair_min_index(double v1, double v2){ return (v1 > v2+TRACE_LL_TOL ? 0 : 1); }
 inline int rev_pair_min_index(double v1, double v2){ return (v2 > v1+TRACE_LL_TOL ? 1 : 0); }
 
-std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
+std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq, const double* base_log_correct,
 				int seq_len, int block_index, int base_index, int matrix_index,
 				double* match_matrix, double* insert_matrix, double* deletion_matrix, int* best_artifact_size, int* best_artifact_pos,
 				AlignmentTrace& trace){
@@ -458,6 +462,8 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq,
 	// Extract alignment character for current base and update indices
 	switch (matrix_type){
 	case MATCH:
+	  if (block_seq[base_index] != read_seq[seq_index] &&  base_log_correct[seq_index] > MIN_SNP_LOG_PROB_CORRECT)
+	    trace.add_flank_snp(pos, read_seq[seq_index]);
 	  aln_ss << "M";
 	  seq_index--;
 	  base_index--;
@@ -616,11 +622,11 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	  int l_matrix_index = seed_base*max_index - 1;
 	  if (fw_seed_coord == 0){
 	    int prev_block_size = fw_haplotype_->get_seq(fw_seed_block-1).size();
-	    left_aln = retrace(fw_haplotype_, base_seq, seed_base, fw_seed_block-1, prev_block_size-1, l_matrix_index, l_match_matrix, l_insert_matrix, l_deletion_matrix,
+	    left_aln = retrace(fw_haplotype_, base_seq, base_log_correct, seed_base, fw_seed_block-1, prev_block_size-1, l_matrix_index, l_match_matrix, l_insert_matrix, l_deletion_matrix,
 			       l_best_artifact_size, l_best_artifact_pos, trace);
 	  }
 	  else
-	    left_aln = retrace(fw_haplotype_, base_seq, seed_base, fw_seed_block, fw_seed_coord-1, l_matrix_index, l_match_matrix, l_insert_matrix, l_deletion_matrix,
+	    left_aln = retrace(fw_haplotype_, base_seq, base_log_correct, seed_base, fw_seed_block, fw_seed_coord-1, l_matrix_index, l_match_matrix, l_insert_matrix, l_deletion_matrix,
 			       l_best_artifact_size, l_best_artifact_pos, trace);
 	}
 	std::reverse(left_aln.begin(), left_aln.end()); // Alignment is backwards for left flank
@@ -636,11 +642,11 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	  int r_matrix_index = (base_seq_len-1-seed_base)*rev_max_index - 1;
 	  if (rev_seed_coord == 0){
 	    int prev_block_size = rev_haplotype_->get_seq(rev_seed_block-1).size();
-	    right_aln = retrace(rev_haplotype_, rev_rseq.c_str(), base_seq_len-1-seed_base, rev_seed_block-1, prev_block_size-1, r_matrix_index, r_match_matrix,
+	    right_aln = retrace(rev_haplotype_, rev_rseq.c_str(), base_log_correct+seed_base+1, base_seq_len-1-seed_base, rev_seed_block-1, prev_block_size-1, r_matrix_index, r_match_matrix,
 				r_insert_matrix, r_deletion_matrix, r_best_artifact_size, r_best_artifact_pos, trace);
 	  }
 	  else
-	    right_aln = retrace(rev_haplotype_, rev_rseq.c_str(), base_seq_len-1-seed_base, rev_seed_block, rev_seed_coord-1, r_matrix_index, r_match_matrix,
+	    right_aln = retrace(rev_haplotype_, rev_rseq.c_str(), base_log_correct+seed_base+1, base_seq_len-1-seed_base, rev_seed_block, rev_seed_coord-1, r_matrix_index, r_match_matrix,
 				r_insert_matrix, r_deletion_matrix, r_best_artifact_size, r_best_artifact_pos, trace);
 	}
 	assert(right_aln.size() - std::count(right_aln.begin(), right_aln.end(), 'D') == base_seq_len-1-seed_base);
