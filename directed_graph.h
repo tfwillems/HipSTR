@@ -2,32 +2,29 @@
 #define DIRECTED_GRAPH_H_
 
 #include <assert.h>
+#include <iostream>
 #include <map>
 #include <vector>
 
 class Node;
 
 class Edge {
-  Node* source_;
-  Node* destination_;
+  int source_;
+  int destination_;
   int weight_;
 
  public:
-  Edge(Node* source, Node* destination, int weight){
+  Edge(int source, int destination, int weight){
     source_      = source;
     destination_ = destination;
     weight_      = weight;
   }
 
-  Node* get_source()     { return source_; }
-  Node* get_destination(){ return destination_; }
-
-  void inc_weight(){ weight_++;      }
-  void dec_weight(){ weight_--;      }
-  int  get_weight(){ return weight_; }
-  void set_weight(int weight){
-    weight_ = weight;
-  }
+  int get_source()           { return source_;      }
+  int get_destination()      { return destination_; }
+  void inc_weight(int delta) { weight_ += delta;    }
+  void dec_weight(int delta) { weight_ -= delta;    }
+  int  get_weight()          { return weight_;      }
 };
 
 class Node {
@@ -51,29 +48,37 @@ class Node {
   }
 
   int get_id(){ return id_; }
-  std::vector<Edge*>& get_incident_edges() { return arriving_;              }
-  std::vector<Edge*>& get_departing_edges(){ return departing_;             }
-  void remove_incident_edge(Edge* edge)    { remove_edge(edge, arriving_);  }
-  void remove_departing_edge(Edge* edge)   { remove_edge(edge, departing_); }
-  void add_incident_edge(Edge* edge)       { arriving_.push_back(edge);     }
-  void add_departing_edge(Edge* edge)      { departing_.push_back(edge);    }
-  int num_incident_edges()                 { return arriving_.size();       }
-  
-  bool has_parent(Node* node){
-    for (unsigned int i = 0; i < arriving_.size(); i++)
-      if (arriving_[i]->get_source() == node)
-	return true;
-    return false;
+  std::vector<Edge*>& get_incident_edges() { return arriving_;        }
+  std::vector<Edge*>& get_departing_edges(){ return departing_;       }
+  int num_incident_edges()                 { return arriving_.size(); }
+
+  void add_edge(Edge* edge){
+    bool added = false;
+    if (edge->get_source() == id_){
+      departing_.push_back(edge);
+      added = true;
+    }
+    if (edge->get_destination() == id_){
+      arriving_.push_back(edge);
+      added = true;
+    }
+    assert(added);
   }
 
-  bool has_child(Node* node){
-    for (unsigned int i = 0; i < departing_.size(); i++)
-      if (departing_[i]->get_destination() == node)
-	return true;
-    return false;
+  void remove_edge(Edge* edge){
+    bool removed = false;
+    if (edge->get_source() == id_){
+      remove_edge(edge, departing_);
+      removed = true;
+    }
+    if (edge->get_destination() == id_){
+      remove_edge(edge, arriving_);
+      removed = true;
+    }
+    assert(removed);
   }
 
-  void get_child_nodes(std::vector<Node*>& children){
+  void get_child_nodes(std::vector<int>& children){
     for (unsigned int i = 0; i < departing_.size(); i++)
       children.push_back(departing_[i]->get_destination());
   }
@@ -89,7 +94,9 @@ protected:
   std::map<std::string, int> node_map_;
   
 public:
-  DirectedGraph(){}
+  DirectedGraph(){
+    num_nodes_ = 0;
+  }
 
   bool can_sort_topologically();
 
@@ -98,24 +105,8 @@ public:
   }
 
   ~DirectedGraph(){
-    for (unsigned int i = 0; i < nodes_.size(); i++)
-      delete nodes_[i];
     for (unsigned int i = 0; i < edges_.size(); i++)
       delete edges_[i];
-  }
-
-  void prune_edges(int min_weight){
-    unsigned int ins_index = 0;
-    for (unsigned int i = 0; i < edges_.size(); i++){
-      if (edges_[i]->get_weight() < min_weight){
-	edges_[i]->get_source()->remove_departing_edge(edges_[i]);
-	edges_[i]->get_destination()->remove_incident_edge(edges_[i]);
-	delete edges_[i];
-      }
-      else
-	edges_[ins_index++] = edges_[i];
-    }
-    edges_.resize(ins_index);
   }
 
   Node* get_node(std::string& value){
@@ -129,31 +120,12 @@ public:
     return nodes_.back();
   }
 
-  const std::string& get_node_label(Node* node){
-    return node_labels_[node->get_id()];
-  }
-
   const std::string& get_node_label(int node_id){
     return node_labels_[node_id];
   }
 
-  void increment_edge(std::string& val_1, std::string& val_2){
-    Node* source = get_node(val_1);
-    Node* dest   = get_node(val_2);
-    
-    std::vector<Edge*> edges = dest->get_incident_edges();
-    for (unsigned int i = 0; i < edges.size(); i++){
-      if (edges[i]->get_source() == source){
-	edges[i]->inc_weight();
-	return;
-      }
-    }
-
-    Edge* new_edge = new Edge(source, dest, 1);
-    edges.push_back(new_edge);
-    source->add_departing_edge(new_edge);
-    dest->add_incident_edge(new_edge);
-  }
+  void increment_edge(std::string& val_1, std::string& val_2, int delta=1);
+  void print(std::ostream& out);
 };
 
 #endif

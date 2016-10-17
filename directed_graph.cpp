@@ -1,22 +1,41 @@
 #include "error.h"
 #include "directed_graph.h"
 
+void DirectedGraph::increment_edge(std::string& val_1, std::string& val_2, int delta){
+  Node* source  = get_node(val_1);
+  Node* dest    = get_node(val_2);
+  int source_id = source->get_id();
+
+  std::vector<Edge*>& edges = dest->get_incident_edges();
+  for (unsigned int i = 0; i < edges.size(); i++){
+    if (edges[i]->get_source() == source_id){
+      edges[i]->inc_weight(delta);
+      return;
+    }
+  }
+
+  Edge* new_edge = new Edge(source_id, dest->get_id(), delta);
+  edges_.push_back(new_edge);
+  source->add_edge(new_edge);
+  dest->add_edge(new_edge);
+}
+
 bool DirectedGraph::can_sort_topologically(){
-  std::map<Node*, int> parent_counts;
-  std::vector<Node*> sources;
+  std::map<int, int> parent_counts;
+  std::vector<int> sources;
   for (unsigned int i = 0; i < nodes_.size(); i++){
     int count = nodes_[i]->num_incident_edges();
     if (count == 0)
-      sources.push_back(nodes_[i]);
+      sources.push_back(i);
     else
-      parent_counts[nodes_[i]] = count;
+      parent_counts[i] = count;
   }
 
-  std::vector<Node*> ordered_nodes;
-  std::vector<Node*> children;
+  std::vector<int> ordered_nodes;
+  std::vector<int> children;
   while (sources.size() != 0){
-    Node* source = sources.back();
-    source->get_child_nodes(children);
+    int source = sources.back();
+    nodes_[source]->get_child_nodes(children);
     ordered_nodes.push_back(source);
     sources.pop_back();
 
@@ -38,4 +57,20 @@ bool DirectedGraph::can_sort_topologically(){
     return true;
   else
     return false; // Only a DAG if no unprocessed individuals are left
+}
+
+
+
+void DirectedGraph::print(std::ostream& out){
+  assert(nodes_.size() == num_nodes_ && node_labels_.size() == num_nodes_);
+
+  out << "NODES" << "\n";
+  for (unsigned int i = 0; i < nodes_.size(); i++)
+    out << "\t" << i << "\t" << node_labels_[i] << "\n";
+  out << "\n";
+
+  out << "EDGES " << edges_.size() <<  "\n";
+  for (unsigned int i = 0; i < edges_.size(); i++)
+    out << "\t" << i << "\t" << edges_[i]->get_source() << "\t" << edges_[i]->get_destination() << "\t" << edges_[i]->get_weight() << "\n";
+  out << "\n" << std::endl;
 }

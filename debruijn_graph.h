@@ -23,23 +23,15 @@ class DebruijnGraph : public DirectedGraph {
     source_kmer = ref_seq.substr(0, k_);
     sink_kmer   = ref_seq.substr(ref_seq.size()-k, k_);
 
-    // Add it twice so that the reference path has a weight of at least 2
-    add_string(ref_seq); add_string(ref_seq);
+    // Add the reference path with a weight of 10
+    add_string(ref_seq, 2);
   }
 
-  void add_string(std::string& seq){
-    if (seq.size() <= k_)
-      return;
-
-    std::string prev_kmer = seq.substr(0, k_);
-    for (int i = 1; i < seq.size()+1-k_; i++){
-      std::string next_kmer = seq.substr(i, k_);
-      increment_edge(prev_kmer, next_kmer);
-      prev_kmer = next_kmer;
-    }
-  }
+  void add_string(std::string& seq, int weight=1);
 
   void enumerate_paths(int min_weight, int max_paths, std::vector<std::pair<std::string, int> >& paths);
+
+  static bool calc_kmer_length(std::string& ref_seq, int min_kmer, int max_kmer, int& kmer);
 };
 
 class DebruijnPath {
@@ -49,10 +41,10 @@ class DebruijnPath {
   int min_weight_;
 
  public:
-  DebruijnPath(Node* node){
+  DebruijnPath(int node_id){
     parent_     = NULL;
     min_weight_ = 1000000;
-    node_id_    = node->get_id();
+    node_id_    = node_id;
   }
 
   int get_min_weight() { return min_weight_; }
