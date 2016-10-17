@@ -29,6 +29,7 @@ class AlignmentTrace {
   int flank_ins_size_;       // Number of inserted base pairs in sequences flanking the STR (positive)
   int flank_del_size_;       // Number of deleted base pairs in sequences flanking the STR (positive)
   std::vector<STRTraceData*> str_data_;
+  std::vector<std::string> flank_seqs_;
   std::vector< std::pair<int32_t,int32_t> > flank_indel_data_;
   std::vector< std::pair<int32_t, char> > flank_snp_data_;
 
@@ -38,6 +39,7 @@ class AlignmentTrace {
     flank_ins_size_ = 0;
     flank_del_size_ = 0;
     str_data_       = std::vector<STRTraceData*>(num_haplotype_blocks, NULL);
+    flank_seqs_     = std::vector<std::string>(num_haplotype_blocks, "");
   }
 
   ~AlignmentTrace(){
@@ -59,6 +61,10 @@ class AlignmentTrace {
   void inc_flank_ins()                    { flank_ins_size_++;   }
   void inc_flank_del()                    { flank_del_size_++;   }
   void set_hap_aln(std::string& aln)      { hap_aln_ = aln;      }
+
+  void add_flank_data(int block_index, std::string& flank_seq){
+    flank_seqs_[block_index].append(flank_seq);
+  }
 
   void add_str_data(int block_index, int stutter_size, std::string& str_seq){
     assert(str_data_[block_index] == NULL);
@@ -87,6 +93,10 @@ class AlignmentTrace {
   int stutter_size(int block_index){
     assert(str_data_[block_index] != NULL);
     return str_data_[block_index]->stutter_size();
+  }
+
+  std::string& flank_seq(int block_index){
+    return flank_seqs_[block_index];
   }
 
   std::string& str_seq(int block_index){

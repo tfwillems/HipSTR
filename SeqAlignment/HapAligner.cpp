@@ -431,6 +431,7 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq, cons
       int32_t pos             = haplotype->get_block(block_index)->start() + (haplotype->reversed() ? -base_index : base_index);
       const int32_t increment = (haplotype->reversed() ? 1 : -1);
       int32_t indel_seq_index, indel_position;
+      std::stringstream flank_ss;
 
       // Retrace flanks while tracking any indels that occur
       // Indels are ultimately reported as (position, size) tuples, where position is the left-most
@@ -464,6 +465,7 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq, cons
 	case MATCH:
 	  if (block_seq[base_index] != read_seq[seq_index] &&  base_log_correct[seq_index] > MIN_SNP_LOG_PROB_CORRECT)
 	    trace.add_flank_snp(pos, read_seq[seq_index]);
+	  flank_ss << read_seq[seq_index];
 	  aln_ss << "M";
 	  seq_index--;
 	  base_index--;
@@ -477,6 +479,7 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq, cons
 	  break;
 	case INS:
 	  trace.inc_flank_ins();
+	  flank_ss << read_seq[seq_index];
 	  aln_ss << "I";
 	  seq_index--;
 	  break;
@@ -485,12 +488,18 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq, cons
 	  break;
 	}
 
-	if (seq_index == -1)
-	  return aln_ss.str();
-	if (base_index == -1 && block_index == 0){
+	if (seq_index == -1 || (base_index == -1 && block_index == 0)){
 	  while(seq_index != -1){
 	    aln_ss << "S";
 	    seq_index--;
+	  }
+
+	  std::string flank_seq = flank_ss.str();
+	  if (haplotype->reversed())
+	    trace.add_flank_data(haplotype->num_blocks()-1-block_index, flank_seq);
+	  else {
+	    std::reverse(flank_seq.begin(), flank_seq.end());
+	    trace.add_flank_data(block_index, flank_seq);
 	  }
 	  return aln_ss.str();
 	}
@@ -542,6 +551,14 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq, cons
 	  printErrorAndDie("Invalid matrix type when retracing alignments");
 	  break;
 	}
+      }
+
+      std::string flank_seq = flank_ss.str();
+      if (haplotype->reversed())
+	trace.add_flank_data(haplotype->num_blocks()-1-block_index, flank_seq);
+      else {
+	std::reverse(flank_seq.begin(), flank_seq.end());
+	trace.add_flank_data(block_index, flank_seq);
       }
     }
     base_index = haplotype->get_seq(--block_index).size()-1;
@@ -631,6 +648,12 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
 	}
 	std::reverse(left_aln.begin(), left_aln.end()); // Alignment is backwards for left flank
 	assert(left_aln.size() - std::count(left_aln.begin(), left_aln.end(), 'D') == seed_base);
+
+	// Add the seed base to the appropriate flank's sequence
+	if (fw_haplotype_->get_block(fw_seed_block)->get_repeat_info() == NULL){
+	  std::string seed_base_string(1, base_seq[seed_base]);
+	  trace.add_flank_data(fw_seed_block, seed_base_string);
+	}
 
 	// Retrace sequence to right of seed (if appropriate)
 	int rev_max_index = fw_haplotype_->cur_size()-1-max_index;
