@@ -4,7 +4,6 @@
 #include "Haplotype.h"
 #include "NeedlemanWunsch.h"
 
-
 void Haplotype::adjust_indels(std::string& ref_hap_al, std::string& alt_hap_al){
   assert(blocks_.size() == 3);
   int32_t ref_pos = blocks_[0]->start(), str_pos = blocks_[1]->start();
@@ -88,13 +87,26 @@ void Haplotype::aln_haps_to_ref(){
 void Haplotype::init(){
   ncombs_   = 1;
   cur_size_ = 0;
-  for (int i = 0; i < blocks_.size(); i++){
-    factors_[i]  = ncombs_;
-    ncombs_     *= nopts_[i];
-    dirs_[i]     = 1;
-    counts_[i]   = 0;
-    nchanges_[i] = 0;
-    cur_size_   += blocks_[i]->size(0);
+
+  if (inc_rev_){
+    for (int i = blocks_.size()-1; i >= 0; i--){
+      factors_[i]  = ncombs_;
+      ncombs_     *= nopts_[i];
+      dirs_[i]     = 1;
+      counts_[i]   = 0;
+      nchanges_[i] = 0;
+      cur_size_   += blocks_[i]->size(0);
+    }
+  }
+  else {
+    for (int i = 0; i < blocks_.size(); i++){
+      factors_[i]  = ncombs_;
+      ncombs_     *= nopts_[i];
+      dirs_[i]     = 1;
+      counts_[i]   = 0;
+      nchanges_[i] = 0;
+      cur_size_   += blocks_[i]->size(0);
+    }
   }
   counter_      = 0;
   last_changed_ = -1;
@@ -114,15 +126,25 @@ bool Haplotype::next(){
 
   int index = -1;
   int t     = counter_+1;
-  for (int j = blocks_.size()-1; j >= 0; j--){
-    t %= factors_[j];
-    if (t == 0){
-      index = j;
-      break;
+
+  if (inc_rev_){
+    for (int j = 0; j < blocks_.size(); j++){
+      t %= factors_[j];
+      if (t == 0){
+        index = j;
+        break;
+      }
     }
   }
-  if (inc_rev_)
-    index = blocks_.size()-1-index;
+  else {
+    for (int j = blocks_.size()-1; j >= 0; j--){
+      t %= factors_[j];
+      if (t == 0){
+	index = j;
+	break;
+      }
+    }
+  }
 
   assert(index != -1);
   last_changed_     = index;
@@ -231,6 +253,7 @@ Haplotype* Haplotype::reverse(std::vector<HapBlock*>& rev_blocks){
   std::reverse(rev_blocks.begin(), rev_blocks.end());
   Haplotype* rev_hap = new Haplotype(rev_blocks);
   rev_hap->inc_rev_  = true;
+  rev_hap->init(); // Need to reinitialize, as the reverse flag wasn't properly set
 
   // Set the haplotype alignments to the reverse of those in the current haplotype
   // Can't use the values obtained from the constructor as the reverse
