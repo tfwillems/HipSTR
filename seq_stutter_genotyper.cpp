@@ -8,6 +8,7 @@
 
 #include "seq_stutter_genotyper.h"
 #include "bam_processor.h"
+#include "debruijn_graph.h"
 #include "em_stutter_genotyper.h"
 #include "error.h"
 #include "extract_indels.h"
@@ -31,6 +32,89 @@ int max_index(double* vals, unsigned int num_vals){
     if (vals[i] > vals[best_index])
       best_index = i;
   return best_index;
+}
+
+void SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
+  std::vector<AlignmentTrace*> traced_alns;
+  retrace_alignments(traced_alns);
+
+  double locus_assembly_time = clock();
+  logger << "Reassembling flanking sequences..." << std::endl;
+
+  std::vector< std::vector<std::string> > alleles_to_add (haplotype_->num_blocks());
+
+  int MIN_PATH_WEIGHT = 2, MIN_KMER = 10, MAX_KMER = 15;
+  for (int flank = 0; flank < 2; flank++){
+    int block_index = (flank == 0 ? 0 : 2);
+    std::string ref_seq = hap_blocks_[block_index]->get_seq(0);
+
+    int kmer_length;
+    if (!DebruijnGraph::calc_kmer_length(ref_seq, MIN_KMER, MAX_KMER, kmer_length))
+      continue;
+
+    std::map<std::string, int> haplotype_counts;
+    std::vector< std::pair<std::string,int> > assembly_data;
+    int min_read_index = 0, read_index, cyclic_count = 0;
+    for (int sample_index = 0; sample_index < num_samples_; sample_index++){
+      bool debug = false;//(sample_names_[sample_index].compare("LP6005442-DNA_D10") == 0);
+
+      DebruijnGraph assembler(kmer_length, ref_seq);
+      for (read_index = min_read_index; read_index < num_reads_; read_index++){
+	if (sample_label_[read_index] != sample_index)
+	  break;
+	if (traced_alns[read_index] == NULL)
+	  continue;
+
+	std::string seq = traced_alns[read_index]->flank_seq(block_index);
+	if (!seq.empty())
+	  assembler.add_string(seq);
+      }
+
+      assembly_data.clear();
+      if (assembler.has_cycles()){
+	//logger << "YES CYCLE" << std::endl;
+	cyclic_count++;
+      }
+      else {
+        //logger << "NO CYCLE" << std::endl;
+	assembler.enumerate_paths(MIN_PATH_WEIGHT, 10, assembly_data);
+
+	int ref_depth = -1;
+	for (int i = 0; i < assembly_data.size(); i++)
+	  if (assembly_data[i].first.compare(ref_seq) == 0)
+	    ref_depth =  assembly_data[i].second;
+
+	if (assembly_data.size() > 1){
+	  for (int i = 0; i < assembly_data.size(); i++){
+	    if (assembly_data[i].first.compare(ref_seq) != 0){
+	      logger << sample_names_[sample_index] << " " << ref_depth << " " << assembly_data[i].second << std::endl;
+
+	      if (assembly_data[i].second*1.0/(ref_depth + assembly_data[i].second) > 0.25)
+		haplotype_counts[assembly_data[i].first]++;
+	    }
+	  }
+	}
+      }
+      min_read_index = read_index;
+    }
+
+    if (!haplotype_counts.empty()){
+      std::cerr << "Identified " << haplotype_counts.size() << " haplotypes:" << "\n";
+      for (auto hap_iter = haplotype_counts.begin(); hap_iter != haplotype_counts.end(); hap_iter++){
+	std::cerr << hap_iter->first << "\t" << hap_iter->second << "\n";
+	alleles_to_add[flank == 0 ? 0 : 2].push_back(hap_iter->first);
+      }
+      std::cerr << std::endl;
+    }
+  }
+
+  logger << "Assembly completed" << std::endl;
+
+  locus_assembly_time   = (clock() - locus_assembly_time)/CLOCKS_PER_SEC;
+  total_assembly_time_ += locus_assembly_time;
+
+  std::vector< std::vector<int> > alleles_to_remove(haplotype_->num_blocks());
+  add_and_remove_alleles(alleles_to_remove, alleles_to_add);
 }
 
 void SeqStutterGenotyper::haps_to_alleles(int hap_block_index, std::vector<int>& allele_indices){
@@ -694,6 +778,52 @@ void SeqStutterGenotyper::get_stutter_candidate_alleles(int str_block_index, std
     logger << "\t" << candidate_seqs[i] << "\n";
 }
 
+void SeqStutterGenotyper::analyze_flank_snps(std::ostream& logger){
+  std::vector<AlignmentTrace*> traced_alns;
+  std::vector< std::pair<int, int> > haps;
+  retrace_alignments(traced_alns);
+  get_optimal_haplotypes(haps);
+
+  double* read_LL_ptr = log_aln_probs_;
+  int min_read_index = 0, read_index;
+  for (int sample_index = 0; sample_index < num_samples_; sample_index++){
+    int hap_a = haps[sample_index].first;
+    int hap_b = haps[sample_index].second;
+    std::map<std::pair<int32_t, char>, int> hap_snp_counts;
+    std::vector<std::pair<int32_t, int32_t> > hap_read_coords;
+
+    for (read_index = min_read_index; read_index < num_reads_; read_index++){
+      if (traced_alns[read_index] == NULL){
+	read_LL_ptr += num_alleles_;
+	continue;
+      }
+      if (sample_label_[read_index] != sample_index)
+	break;
+
+      AlignmentTrace* trace = traced_alns[read_index];
+      hap_read_coords.push_back(std::pair<int32_t,int32_t>(trace->traced_aln().get_start(), trace->traced_aln().get_stop()));
+      std::vector<std::pair<int32_t, char> >& snp_data = trace->flank_snp_data();
+      for (auto snp_iter = snp_data.begin(); snp_iter != snp_data.end(); snp_iter++)
+	hap_snp_counts[*snp_iter]++;
+      read_LL_ptr += num_alleles_;
+    }
+    min_read_index = read_index;
+
+    for (auto snp_iter = hap_snp_counts.begin(); snp_iter != hap_snp_counts.end(); snp_iter++){
+      if (snp_iter->second >= 2){
+	int32_t pos = snp_iter->first.first;
+	int num_span = 0;
+	for (int i = 0; i < hap_read_coords.size(); i++)
+	  if (hap_read_coords[i].first < pos && hap_read_coords[i].second > pos)
+	    num_span++;
+	const Region& region = region_group_->regions()[0];
+	std::cerr << "SNP INFO " << region.chrom() << " " << region.start()+1 << " " << sample_names_[sample_index] << " " << pos << " " << snp_iter->second << " " << num_span << std::endl;
+      }
+    }
+  }
+}
+
+
 void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
   std::vector<AlignmentTrace*> traced_alns;
   retrace_alignments(traced_alns);
@@ -726,7 +856,7 @@ void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
 
   if (candidate_set.size() != 0){
     for (auto candidate_iter = candidate_set.begin(); candidate_iter != candidate_set.end(); candidate_iter++)
-      std::cerr << candidate_iter->first.first << " " << candidate_iter->first.second << " " << candidate_iter->second << std::endl;
+      std::cerr << "FLANK INDEL " << region_group_->chrom() << " " << candidate_iter->first.first << " " << candidate_iter->first.second << " " << candidate_iter->second << std::endl;
   }
 }
 
@@ -752,8 +882,10 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector<std::string> alleles;
   get_alleles(region, hap_block_index, chrom_seq, pos, alleles);
 
+  assemble_flanks(logger);
   //analyze_flank_indels(logger);
-  //debug_sample(sample_indices_["LP6005592-DNA_G05"], logger);
+  //analyze_flank_snps(logger);
+  //debug_sample(sample_indices_["LP6005442-DNA_D08"], logger);
 
   // Compute the base pair differences from the reference
   std::vector<int> allele_bp_diffs;

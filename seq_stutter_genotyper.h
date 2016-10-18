@@ -56,6 +56,7 @@ class SeqStutterGenotyper : public Genotyper {
   double total_hap_build_time_;
   double total_hap_aln_time_;
   double total_aln_trace_time_;
+  double total_assembly_time_;
 
   // Cache of traced back alignments
   std::map<std::pair<int,int>, AlignmentTrace*> trace_cache_;
@@ -101,6 +102,12 @@ class SeqStutterGenotyper : public Genotyper {
   // Exploratory function related to identifying indels in the flanking sequences
   void analyze_flank_indels(std::ostream& logger);
 
+  // Exploratory function related to identifying SNPs in the flanking sequences
+  void analyze_flank_snps(std::ostream& logger);
+
+  // Exploratory function related to using local assembly to identify variants in the flanking sequences
+  void assemble_flanks(std::ostream& logger);
+
   // Determines the allele index in the given haplotype block that is associated with each haplotype configuration
   // Stores the results in the provided vector
   void haps_to_alleles(int hap_block_index, std::vector<int>& allele_indices);
@@ -137,8 +144,8 @@ class SeqStutterGenotyper : public Genotyper {
     MAX_REF_FLANK_LEN      = 30;
     initialized_           = false;
     pool_identical_seqs_   = pool_identical_seqs;
-    total_hap_build_time_  = total_hap_aln_time_ = 0;
-    total_aln_trace_time_  = 0;
+    total_hap_build_time_  = total_hap_aln_time_  = 0;
+    total_aln_trace_time_  = total_assembly_time_ = 0;
     ref_vcf_               = ref_vcf;
     assert(num_reads_ == alns_.size());
     init(stutter_models, chrom_seq, logger);
@@ -171,6 +178,7 @@ class SeqStutterGenotyper : public Genotyper {
   double hap_build_time() { return total_hap_build_time_;  }
   double hap_aln_time()   { return total_hap_aln_time_;    }
   double aln_trace_time() { return total_aln_trace_time_;  }
+  double assembly_time()  { return total_assembly_time_;   }
 
   bool genotype(std::string& chrom_seq, std::ostream& logger);
 
