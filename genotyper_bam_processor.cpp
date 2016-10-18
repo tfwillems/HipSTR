@@ -40,7 +40,7 @@ void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::str
 					     std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
 					     std::vector<Alignment>& left_alns){
   locus_left_aln_time_ = clock();
-  logger() << "Left aligning reads..." << std::endl;
+  logger() << "Left aligning reads" << std::endl;
   std::map<std::string, int> seq_to_alns;
   int32_t align_fail_count = 0, total_reads = 0;
   int bp_diff;

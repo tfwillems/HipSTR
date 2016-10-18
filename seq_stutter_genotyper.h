@@ -93,6 +93,7 @@ class SeqStutterGenotyper : public Genotyper {
 
   // Aligns each read to each of the candidate haplotypes and stores the results in internal arrays
   void calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype);
+  void calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype, std::vector<bool>& realign_read);
 
   // Identify alleles present in stutter artifacts. Align each read to the new haplotypes
   // containing these alleles and incorporate these alignment probabilities
@@ -122,6 +123,9 @@ class SeqStutterGenotyper : public Genotyper {
   // and updates the alignment probabilities and genotype posteriors accordingly.
   void add_and_remove_alleles(std::vector< std::vector<int> >& alleles_to_remove,
 			      std::vector< std::vector<std::string> >& alleles_to_add);
+  void add_and_remove_alleles(std::vector< std::vector<int> >& alleles_to_remove,
+			      std::vector< std::vector<std::string> >& alleles_to_add,
+			      std::vector<bool>& realign_read);
 
   void write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, const Region& region, std::string& chrom_seq,
 			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads, bool output_pallreads,

@@ -318,11 +318,17 @@ int HapAligner::calc_seed_base(Alignment& aln){
   return best_seed;
 }
 
-void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality,
+void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality, std::vector<bool>& realign_read,
 			       double* aln_probs, int* seed_positions){
+  assert(alignments.size() == realign_read.size());
   AlignmentTrace trace(fw_haplotype_->num_blocks());
   double* prob_ptr = aln_probs + (init_read_index*fw_haplotype_->num_combs());
   for (unsigned int i = 0; i < alignments.size(); i++){
+    if (!realign_read[i]){
+      prob_ptr += fw_haplotype_->num_combs();
+      continue;
+    }
+
     int seed_base = calc_seed_base(alignments[i]);
     seed_positions[init_read_index+i] = seed_base;
     if (seed_base == -1){

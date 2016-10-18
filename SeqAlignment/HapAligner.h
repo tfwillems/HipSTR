@@ -80,7 +80,7 @@ class HapAligner {
   void process_read(Alignment& aln, int seed_base, BaseQuality* base_quality, bool retrace_aln,
 		    double* prob_ptr, AlignmentTrace& traced_aln);
 
-  void process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality,
+  void process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality, std::vector<bool>& realign_read,
 		     double* aln_probs, int* seed_positions);
 
   /*

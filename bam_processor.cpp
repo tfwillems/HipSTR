@@ -505,7 +505,6 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string
   FastaReference* fasta_ref = NULL;
   if (is_file(fasta_dir)){
     fasta_ref = new FastaReference();
-    log("Fasta file exists... " + fasta_dir);
     fasta_ref->open(fasta_dir);
   }
 

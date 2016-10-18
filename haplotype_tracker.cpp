@@ -89,7 +89,7 @@ void HaplotypeTracker::add_snp(VCF::Variant& variant){
 }
 
 void HaplotypeTracker::advance(std::string chrom, int32_t position, std::set<std::string>& sites_to_skip, std::ostream& logger){
-  logger << "Advancing haplotype tracker...";
+  logger << "Advancing haplotype tracker";
   int32_t start_of_window = (position >= window_size_ ? position - window_size_ : 0);
   int32_t end_of_window   = position + window_size_;
   if (chrom.compare(chrom_) != 0){
