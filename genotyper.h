@@ -32,7 +32,7 @@ class Genotyper {
   std::vector<std::string> sample_names_;      // List of sample names
   std::map<std::string, int> sample_indices_;  // Mapping from sample name to index
 
-  // Iterates through allele_1, allele_2 and then samples by their indices
+  // Iterates through samples and then through allele_1 and allele_2
   double* log_sample_posteriors_; 
 
   // Iterates through reads and then alleles by their indices
@@ -138,8 +138,6 @@ class Genotyper {
   }
 
   double posterior_time() { return total_posterior_time_;  }
-
-  virtual bool genotype(std::string& chrom_seq, std::ostream& logger) = 0;
 
   static void write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out);
 

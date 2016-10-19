@@ -30,61 +30,47 @@ double Genotyper::log_heterozygous_prior(){
 }
 
 void Genotyper::init_log_sample_priors(double* log_sample_ptr){
-  // Set all elements to the het prior
-  std::fill(log_sample_ptr, log_sample_ptr+(num_alleles_*num_alleles_*num_samples_), log_heterozygous_prior());
-
-  // Fix homozygotes
-  double log_homoz_prior = log_homozygous_prior();
-  for (unsigned int i = 0; i < num_alleles_; i++){
-    double* LL_ptr = log_sample_ptr + i*num_alleles_*num_samples_ + i*num_samples_;
-    std::fill(LL_ptr, LL_ptr+num_samples_, log_homoz_prior);
-  }
+  const double log_homoz_prior = log_homozygous_prior();
+  const double log_hetz_prior  = log_heterozygous_prior();
+  double* LL_ptr = log_sample_ptr;
+  for (unsigned int i = 0; i < num_samples_; ++i)
+    for (unsigned int j = 0; j < num_alleles_; ++j)
+      for (unsigned int k = 0; k < num_alleles_; ++k, ++LL_ptr)
+	  *LL_ptr = (j == k ? log_homoz_prior : log_hetz_prior);
 }
 
 double Genotyper::calc_log_sample_posteriors(std::vector<int>& read_weights){
   double posterior_time = clock();
   assert(read_weights.size() == num_reads_);
-  std::vector<double> sample_max_LLs(num_samples_, -DBL_MAX);
-  double* sample_LL_ptr = log_sample_posteriors_;
   init_log_sample_priors(log_sample_posteriors_);
 
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-      double* read_LL_ptr = log_aln_probs_;
-      for (int read_index = 0; read_index < num_reads_; ++read_index){
-        sample_LL_ptr[sample_label_[read_index]] += read_weights[read_index]*logsumexp_agg(LOG_ONE_HALF + log_p1_[read_index] + read_LL_ptr[index_1], 
-											   LOG_ONE_HALF + log_p2_[read_index] + read_LL_ptr[index_2]);
-        assert(sample_LL_ptr[sample_label_[read_index]] <= TOLERANCE);
-        read_LL_ptr += num_alleles_;
+  const int num_diplotypes = num_alleles_*num_alleles_;
+  double* read_LL_ptr      = log_aln_probs_;
+  for (int read_index = 0; read_index < num_reads_; ++read_index){
+    double* sample_LL_ptr = log_sample_posteriors_ + num_diplotypes*sample_label_[read_index];
+    for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
+      for (int index_2 = 0; index_2 < num_alleles_; ++index_2, ++sample_LL_ptr){
+        *sample_LL_ptr += read_weights[read_index]*logsumexp_agg(LOG_ONE_HALF + log_p1_[read_index] + read_LL_ptr[index_1],
+								 LOG_ONE_HALF + log_p2_[read_index] + read_LL_ptr[index_2]);
+        assert(*sample_LL_ptr <= TOLERANCE);
       }
-      // Update the per-sample maximum LLs
-      for (int sample_index = 0; sample_index < num_samples_; ++sample_index)
-        sample_max_LLs[sample_index] = std::max(sample_max_LLs[sample_index], sample_LL_ptr[sample_index]);
-
-      sample_LL_ptr += num_samples_;
     }
+    read_LL_ptr += num_alleles_;
   }
 
-  // Compute the normalizing factor for each sample using logsumexp trick
-  std::fill(sample_total_LLs_, sample_total_LLs_ + num_samples_, 0.0);
-  sample_LL_ptr = log_sample_posteriors_;
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2)
-      for (int sample_index = 0; sample_index < num_samples_; ++sample_index, ++sample_LL_ptr)
-        sample_total_LLs_[sample_index] += exp(*sample_LL_ptr - sample_max_LLs[sample_index]);
+  // Compute each sample's total LL and normalize each genotype LL to generate valid log posteriors
+  double* sample_LL_ptr = log_sample_posteriors_;
   for (int sample_index = 0; sample_index < num_samples_; ++sample_index){
-    sample_total_LLs_[sample_index] = sample_max_LLs[sample_index] + log(sample_total_LLs_[sample_index]);
-    assert(sample_total_LLs_[sample_index] <= TOLERANCE);
+    const double sample_total_LL = log_sum_exp(sample_LL_ptr, sample_LL_ptr+num_diplotypes);
+    sample_total_LLs_[sample_index] = sample_total_LL;
+    assert(sample_total_LL <= TOLERANCE);
+    for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
+      for (int index_2 = 0; index_2 < num_alleles_; ++index_2, ++sample_LL_ptr)
+	*sample_LL_ptr -= sample_total_LL;
   }
+
   // Compute the total log-likelihood given the current parameters
   double total_LL = sum(sample_total_LLs_, sample_total_LLs_ + num_samples_);
-
-  // Normalize each genotype LL to generate valid log posteriors
-  sample_LL_ptr = log_sample_posteriors_;
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
-    for(int index_2 = 0; index_2 < num_alleles_; ++index_2)
-      for (int sample_index = 0; sample_index < num_samples_; ++sample_index, ++sample_LL_ptr)
-        *sample_LL_ptr -= sample_total_LLs_[sample_index];
 
   posterior_time         = (clock() - posterior_time)/CLOCKS_PER_SEC;
   total_posterior_time_ += posterior_time;
@@ -96,9 +82,9 @@ void Genotyper::get_optimal_haplotypes(std::vector< std::pair<int, int> >& gts){
   gts = std::vector< std::pair<int,int> > (num_samples_, std::pair<int,int>(-1,-1));
   double* log_posterior_ptr = log_sample_posteriors_;
   std::vector<double> log_phased_posteriors(num_samples_, -DBL_MAX);
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-      for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index, ++log_posterior_ptr){
+  for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index){
+    for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
+      for (int index_2 = 0; index_2 < num_alleles_; ++index_2, ++log_posterior_ptr){
         if (*log_posterior_ptr > log_phased_posteriors[sample_index]){
           log_phased_posteriors[sample_index] = *log_posterior_ptr;
           gts[sample_index] = std::pair<int,int>(index_1, index_2);
@@ -159,10 +145,10 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
   std::vector< std::vector<double>  > max_log_phased_posteriors   (num_samples_, std::vector<double>(num_variants*num_variants, -DBL_MAX/2));
   std::vector< std::vector<double>  > total_log_phased_posteriors (num_samples_, std::vector<double>(num_variants*num_variants, 0.0));
   double* log_posterior_ptr = log_sample_posteriors_;
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-      int gt_index = num_variants*hap_to_allele[index_1] + hap_to_allele[index_2];
-      for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index, ++log_posterior_ptr)
+  for (unsigned int sample_index = 0; sample_index < num_samples_; ++sample_index)
+    for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
+      for (int index_2 = 0; index_2 < num_alleles_; ++index_2, ++log_posterior_ptr){
+	int gt_index = num_variants*hap_to_allele[index_1] + hap_to_allele[index_2];
 	update_streaming_log_sum_exp(*log_posterior_ptr, max_log_phased_posteriors[sample_index][gt_index], total_log_phased_posteriors[sample_index][gt_index]);
     }
   }

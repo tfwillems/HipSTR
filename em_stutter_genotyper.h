@@ -24,7 +24,7 @@ class EMStutterGenotyper: public Genotyper {
 
   bool use_pop_freqs_;
 
-  // Iterates through allele_1, allele_2, and then reads and phases 1 or 2 by their indices
+  // Iterates through reads and then allele_1, allele_2, and phase 1 or 2 by their indices
   double* log_read_phase_posteriors_; 
 
   void calc_hap_aln_probs(double* log_aln_probs);
@@ -79,8 +79,8 @@ class EMStutterGenotyper: public Genotyper {
     // Allocate the relevant data structures
     allele_index_              = new int[num_reads_];
     log_gt_priors_             = new double[num_alleles_]; 
-    log_sample_posteriors_     = new double[num_alleles_*num_alleles_*num_samples_]; 
-    log_read_phase_posteriors_ = new double[num_alleles_*num_alleles_*num_reads_*2]; 
+    log_sample_posteriors_     = new double[num_samples_*num_alleles_*num_alleles_];
+    log_read_phase_posteriors_ = new double[num_reads_*num_alleles_*num_alleles_*2];
     log_aln_probs_             = new double[num_reads_*num_alleles_];
 
     // Iterate through all reads and store the relevant information
@@ -110,8 +110,6 @@ class EMStutterGenotyper: public Genotyper {
       printErrorAndDie("No stutter model has been specified or learned");
     return stutter_model_;
   }
-
-  bool genotype(std::string& chrom_seq, std::ostream& logger);
 };
 
 #endif

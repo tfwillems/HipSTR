@@ -19,26 +19,33 @@ void EMStutterGenotyper::init_log_gt_priors(){
 }
 
 void EMStutterGenotyper::recalc_log_gt_priors(){
-  // Compute log diploid counts
+  double* max_log_count   = new double[num_alleles_];
+  double* total_log_count = new double[num_alleles_];
+  std::fill_n(max_log_count,   num_alleles_, -DBL_MAX/2);
+  std::fill_n(total_log_count, num_alleles_, 0.0);
+
+  // Compute the contribution of the first allele in each diplotype
   double* LL_ptr = log_sample_posteriors_;
-  std::vector<double> log_dip_counts;
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-      double log_count = log_sum_exp(LL_ptr, LL_ptr+num_samples_);
-      log_dip_counts.push_back(log_count);      
-      LL_ptr += num_samples_;
+  for (int sample_index = 0; sample_index < num_samples_; ++sample_index){
+    for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
+      update_streaming_log_sum_exp(log_sum_exp(LL_ptr, LL_ptr+num_alleles_), max_log_count[index_1], total_log_count[index_1]);
+      LL_ptr += num_alleles_;
     }
   }
 
-  // Compute log haploid counts from log diploid counts
-  std::fill(log_gt_priors_, log_gt_priors_+num_alleles_, -DBL_MAX);
-  auto count_iter = log_dip_counts.begin();
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2, ++count_iter){
-      log_gt_priors_[index_1] = log_sum_exp(log_gt_priors_[index_1], *count_iter);
-      log_gt_priors_[index_2] = log_sum_exp(log_gt_priors_[index_2], *count_iter);
-    }
-  }
+  // Compute the contribution of the second allele in each diplotype
+  LL_ptr = log_sample_posteriors_;
+  for (int sample_index = 0; sample_index < num_samples_; ++sample_index)
+    for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
+      for (int index_2 = 0; index_2 < num_alleles_; ++index_2, ++LL_ptr)
+	update_streaming_log_sum_exp(*LL_ptr, max_log_count[index_2], total_log_count[index_2]);
+
+  // Finalize the streaming calculations
+  for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
+    log_gt_priors_[index_1] = finish_streaming_log_sum_exp(max_log_count[index_1], total_log_count[index_1]);
+
+  delete [] max_log_count;
+  delete [] total_log_count;
 	
   // Normalize log counts to log probabilities
   double log_total = log_sum_exp(log_gt_priors_, log_gt_priors_+num_alleles_);
@@ -62,39 +69,39 @@ void EMStutterGenotyper::recalc_stutter_model(){
   out_log_up.push_back(0.0); out_log_down.push_back(0.0); out_log_diffs.push_back(0.0); out_log_diffs.push_back(log(1.1));
   in_log_eq.push_back(0.0);
 
-  double* log_posterior_ptr = log_sample_posteriors_;
-  double* log_phase_ptr     = log_read_phase_posteriors_;
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-      for (int read_index = 0; read_index < num_reads_; ++read_index){
-	double log_gt_posterior = log_posterior_ptr[sample_label_[read_index]];
+  const int num_diplotypes = num_alleles_*num_alleles_;
+  double* log_phase_ptr    = log_read_phase_posteriors_;
+  for (int read_index = 0; read_index < num_reads_; ++read_index){
+    double* log_gt_posterior = log_sample_posteriors_ + sample_label_[read_index]*num_diplotypes;
+    for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
+      for (int index_2 = 0; index_2 < num_alleles_; ++index_2, ++log_gt_posterior){
 	for (int phase = 0; phase < 2; ++phase, ++log_phase_ptr){
-	  int gt_index = (phase == 0 ? index_1 : index_2);
-	  int bp_diff  = bps_per_allele_[allele_index_[read_index]] - bps_per_allele_[gt_index];
-	  
+	  int gt_index  = (phase == 0 ? index_1 : index_2);
+	  int bp_diff   = bps_per_allele_[allele_index_[read_index]] - bps_per_allele_[gt_index];
+	  double factor = *log_gt_posterior + *log_phase_ptr;
+
 	  if (bp_diff == 0)
-	    in_log_eq.push_back(log_gt_posterior + *log_phase_ptr);
+	    in_log_eq.push_back(factor);
 	  else {
 	    if (bp_diff % motif_len_ != 0){
 	      int eff_diff = bp_diff - bp_diff/motif_len_; // Effective stutter bp difference (excludes unit changes)
-	      out_log_diffs.push_back(log_gt_posterior + *log_phase_ptr + int_log(abs(eff_diff)));
+	      out_log_diffs.push_back(factor + int_log(abs(eff_diff)));
 	      if (bp_diff > 0)
-		out_log_up.push_back(log_gt_posterior + *log_phase_ptr);
+		out_log_up.push_back(factor);
 	      else
-		out_log_down.push_back(log_gt_posterior + *log_phase_ptr);
+		out_log_down.push_back(factor);
  	    }
 	    else {
 	      int eff_diff = bp_diff/motif_len_; // Effective stutter repeat difference
-	      in_log_diffs.push_back(log_gt_posterior + *log_phase_ptr + int_log(abs(eff_diff)));
+	      in_log_diffs.push_back(factor + int_log(abs(eff_diff)));
 	      if (bp_diff > 0)
-		in_log_up.push_back(log_gt_posterior + *log_phase_ptr);
+		in_log_up.push_back(factor);
 	      else
-		in_log_down.push_back(log_gt_posterior + *log_phase_ptr);
+		in_log_down.push_back(factor);
 	    }
 	  }
 	}
       }
-      log_posterior_ptr += num_samples_;
     }
   }
 
@@ -127,15 +134,13 @@ void EMStutterGenotyper::init_log_sample_priors(double* log_sample_ptr){
   // If we're using priors based on allele frequencies, we need to reinitialize the values
   if (use_pop_freqs_){
     double* LL_ptr = log_sample_ptr;
-    for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-      for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-	if (!haploid_)
-	  std::fill(LL_ptr, LL_ptr+num_samples_, log_gt_priors_[index_1]+log_gt_priors_[index_2]); // Initialize LL's with log genotype priors
-	else
-	  std::fill(LL_ptr, LL_ptr+num_samples_, (index_1 == index_2 ? log_gt_priors_[index_1] : -DBL_MAX/2)); // Homoz prior is the allele frequency while hetz genotypes are disallowed
-	LL_ptr += num_samples_;
-      }
-    }
+    for (int sample_index = 0; sample_index < num_samples_; ++sample_index)
+      for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
+	for (int index_2 = 0; index_2 < num_alleles_; ++index_2, ++LL_ptr)
+	  if (!haploid_)
+	    *LL_ptr = log_gt_priors_[index_1]+log_gt_priors_[index_2];             // Initialize LL's with log genotype priors
+	  else
+	    *LL_ptr = (index_1 == index_2 ? log_gt_priors_[index_1] : -DBL_MAX/2); // Homoz prior is the allele frequency while hetz genotypes are disallowed
   }
 }
 
@@ -147,11 +152,11 @@ void EMStutterGenotyper::calc_hap_aln_probs(double* log_aln_probs){
 
 void EMStutterGenotyper::recalc_log_read_phase_posteriors(){
   double* log_phase_ptr = log_read_phase_posteriors_;
-  for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
-    int len_1 = bps_per_allele_[index_1];
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
-      int len_2 = bps_per_allele_[index_2];
-      for (int read_index = 0; read_index < num_reads_; ++read_index){
+  for (int read_index = 0; read_index < num_reads_; ++read_index){
+    for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
+      int len_1 = bps_per_allele_[index_1];
+      for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
+	int len_2 = bps_per_allele_[index_2];
 	double log_phase_one   = LOG_ONE_HALF + log_p1_[read_index] + stutter_model_->log_stutter_pmf(len_1, bps_per_allele_[allele_index_[read_index]]);
 	double log_phase_two   = LOG_ONE_HALF + log_p2_[read_index] + stutter_model_->log_stutter_pmf(len_2, bps_per_allele_[allele_index_[read_index]]);
 	double log_phase_total = log_sum_exp(log_phase_one, log_phase_two);
@@ -210,14 +215,4 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
     num_iter++;
   }
   return false;
-}
-
-bool EMStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger){
-  use_pop_freqs_ = false;
-  if (stutter_model_ == NULL)
-    printErrorAndDie("Must specify stutter model before running genotype()");
-  calc_hap_aln_probs(log_aln_probs_);
-  calc_log_sample_posteriors();
-  recalc_log_read_phase_posteriors();
-  return true;
 }

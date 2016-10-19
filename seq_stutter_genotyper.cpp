@@ -327,7 +327,7 @@ void SeqStutterGenotyper::add_and_remove_alleles(std::vector< std::vector<int> >
 
   // Resize and recalculate the genotype posterior array
   delete [] log_sample_posteriors_;
-  log_sample_posteriors_ = new double[num_alleles_*num_alleles_*num_samples_];
+  log_sample_posteriors_ = new double[num_samples_*num_alleles_*num_alleles_];
   calc_log_sample_posteriors();
 }
 
@@ -414,7 +414,7 @@ void SeqStutterGenotyper::init(std::vector<StutterModel*>& stutter_models, std::
   initialized_ = build_haplotype(chrom_seq, stutter_models, logger);
   if (initialized_){
     // Allocate the remaining data structures
-    log_sample_posteriors_ = new double[num_alleles_*num_alleles_*num_samples_];
+    log_sample_posteriors_ = new double[num_samples_*num_alleles_*num_alleles_];
     log_aln_probs_         = new double[num_reads_*num_alleles_];
     seed_positions_        = new int[num_reads_];
   }
@@ -687,14 +687,11 @@ void SeqStutterGenotyper::debug_sample(int sample_index, std::ostream& logger){
   }
 
   std::cerr << std::endl << "SAMPLE LL's:" << std::endl;
-  double* sample_LL_ptr = log_sample_posteriors_ + sample_index;
+  double* sample_LL_ptr = log_sample_posteriors_ + num_alleles_*num_alleles_*sample_index;
   for (int index_1 = 0; index_1 < num_alleles_; ++index_1)
-    for (int index_2 = 0; index_2 < num_alleles_; ++index_2){
+    for (int index_2 = 0; index_2 < num_alleles_; ++index_2, ++sample_LL_ptr)
       std::cerr << index_1 << " " << index_2 << " " << *sample_LL_ptr << "(" << exp(*sample_LL_ptr) << ")" << std::endl;
-      sample_LL_ptr += num_samples_;
-    }
-  
-  std::cerr << "END OF SAMPLE DEBUGGING..." << std::endl;
+   std::cerr << "END OF SAMPLE DEBUGGING" << std::endl;
 }
 
 /*
