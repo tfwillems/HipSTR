@@ -50,8 +50,8 @@ double Genotyper::calc_log_sample_posteriors(std::vector<int>& read_weights){
     double* sample_LL_ptr = log_sample_posteriors_ + num_diplotypes*sample_label_[read_index];
     for (int index_1 = 0; index_1 < num_alleles_; ++index_1){
       for (int index_2 = 0; index_2 < num_alleles_; ++index_2, ++sample_LL_ptr){
-        *sample_LL_ptr += read_weights[read_index]*logsumexp_agg(LOG_ONE_HALF + log_p1_[read_index] + read_LL_ptr[index_1],
-								 LOG_ONE_HALF + log_p2_[read_index] + read_LL_ptr[index_2]);
+        *sample_LL_ptr += read_weights[read_index]*fast_log_sum_exp(LOG_ONE_HALF + log_p1_[read_index] + read_LL_ptr[index_1],
+								    LOG_ONE_HALF + log_p2_[read_index] + read_LL_ptr[index_2]);
         assert(*sample_LL_ptr <= TOLERANCE);
       }
     }
@@ -197,7 +197,7 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
 	  if (index_2 <= index_1){
 	    if (!haploid_ || (index_1 == index_2)){
 	      double gl_base_e = sample_total_LLs_[sample_index] - gl_ll_correction + fast_log_sum_exp(total_log_phased_posteriors[sample_index][gt_index],
-												    total_log_phased_posteriors[sample_index][alt_gt_index]);
+												       total_log_phased_posteriors[sample_index][alt_gt_index]);
 	      gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
 	    }
 	  }

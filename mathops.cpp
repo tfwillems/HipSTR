@@ -4,6 +4,8 @@
 
 #include "mathops.h"
 
+#include "fastonebigheader.h"
+
 const double LOG_ONE_HALF  = log(0.5);
 const double TOLERANCE     = 1e-10;
 const double LOG_E_BASE_10 = 0.4342944819;
@@ -111,4 +113,26 @@ void update_streaming_log_sum_exp(double log_val, double& max_val, double& total
 
 double finish_streaming_log_sum_exp(double max_val, double total){
   return max_val + log(total);
+}
+
+double fast_log_sum_exp(double log_v1, double log_v2){
+  if (log_v1 > log_v2){
+    double diff = log_v2-log_v1;
+    return diff < LOG_THRESH ? log_v1 : log_v1 + fastlog(1 + fastexp(diff));
+  }
+  else {
+    double diff = log_v1-log_v2;
+    return diff < LOG_THRESH ? log_v2 : log_v2 + fastlog(1 + fastexp(diff));
+  }
+}
+
+double fast_log_sum_exp(std::vector<double>& log_vals){
+  double max_val = *std::max_element(log_vals.begin(), log_vals.end());
+  double total   = 0;
+  for (auto iter = log_vals.begin(); iter != log_vals.end(); iter++){
+    double diff = *iter - max_val;
+    if (diff > LOG_THRESH)
+      total += fasterexp(diff);
+  }
+  return max_val + fasterlog(total);
 }

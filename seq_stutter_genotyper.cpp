@@ -102,6 +102,7 @@ void SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 	logger << "\t" << hap_iter->first << "\t" << hap_iter->second << "\n";
 	alleles_to_add[block_index].push_back(hap_iter->first);
       }
+      logger << "\t" << ref_seq << "\t" << "REF_SEQ" << std::endl;
       logger << std::endl;
     }
   }
