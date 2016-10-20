@@ -58,6 +58,9 @@ class SeqStutterGenotyper : public Genotyper {
   double total_aln_trace_time_;
   double total_assembly_time_;
 
+  // Used to identify candidate haplotypes during flank reassembly
+  int MIN_PATH_WEIGHT, MIN_KMER, MAX_KMER;
+
   // Cache of traced back alignments
   std::map<std::pair<int,int>, AlignmentTrace*> trace_cache_;
 
@@ -146,6 +149,9 @@ class SeqStutterGenotyper : public Genotyper {
     haplotype_             = NULL;
     second_mate_           = NULL;
     MAX_REF_FLANK_LEN      = 30;
+    MIN_PATH_WEIGHT        = 2;
+    MIN_KMER               = 10;
+    MAX_KMER               = 15;
     initialized_           = false;
     pool_identical_seqs_   = pool_identical_seqs;
     total_hap_build_time_  = total_hap_aln_time_  = 0;

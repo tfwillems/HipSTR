@@ -35,6 +35,7 @@ int max_index(double* vals, unsigned int num_vals){
 }
 
 void SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
+  return;
   std::vector<AlignmentTrace*> traced_alns;
   retrace_alignments(traced_alns);
 
@@ -43,7 +44,6 @@ void SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
   std::vector< std::vector<std::string> > alleles_to_add (haplotype_->num_blocks());
   std::vector<bool> realign_sample(num_samples_, false);
 
-  int MIN_PATH_WEIGHT = 2, MIN_KMER = 10, MAX_KMER = 15;
   for (int flank = 0; flank < 2; flank++){
     int block_index     = (flank == 0 ? 0 : haplotype_->num_blocks()-1);
     std::string ref_seq = hap_blocks_[block_index]->get_seq(0);
@@ -53,39 +53,41 @@ void SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 
     std::map<std::string, int> haplotype_counts;
     std::vector< std::pair<std::string,int> > assembly_data;
-    int min_read_index = 0, read_index, cyclic_count = 0;
+    int min_read_index = 0, read_index;
     for (int sample_index = 0; sample_index < num_samples_; sample_index++){
-      DebruijnGraph assembler(kmer_length, ref_seq);
-      for (read_index = min_read_index; read_index < num_reads_; read_index++){
-	if (sample_label_[read_index] != sample_index)
+      assembly_data.clear();
+      bool acyclic = false;
+      for (int k = kmer_length; k <= MAX_KMER; k++){
+	DebruijnGraph assembler(kmer_length, ref_seq);
+	for (read_index = min_read_index; read_index < num_reads_; read_index++){
+	  if (sample_label_[read_index] != sample_index)
+	    break;
+	  if (traced_alns[read_index] == NULL)
+	    continue;
+
+	  std::string seq = traced_alns[read_index]->flank_seq(block_index);
+	  if (!seq.empty())
+	    assembler.add_string(seq);
+	}
+
+	if (!assembler.has_cycles()){
+	  acyclic = true;
+	  assembler.enumerate_paths(MIN_PATH_WEIGHT, 10, assembly_data);
 	  break;
-	if (traced_alns[read_index] == NULL)
-	  continue;
-
-	std::string seq = traced_alns[read_index]->flank_seq(block_index);
-	if (!seq.empty())
-	  assembler.add_string(seq);
+	}
       }
+      min_read_index = read_index;
 
-      if (assembler.has_cycles()){
-	//logger << "YES CYCLE" << std::endl;
-	cyclic_count++;
-      }
-      else {
-        //logger << "NO CYCLE" << std::endl;
-	assembly_data.clear();
-	assembler.enumerate_paths(MIN_PATH_WEIGHT, 10, assembly_data);
-
-	int ref_depth = -1;
-	for (unsigned int i = 0; i < assembly_data.size(); i++)
-	  if (assembly_data[i].first.compare(ref_seq) == 0)
-	    ref_depth = assembly_data[i].second;
-
+      if (acyclic){
 	if (assembly_data.size() > 1){
+	  int total_depth = 0;
+	  for (unsigned int i = 0; i < assembly_data.size(); i++)
+	    total_depth += assembly_data[i].second;
+
 	  for (unsigned int i = 0; i < assembly_data.size(); i++){
 	    if (assembly_data[i].first.compare(ref_seq) != 0){
 	      //logger << sample_names_[sample_index] << " " << ref_depth << " " << assembly_data[i].second << std::endl;
-	      if (assembly_data[i].second*1.0/(ref_depth + assembly_data[i].second) > 0.25){
+	      if (assembly_data[i].second*1.0/total_depth > 0.25){
 		realign_sample[sample_index] = true;
 		haplotype_counts[assembly_data[i].first]++;
 	      }
@@ -93,7 +95,8 @@ void SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 	  }
 	}
       }
-      min_read_index = read_index;
+      else
+	call_sample_[sample_index] = false;
     }
 
     if (!haplotype_counts.empty()){
