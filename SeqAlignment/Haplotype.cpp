@@ -4,6 +4,37 @@
 #include "Haplotype.h"
 #include "NeedlemanWunsch.h"
 
+bool Haplotype::position_to_haplotype_index(int32_t pos, int& haplotype_index){
+  haplotype_index = 0;
+  if (inc_rev_){
+    assert(pos > blocks_.back()->end() && pos <= blocks_.front()->start());
+    for (int i = 0; i < blocks_.size(); i++){
+      if (pos > blocks_[i]->end()){
+	if (counts_[i] != 0)
+	  return false;
+	haplotype_index += blocks_[i]->start()-pos;
+	return true;
+      }
+      else
+	haplotype_index += get_seq(i).size();
+    }
+  }
+  else {
+    assert(pos >= blocks_.front()->start() && pos < blocks_.back()->end());
+    for (int i = 0; i < blocks_.size(); i++){
+      if (pos < blocks_[i]->end()){
+	if (counts_[i] != 0)
+	  return false;
+	haplotype_index += pos-blocks_[i]->start();
+	return true;
+      }
+      else
+	haplotype_index += get_seq(i).size();
+    }
+  }
+  assert(false);
+}
+
 void Haplotype::adjust_indels(std::string& ref_hap_al, std::string& alt_hap_al){
   assert(blocks_.size() == 3);
   int32_t ref_pos = blocks_[0]->start(), str_pos = blocks_[1]->start();
