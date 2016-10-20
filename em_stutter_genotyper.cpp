@@ -159,7 +159,7 @@ void EMStutterGenotyper::recalc_log_read_phase_posteriors(){
 	int len_2 = bps_per_allele_[index_2];
 	double log_phase_one   = LOG_ONE_HALF + log_p1_[read_index] + stutter_model_->log_stutter_pmf(len_1, bps_per_allele_[allele_index_[read_index]]);
 	double log_phase_two   = LOG_ONE_HALF + log_p2_[read_index] + stutter_model_->log_stutter_pmf(len_2, bps_per_allele_[allele_index_[read_index]]);
-	double log_phase_total = log_sum_exp(log_phase_one, log_phase_two);
+	double log_phase_total = fast_log_sum_exp(log_phase_one, log_phase_two);
 	log_phase_ptr[0] = log_phase_one-log_phase_total;
 	log_phase_ptr[1] = log_phase_two-log_phase_total;
 	log_phase_ptr   += 2;
