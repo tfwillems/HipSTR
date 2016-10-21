@@ -76,9 +76,11 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
       matrix_index                  = seq_len*(haplotype_index+block_len-1);  // Index into matrix for rightmost character in stutter block (column = 0)
       int num_stutter_artifacts     = (rep_info->max_insertion()-rep_info->max_deletion())/period + 1;
       StutterAlignerClass* stutter_aligner = haplotype->get_block(block_index)->get_stutter_aligner(block_option);
+      stutter_aligner->load_read(seq_len, seq_0+seq_len-1, base_log_wrong+seq_len-1, base_log_correct+seq_len-1, rep_info->max_deletion(), rep_info->max_insertion());
 
       std::vector<double> block_probs(num_stutter_artifacts); // Reuse in each iteration to avoid reallocation penalty
-      for (int j = 0; j < seq_len; ++j, ++matrix_index){
+      int offset = seq_len-1;
+      for (int j = 0; j < seq_len; ++j, ++matrix_index, --offset){
 	// Consider valid range of insertions and deletions, including no stutter artifact
 	int art_idx    = 0;
 	double best_LL = IMPOSSIBLE;
@@ -86,7 +88,7 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype,
 	for (int artifact_size = rep_info->max_deletion(); artifact_size <= rep_info->max_insertion(); artifact_size += period){
 	  int art_pos          = -1;
 	  int base_len         = std::min(block_len+artifact_size, j+1);
-	  double prob          = stutter_aligner->align_stutter_region_reverse(base_len, seq_0+j, base_log_wrong+j, base_log_correct+j, artifact_size, art_pos);
+	  double prob          = stutter_aligner->align_stutter_region_reverse(base_len, seq_0+j, offset, base_log_wrong+j, base_log_correct+j, artifact_size, art_pos);
 	  double pre_prob      = (j-base_len < 0 ? 0 : match_matrix[j-base_len + prev_row_index]);
 	  block_probs[art_idx] = rep_info->log_prob_pcr_artifact(block_option, artifact_size) + prob + pre_prob;
 	  if (block_probs[art_idx] > best_LL){

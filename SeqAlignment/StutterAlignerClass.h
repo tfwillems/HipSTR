@@ -14,15 +14,20 @@ class StutterAlignerClass {
   const int   period_;
   const bool  left_align_;
   std::vector<int*> upstream_match_lengths_;
+
+  int num_artifacts_;
+  double* ins_probs_;
+  double* del_probs_;
+  double* match_probs_;
  
-  double align_no_artifact_reverse(const int base_seq_len,       const char*   base_seq,
+  double align_no_artifact_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
 				   const double* base_log_wrong, const double* base_log_correct);
   
-  double align_pcr_insertion_reverse(const int base_seq_len,       const char*   base_seq,
+  double align_pcr_insertion_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
 				     const double* base_log_wrong, const double* base_log_correct, const int D,
 				     int& best_ins_pos);
   
-  double align_pcr_deletion_reverse(const int base_seq_len,       const char*   base_seq,
+  double align_pcr_deletion_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
 				    const double* base_log_wrong, const double* base_log_correct, const int D,
 				    int& best_del_pos);
 
@@ -49,6 +54,13 @@ class StutterAlignerClass {
     // Calculate periodicity info for relevant offsets
     for (int i = -period; i >= stutter_info->max_deletion(); i -= period)
       upstream_match_lengths_.push_back(num_upstream_matches(block_seq, -i));
+
+    assert(stutter_info->max_insertion() == -1*stutter_info->max_deletion());
+    assert(stutter_info->max_insertion()%period_ == 0 && block_len_+stutter_info->max_deletion() > 0);
+    num_artifacts_ = stutter_info->max_insertion()/period_;
+    ins_probs_     = NULL;
+    del_probs_     = NULL;
+    match_probs_   = NULL;
   }
 
   ~StutterAlignerClass(){
@@ -59,19 +71,28 @@ class StutterAlignerClass {
     for (unsigned int i = 0; i < upstream_match_lengths_.size(); i++)
       delete [] upstream_match_lengths_[i];
     upstream_match_lengths_.clear();
+
+    delete [] ins_probs_;
+    delete [] del_probs_;
+    delete [] match_probs_;
   }
   
   int block_len()         const { return block_len_;  }
   int period()            const { return period_;     }
   bool left_align()       const { return left_align_; }
   const char* block_seq() const { return block_seq_;  }
+
+
+  void load_read(const int base_seq_len,       const char* base_seq,
+		 const double* base_log_wrong, const double* base_log_correct,
+		 int max_deletion,             int max_insertion);
   
   /* Returns the total log-likelihood of the base sequence given the block sequence and the associated quality scores.
    * Assumes that an artifact of size D occurs with equal probability throughout the block sequence.
    * Progresses BACKWARDS along the sequences using the provided pointers, so the pointers refer to the rightmost
    * bases in both the base sequence and block sequence
    */
-  double align_stutter_region_reverse(const int base_seq_len,             const char*   base_seq,
+  double align_stutter_region_reverse(const int base_seq_len,             const char*   base_seq,   const int offset,
 				      const double* base_log_wrong, const double* base_log_correct, const int D,
 				      int& best_pos);
 };
