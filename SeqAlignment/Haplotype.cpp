@@ -115,6 +115,41 @@ void Haplotype::aln_haps_to_ref(){
   reset();
 }
 
+void Haplotype::check_indel_clobbering(const std::string& marker, std::vector<bool>& clobbered){
+  assert(clobbered.empty() && hap_aln_info_.size() == num_combs());
+  int clobbered_count = 0, not_clobbered_count = 0;
+  do {
+    int num_ins_bases = 0, num_del_bases = 0, num_obs_ins = 0, num_obs_del = 0;
+    for (unsigned int block_index = 0; block_index < blocks_.size(); block_index++){
+      int block_size = blocks_[block_index]->get_seq(counts_[block_index]).size();
+      int ref_size   = blocks_[block_index]->get_seq(0).size();
+      if (block_size > ref_size)
+	num_ins_bases += (block_size-ref_size);
+      else if (block_size < ref_size)
+	num_del_bases += (ref_size-block_size);
+    }
+
+    const std::string& hap_aln = hap_aln_info_[counter_];
+    for (unsigned int j = 0; j < hap_aln.size(); j++){
+      if (hap_aln[j] == 'I')
+	num_obs_ins++;
+      else if (hap_aln[j] == 'D')
+	num_obs_del++;
+    }
+    if (num_ins_bases > num_obs_ins || num_del_bases > num_obs_del){
+      std::cerr << counter_ << " " << num_ins_bases << " " <<  num_obs_ins << " " << num_del_bases << " " << num_obs_del << std::endl;
+      clobbered.push_back(true);
+      clobbered_count++;
+    }
+    else
+      not_clobbered_count++;
+  }
+  while (next());
+  reset();
+  std::cerr << clobbered_count << " out of " << (clobbered_count+not_clobbered_count) << " haplotypes are clobbered for " << marker
+	    << " "<< (blocks_[0]->min_size() != blocks_[0]->max_size()) << " " << (blocks_.back()->min_size() != blocks_.back()->max_size()) << std::endl;
+}
+
 void Haplotype::init(){
   ncombs_   = 1;
   cur_size_ = 0;

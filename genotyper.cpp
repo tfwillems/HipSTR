@@ -265,7 +265,7 @@ void Genotyper::write_vcf_header(std::string& full_command, std::vector<std::str
       << "##FORMAT=<ID=" << "DFLANKINDEL" << ",Number=1,Type=Integer,Description=\"" << "Number of reads with an indel in the regions flanking the STR" << "\">" << "\n"
       << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=1,Type=String,Description=\""  << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n"
       << "##FORMAT=<ID=" << "MALLREADS"   << ",Number=1,Type=String,Description=\""
-      << "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs" << "\">" << "\n"
+      << "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs"            << "\">" << "\n"
       << "##FORMAT=<ID=" << "PALLREADS"   << ",Number=.,Type=Float,Description=\""   << "Expected bp diff in each read based on haplotype alignment probs" << "\">" << "\n";
 
   if (output_gls)

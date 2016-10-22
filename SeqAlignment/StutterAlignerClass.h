@@ -56,7 +56,7 @@ class StutterAlignerClass {
       upstream_match_lengths_.push_back(num_upstream_matches(block_seq, -i));
 
     assert(stutter_info->max_insertion() == -1*stutter_info->max_deletion());
-    assert(stutter_info->max_insertion()%period_ == 0 && block_len_+stutter_info->max_deletion() > 0);
+    assert(stutter_info->max_insertion()%period_ == 0 && block_len_+stutter_info->max_deletion() >= 0);
     num_artifacts_ = stutter_info->max_insertion()/period_;
     ins_probs_     = NULL;
     del_probs_     = NULL;

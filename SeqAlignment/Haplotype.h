@@ -121,7 +121,9 @@ class Haplotype {
 
   unsigned int homopolymer_length(int block_index, int base_index);
 
-  Haplotype* reverse( std::vector<HapBlock*>& rev_blocks);
+  Haplotype* reverse(std::vector<HapBlock*>& rev_blocks);
+
+  void check_indel_clobbering(const std::string& marker, std::vector<bool>& clobbered);
 };
 
 #endif

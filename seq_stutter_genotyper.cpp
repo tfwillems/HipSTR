@@ -34,8 +34,7 @@ int max_index(double* vals, unsigned int num_vals){
   return best_index;
 }
 
-void SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
-  return;
+bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
   std::vector<AlignmentTrace*> traced_alns;
   retrace_alignments(traced_alns);
 
@@ -49,7 +48,7 @@ void SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
     std::string ref_seq = hap_blocks_[block_index]->get_seq(0);
     int kmer_length;
     if (!DebruijnGraph::calc_kmer_length(ref_seq, MIN_KMER, MAX_KMER, kmer_length))
-      continue;
+      return false;
 
     std::map<std::string, int> haplotype_counts;
     std::vector< std::pair<std::string,int> > assembly_data;
@@ -58,7 +57,7 @@ void SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
       assembly_data.clear();
       bool acyclic = false;
       for (int k = kmer_length; k <= MAX_KMER; k++){
-	DebruijnGraph assembler(kmer_length, ref_seq);
+	DebruijnGraph assembler(k, ref_seq);
 	for (read_index = min_read_index; read_index < num_reads_; read_index++){
 	  if (sample_label_[read_index] != sample_index)
 	    break;
@@ -79,17 +78,28 @@ void SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
       min_read_index = read_index;
 
       if (acyclic){
-	if (assembly_data.size() > 1){
+	if (call_sample_[sample_index] && assembly_data.size() > 1){
 	  int total_depth = 0;
 	  for (unsigned int i = 0; i < assembly_data.size(); i++)
 	    total_depth += assembly_data[i].second;
 
 	  for (unsigned int i = 0; i < assembly_data.size(); i++){
 	    if (assembly_data[i].first.compare(ref_seq) != 0){
-	      //logger << sample_names_[sample_index] << " " << ref_depth << " " << assembly_data[i].second << std::endl;
 	      if (assembly_data[i].second*1.0/total_depth > 0.25){
-		realign_sample[sample_index] = true;
-		haplotype_counts[assembly_data[i].first]++;
+		if (ref_seq.size() != assembly_data[i].first.size()){
+		  // (i) Mask a sample if it supports a flank that contains an indel and (ii) ignore the candidate flanking sequence
+		  // NOTE: We may want to incorporate alternate flanks with indels at a later stage,
+		  // but right now there's an issue with indels in the flanks clobbering indels in the STR region
+		  // We need to be more intelligent about how we resolve this before we can include these flanks
+		  // For now, we'll avoid genotyping any samples with support for these indels
+		  call_sample_[sample_index]   = false;
+		  realign_sample[sample_index] = false;
+		}
+		else {
+		  //logger << sample_names_[sample_index] << " " << total_depth << " " << assembly_data[i].second << std::endl;
+		  realign_sample[sample_index] = true;
+		  haplotype_counts[assembly_data[i].first]++;
+		}
 	      }
 	    }
 	  }
@@ -105,7 +115,7 @@ void SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 	logger << "\t" << hap_iter->first << "\t" << hap_iter->second << "\n";
 	alleles_to_add[block_index].push_back(hap_iter->first);
       }
-      logger << "\t" << ref_seq << "\t" << "REF_SEQ" << std::endl;
+      logger << "\t" << ref_seq << "\t" << "REF_SEQ" << "\n";
       logger << std::endl;
     }
   }
@@ -136,6 +146,8 @@ void SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
     std::vector< std::vector<int> > alleles_to_remove(haplotype_->num_blocks());
     add_and_remove_alleles(alleles_to_remove, alleles_to_add, realign_seqs);
   }
+
+  return true;
 }
 
 void SeqStutterGenotyper::haps_to_alleles(int hap_block_index, std::vector<int>& allele_indices){
@@ -568,6 +580,11 @@ bool SeqStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger)
       remove_alleles(unused_indices);
     }
   }
+
+  if (reassemble_flanks_)
+    if (!assemble_flanks(logger))
+      return false;
+
   return true;
 }
 
@@ -812,6 +829,7 @@ void SeqStutterGenotyper::get_stutter_candidate_alleles(int str_block_index, std
     logger << "\t" << candidate_seqs[i] << "\n";
 }
 
+/*
 void SeqStutterGenotyper::analyze_flank_snps(std::ostream& logger){
   std::vector<AlignmentTrace*> traced_alns;
   std::vector< std::pair<int, int> > haps;
@@ -893,7 +911,7 @@ void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
       std::cerr << "FLANK INDEL " << region_group_->chrom() << " " << candidate_iter->first.first << " " << candidate_iter->first.second << " " << candidate_iter->second << std::endl;
   }
 }
-
+*/
 
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, std::string& chrom_seq,
 					   bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads,
@@ -916,19 +934,14 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector<std::string> alleles;
   get_alleles(region, hap_block_index, chrom_seq, pos, alleles);
 
-  assemble_flanks(logger);
-  //analyze_flank_indels(logger);
-  //analyze_flank_snps(logger);
   //debug_sample(sample_indices_["LP6005442-DNA_D08"], logger);
+  //std::vector<bool> clobbered;
+  //haplotype_->check_indel_clobbering(region.name(), clobbered);
 
   // Compute the base pair differences from the reference
   std::vector<int> allele_bp_diffs;
   for (unsigned int i = 0; i < alleles.size(); i++)
     allele_bp_diffs.push_back((int)alleles[i].size() - (int)alleles[0].size());
-  
-  // Filter reads with questionable alignments
-  //std::vector<int> masked_reads;
-  //filter_alignments(logger, masked_reads);
 
   // Extract the optimal genotypes and their associated likelihoods
   std::vector< std::pair<int,int> > haplotypes, gts;
@@ -949,7 +962,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector< std::vector<double> > log_read_phases(num_samples_), posterior_bps_per_sample(num_samples_);
   std::vector<AlnList> max_LL_alns_strand_one(num_samples_), left_alns_strand_one(num_samples_), orig_alns_strand_one(num_samples_);
   std::vector<AlnList> max_LL_alns_strand_two(num_samples_), left_alns_strand_two(num_samples_), orig_alns_strand_two(num_samples_);
-
   std::vector<bool> realign_to_haplotype(num_alleles_, true);
   HapAligner hap_aligner(haplotype_, realign_to_haplotype);
   double* read_LL_ptr = log_aln_probs_;

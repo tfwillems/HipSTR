@@ -12,15 +12,6 @@
 #include "mathops.h"
 
 class Genotyper {
- private:
-  static double slow_log_sum_exp_aggregator(double log_v1, double log_v2){
-    return log_sum_exp(log_v1, log_v2);
-  }
-
-  static double fast_log_sum_exp_aggregator(double log_v1, double log_v2){
-    return std::min(0.0, fast_log_sum_exp(log_v1, log_v2));
-  }
-
  protected:
   unsigned int num_reads_;    // Total number of reads across all samples
   int num_samples_;           // Total number of samples
@@ -43,10 +34,6 @@ class Genotyper {
 
   // Total time spent computing posteriors (seconds)
   double total_posterior_time_;
-
-  // Aggregator used to combine values in log-sum-exp calculations
-  // Either uses a fast log-sum-exp method or a slower but more accurate method
-  double (*logsumexp_agg)(double, double);
 
   // Read weights used to calculate posteriors (See calc_log_sample_posteriors function)
   // Used to account for special cases in which both reads in a pair overlap the STR by setting
@@ -88,7 +75,7 @@ class Genotyper {
   void get_optimal_haplotypes(std::vector< std::pair<int, int> >& gts);
 
  public:
-  Genotyper(bool haploid, bool fast_log_sum_exp, std::vector<std::string>& sample_names,
+  Genotyper(bool haploid, std::vector<std::string>& sample_names,
 	    std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2){
     assert(log_p1.size() == log_p2.size() && log_p1.size() == sample_names.size());
     num_reads_ = 0;
@@ -97,7 +84,6 @@ class Genotyper {
 
     num_alleles_      = -1;
     haploid_          = haploid;
-    logsumexp_agg     = (fast_log_sum_exp ? &Genotyper::fast_log_sum_exp_aggregator : &Genotyper::slow_log_sum_exp_aggregator);
     num_samples_      = log_p1.size();
     sample_names_     = sample_names;
     for (unsigned int i = 0; i < sample_names.size(); i++)

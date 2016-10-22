@@ -52,6 +52,9 @@ class SeqStutterGenotyper : public Genotyper {
   // probabilities. Should result in significant speedup but may introduce genotyping errors
   bool pool_identical_seqs_;
 
+  // If this flag is set, the genotyper will reassemble the flanking sequencesAfter an initial round of genotyping
+  bool reassemble_flanks_;
+
   // Timing statistics (in seconds)
   double total_hap_build_time_;
   double total_hap_aln_time_;
@@ -110,7 +113,7 @@ class SeqStutterGenotyper : public Genotyper {
   void analyze_flank_snps(std::ostream& logger);
 
   // Exploratory function related to using local assembly to identify variants in the flanking sequences
-  void assemble_flanks(std::ostream& logger);
+  bool assemble_flanks(std::ostream& logger);
 
   // Determines the allele index in the given haplotype block that is associated with each haplotype configuration
   // Stores the results in the provided vector
@@ -141,7 +144,7 @@ class SeqStutterGenotyper : public Genotyper {
   SeqStutterGenotyper(RegionGroup& region_group, bool haploid,
 		      std::vector<Alignment>& alignments, std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,
 		      std::vector<std::string>& sample_names, std::string& chrom_seq, bool pool_identical_seqs,
-		      std::vector<StutterModel*>& stutter_models, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(haploid, false, sample_names, log_p1, log_p2){
+		      std::vector<StutterModel*>& stutter_models, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(haploid, sample_names, log_p1, log_p2){
     region_group_          = region_group.copy();
     alns_                  = alignments;
     seed_positions_        = NULL;
@@ -153,6 +156,7 @@ class SeqStutterGenotyper : public Genotyper {
     MIN_KMER               = 10;
     MAX_KMER               = 15;
     initialized_           = false;
+    reassemble_flanks_     = true;
     pool_identical_seqs_   = pool_identical_seqs;
     total_hap_build_time_  = total_hap_aln_time_  = 0;
     total_aln_trace_time_  = total_assembly_time_ = 0;
