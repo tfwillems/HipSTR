@@ -48,9 +48,10 @@ class Node {
   }
 
   int get_id(){ return id_; }
-  std::vector<Edge*>& get_incident_edges() { return arriving_;        }
-  std::vector<Edge*>& get_departing_edges(){ return departing_;       }
-  int num_incident_edges()                 { return arriving_.size(); }
+  std::vector<Edge*>& get_incident_edges() { return arriving_;         }
+  std::vector<Edge*>& get_departing_edges(){ return departing_;        }
+  int num_departing_edges()                { return departing_.size(); }
+  int num_incident_edges()                 { return arriving_.size();  }
 
   void add_edge(Edge* edge){
     bool added = false;
@@ -107,6 +108,10 @@ public:
   ~DirectedGraph(){
     for (unsigned int i = 0; i < edges_.size(); i++)
       delete edges_[i];
+  }
+
+  bool has_node(std::string& value){
+    return node_map_.find(value) != node_map_.end();
   }
 
   Node* get_node(std::string& value){

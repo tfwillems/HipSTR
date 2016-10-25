@@ -16,6 +16,8 @@ class DebruijnGraph : public DirectedGraph {
   std::string source_kmer;
   std::string sink_kmer;
 
+  void get_alt_kmer_nodes(std::string& kmer, bool source, bool sink, std::vector<Node*>& nodes);
+
  public:
   DebruijnGraph(int k, std::string& ref_seq){
     assert(ref_seq.size() > k);
@@ -32,6 +34,10 @@ class DebruijnGraph : public DirectedGraph {
   void enumerate_paths(int min_weight, int max_paths, std::vector<std::pair<std::string, int> >& paths);
 
   static bool calc_kmer_length(std::string& ref_seq, int min_kmer, int max_kmer, int& kmer);
+
+  bool is_source_ok();
+
+  bool is_sink_ok();
 };
 
 class DebruijnPath {
