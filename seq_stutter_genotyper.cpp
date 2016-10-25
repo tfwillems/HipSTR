@@ -699,47 +699,6 @@ void SeqStutterGenotyper::debug_sample(int sample_index, std::ostream& logger){
    std::cerr << "END OF SAMPLE DEBUGGING" << std::endl;
 }
 
-/*
-bool SeqStutterGenotyper::use_read(AlignmentTrace* trace){
-  return true;
-}
-
-void SeqStutterGenotyper::filter_alignments(std::ostream& logger, std::vector<int>& masked_reads){
-  assert(masked_reads.size() == 0);
-  masked_reads = std::vector<int>(num_samples_, 0);
-  std::vector<AlignmentTrace*> traced_alns;
-  retrace_alignments(traced_alns);
-  assert(traced_alns.size() == num_reads_);
-
-  int32_t filt_count = 0, keep_count = 0;
-  double* read_LL_ptr = log_aln_probs_;
-  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
-    if (seed_positions_[read_index] < 0){
-      masked_reads[sample_label_[read_index]]++;
-      read_LL_ptr += num_alleles_;
-      continue;
-    }
-    assert(traced_alns[read_index] != NULL);
-
-    // Zero out alignment probabilities for filtered reads
-    if (!use_read(traced_alns[read_index])){
-      seed_positions_[read_index] = -2;
-      for (unsigned int i = 0; i < num_alleles_; ++i)
-	read_LL_ptr[i] = 0;
-      filt_count++;
-      masked_reads[sample_label_[read_index]]++;
-    }
-    else
-      keep_count++;
-    read_LL_ptr += num_alleles_;
-  }
-
-  calc_log_sample_posteriors();
-  if (filt_count != 0)
-    logger << "Filtered " << filt_count << " out of " << filt_count+keep_count << " reads based on their ML alignment tracebacks" << "\n";
-}
-*/
-
 void SeqStutterGenotyper::retrace_alignments(std::vector<AlignmentTrace*>& traced_alns){
   assert(traced_alns.size() == 0);
   double trace_start = clock();

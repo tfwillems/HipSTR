@@ -86,9 +86,6 @@ class SeqStutterGenotyper : public Genotyper {
   // Reads which were unaligned will have a NULL pointer
   void retrace_alignments(std::vector<AlignmentTrace*>& traced_alns);
 
-  // Filter reads based on their retraced ML alignments
-  void filter_alignments(std::ostream& logger, std::vector<int>& masked_reads);
-
   // Identify additional candidate STR alleles using the sequences observed in reads with stutter artifacts
   void get_stutter_candidate_alleles(int block_index, std::ostream& logger, std::vector<std::string>& candidate_seqs);
 
@@ -171,12 +168,6 @@ class SeqStutterGenotyper : public Genotyper {
     delete haplotype_;
   }
   
-  /*
-   *  Returns true iff the read with the associated retraced maximum log-likelihood alignment should be used in genotyping
-   *  Considers factors such as indels in the regions flanking the STR block and the total number of matched bases
-   */
-  bool use_read(AlignmentTrace* trace);
-
   void write_vcf_record(std::vector<std::string>& sample_names, std::string& chrom_seq,
 			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads, bool output_pallreads,
 			bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
