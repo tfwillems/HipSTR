@@ -23,15 +23,10 @@ const double IMPOSSIBLE = -1000000000;
 // is above this threshold
 const double MIN_SNP_LOG_PROB_CORRECT = -0.0043648054;
 
-void HapAligner::align_seq_to_hap(Haplotype* haplotype,
+void HapAligner::align_seq_to_hap(Haplotype* haplotype, bool reuse_alns,
 				  const char* seq_0, int seq_len, const double* base_log_wrong, const double* base_log_correct,
 				  double* match_matrix, double* insert_matrix, double* deletion_matrix,
 				  int* best_artifact_size, int* best_artifact_pos, double& left_prob){
-  // True iff we should reuse alignment information from the previous haplotype to accelerate computations
-  bool reuse_alns = true;
-  if (haplotype->cur_index() == 0 || !realign_to_hap_[haplotype->cur_index()-1] || haplotype->last_changed() == -1)
-    reuse_alns = false;
-
   // NOTE: Input matrix structure: Row = Haplotype position, Column = Read index
   double* L_log_probs = new double[seq_len];
  
@@ -612,25 +607,30 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
   std::reverse(base_log_wrong+seed_base+1,   base_log_wrong+base_seq_len);
   std::reverse(base_log_correct+seed_base+1, base_log_correct+base_seq_len);
 
+  // True iff we should reuse alignment information from the previous haplotype to accelerate computations
+  bool reuse_alns = false;
+
   do {
     if (!realign_to_hap_[fw_haplotype_->cur_index()]){
       prob_ptr++;
+      reuse_alns = false;
       continue;
     }
 
     // Perform alignment to current haplotype
     double l_prob, r_prob;
     int max_index;
-    align_seq_to_hap(fw_haplotype_, base_seq, seed_base, base_log_wrong, base_log_correct,
+    align_seq_to_hap(fw_haplotype_, reuse_alns, base_seq, seed_base, base_log_wrong, base_log_correct,
 		     l_match_matrix, l_insert_matrix, l_deletion_matrix, l_best_artifact_size, l_best_artifact_pos, l_prob);
 
-    align_seq_to_hap(rev_haplotype_, rev_rseq.c_str(), rev_rseq.size(), base_log_wrong+seed_base+1, base_log_correct+seed_base+1,
+    align_seq_to_hap(rev_haplotype_, reuse_alns, rev_rseq.c_str(), rev_rseq.size(), base_log_wrong+seed_base+1, base_log_correct+seed_base+1,
 		     r_match_matrix, r_insert_matrix, r_deletion_matrix, r_best_artifact_size, r_best_artifact_pos, r_prob);
     
     double LL = compute_aln_logprob(base_seq_len, seed_base, base_seq[seed_base], base_log_wrong[seed_base], base_log_correct[seed_base],
 				    l_match_matrix, l_insert_matrix, l_deletion_matrix, l_prob, r_match_matrix, r_insert_matrix, r_deletion_matrix, r_prob, max_index);
     *prob_ptr = LL;
     prob_ptr++;
+    reuse_alns = true;
 
     if (LL > max_LL){
       max_LL = LL;

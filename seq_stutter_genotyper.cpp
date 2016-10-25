@@ -46,8 +46,9 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
   for (int flank = 0; flank < 2; flank++){
     int block_index     = (flank == 0 ? 0 : haplotype_->num_blocks()-1);
     std::string ref_seq = hap_blocks_[block_index]->get_seq(0);
+    int max_k           = std::min(MAX_KMER, ref_seq.size() == 0 ? -1 : (int)ref_seq.size()-1);
     int kmer_length;
-    if (!DebruijnGraph::calc_kmer_length(ref_seq, MIN_KMER, MAX_KMER, kmer_length))
+    if (!DebruijnGraph::calc_kmer_length(ref_seq, MIN_KMER, max_k, kmer_length))
       return false;
 
     std::map<std::string, int> haplotype_counts;
@@ -56,7 +57,7 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
     for (int sample_index = 0; sample_index < num_samples_; sample_index++){
       assembly_data.clear();
       bool acyclic = false;
-      for (int k = kmer_length; k <= MAX_KMER; k++){
+      for (int k = kmer_length; k <= max_k; k++){
 	DebruijnGraph assembler(k, ref_seq);
 	for (read_index = min_read_index; read_index < num_reads_; read_index++){
 	  if (sample_label_[read_index] != sample_index)
@@ -69,7 +70,7 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 	    assembler.add_string(seq);
 	}
 
-	if (!assembler.has_cycles()){
+	if (!assembler.has_cycles() && assembler.is_source_ok() && assembler.is_sink_ok()){
 	  acyclic = true;
 	  assembler.enumerate_paths(MIN_PATH_WEIGHT, 10, assembly_data);
 	  break;
@@ -115,8 +116,7 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 	logger << "\t" << hap_iter->first << "\t" << hap_iter->second << "\n";
 	alleles_to_add[block_index].push_back(hap_iter->first);
       }
-      logger << "\t" << ref_seq << "\t" << "REF_SEQ" << "\n";
-      logger << std::endl;
+      logger << "\t" << ref_seq << "\t" << "REF_SEQ" << "\n" << std::endl;
     }
   }
   locus_assembly_time   = (clock() - locus_assembly_time)/CLOCKS_PER_SEC;
@@ -124,16 +124,9 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 
   // Determine which reads/read pools we need to realign
   std::vector<bool> realign_seqs;
-  if (pool_identical_seqs_){
-    realign_seqs = std::vector<bool>(pooler_.num_pools(), false);
-    for (unsigned int read_index = 0; read_index < num_reads_; read_index++)
-      realign_seqs[pool_index_[read_index]] = (realign_seqs[pool_index_[read_index]] || realign_sample[sample_label_[read_index]]);
-  }
-  else {
-    realign_seqs = std::vector<bool>(num_reads_, false);
-    for (unsigned int read_index = 0; read_index < num_reads_; read_index++)
-      realign_seqs[read_index] = (realign_seqs[read_index] || realign_sample[sample_label_[read_index]]);
-  }
+  realign_seqs = std::vector<bool>(pooler_.num_pools(), false);
+  for (unsigned int read_index = 0; read_index < num_reads_; read_index++)
+    realign_seqs[pool_index_[read_index]] = (realign_seqs[pool_index_[read_index]] || realign_sample[sample_label_[read_index]]);
 
   // Realign reads for samples with new candidate flanking sequences
   int realign_count = 0;
@@ -141,8 +134,7 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
     if (realign_seqs[i])
       realign_count++;
   if (realign_count > 0){
-    logger << "Realigning " << realign_count << " out of " << realign_seqs.size() << " read"
-	   << (pool_identical_seqs_ ? " pools" : "s" ) << " to polish flanking sequences" << std::endl;
+    logger << "Realigning " << realign_count << " out of " << realign_seqs.size() << " read pools to polish flanking sequences" << std::endl;
     std::vector< std::vector<int> > alleles_to_remove(haplotype_->num_blocks());
     add_and_remove_alleles(alleles_to_remove, alleles_to_add, realign_seqs);
   }
@@ -250,7 +242,7 @@ void SeqStutterGenotyper::get_unused_alleles(bool check_spanned, bool check_call
 
 void SeqStutterGenotyper::add_and_remove_alleles(std::vector< std::vector<int> >& alleles_to_remove,
                                                  std::vector< std::vector<std::string> >& alleles_to_add){
-  std::vector<bool> realign_read = std::vector<bool>((pool_identical_seqs_ ? pooler_.num_pools() : num_reads_), true);
+  std::vector<bool> realign_read = std::vector<bool>(pooler_.num_pools(), true);
   add_and_remove_alleles(alleles_to_remove, alleles_to_add, realign_read);
 }
 
@@ -421,7 +413,7 @@ void SeqStutterGenotyper::init(std::vector<StutterModel*>& stutter_models, std::
   std::string prev_aln_name = "";
 
   for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
-    pool_index_[read_index]   = (pool_identical_seqs_ ? pooler_.add_alignment(alns_[read_index]) : read_index);
+    pool_index_[read_index]   = pooler_.add_alignment(alns_[read_index]);
     second_mate_[read_index]  = (alns_[read_index].get_name().compare(prev_aln_name) == 0);
     read_weights_.push_back(second_mate_[read_index] ? 0 : 1);
     prev_aln_name = alns_[read_index].get_name();
@@ -439,7 +431,7 @@ void SeqStutterGenotyper::init(std::vector<StutterModel*>& stutter_models, std::
 }
 
 void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype){
-  std::vector<bool> realign_read = std::vector<bool>((pool_identical_seqs_ ? pooler_.num_pools() : num_reads_), true);
+  std::vector<bool> realign_read = std::vector<bool>(pooler_.num_pools(), true);
   calc_hap_aln_probs(realign_to_haplotype, realign_read);
 }
 
@@ -448,34 +440,28 @@ void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplo
   assert(haplotype_->num_combs() == realign_to_haplotype.size() && haplotype_->num_combs() == num_alleles_);
   HapAligner hap_aligner(haplotype_, realign_to_haplotype);
 
-  if (pool_identical_seqs_){
-    // Align each pooled read to each haplotype
-    AlnList& pooled_alns       = pooler_.get_alignments();
-    double* log_pool_aln_probs = new double[pooled_alns.size()*num_alleles_];
-    int* pool_seed_positions   = new int[pooled_alns.size()];
-    hap_aligner.process_reads(pooled_alns, 0, &base_quality_, realign_read, log_pool_aln_probs, pool_seed_positions);
+  // Align each pooled read to each haplotype
+  AlnList& pooled_alns       = pooler_.get_alignments();
+  double* log_pool_aln_probs = new double[pooled_alns.size()*num_alleles_];
+  int* pool_seed_positions   = new int[pooled_alns.size()];
+  hap_aligner.process_reads(pooled_alns, 0, &base_quality_, realign_read, log_pool_aln_probs, pool_seed_positions);
 
-    // Copy each pool's alignment probabilities to the entries for its constituent reads, but only for realigned haplotypes
-    double* log_aln_ptr = log_aln_probs_;
-    for (unsigned int i = 0; i < num_reads_; i++){
-      if (!realign_read[pool_index_[i]]){
-	log_aln_ptr += num_alleles_;
-	continue;
-      }
-
-      seed_positions_[i] = pool_seed_positions[pool_index_[i]];
-      double* src_ptr = log_pool_aln_probs + num_alleles_*pool_index_[i];
-      for (unsigned int j = 0; j < num_alleles_; ++j, ++log_aln_ptr, ++src_ptr)
-	if (realign_to_haplotype[j])
-	  *log_aln_ptr = *src_ptr;
+  // Copy each pool's alignment probabilities to the entries for its constituent reads, but only for realigned haplotypes
+  double* log_aln_ptr = log_aln_probs_;
+  for (unsigned int i = 0; i < num_reads_; i++){
+    if (!realign_read[pool_index_[i]]){
+      log_aln_ptr += num_alleles_;
+      continue;
     }
-    delete [] log_pool_aln_probs;
-    delete [] pool_seed_positions;
+
+    seed_positions_[i] = pool_seed_positions[pool_index_[i]];
+    double* src_ptr = log_pool_aln_probs + num_alleles_*pool_index_[i];
+    for (unsigned int j = 0; j < num_alleles_; ++j, ++log_aln_ptr, ++src_ptr)
+      if (realign_to_haplotype[j])
+	*log_aln_ptr = *src_ptr;
   }
-  else {
-    // Align each read against each candidate haplotype
-    hap_aligner.process_reads(alns_, 0, &base_quality_, realign_read, log_aln_probs_, seed_positions_);
-  }
+  delete [] log_pool_aln_probs;
+  delete [] pool_seed_positions;
 
   // If both mate pairs overlap the STR region, they share the same phasing probabilities and we need to avoid treating them as independent
   // To do so, we combine the alignment probabilities here and set the read weight for the second in the pair to zero during the posterior calculation
@@ -544,10 +530,8 @@ bool SeqStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger)
   }
 
   init_alignment_model();
-  if (pool_identical_seqs_){
-    logger << "Pooling reads with identical sequences" << std::endl;
-    pooler_.pool(base_quality_);
-  }
+  logger << "Pooling reads with identical sequences" << std::endl;
+  pooler_.pool(base_quality_);
 
   // Align each read to each candidate haplotype and store them in the provided arrays
   logger << "Aligning reads to each candidate haplotype" << std::endl;

@@ -73,10 +73,6 @@ private:
   // If this flag is set, HTML alignments are written for both the haplotype alignments and Needleman-Wunsch left alignments
   bool viz_left_alns_;
 
-  // If true, the seqeunce-based genotyper will collapse reads with identical sequences
-  // and merge their base quality scores. Results in a large reduction in computation time
-  bool pool_seqs_;
-
   // Simple object to track total times consumed by various processes
   ProcessTimer process_timer_;
 
@@ -100,7 +96,6 @@ public:
     output_viz_            = false;
     read_stutter_models_   = false;
     viz_left_alns_         = false;
-    pool_seqs_             = false;
     haploid_chroms_        = std::set<std::string>();
     num_em_converge_       = 0;
     num_em_fail_           = 0;
@@ -152,7 +147,6 @@ public:
   void hide_pall_reads()    { output_pall_reads_ = false;   }
   void hide_mall_reads()    { output_mall_reads_ = false;   }
   void visualize_left_alns(){ viz_left_alns_     = true;    }
-  void pool_sequences()     { pool_seqs_         = true;    }
 
   void add_haploid_chrom(std::string chrom){ haploid_chroms_.insert(chrom); }
   void set_max_flank_indel_frac(float frac){  max_flank_indel_frac_ = frac; }
