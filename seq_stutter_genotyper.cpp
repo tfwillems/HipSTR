@@ -123,21 +123,26 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
   locus_assembly_time   = (clock() - locus_assembly_time)/CLOCKS_PER_SEC;
   total_assembly_time_ += locus_assembly_time;
 
-  // Determine which reads/read pools we need to realign
-  std::vector<bool> realign_seqs;
-  realign_seqs = std::vector<bool>(pooler_.num_pools(), false);
-  for (unsigned int read_index = 0; read_index < num_reads_; read_index++)
-    realign_seqs[pool_index_[read_index]] = (realign_seqs[pool_index_[read_index]] || realign_sample[sample_label_[read_index]]);
+  // Determine which read pools we need to realign and which read's probabilities we should update
+  // We need to realign a pool if any of its associated reads has a sample with a new candidate flank
+  // We only want to update a read's probabilities if all of the other read's for the sample were also realigned
+  std::vector<bool> realign_pools(pooler_.num_pools(), false);
+  std::vector<bool> copy_reads(num_reads_, false);
+  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
+    bool sample_flag = realign_sample[sample_label_[read_index]];
+    realign_pools[pool_index_[read_index]] = (realign_pools[pool_index_[read_index]] || sample_flag);
+    copy_reads[read_index] = sample_flag;
+  }
 
   // Realign reads for samples with new candidate flanking sequences
   int realign_count = 0;
-  for (unsigned int i = 0; i < realign_seqs.size(); i++)
-    if (realign_seqs[i])
+  for (unsigned int i = 0; i < realign_pools.size(); i++)
+    if (realign_pools[i])
       realign_count++;
   if (realign_count > 0){
-    logger << "Realigning " << realign_count << " out of " << realign_seqs.size() << " read pools to polish flanking sequences" << std::endl;
+    logger << "Realigning " << realign_count << " out of " << realign_pools.size() << " read pools to polish flanking sequences" << std::endl;
     std::vector< std::vector<int> > alleles_to_remove(haplotype_->num_blocks());
-    add_and_remove_alleles(alleles_to_remove, alleles_to_add, realign_seqs);
+    add_and_remove_alleles(alleles_to_remove, alleles_to_add, realign_pools, copy_reads);
   }
 
   return true;
@@ -243,13 +248,14 @@ void SeqStutterGenotyper::get_unused_alleles(bool check_spanned, bool check_call
 
 void SeqStutterGenotyper::add_and_remove_alleles(std::vector< std::vector<int> >& alleles_to_remove,
                                                  std::vector< std::vector<std::string> >& alleles_to_add){
-  std::vector<bool> realign_read = std::vector<bool>(pooler_.num_pools(), true);
-  add_and_remove_alleles(alleles_to_remove, alleles_to_add, realign_read);
+  std::vector<bool> realign_pool = std::vector<bool>(pooler_.num_pools(), true);
+  std::vector<bool> copy_read    = std::vector<bool>(num_reads_, true);
+  add_and_remove_alleles(alleles_to_remove, alleles_to_add, realign_pool, copy_read);
 }
 
 void SeqStutterGenotyper::add_and_remove_alleles(std::vector< std::vector<int> >& alleles_to_remove,
 						 std::vector< std::vector<std::string> >& alleles_to_add,
-						 std::vector<bool>& realign_read){
+						 std::vector<bool>& realign_pool, std::vector<bool>& copy_read){
   assert(alleles_to_remove.size() == hap_blocks_.size() && alleles_to_add.size() == hap_blocks_.size());
 
   // Store the initial set of haplotype sequences
@@ -321,7 +327,7 @@ void SeqStutterGenotyper::add_and_remove_alleles(std::vector< std::vector<int> >
 
   // Compute the alignment probabilites for new haplotype sequences if there are any
   if (added_seq)
-    calc_hap_aln_probs(realign_to_haplotype, realign_read);
+    calc_hap_aln_probs(realign_to_haplotype, realign_pool, copy_read);
 
   // Fix alignment traceback cache (as allele indices have changed)
   std::map<std::pair<int,int>, AlignmentTrace*> new_trace_cache;
@@ -432,11 +438,12 @@ void SeqStutterGenotyper::init(std::vector<StutterModel*>& stutter_models, std::
 }
 
 void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype){
-  std::vector<bool> realign_read = std::vector<bool>(pooler_.num_pools(), true);
-  calc_hap_aln_probs(realign_to_haplotype, realign_read);
+  std::vector<bool> realign_pool = std::vector<bool>(pooler_.num_pools(), true);
+  std::vector<bool> copy_read    = std::vector<bool>(num_reads_, true);
+  calc_hap_aln_probs(realign_to_haplotype, realign_pool, copy_read);
 }
 
-void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype, std::vector<bool>& realign_read){
+void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype, std::vector<bool>& realign_pool, std::vector<bool>& copy_read){
   double locus_hap_aln_time = clock();
   assert(haplotype_->num_combs() == realign_to_haplotype.size() && haplotype_->num_combs() == num_alleles_);
   HapAligner hap_aligner(haplotype_, realign_to_haplotype);
@@ -445,12 +452,12 @@ void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplo
   AlnList& pooled_alns       = pooler_.get_alignments();
   double* log_pool_aln_probs = new double[pooled_alns.size()*num_alleles_];
   int* pool_seed_positions   = new int[pooled_alns.size()];
-  hap_aligner.process_reads(pooled_alns, 0, &base_quality_, realign_read, log_pool_aln_probs, pool_seed_positions);
+  hap_aligner.process_reads(pooled_alns, 0, &base_quality_, realign_pool, log_pool_aln_probs, pool_seed_positions);
 
   // Copy each pool's alignment probabilities to the entries for its constituent reads, but only for realigned haplotypes
   double* log_aln_ptr = log_aln_probs_;
   for (unsigned int i = 0; i < num_reads_; i++){
-    if (!realign_read[pool_index_[i]]){
+    if (!copy_read[i]){
       log_aln_ptr += num_alleles_;
       continue;
     }
@@ -469,8 +476,9 @@ void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplo
   // NOTE: It's very important that we don't recombine the values for haplotypes that have already been aligned,
   // or we'll effectively keep doubling those values with each iteration
   for (unsigned int i = 0; i < num_reads_; ++i){
-    if (!second_mate_[i])
+    if (!second_mate_[i] || !copy_read[i])
       continue;
+
     double* mate_one_ptr = log_aln_probs_ + (i-1)*num_alleles_;
     double* mate_two_ptr = log_aln_probs_ + i*num_alleles_;
     for (unsigned int j = 0; j < num_alleles_; ++j, ++mate_one_ptr, ++mate_two_ptr){
