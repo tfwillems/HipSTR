@@ -15,6 +15,7 @@
 #include "mathops.h"
 #include "stringops.h"
 #include "vcf_input.h"
+#include "zalgorithm.h"
 
 #include "SeqAlignment/AlignmentData.h"
 #include "SeqAlignment/AlignmentModel.h"
@@ -527,6 +528,21 @@ bool SeqStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger)
       continue;
     if (hap_block->min_size() < std::abs(hap_block->get_repeat_info()->max_deletion()))
       return false;
+  }
+
+  // Check if we can assemble the sequences flanking the STR
+  // If not, it's likely that the flanks are too repetitive and will introduce genotyping errors
+  for (int flank = 0; flank < 2; flank++){
+    int block_index     = (flank == 0 ? 0 : haplotype_->num_blocks()-1);
+    std::string ref_seq = hap_blocks_[block_index]->get_seq(0);
+    int max_k           = std::min(MAX_KMER, ref_seq.size() == 0 ? -1 : (int)ref_seq.size()-1);
+    int kmer_length;
+    if (!DebruijnGraph::calc_kmer_length(ref_seq, MIN_KMER, max_k, kmer_length)){
+      logger << "Aborting genotyping of the locus as the sequence " << (flank == 0 ? "upstream" : "downstream")
+	     << " of the repeat is too repetitive for accurate genotyping" << "\n";
+      logger << "\tFlanking sequence = " << ref_seq << std::endl;
+      return false;
+    }
   }
 
   init_alignment_model();
