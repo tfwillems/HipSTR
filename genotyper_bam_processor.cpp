@@ -108,6 +108,7 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
   std::vector< std::vector<int> > str_bp_lengths(alignments.size());
   std::vector< std::vector<double> > str_log_p1s(alignments.size()), str_log_p2s(alignments.size());
   int inf_reads = 0;
+  const int MAX_INF_READS = 10000;
 
   // Extract bp differences and phasing probabilities for each read if we need to train a stutter model
   for (unsigned int i = 0; i < alignments.size(); ++i){
@@ -115,10 +116,8 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
       int bp_diff;
       bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region.start()-region.period(), region.stop()+region.period(), bp_diff);
       if (got_size){
-	if (bp_diff < -(int)(region.stop()-region.start()+1)) {
-	  log("WARNING: Excluding read with bp difference greater than reference allele: " +alignments[i][j].Name);
+	if (bp_diff < -(int)(region.stop()-region.start()+1))
 	  continue;
-	}
 	inf_reads++;
 	str_bp_lengths[i].push_back(bp_diff);
 	if (log_p1s.size() == 0){
@@ -129,6 +128,8 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
 	}
       }
     }
+    if (inf_reads > MAX_INF_READS)
+      break;
   }
 
   if (inf_reads < MIN_TOTAL_READS){
