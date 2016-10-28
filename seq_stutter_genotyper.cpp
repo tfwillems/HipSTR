@@ -1160,7 +1160,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
   // Add FORMAT field
   out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DSTUTTER:DFLANKINDEL:PDP:PSNP:GLDIFF" : "\tGT:GB:Q:DP:DSTUTTER:DFLANKINDEL:GLDIFF");
-  if (output_allele_bias)         out << ":AB";
+  if (output_allele_bias)         out << ":AB:DAB";
   if (output_allreads)            out << ":ALLREADS";
   if (output_pallreads)           out << ":PALLREADS";
   if (output_mallreads)           out << ":MALLREADS";
@@ -1246,9 +1246,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     // Output the log-10 value of the allele bias p-value
     if (output_allele_bias){
       if (std::abs(allele_bias-1) < TOLERANCE)
-	out << ":" << ".";
+	out << ":.:.";
       else
-	out << ":" << allele_bias;
+	out << ":" << allele_bias << ":" << (unique_reads_hap_one[sample_index] + unique_reads_hap_two[sample_index]);
     }
 
     // Add bp diffs from regular left-alignment

@@ -263,6 +263,7 @@ void Genotyper::write_vcf_header(std::string& full_command, std::vector<std::str
       << "##FORMAT=<ID=" << "DFLANKINDEL" << ",Number=1,Type=Integer,Description=\"" << "Number of reads with an indel in the regions flanking the STR" << "\">" << "\n"
       << "##FORMAT=<ID=" << "AB"          << ",Number=1,Type=Float,Description=\""
       << "log10 of the allele bias pvalue, where 0 is no bias and more negative values are increasingly biased. Not applicable to homozygous genotypes" << "\">" << "\n"
+      << "##FORMAT=<ID=" << "DAB"         << ",Number=1,Type=Integer,Description=\"" << "Number of reads used in the allele bias calculation"           << "\">" << "\n"
       << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=1,Type=String,Description=\""  << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n"
       << "##FORMAT=<ID=" << "MALLREADS"   << ",Number=1,Type=String,Description=\""
       << "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs"            << "\">" << "\n"
