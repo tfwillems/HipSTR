@@ -125,6 +125,8 @@ class SeqStutterGenotyper : public Genotyper {
 			      std::vector< std::vector<std::string> >& alleles_to_add,
 			      std::vector<bool>& realign_pool, std::vector<bool>& copy_read);
 
+  double compute_allele_bias(int hap_a_read_count, int hap_b_read_count);
+
   void write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, const Region& region, std::string& chrom_seq,
 			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads, bool output_pallreads,
 			bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,

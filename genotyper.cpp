@@ -246,7 +246,6 @@ void Genotyper::write_vcf_header(std::string& full_command, std::vector<std::str
       << "##INFO=<ID=" << "NFILT"          << ",Number=1,Type=Integer,Description=\"" << "Number of samples whose genotypes were filtered due to various issues"        << "\">\n"
       << "##INFO=<ID=" << "DP"             << ",Number=1,Type=Integer,Description=\"" << "Total number of valid reads used to genotype all samples"                     << "\">\n"
       << "##INFO=<ID=" << "DSNP"           << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with SNP phasing information"                           << "\">\n"
-      << "##INFO=<ID=" << "DFILT"          << ",Number=1,Type=Integer,Description=\"" << "Total number of reads filtered due to various issues"                         << "\">\n"
       << "##INFO=<ID=" << "DSTUTTER"       << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with a stutter indel in the STR region"                 << "\">\n"
       << "##INFO=<ID=" << "DFLANKINDEL"    << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with an indel in the regions flanking the STR"          << "\">\n";
 
@@ -259,10 +258,11 @@ void Genotyper::write_vcf_header(std::string& full_command, std::vector<std::str
       << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\"" << "Number of reads with SNP phasing information"                  << "\">" << "\n"
       << "##FORMAT=<ID=" << "PSNP"        << ",Number=1,Type=String,Description=\""  << "Number of reads with SNPs supporting each haploid genotype"    << "\">" << "\n"
       << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""  << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
-      << "##FORMAT=<ID=" << "GLDIFF"      << ",Number=1,Type=Float,Description=\""   << "Difference in likelihood between the reported and next best genotypes" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DFILT"       << ",Number=1,Type=Integer,Description=\"" << "Number of reads filtered due to various issues"                << "\">" << "\n"
+      << "##FORMAT=<ID=" << "GLDIFF"      << ",Number=1,Type=Float,Description=\""   << "Difference in likelihood between the reported and next best genotypes"  << "\">" << "\n"
       << "##FORMAT=<ID=" << "DSTUTTER"    << ",Number=1,Type=Integer,Description=\"" << "Number of reads with a stutter indel in the STR region"        << "\">" << "\n"
       << "##FORMAT=<ID=" << "DFLANKINDEL" << ",Number=1,Type=Integer,Description=\"" << "Number of reads with an indel in the regions flanking the STR" << "\">" << "\n"
+      << "##FORMAT=<ID=" << "AB"          << ",Number=1,Type=Float,Description=\""
+      << "log10 of the allele bias pvalue, where 0 is no bias and more negative values are increasingly biased. Not applicable to homozygous genotypes" << "\">" << "\n"
       << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=1,Type=String,Description=\""  << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n"
       << "##FORMAT=<ID=" << "MALLREADS"   << ",Number=1,Type=String,Description=\""
       << "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs"            << "\">" << "\n"

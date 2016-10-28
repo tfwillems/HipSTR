@@ -277,7 +277,6 @@ NSKIP          | Number of samples not genotyped due to various issues
 NFILT          | Number of samples that were originally genotyped but have since been filtered
 DP             | Total number of reads used to genotype all samples
 DSNP           | Total number of reads with SNP information
-DFILT          | Total number of reads filtered due to various reasons
 DSTUTTER       | Total number of reads with a stutter indel in the STR region
 DFLANKINDEL    | Total number of reads with an indel in the regions flanking the STR
 
@@ -295,7 +294,6 @@ DSNP      | Number of reads with SNP phasing information
 PDP       | Fractional reads supporting each haploid genotype
 GLDIFF    | Difference in likelihood between the reported and next best genotypes
 DSNP      | Total number of reads with SNP information
-DFILT     | Number of reads filtered due to various issues
 DSTUTTER  | Number of reads with a stutter indel in the STR region
 DFLANKINDEL | Number of reads with an indel in the regions flanking the STR
 ALLREADS  | Base pair difference observed in each read's Needleman-Wunsch alignment

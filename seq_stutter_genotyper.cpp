@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <cstring>
+#include <math.h>
 #include <random>
 #include <string>
 #include <sstream>
@@ -893,6 +894,25 @@ void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
 }
 */
 
+double SeqStutterGenotyper::compute_allele_bias(int hap_a_read_count, int hap_b_read_count){
+  // Compute p-value for allele read depth bias according to the counts of reads uniquely assigned to each haplotype
+  // We use the bdtr(k, N, p) function from the cephes directory, which computes the CDF for a binomial distribution
+  // e.g.: double val = bdtr (24, 50, 0.5);
+  int total = hap_a_read_count + hap_b_read_count;
+
+  // Not applicable
+  if (total == 0)
+    return 1;
+
+  // p-value is 1
+  if (hap_a_read_count == hap_b_read_count)
+    return 0.0;
+
+  int min_count = std::min(hap_a_read_count, hap_b_read_count);
+  double pvalue = 2*bdtr(min_count, total, 0.5); // Two-sided pvalue
+  return log10(std::min(1.0, pvalue));
+}
+
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, std::string& chrom_seq,
 					   bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads,
 					   bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
@@ -938,6 +958,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector<int> num_aligned_reads(num_samples_, 0), num_reads_with_snps(num_samples_, 0);
   std::vector<int> num_reads_with_stutter(num_samples_, 0), num_reads_with_flank_indels(num_samples_, 0);
   std::vector<int> num_reads_strand_one(num_samples_, 0), num_reads_strand_two(num_samples_, 0);
+  std::vector<int> unique_reads_hap_one(num_samples_, 0), unique_reads_hap_two(num_samples_, 0);
   std::vector< std::vector<int> > bps_per_sample(num_samples_), ml_bps_per_sample(num_samples_);
   std::vector< std::vector<double> > log_read_phases(num_samples_), posterior_bps_per_sample(num_samples_);
   std::vector<AlnList> max_LL_alns_strand_one(num_samples_), left_alns_strand_one(num_samples_), orig_alns_strand_one(num_samples_);
@@ -963,8 +984,13 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     int read_strand = 0;
     if (!haploid_ && ((hap_a != hap_b) || (abs(log_p1_[read_index]-log_p2_[read_index]) > TOLERANCE))){
       double v1 = log_p1_[read_index]+read_LL_ptr[hap_a], v2 = log_p2_[read_index]+read_LL_ptr[hap_b];
-      if (abs(v1-v2) > TOLERANCE)
+      if (abs(v1-v2) > TOLERANCE){
 	read_strand = (v1 > v2 ? 0 : 1);
+	if (read_strand == 0)
+	  unique_reads_hap_one[sample_label_[read_index]]++;
+	else
+	  unique_reads_hap_two[sample_label_[read_index]]++;
+      }
     }
 
     // Retrace alignment and ensure that it's of sufficient quality
@@ -1097,8 +1123,8 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     out << ";";
   }
 
-  // Compute INFO field values for DP, DFILT, DSTUTTER and DFLANKINDEL and add them to the VCF
-  int32_t tot_dp = 0, tot_dsnp = 0, tot_dfilt = 0, tot_dstutter = 0, tot_dflankindel = 0;
+  // Compute INFO field values for DP, DSTUTTER and DFLANKINDEL and add them to the VCF
+  int32_t tot_dp = 0, tot_dsnp = 0, tot_dstutter = 0, tot_dflankindel = 0;
   for (unsigned int i = 0; i < sample_names.size(); i++){
     auto sample_iter = sample_indices_.find(sample_names[i]);
     if (sample_iter == sample_indices_.end())
@@ -1112,13 +1138,11 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     int sample_index = sample_iter->second;
     tot_dp          += num_aligned_reads[sample_index];
     tot_dsnp        += num_reads_with_snps[sample_index];
-    tot_dfilt       += 0;//masked_reads[sample_index];
     tot_dstutter    += num_reads_with_stutter[sample_index];
     tot_dflankindel += num_reads_with_flank_indels[sample_index];
   }
   out << "DP="          << tot_dp          << ";"
       << "DSNP="        << tot_dsnp        << ";"
-      << "DFILT="       << tot_dfilt       << ";"
       << "DSTUTTER="    << tot_dstutter    << ";"
       << "DFLANKINDEL=" << tot_dflankindel << ";";
 
@@ -1131,8 +1155,12 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     out << allele_counts[new_to_old.back()];
   }
 
+  // If we used all reads during genotyping and performed assembly, we'll output the allele bias
+  bool output_allele_bias = reassemble_flanks_;
+
   // Add FORMAT field
-  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DFILT:DSTUTTER:DFLANKINDEL:PDP:PSNP:GLDIFF" : "\tGT:GB:Q:DP:DFILT:DSTUTTER:DFLANKINDEL:GLDIFF");
+  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DSTUTTER:DFLANKINDEL:PDP:PSNP:GLDIFF" : "\tGT:GB:Q:DP:DSTUTTER:DFLANKINDEL:GLDIFF");
+  if (output_allele_bias)         out << ":AB";
   if (output_allreads)            out << ":ALLREADS";
   if (output_pallreads)           out << ":PALLREADS";
   if (output_mallreads)           out << ":MALLREADS";
@@ -1177,11 +1205,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     samp_info << allele_bp_diffs[gts[sample_index].first] << "|" << allele_bp_diffs[gts[sample_index].second];
     sample_results[sample_names[i]] = samp_info.str();
 
-    // TO DO: Compute p-value for allele read depth bias
-    // i)  Spanning reads
-    // ii) All reads if --use-all-reads is specified
-    // We will use the bdtr(k, N, p) function from the cephes directory, which computes the CDF for a binomial distribution
-    // e.g.: double val = bdtr (24, 50, 0.5);
+    double allele_bias = 1;
+    if (!haploid_ && (gts[sample_index].first != gts[sample_index].second))
+      allele_bias = compute_allele_bias(unique_reads_hap_one[sample_index], unique_reads_hap_two[sample_index]);
 
     if (!haploid_){
       out << old_to_new[gts[sample_index].first] << "|" << old_to_new[gts[sample_index].second]     // Genotype
@@ -1191,7 +1217,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	  << ":" << exp(log_phased_posteriors[sample_index])                                        // Phased posterior
 	  << ":" << num_aligned_reads[sample_index]                                                 // Total reads used to genotype (after filtering)
 	  << ":" << num_reads_with_snps[sample_index]                                               // Total reads with SNP information
-	  << ":" << 0 //masked_reads[sample_index]                                                      // Total masked reads
 	  << ":" << num_reads_with_stutter[sample_index]                                            // Total reads with a non-zero stutter artifact in ML alignment
 	  << ":" << num_reads_with_flank_indels[sample_index]                                       // Total reads with an indel in flank in ML alignment
 	  << ":" << phase1_reads << "|" << phase2_reads                                             // Reads per allele
@@ -1208,7 +1233,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	  << ":" << allele_bp_diffs[gts[sample_index].first]                                        // Base pair differences from reference
 	  << ":" << exp(log_unphased_posteriors[sample_index])                                      // Unphased posterior
 	  << ":" << num_aligned_reads[sample_index]                                                 // Total reads used to genotype (after filtering)
-	  << ":" << 0 //masked_reads[sample_index]                                                      // Total masked reads
 	  << ":" << num_reads_with_stutter[sample_index]                                            // Total reads with a non-zero stutter artifact in ML alignment
 	  << ":" << num_reads_with_flank_indels[sample_index];                                      // Total reads with an indel in flank in ML alignment
 
@@ -1217,6 +1241,14 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 	out << ":" << ".";
       else
 	out << ":" << gl_diffs[sample_index];
+    }
+
+    // Output the log-10 value of the allele bias p-value
+    if (output_allele_bias){
+      if (std::abs(allele_bias-1) < TOLERANCE)
+	out << ":" << ".";
+      else
+	out << ":" << allele_bias;
     }
 
     // Add bp diffs from regular left-alignment
