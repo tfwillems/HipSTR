@@ -1156,7 +1156,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   }
 
   // If we used all reads during genotyping and performed assembly, we'll output the allele bias
-  bool output_allele_bias = reassemble_flanks_;
+  bool output_allele_bias = (!haploid_ && reassemble_flanks_);
 
   // Add FORMAT field
   out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DSTUTTER:DFLANKINDEL:PDP:PSNP:GLDIFF" : "\tGT:GB:Q:DP:DSTUTTER:DFLANKINDEL:GLDIFF");
