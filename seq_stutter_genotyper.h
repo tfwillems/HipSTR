@@ -133,7 +133,7 @@ class SeqStutterGenotyper : public Genotyper {
   RegionGroup* region_group_;
 
  public:
-  SeqStutterGenotyper(RegionGroup& region_group, bool haploid,
+  SeqStutterGenotyper(RegionGroup& region_group, bool haploid, bool reassemble_flanks,
 		      std::vector<Alignment>& alignments, std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,
 		      std::vector<std::string>& sample_names, std::string& chrom_seq,
 		      std::vector<StutterModel*>& stutter_models, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(haploid, sample_names, log_p1, log_p2){
@@ -148,7 +148,7 @@ class SeqStutterGenotyper : public Genotyper {
     MIN_KMER               = 10;
     MAX_KMER               = 15;
     initialized_           = false;
-    reassemble_flanks_     = true;
+    reassemble_flanks_     = reassemble_flanks;
     total_hap_build_time_  = total_hap_aln_time_  = 0;
     total_aln_trace_time_  = total_assembly_time_ = 0;
     ref_vcf_               = ref_vcf;

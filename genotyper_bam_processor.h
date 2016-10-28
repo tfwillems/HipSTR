@@ -194,12 +194,15 @@ public:
     output_str_gts_ = true;
     str_vcf_.open(vcf_file.c_str());
 
-    // Print floats with exactly 3 decimal places
-    str_vcf_.precision(3);
+    // Print floats with exactly 2 decimal places
+    str_vcf_.precision(2);
     str_vcf_.setf(std::ios::fixed, std::ios::floatfield);
     
     // Assemble a list of sample names for genotype output
-    std::copy(samples_to_output.begin(), samples_to_output.end(), std::back_inserter(samples_to_genotype_));
+    samples_to_genotype_.clear();
+    for (auto sample_iter = samples_to_output.begin(); sample_iter != samples_to_output.end(); sample_iter++)
+      if (sample_set_.empty() || sample_set_.find(*sample_iter) != sample_set_.end())
+	samples_to_genotype_.push_back(*sample_iter);
     std::sort(samples_to_genotype_.begin(), samples_to_genotype_.end());
     
     // Write VCF header

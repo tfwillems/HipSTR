@@ -143,6 +143,17 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
     logger << "Realigning " << realign_count << " out of " << realign_pools.size() << " read pools to polish flanking sequences" << std::endl;
     std::vector< std::vector<int> > alleles_to_remove(haplotype_->num_blocks());
     add_and_remove_alleles(alleles_to_remove, alleles_to_add, realign_pools, copy_reads);
+
+
+    // Remove alleles with no MAP genotype calls and recompute the posteriors
+    std::vector< std::vector<int> > unused_indices;
+    int num_aff_blocks = 0, num_aff_alleles = 0;
+    get_unused_alleles(false, true, unused_indices, num_aff_blocks, num_aff_alleles);
+    if (num_aff_alleles != 0){
+      logger << "Recomputing sample posteriors after removing " << num_aff_alleles
+             << " uncalled alleles across " << num_aff_blocks << " blocks" << std::endl;
+      remove_alleles(unused_indices);
+    }
   }
 
   return true;
@@ -791,9 +802,11 @@ void SeqStutterGenotyper::get_stutter_candidate_alleles(int str_block_index, std
 	  candidate_set.insert(seq_iter->first);
   candidate_seqs = std::vector<std::string>(candidate_set.begin(), candidate_set.end());
 
-  logger << "Identified " << candidate_seqs.size() << " additional candidate alleles from stutter artifacts" << "\n";
-  for (unsigned int i = 0; i < candidate_seqs.size(); i++)
-    logger << "\t" << candidate_seqs[i] << "\n";
+  if (candidate_seqs.size() != 0){
+    logger << "Identified " << candidate_seqs.size() << " additional candidate alleles from stutter artifacts" << "\n";
+    for (unsigned int i = 0; i < candidate_seqs.size(); i++)
+      logger << "\t" << candidate_seqs[i] << "\n";
+  }
 }
 
 /*

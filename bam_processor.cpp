@@ -560,6 +560,30 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string
     read_and_filter_reads(reader, chrom_seq, region_group, rg_to_sample, rg_to_library, rg_names,
 			  paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, pass_writer, filt_writer);
 
+    // The user specified a list of samples to which we need to restrict the analyses
+    // Discard reads for any samples not in this set
+    if (!sample_set_.empty()){
+      logger() << "Restricting reads to the " << sample_set_.size() << " samples in the specified sample list" << std::endl;
+      unsigned int ins_index = 0;
+      for (unsigned int i = 0; i < rg_names.size(); i++){
+	if (sample_set_.find(rg_names[i]) != sample_set_.end()){
+	  if (i != ins_index){
+	    rg_names[ins_index]            = rg_names[i];
+	    paired_strs_by_rg[ins_index]   = paired_strs_by_rg[i];
+	    mate_pairs_by_rg[ins_index]    = mate_pairs_by_rg[i];
+	    unpaired_strs_by_rg[ins_index] = unpaired_strs_by_rg[i];
+	  }
+	  ins_index++;
+	}
+      }
+      if (ins_index != rg_names.size()){
+	rg_names.resize(ins_index);
+	paired_strs_by_rg.resize(ins_index);
+	mate_pairs_by_rg.resize(ins_index);
+	unpaired_strs_by_rg.resize(ins_index);
+      }
+    }
+
     if (rem_pcr_dups_)
       remove_pcr_duplicates(base_quality_, use_bam_rgs_, rg_to_library, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, logger());
 

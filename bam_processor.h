@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,7 @@
 #include "base_quality.h"
 #include "error.h"
 #include "region.h"
+#include "stringops.h"
 
 class BamProcessor {
  protected:
@@ -54,6 +56,8 @@ class BamProcessor {
  bool log_to_file_;
  std::ofstream log_;
 
+ std::set<std::string> sample_set_;
+
   public:
  BamProcessor(bool use_bam_rgs, bool remove_pcr_dups){
    use_bam_rgs_             = use_bam_rgs;
@@ -73,7 +77,7 @@ class BamProcessor {
    MAX_STR_LENGTH           = 100;
    MIN_SUM_QUAL_LOG_PROB    = -10;
    log_to_file_             = false;
-   MAX_TOTAL_READS          = 25000;
+   MAX_TOTAL_READS          = 1000000;
    BASE_QUAL_TRIM           = ' ';
  }
 
@@ -124,6 +128,12 @@ class BamProcessor {
 
  inline std::ostream& logger(){
    return (log_to_file_ ? log_ : std::cerr);
+ }
+
+ void set_sample_set(std::string sample_names){
+   std::vector<std::string> sample_list;
+   split_by_delim(sample_names, ',', sample_list);
+   sample_set_ = std::set<std::string>(sample_list.begin(), sample_list.end());
  }
 
  static void add_passes_filters_tag(BamTools::BamAlignment& aln, std::string& passes);

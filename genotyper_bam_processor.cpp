@@ -217,7 +217,8 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
     left_align_reads(region_group, chrom_seq, alignments, log_p1s, log_p2s, filt_log_p1s,
 		     filt_log_p2s, left_alignments);
 
-    seq_genotyper = new SeqStutterGenotyper(region_group, haploid, left_alignments, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq,
+    bool run_assembly = !REQUIRE_SPANNING;
+    seq_genotyper = new SeqStutterGenotyper(region_group, haploid, run_assembly, left_alignments, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq,
 					    stutter_models, ref_vcf_, logger());
 
     if (seq_genotyper->genotype(chrom_seq, logger())) {
