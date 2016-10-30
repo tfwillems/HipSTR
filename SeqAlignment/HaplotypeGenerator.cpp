@@ -233,8 +233,8 @@ void HaplotypeGenerator::gen_candidate_seqs(std::string& ref_seq, int ideal_min_
     sequences[0]         = ref_seq;
   }
 
-  // Sort regions by length (apart from reference sequence)
-  std::sort(sequences.begin()+1, sequences.end(), stringLengthLT);
+  // Sort regions by length and then by sequence (apart from reference sequence)
+  std::sort(sequences.begin()+1, sequences.end(), orderByLengthAndSequence);
 
   // Clip identical regions
   trim(ideal_min_length, region_start, region_end, sequences);

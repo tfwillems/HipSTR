@@ -32,9 +32,12 @@ bool string_ends_with(std::string& s, std::string suffix){
   return s.substr(s.size()-suffix.size(), suffix.size()).compare(suffix) == 0;
 }
 
-bool stringLengthLT(const std::string& s1, const std::string& s2){
-  return s1.size() < s2.size();
+bool orderByLengthAndSequence(const std::string& s1, const std::string s2){
+  if (s1.size() != s2.size())
+    return s1.size() < s2.size();
+  return s1.compare(s2) < 0;
 }
+
 
 int length_suffix_match(std::string& s1, std::string& s2){
   auto iter_1 = s1.rbegin();

@@ -147,13 +147,15 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 
 
     // Remove alleles with no MAP genotype calls and recompute the posteriors
-    std::vector< std::vector<int> > unused_indices;
-    int num_aff_blocks = 0, num_aff_alleles = 0;
-    get_unused_alleles(false, true, unused_indices, num_aff_blocks, num_aff_alleles);
-    if (num_aff_alleles != 0){
-      logger << "Recomputing sample posteriors after removing " << num_aff_alleles
-             << " uncalled alleles across " << num_aff_blocks << " blocks" << std::endl;
-      remove_alleles(unused_indices);
+    if (ref_vcf_ == NULL){
+      std::vector< std::vector<int> > unused_indices;
+      int num_aff_blocks = 0, num_aff_alleles = 0;
+      get_unused_alleles(false, true, unused_indices, num_aff_blocks, num_aff_alleles);
+      if (num_aff_alleles != 0){
+	logger << "Recomputing sample posteriors after removing " << num_aff_alleles
+	       << " uncalled alleles across " << num_aff_blocks << " blocks" << std::endl;
+	remove_alleles(unused_indices);
+      }
     }
   }
 
@@ -520,7 +522,7 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::string& chrom_seq
 	  if (allele_iter->size() < std::abs(block->get_repeat_info()->max_deletion()))
 	    return false;
 	added_alleles |= !stutter_seqs[i].empty();
-	std::sort(stutter_seqs[i].begin(), stutter_seqs[i].end(), stringLengthLT);
+	std::sort(stutter_seqs[i].begin(), stutter_seqs[i].end(), orderByLengthAndSequence);
       }
     }
     // Terminate if no new alleles identified in any of the blocks
@@ -615,7 +617,7 @@ void SeqStutterGenotyper::reorder_alleles(std::vector<std::string>& alleles,
   for (int i = 0; i < alleles.size(); i++)
     tuples.push_back(std::pair<std::string, int>(alleles[i], i));
   std::sort(tuples.begin()+1, tuples.end(), [](const std::pair<std::string, int>& left, const std::pair<std::string, int>& right) { 
-      return stringLengthLT(left.first, right.first);});
+      return orderByLengthAndSequence(left.first, right.first);});
 
   old_to_new = std::vector<int>(alleles.size(), -1);
   for (int i = 0; i < tuples.size(); i++){
