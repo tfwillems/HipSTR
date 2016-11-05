@@ -5,13 +5,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "fastahack/Fasta.h"
-
 #include "bam_processor.h"
 #include "alignment_filters.h"
 #include "error.h"
+#include "fasta_reader.h"
 #include "pcr_duplicates.h"
-#include "seqio.h"
 #include "stringops.h"
 #include "SeqAlignment/AlignmentOps.h"
 
@@ -502,12 +500,7 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string
   readRegions(region_file, regions, max_regions, chrom, logger());
   orderRegions(regions);
 
-  FastaReference* fasta_ref = NULL;
-  if (is_file(fasta_dir)){
-    fasta_ref = new FastaReference();
-    fasta_ref->open(fasta_dir);
-  }
-
+  FastaReader fasta_reader(fasta_dir);
   std::string ref_seq;
   BamTools::RefVector ref_vector = reader.GetReferenceData();
   int cur_chrom_id = -1; std::string chrom_seq;
@@ -534,10 +527,7 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string
     if (cur_chrom_id != chrom_id){
       cur_chrom_id      = chrom_id;
       std::string chrom = region_iter->chrom();
-      if (fasta_ref != NULL)
-	chrom_seq = fasta_ref->getSequence(chrom);
-      else
-	readFastaFromDir(chrom+".fa", fasta_dir, chrom_seq);
+      fasta_reader.get_sequence(chrom, chrom_seq);
       assert(chrom_seq.size() != 0);
     }
 
@@ -589,7 +579,4 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string
 
     process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, region_group, chrom_seq, out);
   }
-
-  if (fasta_ref != NULL)
-    delete fasta_ref;
 }

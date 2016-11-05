@@ -14,7 +14,6 @@
 #include "error.h"
 #include "genotyper_bam_processor.h"
 #include "pedigree.h"
-#include "seqio.h"
 #include "stringops.h"
 #include "vcf_reader.h"
 #include "version.h"
@@ -357,9 +356,6 @@ int main(int argc, char** argv){
     printErrorAndDie("--region option required");
   else if (fasta_dir.empty())
     printErrorAndDie("--fasta option required");
-
-  if (fasta_dir.back() != '/' && !is_file(fasta_dir))
-    fasta_dir += "/";
 
   std::vector<std::string> bam_files;
   if (!bamlist_string.empty())

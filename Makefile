@@ -22,9 +22,9 @@ LDFLAGS=
 endif
 
 ## Source code files, add new files to this list
-SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp seqio.cpp zalgorithm.cpp alignment_filters.cpp extract_indels.cpp mathops.cpp pcr_duplicates.cpp fastahack/Fasta.cpp fastahack/split.cpp
+SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp zalgorithm.cpp alignment_filters.cpp extract_indels.cpp mathops.cpp pcr_duplicates.cpp
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
-SRC_HIPSTR  = hipstr_main.cpp bam_processor.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp vcf_input.cpp read_pooler.cpp version.cpp haplotype_tracker.cpp pedigree.cpp vcf_reader.cpp genotyper.cpp directed_graph.cpp debruijn_graph.cpp
+SRC_HIPSTR  = hipstr_main.cpp bam_processor.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp vcf_input.cpp read_pooler.cpp version.cpp haplotype_tracker.cpp pedigree.cpp vcf_reader.cpp genotyper.cpp directed_graph.cpp debruijn_graph.cpp fasta_reader.cpp
 SRC_SEQALN  = SeqAlignment/AlignmentData.cpp SeqAlignment/HapAligner.cpp SeqAlignment/RepeatStutterInfo.cpp SeqAlignment/AlignmentModel.cpp SeqAlignment/AlignmentOps.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NeedlemanWunsch.cpp SeqAlignment/Haplotype.cpp SeqAlignment/RepeatBlock.cpp SeqAlignment/HaplotypeGenerator.cpp SeqAlignment/HTMLCreator.cpp SeqAlignment/AlignmentViz.cpp SeqAlignment/AlignmentTraceback.cpp SeqAlignment/StutterAlignerClass.cpp
 SRC_RNASEQ  = exploratory/filter_rnaseq.cpp exploratory/exon_info.cpp
 SRC_DENOVO  = denovo_main.cpp error.cpp stringops.cpp version.cpp pedigree.cpp haplotype_tracker.cpp vcf_input.cpp denovo_scanner.cpp mathops.cpp vcf_reader.cpp
@@ -44,14 +44,15 @@ HTSLIB_ROOT=htslib
 LIBS              = -L./ -lm -L$(HTSLIB_ROOT)/ -L$(BAMTOOLS_ROOT)/lib -lz -L$(CEPHES_ROOT)/
 INCLUDE           = -I$(BAMTOOLS_ROOT)/src
 BAMTOOLS_LIB      = $(BAMTOOLS_ROOT)/lib/libbamtools.a
-FASTA_HACK_LIB    = fastahack/Fasta.o
 CEPHES_LIB        = cephes/libprob.a
 HTSLIB_LIB        = $(HTSLIB_ROOT)/libhts.a
 
 .PHONY: all
-all: version BamSieve HipSTR DenovoFinder test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/snp_tree_test test/vcf_snp_tree_test exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
+all: version BamSieve HipSTR DenovoFinder test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/snp_tree_test test/vcf_snp_tree_test
 	rm version.cpp
 	touch version.cpp
+
+exploratory: exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
 
 # Create a tarball with static binaries
 .PHONY: static-dist
@@ -91,16 +92,16 @@ include $(subst .cpp,.d,$(SRC))
 
 # The resulting binary executable
 
-BamSieve: $(OBJ_COMMON) $(OBJ_SIEVE) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB)
+BamSieve: $(OBJ_COMMON) $(OBJ_SIEVE) $(BAMTOOLS_LIB) $(HTSLIB_LIB)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB) $(CEPHES_LIB) $(HTSLIB_LIB) $(OBJ_SEQALN)
+HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(CEPHES_LIB) $(HTSLIB_LIB) $(OBJ_SEQALN)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 DenovoFinder: $(OBJ_DENOVO) $(HTSLIB_LIB)
 	$(CXX) $(LDFALGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-exploratory/RNASeq: $(OBJ_COMMON) $(OBJ_RNASEQ) $(BAMTOOLS_LIB) $(FASTA_HACK_LIB)
+exploratory/RNASeq: $(OBJ_COMMON) $(OBJ_RNASEQ) $(BAMTOOLS_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/haplotype_test: test/haplotype_test.cpp SeqAlignment/Haplotype.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NeedlemanWunsch.cpp SeqAlignment/RepeatBlock.cpp error.cpp stringops.cpp
@@ -127,7 +128,7 @@ exploratory/Clipper: exploratory/count_trimmed_bases.cpp error.cpp zalgorithm.cp
 exploratory/10X: base_quality.cpp exploratory/calc_10x_barcode_phasings.cpp error.cpp mathops.cpp snp_phasing_quality.cpp snp_tree.cpp haplotype_tracker.cpp vcf_reader.cpp $(BAMTOOLS_LIB) $(HTSLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-exploratory/Mapper: error.cpp seqio.cpp stringops.cpp vcf_reader.cpp exploratory/mapping_efficiency.cpp $(BAMTOOLS_LIB) $(CEPHES_LIB) $(FASTA_HACK_LIB) $(HTSLIB_LIB) fastahack/split.o
+exploratory/Mapper: error.cpp fasta_reader.cpp stringops.cpp vcf_reader.cpp exploratory/mapping_efficiency.cpp $(BAMTOOLS_LIB) $(CEPHES_LIB) $(HTSLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 # Build each object file independently
@@ -143,12 +144,6 @@ $(BAMTOOLS_LIB):
 	git submodule update --init --recursive bamtools
 	git submodule update --recursive bamtools
 	( cd bamtools && mkdir build && cd build && cmake .. && $(MAKE) )
-
-# Rebuild fastahack if needed
-$(FASTA_HACK_LIB):
-	git submodule update --init --recursive fastahack
-	git submodule update --recursive fastahack
-	cd fastahack && $(MAKE)
 
 # Rebuild CEPHES library if needed
 $(CEPHES_LIB):
