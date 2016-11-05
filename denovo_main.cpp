@@ -21,7 +21,7 @@ bool file_exists(std::string path){
 }
 
 void print_usage(){
-  std::cerr << "Usage: DenovoFinder --fam <fam_file> --snp-vcf <phased_snps.vcf.gz> --str-vcf <str_gts.vcf.gz> [OPTIONS]" << "\n" << "\n"
+  std::cerr << "Usage: DenovoFinder --fam <fam_file> --snp-vcf <phased_snps.vcf.gz> --str-vcf <str_gts.vcf.gz> --denovo-vcf <denovos.vcf.gz> [OPTIONS]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
 	    << "\t" << "--fam        <fam_file>            "  << "\t" << "FAM file containing pedigree information for samples of interest"                     << "\n"
