@@ -167,6 +167,12 @@ void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std
       if (!scan_for_denovo)
 	denovo_vcf_ << "\t" << ".";
       else {
+	// To accelerate computations, we will ignore configurations that make a neglible contribution (< 0.01%) to the total LL
+	// For mutational scenarios, we aggregate A^5*2*NUM_CHILDREN values. Therefore, to ignore a configuration with LL=X:
+	// X*A^5*2*NUM_CHILDREN < TOTAL/10000;
+	// logX < log(TOTAL) - log(10000*A^5*2*NUM_CHILDREN) = log(TOTAL) - [log(10000) + 5log(A) + log(2) + log(NUM_CHILDREN)];
+	float MIN_CONTRIBUTION = 4 + 5*log10(num_alleles) + log10(2) + log10(family_iter->get_children().size());
+
 	assert(family_iter->get_children().size() == maternal_indices.size() && maternal_indices.size() == paternal_indices.size());
 	double ll_no_mutation_max = -DBL_MAX/2, ll_no_mutation_total = 0.0;
 	std::vector<double> ll_one_denovo_max(family_iter->get_children().size(), -DBL_MAX/2), ll_one_denovo_total(family_iter->get_children().size(), 0.0);
@@ -226,26 +232,32 @@ void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std
 
 		  double config_ll = no_mutation_config_ll - phased_gls.get_gl(children_gl_index[child_index], child_i, child_j);
 
-		  // All putative mutations on haplotype #1
-		  for (int mut_allele = 0; mut_allele < num_alleles; mut_allele++){
-		    if (mut_allele == child_i)
-		      continue;
-		    double prob = config_ll + phased_gls.get_gl(children_gl_index[child_index], mut_allele, child_j) + mut_model.log_prior_mutation(child_i, mut_allele);
-		    if (mut_allele != mat_i && mut_allele != mat_j && mut_allele != pat_i && mut_allele != pat_j)
-		      update_streaming_log_sum_exp(prob, ll_one_denovo_max[child_index], ll_one_denovo_total[child_index]);
-		    else
-		      update_streaming_log_sum_exp(prob, ll_one_other_max[child_index], ll_one_other_total[child_index]);
+		  // All putative mutations on haplotype #1 (if they can contribute to the total LL)
+		  double max_ll_hap_one = config_ll + phased_gls.get_max_gl_allele_two_fixed(children_gl_index[child_index], child_j);
+		  if (max_ll_hap_one > std::min(ll_one_denovo_max[child_index], ll_one_other_max[child_index])-MIN_CONTRIBUTION){
+		    for (int mut_allele = 0; mut_allele < num_alleles; mut_allele++){
+		      if (mut_allele == child_i)
+			continue;
+		      double prob = config_ll + phased_gls.get_gl(children_gl_index[child_index], mut_allele, child_j) + mut_model.log_prior_mutation(child_i, mut_allele);
+		      if (mut_allele != mat_i && mut_allele != mat_j && mut_allele != pat_i && mut_allele != pat_j)
+			update_streaming_log_sum_exp(prob, ll_one_denovo_max[child_index], ll_one_denovo_total[child_index]);
+		      else
+			update_streaming_log_sum_exp(prob, ll_one_other_max[child_index], ll_one_other_total[child_index]);
+		    }
 		  }
 
-		  // All putative mutations on haplotype #2
-		  for (int mut_allele = 0; mut_allele < num_alleles; mut_allele++){
-		    if (mut_allele == child_j)
-		      continue;
-		    double prob = config_ll + phased_gls.get_gl(children_gl_index[child_index], child_i, mut_allele) + mut_model.log_prior_mutation(child_j, mut_allele);
-		    if (mut_allele != mat_i && mut_allele != mat_j && mut_allele != pat_i && mut_allele != pat_j)
-		      update_streaming_log_sum_exp(prob, ll_one_denovo_max[child_index], ll_one_denovo_total[child_index]);
-		    else
-		      update_streaming_log_sum_exp(prob, ll_one_other_max[child_index], ll_one_other_total[child_index]);
+		  // All putative mutations on haplotype #2 (if they can contribute to the total LL)
+		  double max_ll_hap_two = config_ll + phased_gls.get_max_gl_allele_one_fixed(children_gl_index[child_index], child_i);
+		  if (max_ll_hap_two > std::min(ll_one_denovo_max[child_index], ll_one_other_max[child_index])-MIN_CONTRIBUTION){
+		    for (int mut_allele = 0; mut_allele < num_alleles; mut_allele++){
+		      if (mut_allele == child_j)
+			continue;
+		      double prob = config_ll + phased_gls.get_gl(children_gl_index[child_index], child_i, mut_allele) + mut_model.log_prior_mutation(child_j, mut_allele);
+		      if (mut_allele != mat_i && mut_allele != mat_j && mut_allele != pat_i && mut_allele != pat_j)
+			update_streaming_log_sum_exp(prob, ll_one_denovo_max[child_index], ll_one_denovo_total[child_index]);
+		      else
+			update_streaming_log_sum_exp(prob, ll_one_other_max[child_index], ll_one_other_total[child_index]);
+		    }
 		  }
 		}
 	      }

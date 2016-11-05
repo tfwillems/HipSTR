@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <assert.h>
+#include <cfloat>
 #include <math.h>
 
 #include "error.h"
@@ -62,12 +63,25 @@ bool PhasedGL::build(VCF::Variant& variant){
   num_samples_         = 0;
   num_alleles_         = variant.num_alleles();
   int vcf_sample_index = 0;
+
   const std::vector<std::string>& samples = variant.get_samples();
   for (auto sample_iter = samples.begin(); sample_iter != samples.end(); ++sample_iter, ++vcf_sample_index){
     if (variant.sample_call_missing(vcf_sample_index))
       continue;
     phased_gls_.push_back(values[vcf_sample_index]);
     sample_indices_[*sample_iter] = num_samples_++;
+
+    std::vector<float> max_gl_one(num_alleles_, -DBL_MAX/2), max_gl_two(num_alleles_, -DBL_MAX/2);
+    int gl_index = 0;
+    for (int i = 0; i < num_alleles_; ++i){
+      for (int j = 0; j < num_alleles_; ++j, ++gl_index){
+	max_gl_one[i] = std::max(max_gl_one[i], phased_gls_.back()[gl_index]);
+	max_gl_two[j] = std::max(max_gl_two[j], phased_gls_.back()[gl_index]);
+      }
+    }
+
+    max_gls_one_.push_back(max_gl_one);
+    max_gls_two_.push_back(max_gl_two);
   }
 
   return true;
