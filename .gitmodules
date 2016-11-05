@@ -2,9 +2,6 @@
 	path = bamtools
 	url = https://github.com/tfwillems/bamtools.git
 	ignore = dirty
-[submodule "fastahack"]
-	path = fastahack
-	url = https://github.com/ekg/fastahack.git
 [submodule "htslib"]
 	path = htslib
 	url = https://github.com/samtools/htslib.git
