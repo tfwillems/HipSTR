@@ -46,7 +46,7 @@ class HaplotypeGenerator {
 		      int32_t& min_aln_start, int32_t& max_aln_stop);
 
  public:
-  HaplotypeGenerator(){
+  HaplotypeGenerator(int32_t min_aln_start, int32_t max_aln_stop){
     failure_msg_             = "";
     finished_                = false;
     MIN_FRAC_READS           = 0.05;
@@ -58,9 +58,11 @@ class HaplotypeGenerator {
     RIGHT_PAD                = 5;
     MIN_BLOCK_SPACING        = 10;
     REF_FLANK_LEN            = 35;
+    min_aln_start_           = min_aln_start;
+    max_aln_stop_            = max_aln_stop;
   }
 
-  bool add_vcf_haplotype_block(int32_t pos, std::string& chrom_seq, std::vector< std::vector<Alignment> >& alignments,
+  bool add_vcf_haplotype_block(int32_t pos, std::string& chrom_seq,
 			       std::vector<std::string>& vcf_alleles, StutterModel* stutter_model);
 
   bool add_haplotype_block(const Region& region, std::string& chrom_seq, std::vector< std::vector<Alignment> >& alignments,

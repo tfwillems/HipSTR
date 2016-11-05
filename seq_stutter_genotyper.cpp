@@ -370,7 +370,15 @@ bool SeqStutterGenotyper::build_haplotype(std::string& chrom_seq, std::vector<St
   assert(hap_blocks_.empty() && haplotype_ == NULL);
   logger << "Generating candidate haplotypes" << std::endl;
 
-  HaplotypeGenerator hap_generator;
+
+  // Determine the minimum and maximum alignment boundaries
+  int32_t min_aln_start = INT_MAX, max_aln_stop = INT_MIN;
+  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
+    min_aln_start = std::min(min_aln_start, alns_[read_index].get_start());
+    max_aln_stop  = std::max(max_aln_stop,  alns_[read_index].get_stop());
+  }
+
+  HaplotypeGenerator hap_generator(min_aln_start, max_aln_stop);
   const std::vector<Region>& regions = region_group_->regions();
   bool success = true;
   for (int region_index = 0; region_index < regions.size(); region_index++){
@@ -390,7 +398,7 @@ bool SeqStutterGenotyper::build_haplotype(std::string& chrom_seq, std::vector<St
       }
 
       // Add the haplotype block based on the extracted VCF alleles
-      if (!hap_generator.add_vcf_haplotype_block(pos, chrom_seq, gen_hap_alns, vcf_alleles, stutter_models[region_index])){
+      if (!hap_generator.add_vcf_haplotype_block(pos, chrom_seq, vcf_alleles, stutter_models[region_index])){
 	logger << "Haplotype construction failed: " << hap_generator.failure_msg() << std::endl;
 	success = false;
 	break;

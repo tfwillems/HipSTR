@@ -253,7 +253,7 @@ void HaplotypeGenerator::get_aln_bounds(std::vector< std::vector<Alignment> >& a
   }
 }
 
-bool HaplotypeGenerator::add_vcf_haplotype_block(int32_t pos, std::string& chrom_seq, std::vector< std::vector<Alignment> >& alignments,
+bool HaplotypeGenerator::add_vcf_haplotype_block(int32_t pos, std::string& chrom_seq,
 						 std::vector<std::string>& vcf_alleles, StutterModel* stutter_model){
   if (!failure_msg_.empty())
     printErrorAndDie("Unable to add a VCF haplotype block, as a previous addition failed");
@@ -261,19 +261,6 @@ bool HaplotypeGenerator::add_vcf_haplotype_block(int32_t pos, std::string& chrom
   int32_t region_start = pos;
   int32_t region_end   = region_start + vcf_alleles[0].size();
   assert(uppercase(vcf_alleles[0]).compare(uppercase(chrom_seq.substr(region_start, region_end-region_start))) == 0);
-
-  // Extract the alignment boundaries
-  int32_t min_aln_start, max_aln_stop;
-  get_aln_bounds(alignments, min_aln_start, max_aln_stop);
-  if (hap_blocks_.empty())
-    min_aln_start_ = min_aln_start;
-  max_aln_stop_ = max_aln_stop;
-
-  // Ensure that we have some spanning alignments to work with
-  if (min_aln_start + 5 >= region_start || max_aln_stop - 5 <= region_end){
-    failure_msg_ = "No spanning alignments";
-    return false;
-  }
 
   // Ensure that we don't exceed the chromosome bounds
   if (region_start < REF_FLANK_LEN || region_end + REF_FLANK_LEN >= chrom_seq.size()){
@@ -310,15 +297,12 @@ bool HaplotypeGenerator::add_haplotype_block(const Region& region, std::string& 
   // Extract the alignment boundaries
   int32_t min_aln_start, max_aln_stop;
   get_aln_bounds(alignments, min_aln_start, max_aln_stop);
-  if (hap_blocks_.empty())
-    min_aln_start_ = min_aln_start;
-  max_aln_stop_ = max_aln_stop;
 
   // Ensure that we have some spanning alignments to work with
   int32_t region_start = region.start() - LEFT_PAD;
   int32_t region_end   = region.stop()  + RIGHT_PAD;
   std::string ref_seq  = uppercase(chrom_seq.substr(region_start, region_end-region_start));
-  if (min_aln_start_ + 5 >= region_start || max_aln_stop_ - 5 <= region_end){
+  if (min_aln_start + 5 >= region_start || max_aln_stop - 5 <= region_end){
     failure_msg_ = "No spanning alignments";
     return false;
   }
@@ -357,14 +341,13 @@ bool HaplotypeGenerator::fuse_haplotype_blocks(std::string& chrom_seq){
     printErrorAndDie("Unable to fuse haplotype blocks, as previous additions failed");
   if (hap_blocks_.empty())
     printErrorAndDie("Unable to fuse haplotype blocks, as none have been added");
+  assert(REF_FLANK_LEN > 10);
   assert(hap_blocks_.front()->start() >= REF_FLANK_LEN);
   assert(hap_blocks_.back()->end() + REF_FLANK_LEN <= chrom_seq.size());
-  assert(min_aln_start_ <= hap_blocks_.front()->start());
-  assert(max_aln_stop_  >= hap_blocks_.back()->end());
 
   // Trim boundaries so that the reference flanks aren't too long
-  int32_t min_start = std::max(hap_blocks_.front()->start() - REF_FLANK_LEN, min_aln_start_);
-  int32_t max_stop  = std::min(hap_blocks_.back()->end()    + REF_FLANK_LEN, max_aln_stop_);
+  int32_t min_start = std::min(hap_blocks_.front()->start()-10, std::max(hap_blocks_.front()->start() - REF_FLANK_LEN, min_aln_start_));
+  int32_t max_stop  = std::max(hap_blocks_.back()->end()+10,    std::min(hap_blocks_.back()->end()    + REF_FLANK_LEN, max_aln_stop_));
 
   // Interleave the existing variant blocks with new reference-only haplotype blocks
   std::vector<HapBlock*> fused_blocks;
