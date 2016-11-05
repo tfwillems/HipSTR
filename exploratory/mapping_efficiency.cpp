@@ -4,11 +4,9 @@
 #include <random>
 #include <string>
 
-#include "../fastahack/Fasta.h"
-
 #include "../bgzf_streams.h"
 #include "../error.h"
-#include "../seqio.h"
+#include "../fasta_reader.h"
 #include "../stringops.h"
 #include "../vcf_reader.h"
 
@@ -88,12 +86,7 @@ int main(int argc, char** argv){
   fastq_writer.open(fastq_out.c_str());
   VCF::VCFReader vcf(vcf_file);
 
-  FastaReference* fasta_ref = NULL;
-  if (is_file(fasta_dir)){
-    fasta_ref = new FastaReference();
-    fasta_ref->open(fasta_dir);
-  }
-
+  FastaReader fasta_reader(fasta_dir);
   std::string chrom_seq  = "";
   std::string prev_chrom = "";
   VCF::Variant variant;
@@ -103,10 +96,7 @@ int main(int argc, char** argv){
 
     // Load new FASTA sequence if necessary
     if (var_chrom.compare(prev_chrom) != 0){
-     if (fasta_ref != NULL)
-	chrom_seq = fasta_ref->getSequence(var_chrom);
-      else
-	readFastaFromDir(var_chrom+".fa", fasta_dir, chrom_seq);
+      fasta_reader.get_sequence(var_chrom, chrom_seq);
       prev_chrom = var_chrom;
       assert(chrom_seq.size() != 0);
     }
@@ -159,8 +149,5 @@ int main(int argc, char** argv){
       gt++;
     }
   }
-
-  if (fasta_ref != NULL)
-    delete fasta_ref;
 }
 
