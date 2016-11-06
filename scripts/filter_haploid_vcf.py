@@ -195,7 +195,6 @@ def main():
           filt_counts = [0, 0, 0, 0, 0, 0, 0, 0, 0]
           num_kept    = 0
           total_dp          = 0
-          total_dfilt       = 0
           total_dstutter    = 0
           total_dflankindel = 0
           for sample in record:
@@ -223,7 +222,6 @@ def main():
                         else:
                             sampdat.append(sample[key])
                     total_dp          += sample['DP']
-                    total_dfilt       += sample['DFILT']
                     total_dstutter    += sample['DSTUTTER']
                     total_dflankindel += sample['DFLANKINDEL']
                     
@@ -260,7 +258,6 @@ def main():
 
           # Recompute DP and other read depth info fields
           record.INFO['DP']          = total_dp
-          record.INFO['DFILT']       = total_dfilt
           record.INFO['DSTUTTER']    = total_dstutter
           record.INFO['DFLANKINDEL'] = total_dflankindel
           record.INFO['NFILT']      += sum(filt_counts[1:])

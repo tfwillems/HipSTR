@@ -20,8 +20,8 @@ def filter_call(sample, filters):
                return "Flank indels"
           elif filters.STUTTER_FRAC < 1 and 1.0*sample['DSTUTTER']/sample['DP'] > filters.STUTTER_FRAC:
                return "Stutter fraction"
-          elif filters.BSTRAP_QUAL > 0 and 1.0*sample['BQ'] < filters.BSTRAP_QUAL:
-               return "Bootstrap quality"
+          elif filters.ALLELE_BIAS > -100 and sample["AB"] is not None and sample['AB'] < filters.ALLELE_BIAS:
+               return "Allele bias"
 
           if filters.SPAN_DEPTH > 0:
                if sample["MALLREADS"] is None:
@@ -56,8 +56,8 @@ def main():
      parser.add_argument("--max-call-stutter", type=float, required=False, default=1.0, dest="STUTTER_FRAC",
                          help="Omit a sample's call if the fraction of reads with a stutter artifact (FORMAT fields DSTUTTER/DP) > STUTTER_FRAC")
                          
-     parser.add_argument("--min-call-bstrap-qual", type=float, required=False, default=0.0, dest="BSTRAP_QUAL",
-                         help="Omit a sample's call if BQ < BSTRAP_QUAL")
+     parser.add_argument("--min-call-allele-bias", type=float, required=False, default=-100.0, dest="ALLELE_BIAS",
+                         help="Omit a sample's call if AB < ALLELE_BIAS")
 
      parser.add_argument("--min-call-spanning-depth", type=int, required=False, default=0.0, dest="SPAN_DEPTH",
                          help="Omit a sample's call if the minimum number of spanning reads supporting an allele < SPAN_DEPTH")
@@ -134,7 +134,6 @@ def main():
           num_filt          = 0
           num_kept          = 0
           total_dp          = 0
-          total_dfilt       = 0
           total_dstutter    = 0
           total_dflankindel = 0
           for sample in record:
@@ -158,7 +157,6 @@ def main():
                             sampdat.append(sample[key])
 
                     total_dp          += sample['DP']
-                    total_dfilt       += sample['DFILT']
                     total_dstutter    += sample['DSTUTTER']
                     total_dflankindel += sample['DFLANKINDEL']
 
@@ -184,7 +182,6 @@ def main():
                record.INFO['NFILT'] += num_filt
 
           record.INFO['DP']          = total_dp
-          record.INFO['DFILT']       = total_dfilt
           record.INFO['DSTUTTER']    = total_dstutter
           record.INFO['DFLANKINDEL'] = total_dflankindel
 
