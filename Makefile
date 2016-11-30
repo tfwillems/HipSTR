@@ -151,4 +151,6 @@ $(CEPHES_LIB):
 
 # Rebuild htslib library if needed
 $(HTSLIB_LIB):
+	git submodule update --init --recursive htslib
+	git submodule update --recursive htslib
 	cd htslib && $(MAKE)
