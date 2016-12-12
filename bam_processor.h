@@ -53,6 +53,8 @@ class BamProcessor {
  protected:
  BaseQuality base_quality_;
 
+ bool bams_from_10x_; // True iff BAMs were generated from 10X GEMCODE platform
+
  bool log_to_file_;
  std::ofstream log_;
 
@@ -79,6 +81,7 @@ class BamProcessor {
    log_to_file_             = false;
    MAX_TOTAL_READS          = 1000000;
    BASE_QUAL_TRIM           = ' ';
+   bams_from_10x_           = false;
  }
 
  ~BamProcessor(){
@@ -134,6 +137,10 @@ class BamProcessor {
    std::vector<std::string> sample_list;
    split_by_delim(sample_names, ',', sample_list);
    sample_set_ = std::set<std::string>(sample_list.begin(), sample_list.end());
+ }
+
+ void use_10x_bam_tags(){
+   bams_from_10x_ = true;
  }
 
  static void add_passes_filters_tag(BamTools::BamAlignment& aln, std::string& passes);
