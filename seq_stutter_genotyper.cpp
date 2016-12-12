@@ -72,6 +72,7 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 	    assembler.add_string(seq);
 	}
 
+	assembler.prune_edges(0.02, 2);
 	if (!assembler.has_cycles() && assembler.is_source_ok() && assembler.is_sink_ok()){
 	  acyclic = true;
 	  assembler.enumerate_paths(MIN_PATH_WEIGHT, 10, assembly_data);
