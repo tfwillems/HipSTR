@@ -20,11 +20,13 @@ class Edge {
     weight_      = weight;
   }
 
-  int get_source()           { return source_;      }
-  int get_destination()      { return destination_; }
-  void inc_weight(int delta) { weight_ += delta;    }
-  void dec_weight(int delta) { weight_ -= delta;    }
-  int  get_weight()          { return weight_;      }
+  int  get_source()              { return source_;      }
+  int  get_destination()         { return destination_; }
+  void set_source(int source)    { source_ = source;    }
+  void set_destination(int dest) { destination_ = dest; }
+  void inc_weight(int delta)     { weight_ += delta;    }
+  void dec_weight(int delta)     { weight_ -= delta;    }
+  int  get_weight()              { return weight_;      }
 };
 
 class Node {
@@ -47,7 +49,8 @@ class Node {
     id_ = id;
   }
 
-  int get_id(){ return id_; }
+  int get_id()       { return id_; }
+  void set_id(int id){ id_ = id;   }
   std::vector<Edge*>& get_incident_edges() { return arriving_;         }
   std::vector<Edge*>& get_departing_edges(){ return departing_;        }
   int num_departing_edges()                { return departing_.size(); }
