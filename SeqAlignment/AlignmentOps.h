@@ -9,7 +9,8 @@
 
 extern const int ALIGN_WINDOW_WIDTH;
 
-bool GetIntBamTag(const BamTools::BamAlignment& aln, const std::string& tag_name, int* destination);
+bool GetFloatBamTag(const BamTools::BamAlignment& aln, const std::string& tag_name, float* destination);
+bool   GetIntBamTag(const BamTools::BamAlignment& aln, const std::string& tag_name, int* destination);
 
 bool realign(BamTools::BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment);
 

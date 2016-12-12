@@ -7,9 +7,22 @@
 
 extern const int ALIGN_WINDOW_WIDTH = 75;
 
-bool GetIntBamTag(const BamTools::BamAlignment& aln, const std::string& tag_name, int* destination) {
+bool GetFloatBamTag(const BamTools::BamAlignment& aln, const std::string& tag_name, float* destination){
   char tag_type;
-  if (!aln.GetTagType(tag_name, tag_type)) {return false;}
+  if (!aln.GetTagType(tag_name, tag_type))
+    return false;
+  if (tag_type != BamTools::Constants::BAM_TAG_TYPE_FLOAT)
+    return false;
+  float val;
+  if (!aln.GetTag(tag_name, val))
+    return false;
+  *destination = val;
+  return true;
+}
+
+bool GetIntBamTag(const BamTools::BamAlignment& aln, const std::string& tag_name, int* destination){
+  char tag_type;
+  if (!aln.GetTagType(tag_name, tag_type)) return false;
   switch (tag_type) {
   case (BamTools::Constants::BAM_TAG_TYPE_INT32):
     return aln.GetTag(tag_name, *destination);
