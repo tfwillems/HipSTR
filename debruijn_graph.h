@@ -13,17 +13,21 @@ class DebruijnPath;
 class DebruijnGraph : public DirectedGraph {
  protected:
   int k_;
-  std::string source_kmer;
-  std::string sink_kmer;
+  std::string ref_seq_;
+  std::string source_kmer_;
+  std::string sink_kmer_;
+  int32_t num_strings_;
 
   void get_alt_kmer_nodes(std::string& kmer, bool source, bool sink, std::vector<Node*>& nodes);
 
  public:
   DebruijnGraph(int k, std::string& ref_seq){
     assert(ref_seq.size() > k);
-    k_          = k;
-    source_kmer = ref_seq.substr(0, k_);
-    sink_kmer   = ref_seq.substr(ref_seq.size()-k, k_);
+    k_           = k;
+    ref_seq_     = ref_seq;
+    source_kmer_ = ref_seq.substr(0, k_);
+    sink_kmer_   = ref_seq.substr(ref_seq.size()-k, k_);
+    num_strings_ = 0;
 
     // Add the reference path with a weight of 10
     add_string(ref_seq, 2);
@@ -38,6 +42,8 @@ class DebruijnGraph : public DirectedGraph {
   bool is_source_ok();
 
   bool is_sink_ok();
+
+  void prune_edges(double min_edge_freq, int min_weight);
 };
 
 class DebruijnPath {
