@@ -15,9 +15,13 @@ void DirectedGraph::increment_edge(std::string& val_1, std::string& val_2, int d
   }
 
   Edge* new_edge = new Edge(source_id, dest->get_id(), delta);
+  if (source_id == dest->get_id())
+    source->add_edge(new_edge);
+  else {
+    source->add_edge(new_edge);
+    dest->add_edge(new_edge);
+  }
   edges_.push_back(new_edge);
-  source->add_edge(new_edge);
-  dest->add_edge(new_edge);
 }
 
 bool DirectedGraph::can_sort_topologically(){
