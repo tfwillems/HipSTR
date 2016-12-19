@@ -23,7 +23,7 @@ bool endsWithHardClip(const BamTools::BamAlignment& aln);
 bool matchesReference(const BamTools::BamAlignment& aln);
 
 
-void trimAlignment(BamTools::BamAlignment& aln, int32_t min_read_start, int32_t max_read_stop, char min_base_qual='~');
+void trimAlignment(BamTools::BamAlignment& aln, int32_t min_read_start, int32_t max_read_stop, char min_base_qual='~', int32_t min_ltrim=0, int32_t min_rtrim=0);
 
 void trimLowQualityEnds(BamTools::BamAlignment& aln, char min_base_qual);
 
