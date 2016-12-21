@@ -77,7 +77,7 @@ void BamProcessor::get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::B
   // to the suboptimal alignment score.
   //  i) If the mate pair has no XA tag, we require that it has a decent alignment score relative to its best alternate score.
   //     Otherwise, the mate mapping information is not informative and we discard the pair of reads.
-  // ii) If the mate pairs has an XA tag but the read has no XA tag, we require that the read has a decent alignment score relative to its best alternate score.
+  // ii) If the mate pair has an XA tag but the read has no XA tag, we require that the read has a decent alignment score relative to its best alternate score.
   //     Otherwise, even with an informative mate, there may be other equally valid alignments for the read
   if (!aln_2.HasTag(ALT_MAP_TAG)){
     if (aln_2.HasTag(PRIMARY_ALN_SCORE_TAG) && aln_2.HasTag(SUBOPT_ALN_SCORE_TAG)){
@@ -185,7 +185,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 
   BamAlnList region_alignments, filtered_alignments;
   int32_t read_count = 0;
-  int32_t not_spanning = 0, mapping_quality = 0, unique_mapping = 0;
+  int32_t not_spanning = 0, unique_mapping = 0;
   int32_t read_has_N = 0, hard_clip = 0, soft_clip = 0, split_alignment = 0, low_qual_score = 0;
   BamTools::BamAlignment alignment;
 
@@ -204,7 +204,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	continue;
       if (alignment.MatePosition > region_group.stop())
 	continue;
-      if (alignment.MatePosition+alignment.Length+50 < region_group.start())
+      if (alignment.MatePosition+alignment.Length+100 < region_group.start())
 	continue;
     }
 
@@ -222,6 +222,24 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	continue;
     assert(alignment.CigarData.size() > 0 && alignment.RefID != -1);
 
+    // If requested, trim any reads that potentially overlap the STR regions
+    if (alignment.Position < region_group.stop() && alignment.GetEndPosition() >= region_group.start()){
+      if (BASE_QUAL_TRIM > ' '){
+	// Read trimming doesn't work if hard clipping has been applied
+	if (startsWithHardClip(alignment) || endsWithHardClip(alignment)){
+	  read_count++;
+	  hard_clip++;
+	  continue;
+	}
+
+	int32_t length = alignment.Length;
+	trimLowQualityEnds(alignment, BASE_QUAL_TRIM);
+	if (alignment.Position < region_group.stop() && alignment.GetEndPosition() >= region_group.start())
+	  if ((alignment.Length == 0) || (alignment.Length < length/2))
+	    continue;
+      }
+    }
+
     // Only apply tests to putative STR reads that overlap the STR region
     if (alignment.Position < region_group.stop() && alignment.GetEndPosition() >= region_group.start()){
       bool pass_one = false; // Denotes if read passed first set of simpler filters
@@ -229,20 +247,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
                                                  // Meant to signify if reads that pass first set should be used to generate haplotypes
       std::string filter = "";
       read_count++;
-
-      if (BASE_QUAL_TRIM > ' '){
-	// Read trimming doesn't work if hard clipping has been applied
-	if (startsWithHardClip(alignment) || endsWithHardClip(alignment)){
-	  hard_clip++;
-	  continue;
-	}
-	int32_t length = alignment.Length;
-	trimLowQualityEnds(alignment, BASE_QUAL_TRIM);
-	if ((alignment.Length == 0) || (alignment.Length < length/2) || (alignment.Position > region_group.stop() || alignment.GetEndPosition() < region_group.start())){
-	  read_count--;
-	  continue;
-	}
-      }
 
       // Ignore chimeric alignments
       if (alignment.HasTag("SA")){
@@ -253,11 +257,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       else if (alignment.QueryBases.find('N') != std::string::npos){
 	read_has_N++;
 	filter.append("HAS_N_BASES");
-      }
-      // Ignore read if its mapping quality is too low
-      else if (MIN_MAPPING_QUALITY > alignment.MapQuality){
-	mapping_quality++;
-	filter.append("LOW_MAPQ");
       }
       // Ignore reads with a very low overall base quality score
       // Want to avoid situations in which it's more advantageous to have misalignments b/c the scores are so low
@@ -442,7 +441,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   logger() << read_count << " reads overlapped region, of which "
 	   << "\n\t" << split_alignment  << " had an SA (split alignment) BAM tag"
 	   << "\n\t" << read_has_N       << " had an 'N' base call"
-	   << "\n\t" << mapping_quality  << " had too low of a mapping quality"
 	   << "\n\t" << low_qual_score   << " had low base quality scores"
 	   << "\n\t" << not_spanning     << " did not span the STR"
 	   << "\n\t" << unique_mapping   << " did not have a unique mapping";
