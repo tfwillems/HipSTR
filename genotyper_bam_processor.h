@@ -53,7 +53,6 @@ private:
   bool output_pls_;             // Output the PL FORMAT field to the VCF
   bool output_phased_gls_;      // Ooutput the PHASEDGL FORMAT field to the VCF
   bool output_all_reads_;       // Output the ALLREADS  FORMAT field to the VCF
-  bool output_pall_reads_;      // Output the PALLREADS FORMAT field to the VCF
   bool output_mall_reads_;      // Output the MALLREADS FORMAT field to the VCF
   float max_flank_indel_frac_;  // Only output genotypes if the fraction of a sample's reads with
                                 // indels in the flank is less than this threshold
@@ -79,6 +78,7 @@ private:
   // If it is not null, this stutter model will be used for each locus
   StutterModel* def_stutter_model_;
 
+  void assembly_based_read_clipping(std::vector<BamAlnList>& alignments, RegionGroup& region_group, std::string& chrom_seq);
 
   void left_align_reads(RegionGroup& region_group, std::string& chrom_seq, std::vector<BamAlnList>& alignments,
 			std::vector< std::vector<double> >& log_p1,       std::vector< std::vector<double> >& log_p2,
@@ -109,7 +109,6 @@ public:
     output_pls_            = false;
     output_phased_gls_     = false;
     output_all_reads_      = true;
-    output_pall_reads_     = true;
     output_mall_reads_     = true;
     total_stutter_time_    = 0;
     locus_stutter_time_    = -1;
@@ -144,7 +143,6 @@ public:
   void output_pls()         { output_pls_        = true;    }
   void output_phased_gls()  { output_phased_gls_ = true;    }
   void hide_all_reads()     { output_all_reads_  = false;   }
-  void hide_pall_reads()    { output_pall_reads_ = false;   }
   void hide_mall_reads()    { output_mall_reads_ = false;   }
   void visualize_left_alns(){ viz_left_alns_     = true;    }
 

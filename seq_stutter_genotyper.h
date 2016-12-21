@@ -128,7 +128,7 @@ class SeqStutterGenotyper : public Genotyper {
   double compute_allele_bias(int hap_a_read_count, int hap_b_read_count);
 
   void write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, const Region& region, std::string& chrom_seq,
-			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads, bool output_pallreads,
+			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads,
 			bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 
@@ -171,7 +171,7 @@ class SeqStutterGenotyper : public Genotyper {
   }
   
   void write_vcf_record(std::vector<std::string>& sample_names, std::string& chrom_seq,
-			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads, bool output_pallreads,
+			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads,
 			bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
 

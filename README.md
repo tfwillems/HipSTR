@@ -298,7 +298,6 @@ DSTUTTER  | Number of reads with a stutter indel in the STR region
 DFLANKINDEL | Number of reads with an indel in the regions flanking the STR
 ALLREADS  | Base pair difference observed in each read's Needleman-Wunsch alignment
 MALLREADS | Maximum likelihood bp diff in each read based on haplotype alignments
-PALLREADS | Expected base pair diff in each read based on haplotype alignment probs
 GL        | log-10 genotype likelihoods
 PL        | Phred-scaled genotype likelihoods
 

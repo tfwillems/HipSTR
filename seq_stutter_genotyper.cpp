@@ -926,18 +926,18 @@ double SeqStutterGenotyper::compute_allele_bias(int hap_a_read_count, int hap_b_
 
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, std::string& chrom_seq,
 					   bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads,
-					   bool output_pallreads, bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
+					   bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
                                            std::ostream& html_output, std::ostream& out, std::ostream& logger){
   int region_index = 0;
   for (int block_index = 0; block_index < haplotype_->num_blocks(); block_index++)
     if (haplotype_->get_block(block_index)->get_repeat_info() != NULL)
       write_vcf_record(sample_names, block_index, region_group_->regions()[region_index++], chrom_seq, output_gls, output_pls, output_phased_gls,
-		       output_allreads, output_pallreads, output_mallreads, output_viz, max_flank_indel_frac, viz_left_alns, html_output, out, logger);
+		       output_allreads, output_mallreads, output_viz, max_flank_indel_frac, viz_left_alns, html_output, out, logger);
   assert(region_index == region_group_->num_regions());
 }
 
 void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, const Region& region, std::string& chrom_seq, bool output_gls,
-					   bool output_pls, bool output_phased_gls, bool output_allreads, bool output_pallreads, bool output_mallreads,
+					   bool output_pls, bool output_phased_gls, bool output_allreads, bool output_mallreads,
 					   bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
 					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
   // Extract the alleles and position for the current haplotype block
@@ -971,7 +971,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   std::vector<int> num_reads_strand_one(num_samples_, 0), num_reads_strand_two(num_samples_, 0);
   std::vector<int> unique_reads_hap_one(num_samples_, 0), unique_reads_hap_two(num_samples_, 0);
   std::vector< std::vector<int> > bps_per_sample(num_samples_), ml_bps_per_sample(num_samples_);
-  std::vector< std::vector<double> > log_read_phases(num_samples_), posterior_bps_per_sample(num_samples_);
+  std::vector< std::vector<double> > log_read_phases(num_samples_);
   std::vector<AlnList> max_LL_alns_strand_one(num_samples_), left_alns_strand_one(num_samples_), orig_alns_strand_one(num_samples_);
   std::vector<AlnList> max_LL_alns_strand_two(num_samples_), left_alns_strand_two(num_samples_), orig_alns_strand_two(num_samples_);
   std::vector<bool> realign_to_haplotype(num_alleles_, true);
@@ -1041,10 +1041,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     // Extract the bp difference observed in read from left-alignment
     got_size = ExtractCigar(alns_[read_index].get_cigar_list(), alns_[read_index].get_start(), region.start()-region.period(), region.stop()+region.period(), bp_diff);
-    bps_per_sample[sample_label_[read_index]].push_back(got_size ? bp_diff : -999);
-
-    // Extract the posterior bp differences observed in read from haplotype alignment
-    posterior_bps_per_sample[sample_label_[read_index]].push_back(expected_value(read_LL_ptr, allele_bp_diffs));
+    if (got_size) bps_per_sample[sample_label_[read_index]].push_back(bp_diff);
 
     // Extract the ML bp difference observed in read based on the ML genotype,
     // but only for reads that span the original repeat region by 5 bp
@@ -1173,7 +1170,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DSTUTTER:DFLANKINDEL:PDP:PSNP:GLDIFF" : "\tGT:GB:Q:DP:DSTUTTER:DFLANKINDEL:GLDIFF");
   if (output_allele_bias)         out << ":AB:DAB";
   if (output_allreads)            out << ":ALLREADS";
-  if (output_pallreads)           out << ":PALLREADS";
   if (output_mallreads)           out << ":MALLREADS";
   if (output_gls)                 out << ":GL";
   if (output_pls)                 out << ":PL";
@@ -1265,17 +1261,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     // Add bp diffs from regular left-alignment
     if (output_allreads)
 	out << ":" << condense_read_counts(bps_per_sample[sample_index]);
-
-    // Expected base pair differences from alignment probabilities
-    if (output_pallreads){
-      if (posterior_bps_per_sample[sample_index].size() != 0){
-	out << ":" << posterior_bps_per_sample[sample_index][0];
-	for (unsigned int j = 1; j < posterior_bps_per_sample[sample_index].size(); j++)
-	  out << "," << posterior_bps_per_sample[sample_index][j];
-      }
-      else
-	out << ":" << ".";
-    }
 
     // Maximum likelihood base pair differences in each read from alignment probabilites
     if (output_mallreads)

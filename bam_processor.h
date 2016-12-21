@@ -71,7 +71,6 @@ class BamProcessor {
    MAXIMAL_END_MATCH_WINDOW = 15;
    REQUIRE_SPANNING         = true;
    REQUIRE_PAIRED_READS     = 1;
-   MIN_MAPPING_QUALITY      = 0;
    total_bam_seek_time_     = 0;
    locus_bam_seek_time_     = -1;
    total_read_filter_time_  = 0;
@@ -95,8 +94,6 @@ class BamProcessor {
  double locus_read_filter_time() { return locus_read_filter_time_; }
  void use_custom_read_groups()   { use_bam_rgs_ = false;           }
  void allow_pcr_dups()           { rem_pcr_dups_ = false;          }
-
- void set_min_mapping_quality(int quality) { MIN_MAPPING_QUALITY = quality; }
 
  void process_regions(BamTools::BamMultiReader& reader,
 		      std::string& region_file, std::string& fasta_dir,
@@ -157,7 +154,6 @@ class BamProcessor {
  int32_t MIN_FLANK;
  int32_t MIN_READ_END_MATCH;
  int32_t MAXIMAL_END_MATCH_WINDOW;
- int32_t MIN_MAPPING_QUALITY;
  int32_t MAX_STR_LENGTH;
  bool    REQUIRE_SPANNING;
  int     REQUIRE_PAIRED_READS;  // Only utilize paired STR reads to genotype individuals
