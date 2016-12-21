@@ -282,7 +282,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	  if (MAXIMAL_END_MATCH_WINDOW > 0){
 	    bool maximum_end_matches = AlignmentFilters::HasLargestEndMatches(alignment, chrom_seq, 0, MAXIMAL_END_MATCH_WINDOW, MAXIMAL_END_MATCH_WINDOW);
 	    if (!maximum_end_matches){
-	      pass_two = std::string(regions.size(), '0');//std::vector<bool>(regions.size(), false);
+	      pass_two = std::string(regions.size(), '0');
 	      break;
 	    }
 	  }
@@ -290,7 +290,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	  if (MIN_READ_END_MATCH > 0){
 	    std::pair<int,int> match_lens = AlignmentFilters::GetNumEndMatches(alignment, chrom_seq, 0);
 	    if (match_lens.first < MIN_READ_END_MATCH || match_lens.second < MIN_READ_END_MATCH){
-	      pass_two = std::string(regions.size(), '0');//std::vector<bool>(regions.size(), false);
+	      pass_two = std::string(regions.size(), '0');
 	      break;
 	    }
 	  }
@@ -298,7 +298,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	  if (MIN_BP_BEFORE_INDEL > 0){
 	    std::pair<int, int> num_bps = AlignmentFilters::GetEndDistToIndel(alignment);
 	    if ((num_bps.first != -1 && num_bps.first < MIN_BP_BEFORE_INDEL) || (num_bps.second != -1 && num_bps.second < MIN_BP_BEFORE_INDEL)){
-	      pass_two = std::string(regions.size(), '0');//std::vector<bool>(regions.size(), false);
+	      pass_two = std::string(regions.size(), '0');
 	      break;
 	    }
 	  }
@@ -306,9 +306,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	}
       }
 
-      bool pass = pass_one;
       std::string aln_key = trim_alignment_name(alignment);
-      if (pass){
+      if (pass_one){
 	add_passes_filters_tag(alignment, pass_two);
 	auto aln_iter = potential_mates.find(aln_key);
 	if (aln_iter != potential_mates.end()){
@@ -370,7 +369,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	assert(!filter.empty());
 	if (filtered_to_bam){
 	  filtered_alignments.push_back(alignment);
-	  if(!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
+	  if (!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
 	    printErrorAndDie("Failed to add filter tag to alignment");
 	}
 	potential_mates.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
