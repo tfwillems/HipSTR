@@ -19,7 +19,9 @@ void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t
 
   regions.clear();
   std::string line;
+  int32_t num_regions = 0;
   while (std::getline(input, line) && regions.size() < max_regions){
+    num_regions++;
     std::istringstream iss(line);
     std::string chrom, name;
     int32_t start, stop;
@@ -40,7 +42,13 @@ void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t
       regions.push_back(Region(chrom, start-1, stop, period));
   }
   input.close();
-  logger << "Region file contains " << regions.size() << " regions" << std::endl;
+  logger << "Region file contains " << num_regions << " regions";
+  if (!chrom_limit.empty())
+    logger << ", of which " << regions.size() << " were located on the requested chromosome";
+  logger << "\n" << std::endl;
+
+  if (!chrom_limit.empty() && regions.empty())
+    printErrorAndDie("Region file " + input_file + " did not contain any regions on the requested chromosome: " + chrom_limit);
 }
 
 void orderRegions(std::vector<Region>& regions){
