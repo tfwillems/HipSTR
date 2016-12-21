@@ -186,7 +186,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   BamAlnList region_alignments, filtered_alignments;
   int32_t read_count = 0;
   int32_t not_spanning = 0, unique_mapping = 0;
-  int32_t read_has_N = 0, hard_clip = 0, soft_clip = 0, split_alignment = 0, low_qual_score = 0;
+  int32_t read_has_N = 0, hard_clip = 0, split_alignment = 0, low_qual_score = 0;
   BamTools::BamAlignment alignment;
 
   const BamTools::RefVector& ref_vector = reader.GetReferenceData();
@@ -439,6 +439,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   logger() << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads" << std::endl;
   
   logger() << read_count << " reads overlapped region, of which "
+	   << "\n\t" << hard_clip        << " were hard clipped"
 	   << "\n\t" << split_alignment  << " had an SA (split alignment) BAM tag"
 	   << "\n\t" << read_has_N       << " had an 'N' base call"
 	   << "\n\t" << low_qual_score   << " had low base quality scores"
