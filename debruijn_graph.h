@@ -17,8 +17,11 @@ class DebruijnGraph : public DirectedGraph {
   std::string source_kmer_;
   std::string sink_kmer_;
   int32_t num_strings_;
+  std::vector<bool> ref_edge_; // True iff the edge at the corresponding index is from the reference sequence
 
   void get_alt_kmer_nodes(std::string& kmer, bool source, bool sink, std::vector<Node*>& nodes);
+
+  void prune_edges(std::vector<bool>& remove_edges);
 
  public:
   DebruijnGraph(int k, std::string& ref_seq){
@@ -29,8 +32,10 @@ class DebruijnGraph : public DirectedGraph {
     sink_kmer_   = ref_seq.substr(ref_seq.size()-k, k_);
     num_strings_ = 0;
 
-    // Add the reference path with a weight of 10
+    // Add the reference path with a weight of 2
     add_string(ref_seq, 2);
+    ref_edge_.clear();
+    ref_edge_.resize(edges_.size(), true);
   }
 
   void add_string(std::string& seq, int weight=1);

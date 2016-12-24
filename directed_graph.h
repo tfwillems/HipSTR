@@ -9,24 +9,29 @@
 class Node;
 
 class Edge {
+ protected:
+  int id_;
   int source_;
   int destination_;
   int weight_;
 
  public:
-  Edge(int source, int destination, int weight){
+  Edge(int id, int source, int destination, int weight){
+    id_          = id;
     source_      = source;
     destination_ = destination;
     weight_      = weight;
   }
 
-  int  get_source()              { return source_;      }
-  int  get_destination()         { return destination_; }
-  void set_source(int source)    { source_ = source;    }
-  void set_destination(int dest) { destination_ = dest; }
-  void inc_weight(int delta)     { weight_ += delta;    }
-  void dec_weight(int delta)     { weight_ -= delta;    }
-  int  get_weight()              { return weight_;      }
+  int  get_id()                  { return id_;            }
+  int  get_source()              { return source_;        }
+  int  get_destination()         { return destination_;   }
+  int  get_weight()              { return weight_;        }
+  void set_id(int id)            { id_          = id;     }
+  void set_source(int source)    { source_      = source; }
+  void set_destination(int dest) { destination_ = dest;   }
+  void inc_weight(int delta)     { weight_     += delta;  }
+  void dec_weight(int delta)     { weight_     -= delta;  }
 };
 
 class Node {
@@ -91,16 +96,13 @@ class Node {
 
 class DirectedGraph {
 protected:
-  int num_nodes_;
   std::vector<Node*> nodes_;
   std::vector<Edge*> edges_;
   std::vector<std::string> node_labels_;
   std::map<std::string, int> node_map_;
   
 public:
-  DirectedGraph(){
-    num_nodes_ = 0;
-  }
+  DirectedGraph(){}
 
   bool can_sort_topologically();
 
@@ -109,6 +111,8 @@ public:
   }
 
   ~DirectedGraph(){
+    for (unsigned int i = 0; i < nodes_.size(); i++)
+      delete nodes_[i];
     for (unsigned int i = 0; i < edges_.size(); i++)
       delete edges_[i];
   }
@@ -123,8 +127,8 @@ public:
       return nodes_[node_iter->second];
 
     node_labels_.push_back(value);
-    node_map_[value] = num_nodes_;
-    nodes_.push_back(new Node(num_nodes_++));
+    node_map_[value] = nodes_.size();
+    nodes_.push_back(new Node(nodes_.size()));
     return nodes_.back();
   }
 

@@ -14,7 +14,7 @@ void DirectedGraph::increment_edge(std::string& val_1, std::string& val_2, int d
     }
   }
 
-  Edge* new_edge = new Edge(source_id, dest->get_id(), delta);
+  Edge* new_edge = new Edge(edges_.size(), source_id, dest->get_id(), delta);
   if (source_id == dest->get_id())
     source->add_edge(new_edge);
   else {
@@ -66,7 +66,7 @@ bool DirectedGraph::can_sort_topologically(){
 
 
 void DirectedGraph::print(std::ostream& out){
-  assert(nodes_.size() == num_nodes_ && node_labels_.size() == num_nodes_);
+  assert(nodes_.size() == node_labels_.size());
 
   out << "NODES" << "\n";
   for (unsigned int i = 0; i < nodes_.size(); i++)

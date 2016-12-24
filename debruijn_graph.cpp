@@ -35,20 +35,41 @@ void DebruijnGraph::add_string(std::string& seq, int weight){
     increment_edge(prev_kmer, next_kmer, weight);
     prev_kmer = next_kmer;
   }
+
+  // Assume any new edges are not from the reference sequence
+  ref_edge_.resize(edges_.size(), false);
 }
 
 void DebruijnGraph::prune_edges(double min_edge_freq, int min_weight){
-  min_weight    = std::max(min_weight, (int)ceil(min_edge_freq*num_strings_));
+  assert(ref_edge_.size() == edges_.size());
+  min_weight = std::max(min_weight, (int)ceil(min_edge_freq*num_strings_));
+  std::vector<bool> remove_edge(edges_.size(), false);
+
+  // Determine which edges have a weight below the threshold
+  // Do not include any edges that are part of the reference sequence
+  for (unsigned int i = 0; i < edges_.size(); i++)
+    if (!ref_edge_[i] && edges_[i]->get_weight() < min_weight)
+      remove_edge[i] = true;
+
+  // Perform the pruning
+  prune_edges(remove_edge);
+}
+
+void DebruijnGraph::prune_edges(std::vector<bool>& remove_edges){
+  assert(remove_edges.size() == edges_.size());
   int ins_index = 0;
   std::vector<bool> keep_node(nodes_.size(), false);
   keep_node[get_node(source_kmer_)->get_id()] = true;
   keep_node[get_node(sink_kmer_)->get_id()]   = true;
 
-  // Filter all edges with a weight below the threshold
+  // Filter all requested edges
   for (unsigned int i = 0; i < edges_.size(); i++){
-    if (edges_[i]->get_weight() >= min_weight){
-      if (i != ins_index)
-	edges_[ins_index] = edges_[i];
+    if (!remove_edges[i]){
+      if (i != ins_index){
+	edges_[ins_index]    = edges_[i];
+	ref_edge_[ins_index] = ref_edge_[i];
+	edges_[ins_index]->set_id(ins_index);
+      }
       keep_node[edges_[i]->get_source()] = true;
       keep_node[edges_[i]->get_destination()] = true;
       ins_index++;
@@ -64,36 +85,34 @@ void DebruijnGraph::prune_edges(double min_edge_freq, int min_weight){
     }
   }
   edges_.resize(ins_index);
+  ref_edge_.resize(ins_index);
 
   // Filter and reindex all of the nodes with at least one edge
   std::vector<int> node_indices(nodes_.size(), -1);
-  num_nodes_ = 0;
+  int num_nodes = 0;
   node_map_.clear();
   for (unsigned int i = 0; i < nodes_.size(); i++){
     if (keep_node[i]){
-      nodes_[i]->set_id(num_nodes_);
-      node_indices[i] = num_nodes_;
-      if (num_nodes_ != i){
-	nodes_[num_nodes_]       = nodes_[i];
-	node_labels_[num_nodes_] = node_labels_[i];
+      nodes_[i]->set_id(num_nodes);
+      node_indices[i] = num_nodes;
+      if (i != num_nodes){
+	nodes_[num_nodes]       = nodes_[i];
+	node_labels_[num_nodes] = node_labels_[i];
       }
-      node_map_[node_labels_[num_nodes_]] = num_nodes_;
-      num_nodes_++;
+      node_map_[node_labels_[num_nodes]] = num_nodes;
+      num_nodes++;
     }
     else
       delete nodes_[i];
   }
-  nodes_.resize(num_nodes_);
-  node_labels_.resize(num_nodes_);
+  nodes_.resize(num_nodes);
+  node_labels_.resize(num_nodes);
 
   // Fix the node indices in each edge
   for (unsigned int i = 0; i < edges_.size(); i++){
     edges_[i]->set_source(node_indices[edges_[i]->get_source()]);
     edges_[i]->set_destination(node_indices[edges_[i]->get_destination()]);
   }
-
-  // Add the reference path with a weight of 2
-  add_string(ref_seq_, 2);
 }
 
 bool path_comparator(DebruijnPath* p1, DebruijnPath* p2){
