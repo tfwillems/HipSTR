@@ -30,6 +30,8 @@ class BamProcessor {
   double total_read_filter_time_;
   double locus_read_filter_time_;
 
+  void add_filtered_alignment(BamTools::BamAlignment& alignment, std::string filter, BamAlnList& filtered_alignments);
+
   void extract_mappings(BamTools::BamAlignment& aln, const BamTools::RefVector& ref_vector,
 			std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs);
 
@@ -148,6 +150,8 @@ class BamProcessor {
 
  static const std::string PASSES_FILTERS_TAG_NAME;
  static const std::string PASSES_FILTERS_TAG_TYPE;
+ static const std::string FILTER_TAG_NAME;
+ static const std::string FILTER_TAG_TYPE;
 
  int32_t MAX_MATE_DIST;
  int32_t MIN_BP_BEFORE_INDEL;

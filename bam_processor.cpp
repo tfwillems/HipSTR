@@ -19,6 +19,8 @@ const std::string SUBOPT_ALN_SCORE_TAG  = "XS";
 
 const std::string BamProcessor::PASSES_FILTERS_TAG_NAME = "PF";
 const std::string BamProcessor::PASSES_FILTERS_TAG_TYPE = "Z";
+const std::string BamProcessor::FILTER_TAG_NAME         = "FT";
+const std::string BamProcessor::FILTER_TAG_TYPE         = "Z";
 
 void BamProcessor::add_passes_filters_tag(BamTools::BamAlignment& aln, std::string& passes){
   if (aln.HasTag(PASSES_FILTERS_TAG_NAME))
@@ -41,6 +43,12 @@ void BamProcessor::passes_filters(BamTools::BamAlignment& aln, std::vector<bool>
     printErrorAndDie("Failed to extract passes filters tag from BAM alignment");
   for (int i = 0; i < passes.size(); i++)
     region_passes.push_back(passes[i] == '1' ? true : false);
+}
+
+void BamProcessor::add_filtered_alignment(BamTools::BamAlignment& alignment, std::string filter, BamAlnList& filtered_alignments){
+  filtered_alignments.push_back(alignment);
+  if (!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
+    printErrorAndDie("Failed to add filter tag to alignment");
 }
 
 void BamProcessor::extract_mappings(BamTools::BamAlignment& aln, const BamTools::RefVector& ref_vector,
@@ -192,8 +200,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   const BamTools::RefVector& ref_vector = reader.GetReferenceData();
   BamAlnList paired_str_alns, mate_alns, unpaired_str_alns;
   std::map<std::string, BamTools::BamAlignment> potential_strs, potential_mates;
-  const std::string FILTER_TAG_NAME = "FT";
-  const std::string FILTER_TAG_TYPE = "Z";
   TOO_MANY_READS = false;
 
   const std::vector<Region>& regions = region_group.regions();
@@ -229,6 +235,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	if (startsWithHardClip(alignment) || endsWithHardClip(alignment)){
 	  read_count++;
 	  hard_clip++;
+	  if (filtered_to_bam) add_filtered_alignment(alignment, "HARD_CLIPPED", filtered_alignments);
 	  continue;
 	}
 
@@ -324,11 +331,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	  else {
 	    unique_mapping++;
 	    filter.append("NO_UNIQUE_MAPPING");
-	    if (filtered_to_bam){
-	      filtered_alignments.push_back(alignment);
-	      if(!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
-		printErrorAndDie("Failed to add filter tag to alignment");
-	    }
+	    if (filtered_to_bam)
+	      add_filtered_alignment(alignment, filter, filtered_alignments);
 	  }
 	  potential_mates.erase(aln_iter);
 	}
@@ -341,7 +345,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	    if (p_1.size() == 1 && p_1[0].second == alignment.Position){
 	      paired_str_alns.push_back(alignment);
 	      mate_alns.push_back(str_iter->second);
-	      if(pass_to_bam) region_alignments.push_back(alignment);
+	      if (pass_to_bam) region_alignments.push_back(alignment);
 
 	      paired_str_alns.push_back(str_iter->second);
 	      mate_alns.push_back(alignment);
@@ -351,12 +355,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	      unique_mapping += 2;
 	      std::string filter = "NO_UNIQUE_MAPPING";
 	      if (filtered_to_bam){
-		filtered_alignments.push_back(alignment);
-		if (!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
-		  printErrorAndDie("Failed to add filter tag to alignment");
-		filtered_alignments.push_back(str_iter->second);
-		if (!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
-		  printErrorAndDie("Failed to add filter tag to alignment");
+		add_filtered_alignment(alignment, filter, filtered_alignments);
+		add_filtered_alignment(str_iter->second, filter, filtered_alignments);
 	      }
 	    }
 	    potential_strs.erase(str_iter);
@@ -367,11 +367,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       }
       else {
 	assert(!filter.empty());
-	if (filtered_to_bam){
-	  filtered_alignments.push_back(alignment);
-	  if (!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
-	    printErrorAndDie("Failed to add filter tag to alignment");
-	}
+	if (filtered_to_bam)
+	  add_filtered_alignment(alignment, filter, filtered_alignments);
 	potential_mates.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
       }
     }
@@ -392,11 +389,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	else {
 	  unique_mapping++;
 	  std::string filter = "NO_UNIQUE_MAPPING";
-	  if (filtered_to_bam){
-	    filtered_alignments.push_back(aln_iter->second);
-	    if (!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
-	      printErrorAndDie("Failed to add filter tag to alignment");
-	  }
+	  if (filtered_to_bam)
+	    add_filtered_alignment(aln_iter->second, filter, filtered_alignments);
 	}
 	potential_strs.erase(aln_iter);
       }
@@ -427,11 +421,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       if (pass_to_bam) region_alignments.push_back(aln_iter->second);
     }
     else {
-      if (filtered_to_bam){
-	filtered_alignments.push_back(aln_iter->second);
-	if(!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
-	  printErrorAndDie("Failed to add filter tag to alignment");
-      }
+      if (filtered_to_bam)
+	add_filtered_alignment(aln_iter->second, filter, filtered_alignments);
     }
   }
   potential_strs.clear(); potential_mates.clear();
