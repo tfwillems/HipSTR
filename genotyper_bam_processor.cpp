@@ -179,6 +179,9 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
   bool haploid = (haploid_chroms_.find(region_group.chrom()) != haploid_chroms_.end());
   const std::vector<Region>& regions = region_group.regions();
 
+  // Clip the reads using de Bruijn graph assembly principles
+  //assembly_based_read_clipping(alignments, region_group, chrom_seq);
+
   // Learn the stutter model for each region
   std::vector<StutterModel*> stutter_models;
   locus_stutter_time_  = clock();
@@ -232,7 +235,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
       if (pass){
 	num_genotype_success_++;
 	seq_genotyper->write_vcf_record(samples_to_genotype_, chrom_seq, output_gls_, output_pls_, output_phased_gls_,
-					output_all_reads_, output_pall_reads_, output_mall_reads_, output_viz_, max_flank_indel_frac_,
+					output_all_reads_, output_mall_reads_, output_viz_, max_flank_indel_frac_,
 					viz_left_alns_, viz_out_, str_vcf_, logger());
       }
       else

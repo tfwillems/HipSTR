@@ -78,8 +78,6 @@ private:
   // If it is not null, this stutter model will be used for each locus
   StutterModel* def_stutter_model_;
 
-  void assembly_based_read_clipping(std::vector<BamAlnList>& alignments, RegionGroup& region_group, std::string& chrom_seq);
-
   void left_align_reads(RegionGroup& region_group, std::string& chrom_seq, std::vector<BamAlnList>& alignments,
 			std::vector< std::vector<double> >& log_p1,       std::vector< std::vector<double> >& log_p2,
 			std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
