@@ -133,7 +133,8 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
   }
 
   if (inf_reads < MIN_TOTAL_READS){
-    logger() << "Skipping locus with too few reads: TOTAL=" << inf_reads << ", MIN=" << MIN_TOTAL_READS << std::endl;
+    logger() << "Skipping locus with too few informative reads for stutter training: TOTAL=" << inf_reads << ", MIN=" << MIN_TOTAL_READS << std::endl;
+    too_few_reads_++;
     return NULL;
   }
 
@@ -166,12 +167,14 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
     total_reads += alignments[i].size();
   if (total_reads < MIN_TOTAL_READS){
     logger() << "Skipping locus with too few reads: TOTAL=" << total_reads << ", MIN=" << MIN_TOTAL_READS << std::endl;
+    too_few_reads_++;
     return;
   }
   // Can't simply check the total number of reads because the bam processor may have stopped reading at the threshold and then removed PCR duplicates
   // Instead, we check this flag which it sets when too many reads are encountered during filtering
   if (TOO_MANY_READS){
-    logger() << "Skipping locus with too many reads: MAX=" << MAX_TOTAL_READS << std::endl;
+    logger() << "Skipping locus with too many reads: TOTAL=" << total_reads << ", MAX=" << MAX_TOTAL_READS << std::endl;
+    too_many_reads_++;
     return;
   }
 
@@ -198,8 +201,10 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
       auto model_iter = stutter_models_.find(*region_iter);
       if (model_iter != stutter_models_.end())
 	stutter_model = model_iter->second->copy();
-      else
+      else {
 	logger() << "WARNING: No stutter model found for " << region_iter->chrom() << ":" << region_iter->start() << "-" << region_iter->stop() << std::endl;
+	num_missing_models_++;
+      }
     }
     else {
       // Learn stutter model using length-based EM algorithm

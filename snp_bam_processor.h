@@ -100,7 +100,8 @@ public:
   }
 
   void finish(){
-    log("SNP matching statistics: " + std::to_string(match_count_) + "\t" + std::to_string(mismatch_count_));
+    if (match_count_ + mismatch_count_ > 0)
+      log("\nSNP matching statistics: " + std::to_string(match_count_) + "\t" + std::to_string(mismatch_count_) + "\n");
   }
 };
 

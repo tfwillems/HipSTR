@@ -38,7 +38,7 @@ class SeqStutterGenotyper : public Genotyper {
   std::vector<bool> call_sample_;                 // True iff we should try to genotype the sample with the associated index
                                                   // Based on the deletion boundaries in the sample's reads
 
-  bool initialized_;       // True iff initialization succeeded and genotyping can proceed
+  bool initialized_; // True iff initialization succeeded and genotyping can proceed
 
   // 0-based seed index for each read
   // -1 denotes that no seed position was determined for the read

@@ -371,7 +371,6 @@ bool SeqStutterGenotyper::build_haplotype(std::string& chrom_seq, std::vector<St
   assert(hap_blocks_.empty() && haplotype_ == NULL);
   logger << "Generating candidate haplotypes" << std::endl;
 
-
   // Determine the minimum and maximum alignment boundaries
   int32_t min_aln_start = INT_MAX, max_aln_stop = INT_MIN;
   for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
@@ -418,10 +417,10 @@ bool SeqStutterGenotyper::build_haplotype(std::string& chrom_seq, std::vector<St
   if (success){
     if (hap_generator.fuse_haplotype_blocks(chrom_seq)){
       // Copy over the constructed haplotype blocks and build the haplotype
-      hap_blocks_            = hap_generator.get_haplotype_blocks();
-      haplotype_             = new Haplotype(hap_blocks_);
-      num_alleles_           = haplotype_->num_combs();
-      call_sample_           = std::vector<bool>(num_samples_, true);
+      hap_blocks_  = hap_generator.get_haplotype_blocks();
+      haplotype_   = new Haplotype(hap_blocks_);
+      num_alleles_ = haplotype_->num_combs();
+      call_sample_ = std::vector<bool>(num_samples_, true);
       haplotype_->print_block_structure(30, 100, logger);
     }
     else {
@@ -456,8 +455,6 @@ void SeqStutterGenotyper::init(std::vector<StutterModel*>& stutter_models, std::
     log_aln_probs_         = new double[num_reads_*num_alleles_];
     seed_positions_        = new int[num_reads_];
   }
-  else
-    logger << "WARNING: Unsuccessful initialization. " << std::endl;
 }
 
 void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype){

@@ -572,6 +572,7 @@ int main(int argc, char** argv){
   reader.Close();
 
   total_time = (clock() - total_time)/CLOCKS_PER_SEC;
-  bam_processor.logger() << "HipSTR execution finished: Total runtime = " << total_time << " sec" << std::endl;
+  bam_processor.logger() << "HipSTR execution finished: Total runtime = " << total_time << " sec" << "\n"
+			 << "-----------------\n\n" << std::endl;
   return 0;  
 }

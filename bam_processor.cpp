@@ -494,7 +494,7 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string
   BamTools::RefVector ref_vector = reader.GetReferenceData();
   int cur_chrom_id = -1; std::string chrom_seq;
   for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
-    logger() << "Processing region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << std::endl;
+    logger() << "\n\n\n" << "Processing region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << std::endl;
     int chrom_id = reader.GetReferenceID(region_iter->chrom());
     if (chrom_id == -1 && region_iter->chrom().size() > 3 && region_iter->chrom().substr(0, 3).compare("chr") == 0)
       chrom_id = reader.GetReferenceID(region_iter->chrom().substr(3));

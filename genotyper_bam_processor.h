@@ -23,13 +23,17 @@
 
 
 class GenotyperBamProcessor : public SNPBamProcessor {
-private:  
+private:
+  // Counter for when too few/many reads are available for stutter training/genotyping
+  int too_few_reads_, too_many_reads_;
+
   // Counters for EM convergence
   int num_em_converge_, num_em_fail_;
 
   // Parameters for stutter models read from file
   bool read_stutter_models_;
   std::map<Region, StutterModel*> stutter_models_;
+  int num_missing_models_;
 
   // Output file for stutter models
   bool output_stutter_models_;
@@ -95,8 +99,11 @@ public:
     read_stutter_models_   = false;
     viz_left_alns_         = false;
     haploid_chroms_        = std::set<std::string>();
+    too_few_reads_         = 0;
+    too_many_reads_        = 0;
     num_em_converge_       = 0;
     num_em_fail_           = 0;
+    num_missing_models_    = 0;
     num_genotype_success_  = 0;
     num_genotype_fail_     = 0;
     MAX_EM_ITER            = 100;
@@ -174,7 +181,6 @@ public:
     if (!input.is_open())
       printErrorAndDie("Failed to open input file for stutter models. Filename = " + model_file);
     StutterModel::read_models(input, stutter_models_);
-    log("Read stutter models for " + std::to_string(stutter_models_.size()) + " loci");
     read_stutter_models_ = true;
     input.close();
   }
@@ -218,10 +224,18 @@ public:
     if (output_viz_)
       viz_out_.close();
 
-    log("Stutter model training succeeded for " + std::to_string(num_em_converge_) + " out of " + std::to_string(num_em_converge_+num_em_fail_) + " loci");
+    log("\n\n\n------HipSTR Execution Summary------");
+    if (too_many_reads_ != 0)
+      log("Skipped " + std::to_string(too_many_reads_) + " loci with too many reads. If this comprises a sizeable portion of your loci, see the --max-reads command line option\n");
+    if (too_few_reads_ != 0)
+      log("Skipped " + std::to_string(too_few_reads_)  + " loci with too few reads for stutter model model training or genotyping. If this comprises a sizeable portion of your loci, see the --min-reads command line option\n");
+    if (num_missing_models_ != 0)
+      log("Skipped " + std::to_string(num_missing_models_) + " loci that did not have a stutter model in the file provided to --stutter-in\n");
+    if (num_em_converge_+num_em_fail_ != 0)
+      log("Stutter model training succeeded for " + std::to_string(num_em_converge_) + " out of " + std::to_string(num_em_converge_+num_em_fail_) + " loci");
     log("Genotyping succeeded for " + std::to_string(num_genotype_success_) + " out of " + std::to_string(num_genotype_success_+num_genotype_fail_) + " loci");
 
-    logger() << "Approximate timing breakdown" << "\n"
+    logger() << "\nApproximate timing breakdown" << "\n"
              << " BAM seek time       = " << total_bam_seek_time()       << " seconds\n"
              << " Read filtering      = " << total_read_filter_time()    << " seconds\n"
              << " SNP info extraction = " << total_snp_phase_info_time() << " seconds\n"
