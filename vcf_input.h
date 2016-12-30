@@ -12,10 +12,8 @@
 
 extern const std::string GENOTYPE_KEY;
 extern const std::string PHASED_GL_KEY;
-extern std::string PGP_KEY;
 extern std::string START_INFO_TAG;
 extern std::string STOP_INFO_TAG;
-extern const float MIN_ALLELE_PRIOR;
 extern const int32_t pad;
 
 bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector<std::string>& alleles, int32_t& pos);

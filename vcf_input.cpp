@@ -9,10 +9,8 @@
 
 const std::string GT_KEY        = "GT";
 const std::string PHASED_GL_KEY = "PHASEDGL";
-std::string PGP_KEY             = "PGP";
 std::string START_INFO_TAG      = "START";
 std::string STOP_INFO_TAG       = "END";
-const float MIN_ALLELE_PRIOR    = 0.0001;
 
 // Because HipSTR extends putative STR regions if there are nearby indels, the STR coordinates in the VCF may
 // not exactly match the original reference region coordinates. As a result, when looking for a particular STR region,
