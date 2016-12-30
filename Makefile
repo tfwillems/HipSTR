@@ -26,7 +26,6 @@ SRC_COMMON  = base_quality.cpp error.cpp region.cpp stringops.cpp zalgorithm.cpp
 SRC_SIEVE   = filter_main.cpp filter_bams.cpp insert_size.cpp
 SRC_HIPSTR  = hipstr_main.cpp bam_processor.cpp stutter_model.cpp snp_phasing_quality.cpp snp_tree.cpp em_stutter_genotyper.cpp seq_stutter_genotyper.cpp snp_bam_processor.cpp genotyper_bam_processor.cpp vcf_input.cpp read_pooler.cpp version.cpp haplotype_tracker.cpp pedigree.cpp vcf_reader.cpp genotyper.cpp directed_graph.cpp debruijn_graph.cpp fasta_reader.cpp
 SRC_SEQALN  = SeqAlignment/AlignmentData.cpp SeqAlignment/HapAligner.cpp SeqAlignment/RepeatStutterInfo.cpp SeqAlignment/AlignmentModel.cpp SeqAlignment/AlignmentOps.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NeedlemanWunsch.cpp SeqAlignment/Haplotype.cpp SeqAlignment/RepeatBlock.cpp SeqAlignment/HaplotypeGenerator.cpp SeqAlignment/HTMLCreator.cpp SeqAlignment/AlignmentViz.cpp SeqAlignment/AlignmentTraceback.cpp SeqAlignment/StutterAlignerClass.cpp
-SRC_RNASEQ  = exploratory/filter_rnaseq.cpp exploratory/exon_info.cpp
 SRC_DENOVO  = denovo_main.cpp error.cpp stringops.cpp version.cpp pedigree.cpp haplotype_tracker.cpp vcf_input.cpp denovo_scanner.cpp mathops.cpp vcf_reader.cpp
 
 # For each CPP file, generate an object file
@@ -34,7 +33,6 @@ OBJ_COMMON  := $(SRC_COMMON:.cpp=.o)
 OBJ_SIEVE   := $(SRC_SIEVE:.cpp=.o)
 OBJ_HIPSTR  := $(SRC_HIPSTR:.cpp=.o)
 OBJ_SEQALN  := $(SRC_SEQALN:.cpp=.o)
-OBJ_RNASEQ  := $(SRC_RNASEQ:.cpp=.o)
 OBJ_DENOVO  := $(SRC_DENOVO:.cpp=.o)
 
 BAMTOOLS_ROOT=bamtools
@@ -51,8 +49,6 @@ HTSLIB_LIB        = $(HTSLIB_ROOT)/libhts.a
 all: version BamSieve HipSTR DenovoFinder test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/snp_tree_test test/vcf_snp_tree_test
 	rm version.cpp
 	touch version.cpp
-
-exploratory: exploratory/RNASeq exploratory/Clipper exploratory/10X exploratory/Mapper
 
 # Create a tarball with static binaries
 .PHONY: static-dist
@@ -75,7 +71,7 @@ version:
 # Clean the generated files of the main project only (leave Bamtools/vcflib alone)
 .PHONY: clean
 clean:
-	rm -f *.o *.d BamSieve HipSTR DenovoFinder test/allele_expansion_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/snp_tree_test test/vcf_snp_tree_test SeqAlignment/*.o exploratory/RNASeq exploratory/Clipper exploratory/Mapper exploratory/10X
+	rm -f *.o *.d BamSieve HipSTR DenovoFinder test/allele_expansion_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/snp_tree_test test/vcf_snp_tree_test SeqAlignment/*.o
 
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
@@ -101,9 +97,6 @@ HipSTR: $(OBJ_COMMON) $(OBJ_HIPSTR) $(BAMTOOLS_LIB) $(CEPHES_LIB) $(HTSLIB_LIB) 
 DenovoFinder: $(OBJ_DENOVO) $(HTSLIB_LIB)
 	$(CXX) $(LDFALGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
-exploratory/RNASeq: $(OBJ_COMMON) $(OBJ_RNASEQ) $(BAMTOOLS_LIB)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
-
 test/haplotype_test: test/haplotype_test.cpp SeqAlignment/Haplotype.cpp SeqAlignment/HapBlock.cpp SeqAlignment/NeedlemanWunsch.cpp SeqAlignment/RepeatBlock.cpp error.cpp stringops.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
@@ -120,15 +113,6 @@ test/snp_tree_test: snp_tree.cpp error.cpp test/snp_tree_test.cpp haplotype_trac
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp error.cpp snp_tree.cpp haplotype_tracker.cpp vcf_reader.cpp $(HTSLIB_LIB)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
-
-exploratory/Clipper: exploratory/count_trimmed_bases.cpp error.cpp zalgorithm.cpp $(BAMTOOLS_LIB) $(HTSLIB_LIB)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
-
-exploratory/10X: base_quality.cpp exploratory/calc_10x_barcode_phasings.cpp error.cpp mathops.cpp snp_phasing_quality.cpp snp_tree.cpp haplotype_tracker.cpp vcf_reader.cpp $(BAMTOOLS_LIB) $(HTSLIB_LIB)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
-
-exploratory/Mapper: error.cpp fasta_reader.cpp stringops.cpp vcf_reader.cpp exploratory/mapping_efficiency.cpp $(BAMTOOLS_LIB) $(CEPHES_LIB) $(HTSLIB_LIB)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 # Build each object file independently
