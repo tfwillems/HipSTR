@@ -35,14 +35,14 @@ OBJ_HIPSTR  := $(SRC_HIPSTR:.cpp=.o)
 OBJ_SEQALN  := $(SRC_SEQALN:.cpp=.o)
 OBJ_DENOVO  := $(SRC_DENOVO:.cpp=.o)
 
-BAMTOOLS_ROOT=bamtools
-CEPHES_ROOT=cephes
-HTSLIB_ROOT=htslib
+BAMTOOLS_ROOT=lib/bamtools
+CEPHES_ROOT=lib/cephes
+HTSLIB_ROOT=lib/htslib
 
 LIBS              = -L./ -lm -L$(HTSLIB_ROOT)/ -L$(BAMTOOLS_ROOT)/lib -lz -L$(CEPHES_ROOT)/
-INCLUDE           = -I$(BAMTOOLS_ROOT)/src -I.
+INCLUDE           = -I$(BAMTOOLS_ROOT)/src -Ilib
 BAMTOOLS_LIB      = $(BAMTOOLS_ROOT)/lib/libbamtools.a
-CEPHES_LIB        = cephes/libprob.a
+CEPHES_LIB        = lib/cephes/libprob.a
 HTSLIB_LIB        = $(HTSLIB_ROOT)/libhts.a
 
 .PHONY: all
@@ -76,10 +76,12 @@ clean:
 # Clean all compiled files, including bamtools/vcflib
 .PHONY: clean-all
 clean-all: clean
-	if test -d bamtools/build ; then \
-		$(MAKE) -C bamtools/build clean ; \
-		rm -rf bamtools/build ; \
+	if test -d lib/bamtools/build ; then \
+		$(MAKE) -C lib/bamtools/build clean ; \
+		rm -rf lib/bamtools/build ; \
 	fi
+	cd lib/htslib && $(MAKE) clean
+	rm lib/cephes/*.o $(CEPHES_LIB)
 
 # The GNU Make trick to include the ".d" (dependencies) files.
 # If the files don't exist, they will be re-generated, then included.
@@ -124,16 +126,16 @@ test/vcf_snp_tree_test: test/vcf_snp_tree_test.cpp src/error.cpp src/snp_tree.cp
 
 # Rebuild BAMTools if needed
 $(BAMTOOLS_LIB):
-	git submodule update --init --recursive bamtools
-	git submodule update --recursive bamtools
-	( cd bamtools && mkdir build && cd build && cmake .. && $(MAKE) )
+	git submodule update --init --recursive lib/bamtools
+	git submodule update --recursive lib/bamtools
+	( cd lib/bamtools && mkdir build && cd build && cmake .. && $(MAKE) )
 
 # Rebuild CEPHES library if needed
 $(CEPHES_LIB):
-	cd cephes && $(MAKE)
+	cd lib/cephes && $(MAKE)
 
 # Rebuild htslib library if needed
 $(HTSLIB_LIB):
-	git submodule update --init --recursive htslib
-	git submodule update --recursive htslib
-	cd htslib && $(MAKE)
+	git submodule update --init --recursive lib/htslib
+	git submodule update --recursive lib/htslib
+	cd lib/htslib && $(MAKE)

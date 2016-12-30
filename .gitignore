@@ -13,9 +13,8 @@ test/read_vcf_priors_test
 test/snp_tree_test
 test/stutter_aligner_test
 test/vcf_snp_tree_test
-cephes/libprob.a
-cephes/*.o
-*~
+lib/cephes/libprob.a
+lib/cephes/*.o
 src/*.o
 src/*.d
 src/*~
