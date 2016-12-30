@@ -100,13 +100,6 @@ class Alignment {
     return total;
   }
 
-  void fix_N_base_qualities(BaseQuality& base_quality){
-    assert(base_qualities_.size() == sequence_.size());
-    for (unsigned int i = 0; i < sequence_.size(); i++)
-      if (sequence_[i] == 'N')
-	base_qualities_[i] = base_quality.MIN_BASE_QUALITY;
-  }
-
   int num_indels() const{
     int num = 0;
     for (std::vector<CigarElement>::const_iterator iter = cigar_list_.begin(); iter != cigar_list_.end(); iter++)
