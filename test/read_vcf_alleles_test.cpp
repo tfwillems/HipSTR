@@ -2,10 +2,10 @@
 #include <string>
 #include <vector>
 
-#include "../error.h"
-#include "../region.h"
-#include "../vcf_input.h"
-#include "../vcf_reader.h"
+#include "../src/error.h"
+#include "../src/region.h"
+#include "../src/vcf_input.h"
+#include "../src/vcf_reader.h"
 
 int main(int argc, char* argv[]){
   if (argc != 3)

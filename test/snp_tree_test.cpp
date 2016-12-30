@@ -3,7 +3,7 @@
 #include <time.h>
 #include <assert.h>
 
-#include "../snp_tree.h"
+#include "../src/snp_tree.h"
 
 uint32_t randKey(uint32_t floor, uint32_t ceiling) {
   uint32_t range = ceiling - floor;

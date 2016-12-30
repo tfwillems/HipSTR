@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "../bamtools/include/api/BamAux.h"
+#include "bamtools/include/api/BamAux.h"
 
 namespace NeedlemanWunsch {
   bool Align(const std::string& ref_seq,

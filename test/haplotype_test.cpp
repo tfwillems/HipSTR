@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <string>
 
-#include "../SeqAlignment/HapBlock.h"
-#include "../SeqAlignment/Haplotype.h"
-#include "../SeqAlignment/RepeatBlock.h"
-#include "../stutter_model.h"
+#include "../src/SeqAlignment/HapBlock.h"
+#include "../src/SeqAlignment/Haplotype.h"
+#include "../src/SeqAlignment/RepeatBlock.h"
+#include "../src/stutter_model.h"
 
 int main(){
   std::string l1   = "ACGGTATC",   l2 = "ACGGTCTC";

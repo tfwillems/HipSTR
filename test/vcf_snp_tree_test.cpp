@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <iostream>
 
-#include "../region.h"
-#include "../vcf_reader.h"
-#include "../snp_tree.h"
+#include "../src/region.h"
+#include "../src/vcf_reader.h"
+#include "../src/snp_tree.h"
 
 int main(int argc, char** argv) {
   std::string filename = argv[1];
