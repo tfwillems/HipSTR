@@ -55,28 +55,36 @@ class DebruijnPath {
  private:
   DebruijnPath* parent_;
   int node_id_;
-  int min_weight_;
+  int min_weight_, max_weight_;
+  int depth_;
 
  public:
   DebruijnPath(int node_id){
     parent_     = NULL;
     min_weight_ = 1000000;
+    max_weight_ = 0;
     node_id_    = node_id;
+    depth_      = 0;
   }
 
-  int get_min_weight() { return min_weight_; }
-  int get_node_id()    { return node_id_;    } 
+  int get_min_weight()       { return min_weight_; }
+  int get_max_weight()       { return max_weight_; }
+  int get_node_id()          { return node_id_;    }
+  int get_depth()            { return depth_;      }
+  DebruijnPath* get_parent() { return parent_;     }
 
   DebruijnPath* add_edge(Edge* edge){
     DebruijnPath* new_path = new DebruijnPath(edge->get_destination());
     new_path->parent_      = this;
     new_path->min_weight_  = std::min(min_weight_, edge->get_weight());
+    new_path->max_weight_  = std::max(max_weight_, edge->get_weight());
+    new_path->depth_       = depth_ + 1;
     return new_path;
   }
   
   std::string get_sequence(DebruijnGraph* graph);
 };
 
-
+bool path_comparator(DebruijnPath* p1, DebruijnPath* p2);
 
 #endif

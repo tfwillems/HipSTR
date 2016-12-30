@@ -5,6 +5,10 @@
 #include <set>
 #include <sstream>
 
+bool path_comparator(DebruijnPath* p1, DebruijnPath* p2){
+  return p1->get_min_weight() < p2->get_min_weight();
+}
+
 bool DebruijnGraph::is_source_ok(){
   Node* source = get_node(source_kmer_);
   return (source->num_departing_edges() > 0) && (source->num_incident_edges() == 0);
@@ -113,10 +117,6 @@ void DebruijnGraph::prune_edges(std::vector<bool>& remove_edges){
     edges_[i]->set_source(node_indices[edges_[i]->get_source()]);
     edges_[i]->set_destination(node_indices[edges_[i]->get_destination()]);
   }
-}
-
-bool path_comparator(DebruijnPath* p1, DebruijnPath* p2){
-  return p1->get_min_weight() < p2->get_min_weight();
 }
 
 /*
