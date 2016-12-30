@@ -271,6 +271,7 @@ BPDIFFS        | Base pair difference of each alternate allele from the referenc
 START          | Inclusive start coodinate for the repetitive portion of the reference allele
 END            | Inclusive end coordinate for the repetitive portion of the reference allele
 PERIOD         | Length of STR motif
+AN             | Total number of alleles in called genotypes
 REFAC          | Reference allele count
 AC             | Alternate allele counts
 NSKIP          | Number of samples not genotyped due to various issues
@@ -294,13 +295,15 @@ DSNP      | Number of reads with SNP phasing information
 PDP       | Fractional reads supporting each haploid genotype
 GLDIFF    | Difference in likelihood between the reported and next best genotypes
 DSNP      | Total number of reads with SNP information
+PSNP      | Number of reads with SNPs supporting each haploid genotype
 DSTUTTER  | Number of reads with a stutter indel in the STR region
 DFLANKINDEL | Number of reads with an indel in the regions flanking the STR
+AB        | log10 of the allele bias pvalue, where 0 is no bias and more negative values are increasingly biased. Not applicable to homozygous genotypes
+DAB       | Number of reads used in the allele bias calculation
 ALLREADS  | Base pair difference observed in each read's Needleman-Wunsch alignment
 MALLREADS | Maximum likelihood bp diff in each read based on haplotype alignments
 GL        | log-10 genotype likelihoods
 PL        | Phred-scaled genotype likelihoods
-
 
 <a id="stutter-file"></a>
 ### Stutter model
