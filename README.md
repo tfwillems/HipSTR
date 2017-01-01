@@ -88,7 +88,6 @@ This mode is identical to the one suggested in the **Quick Start** section as it
 ./HipSTR --bams             run1.bam,run2.bam,run3.bam,run4.bam
          --fasta            /data/
          --regions          str_regions.bed
-         --stutter-out      stutter_models.txt
          --str-vcf          str_calls.vcf.gz
 ```
 
@@ -214,7 +213,6 @@ Alternatively, if your BAM files lack *RG* information, you can use the **--bam-
 ./HipSTR --bams             run1.bam,run2.bam,run3.bam,run4.bam
          --fasta            /data/
          --regions          str_regions.bed
-         --stutter-out      stutter_models.txt
          --str-vcf          str_calls.vcf.gz
          --bam-samps        SAMPLE1,SAMPLE1,SAMPLE2,SAMPLE3
          --bam-libs         LIB1,LIB2,LIB3,LIB4
