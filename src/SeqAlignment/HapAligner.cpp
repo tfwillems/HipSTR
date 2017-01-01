@@ -575,8 +575,8 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
   assert(aln.get_sequence().size() == aln.get_base_qualities().size());
 
   // Extract probabilites related to base quality scores
-  double base_log_wrong[aln.get_sequence().size()];   // log10(Prob(error))
-  double base_log_correct[aln.get_sequence().size()]; // log10(Prob(correct))
+  double* base_log_wrong   = new double[aln.get_sequence().size()]; // log10(Prob(error))
+  double* base_log_correct = new double[aln.get_sequence().size()]; // log10(Prob(correct))
   const std::string& qual_string = aln.get_base_qualities();
   for (unsigned int j = 0; j < qual_string.size(); j++){
     base_log_wrong[j]   = base_quality->log_prob_error(qual_string[j]);
@@ -692,7 +692,7 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
   fw_haplotype_->reset();
   rev_haplotype_->reset();
 
-  // Deallocate scoring matrices
+  // Deallocate arrays and scoring matrices
   delete [] l_match_matrix;
   delete [] l_insert_matrix;
   delete [] l_deletion_matrix;
@@ -703,6 +703,8 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
   delete [] r_deletion_matrix;
   delete [] r_best_artifact_size;
   delete [] r_best_artifact_pos;
+  delete [] base_log_wrong;
+  delete [] base_log_correct;
 }
 
 AlignmentTrace* HapAligner::trace_optimal_aln(Alignment& orig_aln, int seed_base, int best_haplotype, BaseQuality* base_quality){
