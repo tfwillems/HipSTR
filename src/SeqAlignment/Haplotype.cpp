@@ -235,14 +235,14 @@ void Haplotype::go_to(int hap_index){
   last_changed_ = -1; // Don't want to reuse haplotype info as we're no longer just incrementing
 }
 
-void Haplotype::print_block_structure(int max_ref_len, 
-				      int max_other_len, 
+void Haplotype::print_block_structure(int max_ref_len, int max_other_len, bool indent,
 				      std::ostream& out){
   int max_rows = 0;
   for (int i = 0; i < num_blocks(); i++)
     max_rows = std::max(max_rows, blocks_[i]->num_options());
   
   for (int n = 0; n < max_rows; n++){
+    if (indent) out << "\t";
     for (int i = 0; i < num_blocks(); i++){
       int char_limit = blocks_[i]->num_options() == 1 ? max_ref_len : max_other_len;
       int num_chars  = 0;

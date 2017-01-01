@@ -11,15 +11,13 @@ void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 				    std::vector<std::string>& rg_names, RegionGroup& region_group,
 				    std::string& chrom_seq, std::ostream& out){
   // Only use specialized function for 10X genomics BAMs if flag has been set
-  if(bams_from_10x_){
+  if (bams_from_10x_){
     process_10x_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, region_group, chrom_seq, out);
     return;
   }
 
   locus_snp_phase_info_time_ = clock();
   assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
-  if (paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
-    return;
   
   std::vector<BamAlnList> alignments(paired_strs_by_rg.size());
   std::vector< std::vector<double> > log_p1s, log_p2s;
@@ -125,8 +123,6 @@ void SNPBamProcessor::process_10x_reads(std::vector<BamAlnList>& paired_strs_by_
 					std::string& chrom_seq, std::ostream& out){
   locus_snp_phase_info_time_ = clock();
   assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
-  if (paired_strs_by_rg.size() == 0 && unpaired_strs_by_rg.size() == 0)
-    return;
 
   std::vector<BamAlnList> alignments(paired_strs_by_rg.size());
   std::vector< std::vector<double> > log_p1s, log_p2s;

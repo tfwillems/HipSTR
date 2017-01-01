@@ -226,9 +226,9 @@ public:
 
     log("\n\n\n------HipSTR Execution Summary------");
     if (too_many_reads_ != 0)
-      log("Skipped " + std::to_string(too_many_reads_) + " loci with too many reads. If this comprises a sizeable portion of your loci, see the --max-reads command line option\n");
+      log("Skipped " + std::to_string(too_many_reads_) + " loci with too many reads.\n\t If this comprises a sizeable portion of your loci, see the --max-reads command line option\n");
     if (too_few_reads_ != 0)
-      log("Skipped " + std::to_string(too_few_reads_)  + " loci with too few reads for stutter model model training or genotyping. If this comprises a sizeable portion of your loci, see the --min-reads command line option\n");
+      log("Skipped " + std::to_string(too_few_reads_)  + " loci with too few reads for stutter model model training or genotyping.\n\t If this comprises a sizeable portion of your loci, see the --min-reads command line option\n");
     if (num_missing_models_ != 0)
       log("Skipped " + std::to_string(num_missing_models_) + " loci that did not have a stutter model in the file provided to --stutter-in\n");
     if (num_em_converge_+num_em_fail_ != 0)

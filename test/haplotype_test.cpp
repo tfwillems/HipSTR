@@ -33,8 +33,8 @@ int main(){
   Haplotype haplotype(hap_blocks);
   std::vector<HapBlock*> rev_blocks;
   Haplotype* rev_haplotype = haplotype.reverse(rev_blocks);
-  haplotype.print_block_structure(100, 100, std::cout);
-  rev_haplotype->print_block_structure(100, 100, std::cout);
+  haplotype.print_block_structure(100, 100, true, std::cout);
+  rev_haplotype->print_block_structure(100, 100, true, std::cout);
   do {
     std::string s1 = haplotype.get_seq();
     std::string s2 = rev_haplotype->get_seq();

@@ -147,7 +147,7 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
       length_genotyper.get_stutter_model()->write_model(region.chrom(), region.start(), region.stop(), stutter_model_out_);
     num_em_converge_++;
     StutterModel* stutter_model = length_genotyper.get_stutter_model()->copy();
-    logger() << "Learned stutter model: " << *stutter_model << std::endl;
+    logger() << "Learned stutter model " << *stutter_model;
     return stutter_model;
   }
   else {

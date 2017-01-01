@@ -106,7 +106,7 @@ class Haplotype {
     out << std::endl;
   }
   
-  void print_block_structure(int max_ref_len, int max_other_len,
+  void print_block_structure(int max_ref_len, int max_other_len, bool indent,
 			     std::ostream& out);
 
   // Prevent haplotype from being changed using next()

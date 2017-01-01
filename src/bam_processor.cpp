@@ -163,7 +163,6 @@ void BamProcessor::modify_and_write_alns(BamAlnList& alignments, std::map<std::s
     if (!writer.SaveAlignment(*read_iter))
       printErrorAndDie("Failed to save alignment for STR-spanning read");
   }
-
 }
 
 // Returns true if the alignment spans at least one region in the group.
@@ -426,7 +425,6 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
     }
   }
   potential_strs.clear(); potential_mates.clear();
-  logger() << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads" << std::endl;
   
   logger() << read_count << " reads overlapped region, of which "
 	   << "\n\t" << hard_clip        << " were hard clipped"
@@ -437,7 +435,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	   << "\n\t" << unique_mapping   << " did not have a unique mapping";
   if (REQUIRE_PAIRED_READS)
     logger() << "\n\t" << num_filt_unpaired_reads << " did not have a mate pair";
-  logger() << "\n" << (paired_str_alns.size()+unpaired_str_alns.size()) << " PASSED ALL FILTERS" << "\n" << std::endl;
+  logger() << "\n\t" << (paired_str_alns.size()+unpaired_str_alns.size()) << " PASSED ALL FILTERS" << "\n"
+	   << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads for downstream analyses" << std::endl;
     
   // Output the reads passing all filters to a BAM file (if requested)
   if (pass_writer.IsOpen())
@@ -494,7 +493,7 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string
   BamTools::RefVector ref_vector = reader.GetReferenceData();
   int cur_chrom_id = -1; std::string chrom_seq;
   for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
-    logger() << "\n\n\n" << "Processing region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << std::endl;
+    logger() << "\n\n" << "Processing region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << std::endl;
     int chrom_id = reader.GetReferenceID(region_iter->chrom());
     if (chrom_id == -1 && region_iter->chrom().size() > 3 && region_iter->chrom().substr(0, 3).compare("chr") == 0)
       chrom_id = reader.GetReferenceID(region_iter->chrom().substr(3));
@@ -526,10 +525,10 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string
     }
 
     locus_bam_seek_time_ = clock();
-    if(!reader.SetRegion(chrom_id, (region_iter->start() < MAX_MATE_DIST ? 0: region_iter->start()-MAX_MATE_DIST), 
-			 chrom_id, region_iter->stop() + MAX_MATE_DIST)){
+    if (!reader.SetRegion(chrom_id, (region_iter->start() < MAX_MATE_DIST ? 0: region_iter->start()-MAX_MATE_DIST),
+			 chrom_id, region_iter->stop() + MAX_MATE_DIST))
       printErrorAndDie("One or more BAM files failed to set the region properly");
-    }
+
     locus_bam_seek_time_  =  (clock() - locus_bam_seek_time_)/CLOCKS_PER_SEC;
     total_bam_seek_time_ += locus_bam_seek_time_;
 

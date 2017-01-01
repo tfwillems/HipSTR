@@ -421,7 +421,7 @@ bool SeqStutterGenotyper::build_haplotype(std::string& chrom_seq, std::vector<St
       haplotype_   = new Haplotype(hap_blocks_);
       num_alleles_ = haplotype_->num_combs();
       call_sample_ = std::vector<bool>(num_samples_, true);
-      haplotype_->print_block_structure(30, 100, logger);
+      haplotype_->print_block_structure(30, 100, true, logger);
     }
     else {
       logger << "Haplotype construction failed: " << hap_generator.failure_msg() << std::endl;
@@ -574,7 +574,6 @@ bool SeqStutterGenotyper::genotype(std::string& chrom_seq, std::ostream& logger)
   }
 
   init_alignment_model();
-  logger << "Pooling reads with identical sequences" << std::endl;
   pooler_.pool(base_quality_);
 
   // Align each read to each candidate haplotype and store them in the provided arrays
@@ -1086,7 +1085,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   // Print the allele count information
   logger << "Allele counts" << std::endl;
   for (unsigned int i = 0; i < alleles.size(); i++)
-    logger << alleles[new_to_old[i]] << " " << allele_counts[new_to_old[i]] <<  std::endl;
+    logger << "\t" << alleles[new_to_old[i]] << " " << allele_counts[new_to_old[i]] << std::endl;
   logger << std::endl;
 
   //VCF line format = CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE_1 SAMPLE_2 ... SAMPLE_N
