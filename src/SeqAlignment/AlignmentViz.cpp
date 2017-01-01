@@ -127,16 +127,11 @@ void overlayAlignments(std::vector<Alignment>& alignments,
 	  length--;
 	}
       }
-      else if (type == 'H'){
+      else if (type == 'H')
 	length = 0;
-	continue;
-	printErrorAndDie("Cigar string H option not implemeted.");
-      }
       else if (type == 'S'){
 	nuc_index += length;
 	length = 0;
-	continue;
-	printErrorAndDie("Cigar string S option not implemeted.");
       }
       else
 	printErrorAndDie("Invalid cigar option encountered.");
