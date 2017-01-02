@@ -82,7 +82,7 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
       min_read_index = read_index;
 
       if (acyclic){
-	if (call_sample_[sample_index] && assembly_data.size() > 1){
+	if (call_sample_[sample_index].empty() && assembly_data.size() > 1){
 	  int total_depth = 0;
 	  for (unsigned int i = 0; i < assembly_data.size(); i++)
 	    total_depth += assembly_data[i].second;
@@ -96,7 +96,7 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 		  // but right now there's an issue with indels in the flanks clobbering indels in the STR region
 		  // We need to be more intelligent about how we resolve this before we can include these flanks
 		  // For now, we'll avoid genotyping any samples with support for these indels
-		  call_sample_[sample_index]   = false;
+		  call_sample_[sample_index]   = "FLANK_ASSEMBLY_INDEL";
 		  realign_sample[sample_index] = false;
 		}
 		else {
@@ -110,7 +110,7 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 	}
       }
       else
-	call_sample_[sample_index] = false;
+	call_sample_[sample_index] = "FLANK_ASSEMBLY_CYCLIC";
     }
 
     if (!haplotype_counts.empty()){
@@ -240,7 +240,7 @@ void SeqStutterGenotyper::get_unused_alleles(bool check_spanned, bool check_call
     // Mark all alleles where at least one sample contains the allele in its optimal haplotypes
     if (check_called){
       for (unsigned int sample_index = 0; sample_index < haps.size(); sample_index++){
-	if (aligned_read[sample_index] && call_sample_[sample_index]){
+	if (aligned_read[sample_index] && call_sample_[sample_index].empty()){
 	  called[hap_to_allele[haps[sample_index].first]]  = true;
 	  called[hap_to_allele[haps[sample_index].second]] = true;
 	}
@@ -420,7 +420,7 @@ bool SeqStutterGenotyper::build_haplotype(std::string& chrom_seq, std::vector<St
       hap_blocks_  = hap_generator.get_haplotype_blocks();
       haplotype_   = new Haplotype(hap_blocks_);
       num_alleles_ = haplotype_->num_combs();
-      call_sample_ = std::vector<bool>(num_samples_, true);
+      call_sample_ = std::vector<std::string>(num_samples_, "");
       haplotype_->print_block_structure(30, 100, true, logger);
     }
     else {
@@ -1062,7 +1062,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
       filt_count++;
       continue;
     }
-    if (call_sample_[sample_index]) {
+    if (call_sample_[sample_index].empty()) {
       if (haploid_){
 	assert(gt_iter->first == gt_iter->second);
 	allele_counts[gt_iter->first]++;
@@ -1086,7 +1086,6 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   logger << "Allele counts" << std::endl;
   for (unsigned int i = 0; i < alleles.size(); i++)
     logger << "\t" << alleles[new_to_old[i]] << " " << allele_counts[new_to_old[i]] << std::endl;
-  logger << std::endl;
 
   //VCF line format = CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE_1 SAMPLE_2 ... SAMPLE_N
   out << region.chrom() << "\t" << pos << "\t" << (region.name().empty() ? "." : region.name());
@@ -1133,7 +1132,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     auto sample_iter = sample_indices_.find(sample_names[i]);
     if (sample_iter == sample_indices_.end())
       continue;
-    if (!call_sample_[sample_iter->second])
+    if (!call_sample_[sample_iter->second].empty())
       continue;
     if (num_aligned_reads[sample_iter->second] > 0 &&
 	(num_reads_with_flank_indels[sample_iter->second] > num_aligned_reads[sample_iter->second]*max_flank_indel_frac))
@@ -1172,6 +1171,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
   if (!haploid_ && output_phased_gls) out << ":PHASEDGL";
 
   std::map<std::string, std::string> sample_results;
+  std::map<std::string, int> filter_reasons;
   for (unsigned int i = 0; i < sample_names.size(); i++){
     out << "\t";
     auto sample_iter = sample_indices_.find(sample_names[i]);
@@ -1181,14 +1181,15 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     }
     
     // Don't report information for a sample if none of its reads were successfully realigned
-    // and we require at least one read
     if (num_aligned_reads[sample_iter->second] == 0){
+      filter_reasons["NO_READS"]++;
       out << ".";
       continue;
     }
 
     // Don't report information for a sample if flag has been set to false
-    if (!call_sample_[sample_iter->second]){
+    if (!call_sample_[sample_iter->second].empty()){
+      filter_reasons[call_sample_[sample_iter->second]]++;
       out << ".";
       continue;
     }
@@ -1196,6 +1197,8 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     // Don't report genotype for a sample if it exceeds the flank indel fraction
     if (num_aligned_reads[sample_iter->second] > 0 &&
 	(num_reads_with_flank_indels[sample_iter->second] > num_aligned_reads[sample_iter->second]*max_flank_indel_frac)){
+      call_sample_[sample_iter->second] = "FLANK_INDEL_FRAC";
+      filter_reasons["FLANK_INDEL_FRAC"]++;
       out << ".";
       continue;
     }
@@ -1312,6 +1315,16 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     }
   }
   out << "\n";
+
+  if (!filter_reasons.empty()){
+    int32_t filt_count = 0;
+    for (auto filter_iter = filter_reasons.begin(); filter_iter != filter_reasons.end(); filter_iter++)
+      filt_count += filter_iter->second;
+    logger << "Filtered " << filt_count << " sample genotypes for the following reasons:\t";
+    for (auto filter_iter = filter_reasons.begin(); filter_iter != filter_reasons.end(); filter_iter++)
+      logger << filter_iter->second << "=" << filter_iter->first << "\t";
+    logger << std::endl;
+  }
 
   // Render HTML of Smith-Waterman alignments (or haplotype alignments)
   if (output_viz){

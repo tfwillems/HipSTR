@@ -35,7 +35,7 @@ class SeqStutterGenotyper : public Genotyper {
   AlnList alns_;                                  // Vector of left-aligned alignments
   std::vector<HapBlock*> hap_blocks_;             // Haplotype blocks
   Haplotype* haplotype_;                          // Potential STR haplotypes
-  std::vector<bool> call_sample_;                 // True iff we should try to genotype the sample with the associated index
+  std::vector<std::string> call_sample_;          // True iff we should try to genotype the sample with the associated index
                                                   // Based on the deletion boundaries in the sample's reads
 
   bool initialized_; // True iff initialization succeeded and genotyping can proceed
