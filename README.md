@@ -12,8 +12,8 @@
 [Speed](#speed)  
 [Call Filtering](#call-filtering)  
 [Additional Usage Options](#additional-usage-options)  
-[File Formats](#file-formats)
-
+[File Formats](#file-formats)   
+[Citation](#citation)
 
 ## Introduction
 Short tandem repeats [(STRs)](http://en.wikipedia.org/wiki/Microsatellite) are highly repetitive genomic sequences comprised of repeated copies of an underlying motif. Prevalent in most organisms' genomes, STRs are of particular interest because they mutate much more rapidly than most other genomic elements. As a result, they're extremely informative for genomic identification, ancestry inference and genealogy.
@@ -334,3 +334,6 @@ Each of the stutter parameters is defined as follows:
 | OUP      |  Probability that out-of-frame changes increase the size of the observed STR allele
 | IGEOM    | Parameter governing geometric step size distribution for in-frame changes
 | OGEOM    | Paramter  governing geometric step size distribution for out-of-frame changes
+
+## Citation
+If you found HipSTR useful, we would appreciate it if you could [cite](http://biorxiv.org/content/early/2016/09/27/077727) our preprint describing HipSTR and its applications: **[Genome-wide profiling of heritable and de novo STR variations](http://biorxiv.org/content/early/2016/09/27/077727.full.pdf)**
