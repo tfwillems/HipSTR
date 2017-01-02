@@ -69,7 +69,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to the VCF (Default = False)"                << "\n"
 	    << "\t" << "--output-phased-gls                   "  << "\t" << "Write phased genotype likelihoods to the VCF (Default = False)"                      << "\n" << "\n"
 
-	    << "Optional BAM tweaking options:" << "\n"
+	    << "Optional BAM tweaking parameters:" << "\n"
 	    << "\t" << "--bam-samps     <list_of_samples>     "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
 	    << "\t" << "                                      "  << "\t" << "  Assign each read the read group corresponding to its file. By default, "           << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG tag and the sample is determined from the SM field"      << "\n"
@@ -300,6 +300,13 @@ void parse_command_line_args(int argc, char** argv,
   }
   if (print_help){
     print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len);
+    std::cerr << "\n"
+	      << "***Looking for answers to commonly asked questions or usage examples?***"                       << "\n"
+	      << "\t i.  An in-depth description of HipSTR is available at https://hipstr-tool.github.io/HipSTR " << "\n"
+	      << "\t ii. Check out the HipSTR tutorial at https://hipstr-tool.github.io/HipSTR-tutorial"          << "\n\n"
+	      << "***Found a bug/issue or have a feature request?***"                                             << "\n"
+	      << "\t i.  File a issue on GitHub (https://github.com/HipSTR-Tool/HipSTR)"                          << "\n"
+	      << "\t ii. Email us at hipstrtool@gmail.com" << "\n"                                                << "\n" << std::endl;
     exit(0);
   }
   if (viz_left_alns)
