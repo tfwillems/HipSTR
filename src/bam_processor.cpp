@@ -317,6 +317,12 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	add_passes_filters_tag(alignment, pass_two);
 	auto aln_iter = potential_mates.find(aln_key);
 	if (aln_iter != potential_mates.end()){
+	  if (alignment.IsFirstMate() == aln_iter->second.IsFirstMate()){
+	    potential_mates.erase(aln_iter);
+	    potential_strs.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
+	    continue;
+	  }
+
 	  std::vector< std::pair<std::string, int32_t> > p_1, p_2;
 	  get_valid_pairings(alignment, aln_iter->second, ref_vector, p_1, p_2);
 	  if (p_1.size() == 1 && p_1[0].second == alignment.Position){
@@ -339,6 +345,11 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	  // Check if read's mate pair also overlaps the STR
 	  auto str_iter = potential_strs.find(aln_key);
 	  if (str_iter != potential_strs.end()){
+	    if (alignment.IsFirstMate() == str_iter->second.IsFirstMate()){
+	      read_count--;
+	      continue;
+	    }
+
 	    std::vector< std::pair<std::string, int32_t> > p_1, p_2;
 	    get_valid_pairings(alignment, str_iter->second, ref_vector, p_1, p_2);
 	    if (p_1.size() == 1 && p_1[0].second == alignment.Position){
@@ -375,6 +386,9 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       std::string aln_key = trim_alignment_name(alignment);
       auto aln_iter = potential_strs.find(aln_key);
       if (aln_iter != potential_strs.end()){
+	if (alignment.IsFirstMate() == aln_iter->second.IsFirstMate())
+	  continue;
+
 	std::vector< std::pair<std::string, int32_t> > p_1, p_2;
 	get_valid_pairings(aln_iter->second, alignment, ref_vector, p_1, p_2);
 	if (p_1.size() == 1 && p_1[0].second == aln_iter->second.Position){
@@ -395,8 +409,11 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       }
       else {
 	auto other_iter = potential_mates.find(aln_key);
-	if (other_iter != potential_mates.end())
+	if (other_iter != potential_mates.end()){
+	  if (alignment.IsFirstMate() == aln_iter->second.IsFirstMate())
+	    continue;
 	  potential_mates.erase(other_iter);
+	}
 	else
 	  potential_mates.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
       }
