@@ -226,7 +226,7 @@ void SeqStutterGenotyper::get_unused_alleles(bool check_spanned, bool check_call
 	      int best_hap = hap_a;
 	      if (!haploid_ && (hap_a != hap_b)){
 		double v1 = log_p1_[read_index]+read_LL_ptr[hap_a], v2 = log_p2_[read_index]+read_LL_ptr[hap_b];
-		if (abs(v1-v2) > TOLERANCE)
+		if (std::abs(v1-v2) > TOLERANCE)
 		  best_hap = (v1 > v2 ? hap_a : hap_b);
 	      }
 	      spanned[hap_to_allele[best_hap]] = true;
@@ -989,9 +989,9 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
 
     // Determine which of the two genotypes each read is associated with
     int read_strand = 0;
-    if (!haploid_ && ((hap_a != hap_b) || (abs(log_p1_[read_index]-log_p2_[read_index]) > TOLERANCE))){
+    if (!haploid_ && ((hap_a != hap_b) || (std::abs(log_p1_[read_index]-log_p2_[read_index]) > TOLERANCE))){
       double v1 = log_p1_[read_index]+read_LL_ptr[hap_a], v2 = log_p2_[read_index]+read_LL_ptr[hap_b];
-      if (abs(v1-v2) > TOLERANCE){
+      if (std::abs(v1-v2) > TOLERANCE){
 	read_strand = (v1 > v2 ? 0 : 1);
 	if (read_strand == 0)
 	  unique_reads_hap_one[sample_label_[read_index]]++;
@@ -1027,7 +1027,7 @@ void SeqStutterGenotyper::write_vcf_record(std::vector<std::string>& sample_name
     num_aligned_reads[sample_label_[read_index]]++;
 
     // Adjust number of reads with SNP information for each sample
-    if (abs(log_p1_[read_index] - log_p2_[read_index]) > TOLERANCE){
+    if (std::abs(log_p1_[read_index] - log_p2_[read_index]) > TOLERANCE){
       num_reads_with_snps[sample_label_[read_index]]++;
       if (log_p1_[read_index] > log_p2_[read_index])
 	num_reads_strand_one[sample_label_[read_index]]++;

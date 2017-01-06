@@ -68,7 +68,7 @@ void BamProcessor::extract_mappings(BamTools::BamAlignment& aln, const BamTools:
     for (unsigned int i = 0; i < alts.size(); i++){
       std::vector<std::string> tokens;
       split_by_delim(alts[i], ',', tokens);
-      chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(tokens[0], abs(std::stol(tokens[1]))));
+      chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(tokens[0], std::abs(std::stol(tokens[1]))));
     }
   }
 }
