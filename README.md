@@ -8,7 +8,8 @@
 [Quick Start](#quick-start) 
 [Tutorial](#tutorial)  
 [In-depth Usage](#in-depth-usage)  
-[Phasing](#phasing)   
+[Phasing](#phasing)     
+[De novo Mutations](#De-novo-mutations)     
 [Speed](#speed)  
 [Call Filtering](#call-filtering)  
 [Additional Usage Options](#additional-usage-options)  
@@ -26,7 +27,6 @@ Despite their utility, STRs are particularly difficult to genotype. The repetiti
 2. Mining candidate STR alleles from population-scale sequencing data
 3. Employing a specialized hidden Markov model to align reads to candidate sequences while accounting for STR artifacts
 4. Utilizing phased SNP haplotypes to genotype and phase STRs
-
 
 
 ## Installation
@@ -121,11 +121,19 @@ HipSTR utilizes phased SNP haplotypes to phase the resulting STR genotypes. To d
 
 ![Phasing schematic!](https://raw.githubusercontent.com/tfwillems/HipSTR/master/img/phasing.png)
 
+## De novo Mutations
+To detect *de novo* STR mutations in families, one option is to generate HipSTR calls as described above, apply stringent filters to the genotypes (see below), and identify any sites where the genotypes are inconsistent with Mendelian inheritance. We used this approach in our [paper](http://biorxiv.org/content/early/2016/09/27/077727.full.pdf) to identify hundreds of replicable STR mutations in a well-studied trio in genomics. 
+
+Although this approach can be effective, it does not provide a quantitative measure of the confidence in each identified mutation. To overcome this limitation, we've recently been developing **DenovoFinder**, a part of the *HipSTR* package that provides a more robust quantitative approach. This tool takes VCF files produced by **HipSTR** as input and computes the *likelihood* that a *de novo* mutation occurred at each STR for each family. To run **DenovoFinder**, your VCF file must contain a special type of field called phased genotype likelihoods (FORMAT field = PHASEDGL). As these are not included in the VCF by default, ensure that you run HipSTR with both the **--snp-vcf** and **--output-phased-gls** options if you're interested in using this module in later analyses.
+
+We'll add more documentation and a tutorial regarding **DenovoFinder** in the coming weeks, but in the mean time, please type `./DenovoFinder --help` for more information. As **DenovoFinder** is unpublished work, we ask that you don't publish any manuscripts using it until we've written a short publication describing its methodology and applications. 
+
 ## Speed
 HipSTR doesn't currently have multi-threaded support, but there are several options available to accelerate analyses:
 
 1. Analyze each chromosome in parallel using the **--chrom** option. For example, **--chrom chr2** will only genotype the BED regions on chr2
-2. If you have hundreds of BAM files, we recommend that you merge them into a more manageable number (10-100) using the `samtools merge` command. Large numbers of BAMs can lead to slow disk IO and poor performance
+2. Split your BED file into *N* files and analyze each of the *N* files in parallel. This allows you to parallelize analyses in a manner similar to option 1 but can be used for increased speed if *N* is much greater than the number of chromosomes.
+3. If you have hundreds of BAM files, we recommend that you merge them into a more manageable number (10-100) using the `samtools merge` command. Large numbers of BAMs can lead to slow disk IO and poor performance
 
 ## Call Filtering
 Although **HipSTR** mitigates many of the most common sources of STR genotyping errors, it's still extremely important to filter the resulting VCFs to discard low quality calls. To facilitate this process, the VCF output contains various FORMAT and INFO fields that are usually indicators of problematic calls. The INFO fields indicate the aggregate data for a locus and, if certain flags are raised, may suggest that the entire locus should be discarded. In contrast, FORMAT fields are available on a per-sample basis for each locus and, if certain flags are raised, suggest that some samples' genotypes should be discarded. The list below includes some of these fields and how they can be informative:
