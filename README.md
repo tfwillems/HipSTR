@@ -9,7 +9,7 @@
 [Tutorial](#tutorial)  
 [In-depth Usage](#in-depth-usage)  
 [Phasing](#phasing)     
-[De novo Mutations](#De-novo-mutations)     
+[De novo Mutations](#de-novo-mutations)     
 [Speed](#speed)  
 [Call Filtering](#call-filtering)  
 [Additional Usage Options](#additional-usage-options)  
@@ -164,7 +164,6 @@ The resulting VCF, which is printed to the standard output stream, will omit cal
     python scripts/filter_vcf.py -h
     python scripts/filter_haploid_vcf.py -h
 ```
-
 
 ## Additional Usage Options
 | Option | Description |
