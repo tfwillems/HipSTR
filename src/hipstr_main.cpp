@@ -301,11 +301,11 @@ void parse_command_line_args(int argc, char** argv,
   if (print_help){
     print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len);
     std::cerr << "\n"
-	      << "***Looking for answers to commonly asked questions or usage examples?***"                       << "\n"
+	      << "*** Looking for answers to commonly asked questions or usage examples? ***"                     << "\n"
 	      << "\t i.  An in-depth description of HipSTR is available at https://hipstr-tool.github.io/HipSTR " << "\n"
 	      << "\t ii. Check out the HipSTR tutorial at https://hipstr-tool.github.io/HipSTR-tutorial"          << "\n\n"
-	      << "***Found a bug/issue or have a feature request?***"                                             << "\n"
-	      << "\t i.  File a issue on GitHub (https://github.com/HipSTR-Tool/HipSTR)"                          << "\n"
+	      << "*** Found a bug/issue or have a feature request? ***"                                           << "\n"
+	      << "\t i.  File an issue on GitHub (https://github.com/HipSTR-Tool/HipSTR)"                         << "\n"
 	      << "\t ii. Email us at hipstrtool@gmail.com" << "\n"                                                << "\n" << std::endl;
     exit(0);
   }
