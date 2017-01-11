@@ -24,6 +24,10 @@ class MutationModel {
   double log_prior_mutation(int parental_allele, int child_allele){
     return log_mut_prior_;
   }
+
+  double max_log_prior_mutation(int parental_allele){
+    return log_mut_prior_;
+  }
 };
 
 #endif
