@@ -363,7 +363,7 @@ In this scenario, you can run HipSTR with **--def-stutter-model**. Invoking this
 If you're having trouble getting your analysis up and running:      
 
     i.   Check out the HipSTR tutorial at https://hipstr-tool.github.io/HipSTR-tutorial
-    ii.  Type *./HipSTR --help* for details about each command line option
+    ii.  Type ./HipSTR --help for details about each command line option
     iii. Email us at hipstrtool@gmail.com
 
 If you encounter a bug/issue or have a feature request:     
