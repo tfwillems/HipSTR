@@ -33,7 +33,7 @@ void DenovoScanner::write_vcf_header(std::string& full_command){
 	      << "##FORMAT=<ID=" << "DENOVO"   << ",Number=.,Type=Float,Description=\""
 	      << "Log10-likelihood that a single de novo mutation occurred in the family, and it occurred in the current child" << "\">\n"
 	      << "##FORMAT=<ID=" << "OTHER"    << ",Number=.,Type=Float,Description=\""
-	      << "Log10-likelihood that a single mutation occurred in the family, and it occurred in the current child. In contrast to DENOVO, the mutated allele is also present in a parent genotype" << "\">\n";
+	      << "Log10-likelihood that a single mutation occurred in the family, and it occurred in the current child. In contrast to DENOVO, the mutated allele is also present in a parental genotype" << "\">\n";
 
   denovo_vcf_ << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
   for (auto family_iter = families_.begin(); family_iter != families_.end(); family_iter++)
