@@ -286,7 +286,7 @@ DSTUTTER       | Total number of reads with a stutter indel in the STR region
 DFLANKINDEL    | Total number of reads with an indel in the regions flanking the STR
 
 #### FORMAT fields
-*FORMAT* fields contain information about the genotype for each sample at the locus. In addition to the most probable phased genotype (*GT*), HipSTR reports information about the posterior likelihood of this genotype (*PQ*) and its unphased analog (*Q*). Other useful information reported are the number of reads that were used to determine the genotype (*DP*) and whether these had any alignment artifacts (*DSTUTTER* and *DFLANKINDEL*).
+FORMAT fields contain information about the genotype for each sample at the locus. In addition to the most probable phased genotype (GT), HipSTR reports information about the posterior likelihood of this genotype (PQ) and its unphased analog (Q). Other useful information reported are the number of reads that were used to determine the genotype (DP) and whether these had any alignment artifacts (DSTUTTER and DFLANKINDEL).
 
 FIELD     | DESCRIPTION
 --------- | -----------
