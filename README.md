@@ -9,11 +9,11 @@
 [Tutorial](#tutorial)  
 [In-depth Usage](#in-depth-usage)  
 [Phasing](#phasing)     
-[De novo Mutations](#de-novo-mutations)     
 [Speed](#speed)  
 [Call Filtering](#call-filtering)  
-[Additional Usage Options](#additional-usage-options)  
+[Additional Usage Options](#additional-usage-options)		  
 [File Formats](#file-formats)   
+[De novo Mutations](#de-novo-mutations)   
 [FAQ](#faq)     
 [Help](#help)       
 [Citation](#citation)
@@ -125,13 +125,6 @@ For scenarios *\#3* and *\#4*, if you don't have access to external stutter mode
 HipSTR utilizes phased SNP haplotypes to phase the resulting STR genotypes. To do so, it looks for pairs of reads in which the STR-containing read or its mate pair overlap a samples's heterozygous SNP. In these instances, the quality score for the overlapping base can be used to determine the likelihood that the read came from each haplotype. Alternatively, when this information is not available, we assign the read an equal likelihood of coming from either strand. These likelihoods are incorporated into the HipSTR genotyping model which outputs phased genotypes. The quality of a phasing is reflected in the *PQ* FORMAT field, which provides the posterior probability of each sample's phased genotype. For homozygous genotypes, this value will always equal the *Q* FORMAT field as phasing is irrelevant. However, for heterozygous genotypes, if *PQ ~ Q*, it indicates that one of the two phasings is much more favorable. Alterneatively, if none of a sample's reads overlap heterozygous SNPs, both phasings will be equally probable and *PQ ~ Q/2*. To enable the use of physical phasing, supply HipSTR with the `--snp-vcf` option and a SNP VCF containing **phased** haplotypes. The schematic below outlines the concepts underlying HipSTR's physical phasing model:
 
 ![Phasing schematic!](https://raw.githubusercontent.com/tfwillems/HipSTR/master/img/phasing.png)
-
-## De novo Mutations
-To detect *de novo* STR mutations in families, one option is to generate HipSTR calls as described above, apply stringent filters to the genotypes (see below), and identify any sites where the genotypes are inconsistent with Mendelian inheritance. We used this approach in our [paper](http://biorxiv.org/content/early/2016/09/27/077727.full.pdf) to identify hundreds of replicable STR mutations in a well-studied trio in genomics. 
-
-Although this approach can be effective, it does not provide a quantitative measure of the confidence in each identified mutation. To overcome this limitation, we've recently been developing **DenovoFinder**, a part of the *HipSTR* package that provides a more robust quantitative approach. This tool takes VCF files produced by **HipSTR** as input and computes the *likelihood* that a *de novo* mutation occurred at each STR for each family. To run **DenovoFinder**, your VCF file must contain a special type of field called phased genotype likelihoods (FORMAT field = PHASEDGL). As these are not included in the VCF by default, ensure that you run HipSTR with both the **--snp-vcf** and **--output-phased-gls** options if you're interested in using this module in later analyses.
-
-We'll add more documentation and a tutorial regarding **DenovoFinder** in the coming weeks, but in the mean time, please type `./DenovoFinder --help` for more information. As **DenovoFinder** is unpublished work, we ask that you don't publish any manuscripts using it until we've written a short publication describing its methodology and applications. 
 
 ## Speed
 HipSTR doesn't currently have multi-threaded support, but there are several options available to accelerate analyses:
@@ -265,10 +258,10 @@ For other model organisms, we recommend that you
 
 <a id="str-vcf"></a>
 ### VCF file
-For more information on the VCF file format, please see the [VCF spec](http://samtools.github.io/hts-specs/VCFv4.2.pdf). For filtering and parsing VCFs, we recommend the fantastic python package [PyVCF](http://pyvcf.readthedocs.org/en/latest/)
+For more information on the VCF file format, please see the [VCF spec](http://samtools.github.io/hts-specs/VCFv4.2.pdf). 
 
 #### INFO fields
-*INFO* fields contains statistics about each genotyped locus in the VCF. The INFO fields reported by HipSTR primarily describe the learned/supplied stutter model for the locus and its reference coordinates and sequence characteristics.
+INFO fields contains aggregated statistics about each genotyped STR in the VCF. The INFO fields reported by HipSTR primarily describe the learned/supplied stutter model for the locus, the STR's reference coordinates (START and END) and information about the allele counts (AC) and number of reads used to genotype all samples (DP).
 
 FIELD | DESCRIPTION
 ----- | -----------
@@ -293,7 +286,7 @@ DSTUTTER       | Total number of reads with a stutter indel in the STR region
 DFLANKINDEL    | Total number of reads with an indel in the regions flanking the STR
 
 #### FORMAT fields
-*FORMAT* fields contain information about the genotype for each sample at the locus. In addition to the most probable phased genotype (*GT*), HipSTR reports information about the posterior likelihood of this genotype (*PQ*) and its unphased analog (*Q*). 
+*FORMAT* fields contain information about the genotype for each sample at the locus. In addition to the most probable phased genotype (*GT*), HipSTR reports information about the posterior likelihood of this genotype (*PQ*) and its unphased analog (*Q*). Other useful information reported are the number of reads that were used to determine the genotype (*DP*) and whether these had any alignment artifacts (*DSTUTTER* and *DFLANKINDEL*).
 
 FIELD     | DESCRIPTION
 --------- | -----------
@@ -348,6 +341,13 @@ Each of the stutter parameters is defined as follows:
 | OUP      |  Probability that out-of-frame changes increase the size of the observed STR allele
 | IGEOM    | Parameter governing geometric step size distribution for in-frame changes
 | OGEOM    | Paramter  governing geometric step size distribution for out-of-frame changes
+
+## De novo Mutations
+To detect *de novo* STR mutations in families, one option is to generate HipSTR calls as described above, apply stringent filters to the genotypes (see below), and identify any sites where the genotypes are inconsistent with Mendelian inheritance. We used this approach in our [paper](http://biorxiv.org/content/early/2016/09/27/077727.full.pdf) to identify hundreds of replicable STR mutations in a well-studied trio in genomics. 
+
+Although this approach can be effective, it does not provide a quantitative measure of the confidence in each identified mutation. To overcome this limitation, we've recently been developing **DenovoFinder**, a part of this package that provides a more robust quantitative approach. **DenovoFinder** is automatically built as part of the compilation process. The tool takes VCF files produced by **HipSTR** as input and computes the *likelihood* that a *de novo* mutation occurred at each STR for each family. To run **DenovoFinder**, your VCF file must either contain genotype likelihoods (FORMAT field = GL) or a special type of field called phased genotype likelihoods (FORMAT field = PHASEDGL). As these are not included in the VCF by default, ensure that you run HipSTR with either **--output-gls** or both the **--snp-vcf** and **--output-phased-gls** options if you're interested in using this module in later analyses.
+
+We'll add more documentation and a tutorial regarding **DenovoFinder** in the coming weeks, but in the mean time, please type `./DenovoFinder --help` for more information. As **DenovoFinder** is unpublished work, we ask that you don't publish any manuscripts using it until we've written a short publication describing its methodology and applications.
 
 ## FAQ
 1. **Can I run HipSTR if my dataset only contains single-ended reads?**     
