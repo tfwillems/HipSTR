@@ -113,19 +113,19 @@ public:
 
   bool sample_call_missing(const std::string& sample);
 
-  void get_INFO_value_single_int(const std::string& fieldname, int& val){
-    int mem        = 0;
-    int* info_vals = NULL;
+  void get_INFO_value_single_int(const std::string& fieldname, int32_t& val){
+    int mem            = 0;
+    int32_t* info_vals = NULL;
     if (bcf_get_info_int32(vcf_header_, vcf_record_, fieldname.c_str(), &info_vals, &mem) != 1)
       printErrorAndDie("Failed to extract single INFO value from the VCF record");
     val = info_vals[0];
     free(info_vals);
   }
 
-  void get_INFO_value_multiple_ints(const std::string& fieldname, std::vector<int>& vals){
+  void get_INFO_value_multiple_ints(const std::string& fieldname, std::vector<int32_t>& vals){
     vals.clear();
-    int mem         = 0;
-    int* info_vals  = NULL;
+    int mem             = 0;
+    int32_t* info_vals  = NULL;
     int num_entries = bcf_get_info_int32(vcf_header_, vcf_record_, fieldname.c_str(), &info_vals, &mem);
     if (num_entries <= 1)
       printErrorAndDie("Failed to extract multiple INFO values from the VCF record");
