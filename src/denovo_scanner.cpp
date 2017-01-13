@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "denovo_scanner.h"
+#include "denovo_allele_priors.h"
 #include "error.h"
 #include "haplotype_tracker.h"
 #include "mathops.h"
@@ -14,35 +15,6 @@ std::string DenovoScanner::BPDIFFS_KEY = "BPDIFFS";
 std::string DenovoScanner::START_KEY   = "START";
 std::string DenovoScanner::END_KEY     = "END";
 std::string DenovoScanner::PERIOD_KEY  = "PERIOD";
-
-void DiploidGenotypePrior::compute_allele_freqs(VCF::Variant& variant, std::vector<NuclearFamily>& families){
-  allele_freqs_ = std::vector<double>(num_alleles_, 1.0); // Use a one sample pseudocount
-
-  // Iterate over all founders in the families to compute allele counts
-  double total_count = num_alleles_;
-  int gt_a, gt_b;
-  for (auto family_iter = families.begin(); family_iter != families.end(); family_iter++){
-    for (int i = 0; i < 2; i++){
-      std::string sample = (i == 0 ? family_iter->get_mother() : family_iter->get_father());
-      if (variant.sample_call_missing(sample))
-	continue;
-      variant.get_genotype(sample, gt_a, gt_b);
-      allele_freqs_[gt_a]++;
-      allele_freqs_[gt_b]++;
-      total_count += 2;
-    }
-  }
-
-  // Normalize the allele counts to obtain frequencies
-  for (int i = 0; i < allele_freqs_.size(); i++)
-    allele_freqs_[i] /= total_count;
-
-  // Precompute the logs of the allele frequencies
-  log_allele_freqs_.clear();
-  for (int i = 0; i < allele_freqs_.size(); i++)
-    log_allele_freqs_.push_back(log10(allele_freqs_[i]));
-}
-
 
 void DenovoScanner::write_vcf_header(std::string& full_command){
   denovo_vcf_ << "##fileformat=VCFv4.1" << "\n"
@@ -83,10 +55,10 @@ void DenovoScanner::initialize_vcf_record(VCF::Variant& str_variant){
   denovo_vcf_ << "\t" << "." << "\t" << "." << "\t";
 
   // INFO field
-  int start;  str_variant.get_INFO_value_single_int(START_KEY, start);
-  int end;    str_variant.get_INFO_value_single_int(END_KEY, end);
-  int period; str_variant.get_INFO_value_single_int(PERIOD_KEY, period);
-  std::vector<int> bp_diffs; str_variant.get_INFO_value_multiple_ints(BPDIFFS_KEY, bp_diffs);
+  int32_t start;  str_variant.get_INFO_value_single_int(START_KEY, start);
+  int32_t end;    str_variant.get_INFO_value_single_int(END_KEY, end);
+  int32_t period; str_variant.get_INFO_value_single_int(PERIOD_KEY, period);
+  std::vector<int32_t> bp_diffs; str_variant.get_INFO_value_multiple_ints(BPDIFFS_KEY, bp_diffs);
   assert(bp_diffs.size()+1 == str_variant.num_alleles());
 
   denovo_vcf_ << "BPDIFFS=" << bp_diffs[0];
@@ -137,8 +109,8 @@ void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std
     if (num_alleles <= 1)
       continue;
 
-    int start;  str_variant.get_INFO_value_single_int(START_KEY, start);
-    int end;    str_variant.get_INFO_value_single_int(END_KEY, end);
+    int32_t start;  str_variant.get_INFO_value_single_int(START_KEY, start);
+    int32_t end;    str_variant.get_INFO_value_single_int(END_KEY, end);
     logger << "Processing STR region " << str_variant.get_chromosome() << ":" << start << "-" << end << " with " << num_alleles << " alleles" << "\n";
 
     PhasedGL phased_gls(str_variant);
@@ -146,7 +118,11 @@ void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std
     haplotype_tracker.advance(str_variant.get_chromosome(), str_variant.get_position(), sites_to_skip, logger);
 
     MutationModel mut_model(str_variant);
-    DiploidGenotypePrior dip_gt_priors(str_variant, families_);
+    DiploidGenotypePrior* dip_gt_priors;
+    if (use_pop_priors_)
+      dip_gt_priors = new PopulationGenotypePrior(str_variant, families_);
+    else
+      dip_gt_priors = new UniformGenotypePrior(str_variant, families_);
     initialize_vcf_record(str_variant);
 
     logger << "\t" << "Computing log-likelihoods for mutation scenarios" << "\n";
@@ -187,12 +163,12 @@ void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std
 	// Iterate over all maternal genotypes
 	for (int mat_i = 0; mat_i < num_alleles; mat_i++){
 	  for (int mat_j = 0; mat_j < num_alleles; mat_j++){
-	    double mat_ll = dip_gt_priors.log_phased_genotype_prior(mat_i, mat_j, family_iter->get_mother()) + phased_gls.get_gl(mother_gl_index, mat_i, mat_j);
+	    double mat_ll = dip_gt_priors->log_phased_genotype_prior(mat_i, mat_j, family_iter->get_mother()) + phased_gls.get_gl(mother_gl_index, mat_i, mat_j);
 
 	    // Iterate over all paternal genotypes
 	    for (int pat_i = 0; pat_i < num_alleles; pat_i++){
 	      for (int pat_j = 0; pat_j < num_alleles; pat_j++){
-		double pat_ll = dip_gt_priors.log_phased_genotype_prior(pat_i, pat_j, family_iter->get_father()) + phased_gls.get_gl(father_gl_index, pat_i, pat_j);
+		double pat_ll = dip_gt_priors->log_phased_genotype_prior(pat_i, pat_j, family_iter->get_father()) + phased_gls.get_gl(father_gl_index, pat_i, pat_j);
 
 		double no_mutation_config_ll = mat_ll + pat_ll;
 
@@ -233,7 +209,7 @@ void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std
 		  double config_ll = no_mutation_config_ll - phased_gls.get_gl(children_gl_index[child_index], child_i, child_j);
 
 		  // All putative mutations on haplotype #1 (if they can contribute to the total LL)
-		  double max_ll_hap_one = config_ll + phased_gls.get_max_gl_allele_two_fixed(children_gl_index[child_index], child_j);
+		  double max_ll_hap_one = config_ll + phased_gls.get_max_gl_allele_two_fixed(children_gl_index[child_index], child_j) + mut_model.max_log_prior_mutation(child_i);
 		  if (max_ll_hap_one > std::min(ll_one_denovo_max[child_index], ll_one_other_max[child_index])-MIN_CONTRIBUTION){
 		    for (int mut_allele = 0; mut_allele < num_alleles; mut_allele++){
 		      if (mut_allele == child_i)
@@ -247,7 +223,7 @@ void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std
 		  }
 
 		  // All putative mutations on haplotype #2 (if they can contribute to the total LL)
-		  double max_ll_hap_two = config_ll + phased_gls.get_max_gl_allele_one_fixed(children_gl_index[child_index], child_i);
+		  double max_ll_hap_two = config_ll + phased_gls.get_max_gl_allele_one_fixed(children_gl_index[child_index], child_i) + mut_model.max_log_prior_mutation(child_j);
 		  if (max_ll_hap_two > std::min(ll_one_denovo_max[child_index], ll_one_other_max[child_index])-MIN_CONTRIBUTION){
 		    for (int mut_allele = 0; mut_allele < num_alleles; mut_allele++){
 		      if (mut_allele == child_j)
@@ -282,5 +258,6 @@ void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std
 
     // End of VCF record line
     denovo_vcf_ << "\n";
+    delete dip_gt_priors;
   }
 }

@@ -2,45 +2,23 @@
 #define DENOVO_SCANNER_H_
 
 #include <assert.h>
+#include <math.h>
 
 #include <iostream>
 #include <vector>
 #include <set>
-#include <sstream>
 #include <string>
 
 #include "bgzf_streams.h"
 #include "pedigree.h"
 #include "vcf_reader.h"
 
-class DiploidGenotypePrior {
- private:
-  int num_alleles_;
-  std::vector<double> allele_freqs_, log_allele_freqs_;
-
-  void compute_allele_freqs(VCF::Variant& variant, std::vector<NuclearFamily>& families);
- public:
-  DiploidGenotypePrior(VCF::Variant& str_variant, std::vector<NuclearFamily>& families){
-    num_alleles_ = str_variant.num_alleles();
-    assert(num_alleles_ > 0);
-    compute_allele_freqs(str_variant, families);
-  }
-
-  /* Returns the log10 prior for the given phased genotype, assuming Hardy-Weinberg equilibrium */
-  double log_phased_genotype_prior(int gt_a, int gt_b, const std::string& sample){
-    if (gt_a < 0 || gt_a >= num_alleles_)
-      printErrorAndDie("Invalid genotype index for log genotype prior");
-    if (gt_b < 0 || gt_b >= num_alleles_)
-      printErrorAndDie("Invalid genotype index for log genotype prior");
-    return log_allele_freqs_[gt_a] + log_allele_freqs_[gt_b];
-  }
-};
-
 class DenovoScanner {
  private:
   const static int MIN_SECOND_BEST_SCORE = 100;
   const static int MAX_BEST_SCORE        = 10;
   static std::string BPDIFFS_KEY, START_KEY, END_KEY, PERIOD_KEY;
+  bool use_pop_priors_;
 
   int32_t window_size_;
   std::vector<NuclearFamily> families_;
@@ -51,9 +29,10 @@ class DenovoScanner {
   void add_family_to_record(NuclearFamily& family, double total_ll_no_denovo, std::vector<double>& total_lls_one_denovo, std::vector<double>& total_lls_one_other);
 
  public:
-  DenovoScanner(std::vector<NuclearFamily>& families, std::string& output_file, std::string& full_command){
-    families_    = families;
-    window_size_ = 500000;
+  DenovoScanner(std::vector<NuclearFamily>& families, std::string& output_file, std::string& full_command, bool use_pop_priors){
+    families_       = families;
+    use_pop_priors_ = use_pop_priors;
+    window_size_    = 500000;
     denovo_vcf_.open(output_file.c_str());
     denovo_vcf_.precision(3);
     denovo_vcf_.setf(std::ios::fixed, std::ios::floatfield);

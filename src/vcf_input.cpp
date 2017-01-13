@@ -41,7 +41,7 @@ bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector
       variant.get_INFO_value_single_int(START_INFO_TAG, str_start);
       variant.get_INFO_value_single_int(STOP_INFO_TAG, str_stop);
       if (str_start == region.start()+1 && str_stop == region.stop()){
-	pos     = variant.get_position()-1;
+	pos = variant.get_position()-1;
 	alleles.insert(alleles.end(), variant.get_alleles().begin(), variant.get_alleles().end());
 	return true;
       }

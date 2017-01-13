@@ -163,7 +163,6 @@ public:
     def_stutter_model_ = new StutterModel(inframe_geom, inframe_up, inframe_down, outframe_geom, outframe_up, outframe_down, 2);
   }
 
-
   void set_output_viz(std::string& viz_file){
     output_viz_ = true;
     viz_out_.open(viz_file.c_str());
