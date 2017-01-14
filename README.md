@@ -1,5 +1,5 @@
 # HipSTR
-**H**aplotype **i**nference and **p**hasing for **S**hort **T**andem **Repeat**s  
+**H**aplotype **i**nference and **p**hasing for **S**hort **T**andem **R**epeats  
 ![HipSTR icon!](https://raw.githubusercontent.com/tfwillems/HipSTR/master/img/HipSTR_icon_small.png)
 #### Author: Thomas Willems <hipstrtool@gmail.com> <br> License: GNU v2
 
@@ -30,6 +30,7 @@ Despite their utility, STRs are particularly difficult to genotype. The repetiti
 3. Employing a specialized hidden Markov model to align reads to candidate sequences while accounting for STR artifacts
 4. Utilizing phased SNP haplotypes to genotype and phase STRs
 
+In our opinion, all of these factors make **HipSTR** the most reliable tool for genotyping STRs from **Illumina** sequencing data.
 
 ## Installation
 HipSTR requires a standard c++ compiler and [CMake](http://www.cmake.org/download/).
@@ -166,10 +167,10 @@ The resulting VCF, which is printed to the standard output stream, will omit cal
 ## Additional Usage Options
 | Option | Description |
 | :------| :-----------|
-| **--viz-out       <aln_viz.html.gz>**     | Output a bgzipped file containing Needleman-Wunsch alignments <br> for each locus. The resulting file can be readily visualized with [VizAln](#aln-viz) 
-| **--haploid-chrs  <list_of_chroms>**      | Comma separated list of chromosomes to treat as haploid <br> By default, all chromosomes are treated as diploid
+| **--viz-out       <aln_viz.html.gz>**     | Output a file of each locus' alignments for visualization <br> with VizAln or [VizAlnPdf](#aln-viz) 
+| **--haploid-chrs  <list_of_chroms>**      | Comma separated list of chromosomes to treat as haploid (Default = all diploid)
 | **--no-rmdup**                            | Don't remove PCR duplicates. By default, they'll be removed
-| **--snp-vcf    <phased_snps.vcf.gz>**     | Bgzipped VCF file containing phased SNP genotypes for samples <br> that are being genotyped. These SNPs will be used to physically <br> phase any STRs when a read or its mate pair overlaps a heterozygous site <br> **Always use this option if you have available phased SNP genotypes**
+| **--snp-vcf    <phased_snps.vcf.gz>**     | Bgzipped input VCF file containing phased SNP genotypes for the samples <br> to be genotyped. These SNPs will be used to physically phase STRs<br> **Always use this option if you have available phased SNP genotypes**
 | **--bam-samps     <list_of_read_groups>** | Comma separated list of samples in same order as BAM files. <br> Assign each read the sample corresponding to its file. By default, <br> each read must have an RG tag and and the sample is determined from the SM field
 | **--bam-libs      <list_of_read_groups>** | Comma separated list of libraries in same order as BAM files. <br> Assign each read the library corresponding to its file. By default, <br> each read must have an RG tag and and the library is determined from the LB field <br> NOTE: This option is required when --bam-samps has been specified
 
@@ -177,16 +178,16 @@ This list is comprised of the most useful and frequently used additional options
 
 <a id="aln-viz"></a>
 ## Alignment Visualization
-When deciphering and inspecting STR calls, it's extremely useful to visualize the supporting reads. HipSTR facilitates this through the **--viz-out** option, which writes a bgzipped file containing alignments for each call that can be readily visualized using the **VizAln** command included in HipSTR main directory. If you're interested in visualizing alignments, you first need to index the file using tabix. 
-For example, if you ran HipSTR with the option `--viz-out aln.html.gz`, you should use the command
+When deciphering and inspecting STR calls, it's extremely useful to visualize the supporting reads. HipSTR facilitates this through the **--viz-out** option, which writes a compressed file containing alignments for each call that can be readily visualized using the **VizAln** command included in HipSTR's main directory. If you're interested in visualizing alignments, you first need to index the file using tabix. 
+For example, if you ran HipSTR with the option `--viz-out aln.gz`, you should use the command
 ```
-tabix -p bed aln.html.gz
+tabix -p bed aln.gz
 ```
 to generate a [tabix] (http://www.htslib.org/doc/tabix.html) index for the file so that we can rapidly extract alignments for a locus of interest. This command only needs to be run once after the file has been generated. 
 
 You could then visualize the calls for sample *NA12878* at locus *chr1 3784267* using the command
 ```
-./VizAln aln.html.gz chr1 3784267 NA12878
+./VizAln aln.gz chr1 3784267 NA12878
 ```
 This command will automatically open a rendering of the alignments in your browser and might look something like:
 ![Read more words!](https://raw.githubusercontent.com/HipSTR-Tool/HipSTR-tutorial/master/viz_NA12878.png)
@@ -194,13 +195,13 @@ The top bar represents the reference sequence and the red text indicates the nam
 
 If we wanted to inspect all calls for the same locus, we could  use the command 
 ```
-./VizAln aln.html.gz chr1 3784267
+./VizAln aln.gz chr1 3784267
 ```
 To facilitate rendering these images for publications, we've also created a similar script that converts
 these alignments into a PDF. This script can only be applied to one sample at a time, but the image above
 can be generated in a file alignments.pdf as follows:
 ```
-./VizAlnPdf aln.html.gz chr1 3784267 NA12878 alignments 1
+./VizAlnPdf aln.gz chr1 3784267 NA12878 alignments 1
 ```
 NOTE: Because the **--viz-out** file can become fairly large if you're genotyping thousands of loci or thousands of samples, in some scenarios it may be best to rerun HipSTR using this option on the subset of loci which you wish to visualize.
 
