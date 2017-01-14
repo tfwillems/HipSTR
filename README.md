@@ -358,6 +358,8 @@ We'll add more documentation and a tutorial regarding **DenovoFinder** in the co
 HipSTR only genotypes a region if at least **--min-reads** and at most **--max-reads** overlap the STR. It then attempts to learn the stutter model (if appropriate), build haplotypes for the region and perform genotyping. If any of these stages is unsuccessful, it skips the STR and continues on to the next region. The **--log** file contains the failure reason for each failed region as well as an overall summary of why regions were skipped at the end of the log.      
 4. **How can I run HipSTR if I have too few samples to learn stutter models and don't have external ones?**     
 In this scenario, you can run HipSTR with **--def-stutter-model**. Invoking this option will disable the algorithm it uses to learn stutter models. Instead, HipSTR will use the same fixed stutter model to genotype every locus. We don't recommend using this option unless necessary, as genotypes are more accurate if you learn a specific model for each STR.
+5. **What sequencing platforms does HipSTR support?**		
+HipSTR was designed to analyze **Illumina** sequencing data. We do not recommend running it on PacBio or Oxford Nanopore data, as the difference in error profiles will be problematic 
 
 ## Help
 If you're having trouble getting your analysis up and running:      
