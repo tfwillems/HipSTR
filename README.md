@@ -1,5 +1,5 @@
 # HipSTR
-**H**aplotype-based **p**hasing and genotyping of **STR**s  
+**H**aplotype **i**nference and **p**hasing for **S**hort **T**andem **Repeat**s  
 ![HipSTR icon!](https://raw.githubusercontent.com/tfwillems/HipSTR/master/img/HipSTR_icon_small.png)
 #### Author: Thomas Willems <hipstrtool@gmail.com> <br> License: GNU v2
 
