@@ -167,15 +167,15 @@ The resulting VCF, which is printed to the standard output stream, will omit cal
 ## Additional Usage Options
 | Option | Description |
 | :------| :-----------|
-| **--viz-out       <aln_viz.html.gz>**     | Output a file of each locus' alignments for visualization <br> with VizAln or [VizAlnPdf](#aln-viz)
+| **--viz-out       <aln_viz.html.gz>**     | Output a file of each locus' alignments for visualization with VizAln or [VizAlnPdf](#aln-viz) <br> **You want to visualize or inspect the STR genotypes**
 | **--log         <log.txt>**               | Output the log information to the provided file (Default = Standard error)
-| **--haploid-chrs  <list_of_chroms>**      | Comma separated list of chromosomes to treat as haploid (Default = all diploid)
-| **--no-rmdup**                            | Don't remove PCR duplicates. By default, they'll be removed
-| **--use-unpaired**                        | Use unpaired reads when genotyping (Default = False)
-| **--snp-vcf    <phased_snps.vcf.gz>**     | Bgzipped input VCF file containing phased SNP genotypes for the samples <br> to be genotyped. These SNPs will be used to physically phase STRs<br> **Always use this option if you have available phased SNP genotypes**
-| **--bam-samps     <list_of_read_groups>** | Comma separated list of samples in same order as BAM files. <br> Assign each read the sample corresponding to its file. By default, <br> each read must have an RG tag and and the sample is determined from the SM field
-| **--bam-libs      <list_of_read_groups>** | Comma separated list of libraries in same order as BAM files. <br> Assign each read the library corresponding to its file. By default, <br> each read must have an RG tag and and the library is determined from the LB field <br> NOTE: This option is required when --bam-samps has been specified
-| **--def-stutter-model**                   | For each locus, use a stutter model with PGEOM=0.9 and UP=DOWN=0.05 for <br>in-frame artifacts and PGEOM=0.9 and UP=DOWN=0.01 for out-of-frame artifacts
+| **--haploid-chrs  <list_of_chroms>**      | Comma separated list of chromosomes to treat as haploid (Default = all diploid) <br> **Why? You're analyzing a haploid chromosome like chrY**
+| **--no-rmdup**                            | Don't remove PCR duplicates. By default, they'll be removed <br> **Why? Your sequencing data  is for PCR-amplified regions**
+| **--use-unpaired**                        | Use unpaired reads when genotyping (Default = False) <br> **Why? Your sequencing data only contains single-ended reads**
+| **--snp-vcf    <phased_snps.vcf.gz>**     | Bgzipped input VCF file containing phased SNP genotypes for the samples <br> to be genotyped. These SNPs will be used to physically phase STRs<br> **Why? You have available phased SNP genotypes**
+| **--bam-samps     <list_of_read_groups>** | Comma separated list of samples in same order as BAM files. <br> Assign each read the sample corresponding to its file. By default, <br> each read must have an RG tag and and the sample is determined from the SM field <br> **Why? Your BAM file RG tags don't have an SM field**
+| **--bam-libs      <list_of_read_groups>** | Comma separated list of libraries in same order as BAM files. <br> Assign each read the library corresponding to its file. By default, <br> each read must have an RG tag and and the library is determined from the LB field <br> NOTE: This option is required when --bam-samps has been specified <br> **Why? Your BAM file RG tags don't have an LB tag**
+| **--def-stutter-model**                   | For each locus, use a stutter model with PGEOM=0.9 and UP=DOWN=0.05 for <br>in-frame artifacts and PGEOM=0.9 and UP=DOWN=0.01 for out-of-frame artifacts <br> **Why? You have too few samples for stutter estimation and don't have stutter models**
 
 This list is comprised of the most useful and frequently used additional options, but is not all encompassing. For a complete list of options, please type either `./HipSTR` or `./HipSTR --help`
 
