@@ -27,7 +27,7 @@ Despite their utility, STRs are particularly difficult to genotype. The repetiti
 
 1. Learning locus-specific PCR stutter models using an [EM algorithm] (http://en.wikipedia.org/wiki/Expectation%E2%80%93maximization_algorithm)
 2. Mining candidate STR alleles from population-scale sequencing data
-3. Employing a specialized hidden Markov model to align reads to candidate sequences while accounting for STR artifacts
+3. Employing a specialized hidden Markov model to align reads to candidate alleles while accounting for STR artifacts
 4. Utilizing phased SNP haplotypes to genotype and phase STRs
 
 In our opinion, all of these factors make **HipSTR** the most reliable tool for genotyping STRs from **Illumina** sequencing data.
@@ -167,7 +167,7 @@ The resulting VCF, which is printed to the standard output stream, will omit cal
 ## Additional Usage Options
 | Option | Description |
 | :------| :-----------|
-| **--viz-out       <aln_viz.html.gz>**     | Output a file of each locus' alignments for visualization with VizAln or [VizAlnPdf](#aln-viz) <br> **You want to visualize or inspect the STR genotypes**
+| **--viz-out       <aln_viz.gz>**     | Output a file of each locus' alignments for visualization with VizAln or [VizAlnPdf](#aln-viz) <br> **Why? You want to visualize or inspect the STR genotypes**
 | **--log         <log.txt>**               | Output the log information to the provided file (Default = Standard error)
 | **--haploid-chrs  <list_of_chroms>**      | Comma separated list of chromosomes to treat as haploid (Default = all diploid) <br> **Why? You're analyzing a haploid chromosome like chrY**
 | **--no-rmdup**                            | Don't remove PCR duplicates. By default, they'll be removed <br> **Why? Your sequencing data  is for PCR-amplified regions**
@@ -182,15 +182,15 @@ This list is comprised of the most useful and frequently used additional options
 <a id="aln-viz"></a>
 ## Alignment Visualization
 When deciphering and inspecting STR calls, it's extremely useful to visualize the supporting reads. HipSTR facilitates this through the **--viz-out** option, which writes a compressed file containing alignments for each call that can be readily visualized using the **VizAln** command included in HipSTR's main directory. If you're interested in visualizing alignments, you first need to index the file using tabix. 
-For example, if you ran HipSTR with the option `--viz-out aln.gz`, you should use the command
+For example, if you ran HipSTR with the option `--viz-out aln.viz.gz`, you should use the command
 ```
-tabix -p bed aln.gz
+tabix -p bed aln.viz.gz
 ```
 to generate a [tabix] (http://www.htslib.org/doc/tabix.html) index for the file so that we can rapidly extract alignments for a locus of interest. This command only needs to be run once after the file has been generated. 
 
 You could then visualize the calls for sample *NA12878* at locus *chr1 3784267* using the command
 ```
-./VizAln aln.gz chr1 3784267 NA12878
+./VizAln aln.viz.gz chr1 3784267 NA12878
 ```
 This command will automatically open a rendering of the alignments in your browser and might look something like:
 ![Read more words!](https://raw.githubusercontent.com/HipSTR-Tool/HipSTR-tutorial/master/viz_NA12878.png)
@@ -198,13 +198,13 @@ The top bar represents the reference sequence and the red text indicates the nam
 
 If we wanted to inspect all calls for the same locus, we could  use the command 
 ```
-./VizAln aln.gz chr1 3784267
+./VizAln aln.viz.gz chr1 3784267
 ```
 To facilitate rendering these images for publications, we've also created a similar script that converts
 these alignments into a PDF. This script can only be applied to one sample at a time, but the image above
 can be generated in a file alignments.pdf as follows:
 ```
-./VizAlnPdf aln.gz chr1 3784267 NA12878 alignments 1
+./VizAlnPdf aln.viz.gz chr1 3784267 NA12878 alignments 1
 ```
 NOTE: Because the **--viz-out** file can become fairly large if you're genotyping thousands of loci or thousands of samples, in some scenarios it may be best to rerun HipSTR using this option on the subset of loci which you wish to visualize.
 
