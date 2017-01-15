@@ -77,21 +77,27 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "Other optional parameters:" << "\n"
 	    << "\t" << "--help                                "  << "\t" << "Print this help message and exit"                                                     << "\n"
 	    << "\t" << "--version                             "  << "\t" << "Print HipSTR version and exit"                                                        << "\n"
-	    << "\t" << "--chrom         <chrom>               "  << "\t" << "Only consider STRs on this chromosome"                                                << "\n"
 	    << "\t" << "--def-stutter-model                   "  << "\t" << "For each locus, use a stutter model with PGEOM=0.9 and UP=DOWN=0.05 for in-frame"     << "\n"
 	    << "\t" << "                                      "  << "\t" << " artifacts and PGEOM=0.9 and UP=DOWN=0.01 for out-of-frame artifacts"                 << "\n"
-	    << "\t" << "--haploid-chrs  <list_of_chroms>      "  << "\t" << "Comma separated list of chromosomes to treat as haploid (Default = all diploid)"      << "\n"
-	    << "\t" << "--hap-chr-file  <hap_chroms.txt>      "  << "\t" << "File containing chromosomes to treat as haploid, one per line"                        << "\n"
-	    << "\t" << "--min-reads     <num_reads>           "  << "\t" << "Minimum total reads required to genotype a locus (Default = " << def_min_reads << ")" << "\n"
-	    << "\t" << "--max-reads     <num_reads>           "  << "\t" << "Skip a locus if it has more than NUM_READS reads (Default = " << def_max_reads << ")" << "\n"
-	    << "\t" << "--max-str-len   <max_bp>              "  << "\t" << "Only genotype STRs in the provided BED file with length < MAX_BP (Default = " << def_max_str_len << ")" << "\n"
+	    << "\t" << "--chrom              <chrom>          "  << "\t" << "Only consider STRs on this chromosome"                                                << "\n"
+	    << "\t" << "--haploid-chrs       <list_of_chroms> "  << "\t" << "Comma separated list of chromosomes to treat as haploid (Default = all diploid)"      << "\n"
+	    << "\t" << "--hap-chr-file       <hap_chroms.txt> "  << "\t" << "File containing chromosomes to treat as haploid, one per line"                        << "\n"
+	    << "\t" << "--min-reads          <num_reads>      "  << "\t" << "Minimum total reads required to genotype a locus (Default = " << def_min_reads << ")" << "\n"
+	    << "\t" << "--max-reads          <num_reads>      "  << "\t" << "Skip a locus if it has more than NUM_READS reads (Default = " << def_max_reads << ")" << "\n"
+	    << "\t" << "--max-str-len        <max_bp>         "  << "\t" << "Only genotype STRs in the provided BED file with length < MAX_BP (Default = " << def_max_str_len << ")" << "\n"
     //<< "\t" << "--skip-genotyping                     "  << "\t" << "Don't perform any STR genotyping and merely compute the stutter model for each STR"  << "\n"
     //<< "\t" << "--dont-use-all-reads                  "  << "\t" << "Only utilize the reads HipSTR thinks will be informative for genotyping"   << "\n"
     //<< "\t" << "                                      "  << "\t" << " Enabling this option usually slightly decreases accuracy but shortens runtimes (~2x)"      << "\n"
-	    << "\t" << "--read-qual-trim <min_qual>           "  << "\t" << "Trim both ends of a read until a base has quality score > MIN_QUAL (Default = !)"    << "\n"
+	    << "\t" << "--read-qual-trim     <min_qual>       "  << "\t" << "Trim both ends of a read until a base has quality score > MIN_QUAL (Default = !)"    << "\n"
 	    << "\t" << "--fam <fam_file>                      "  << "\t" << "FAM file containing pedigree information for samples of interest. Use the pedigree"  << "\n"
 	    << "\t" << "                                      "  << "\t" << "  information to filter SNPs prior to phasing STRs (Default = use all SNPs)"         << "\n"
-	    << "\n";
+	    << "\n" << "\n"
+	    << "*** Looking for answers to commonly asked questions or usage examples? ***"                     << "\n"
+	    << "\t i.  An in-depth description of HipSTR is available at https://hipstr-tool.github.io/HipSTR"  << "\n"
+	    << "\t ii. Check out the HipSTR tutorial at https://hipstr-tool.github.io/HipSTR-tutorial"          << "\n\n"
+	    << "*** Found a bug/issue or have a feature request? ***"                                           << "\n"
+	    << "\t i.  File an issue on GitHub (https://github.com/HipSTR-Tool/HipSTR)"                         << "\n"
+	    << "\t ii. Email us at hipstrtool@gmail.com" << "\n"                                                << "\n" << std::endl;
 }
   
 void parse_command_line_args(int argc, char** argv, 
@@ -289,13 +295,6 @@ void parse_command_line_args(int argc, char** argv,
   }
   if (print_help){
     print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len);
-    std::cerr << "\n"
-	      << "*** Looking for answers to commonly asked questions or usage examples? ***"                     << "\n"
-	      << "\t i.  An in-depth description of HipSTR is available at https://hipstr-tool.github.io/HipSTR " << "\n"
-	      << "\t ii. Check out the HipSTR tutorial at https://hipstr-tool.github.io/HipSTR-tutorial"          << "\n\n"
-	      << "*** Found a bug/issue or have a feature request? ***"                                           << "\n"
-	      << "\t i.  File an issue on GitHub (https://github.com/HipSTR-Tool/HipSTR)"                         << "\n"
-	      << "\t ii. Email us at hipstrtool@gmail.com" << "\n"                                                << "\n" << std::endl;
     exit(0);
   }
   if (viz_left_alns)
@@ -466,7 +465,7 @@ int main(int argc, char** argv){
       bam_indexes.push_back(bai_file);
     }
 
-    if(!have_index){
+    if (!have_index){
       std::stringstream error_msg;
       error_msg << "Unable to find a BAM index file for " << bam_files[i] << "\n"
 		<< "Please ensure that each BAM has been sorted by position and indexed using samtools.";
