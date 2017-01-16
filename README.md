@@ -70,22 +70,22 @@ To demonstrate how you can quickly apply HipSTR to whole-genome sequencing datas
 ## In-depth Usage
 **HipSTR** has a variety of usage options designed to accomodate scenarios in which the sequencing data varies in terms of the number of samples and the coverage. Most scenarios will fall into one of the following categories:
 
-1. 200 or more low-coverage (~5x) samples
+1. 100 or more low-coverage (~5x) samples
     * Sufficient reads for stutter estimation
     * Sufficient reads to detect candidate STR alleles
     * [**Use de novo stutter estimation + STR calling with de novo allele generation**](#mode-1)
-2. 50 or more high-coverage (~30x) samples
+2. 20 or more high-coverage (~30x) samples
     * Sufficient reads for stutter estimation
     * Sufficient reads to detect candidate STR alleles
     * [**Use de novo stutter estimation + STR calling with de novo allele generation**](#mode-1)
 3. Handful of low-coverage  (~5x) samples
     * Insufficient reads for stutter estimation
     * Insufficient reads to detect candidate STR alleles
-    * [**Use external stutter models + STR calling with a reference panel**](#mode-3)
+    * [**Use external/default stutter models + STR calling with a reference panel**](#mode-3)
 4. Handful of high-coverage (~30x) samples
     * Insufficient samples for stutter estimation
     * Sufficient reads to detect candidate STR alleles
-    * [**Use external stutter models + STR calling with de novo allele generation**](#mode-2)
+    * [**Use external/default stutter models + STR calling with de novo allele generation**](#mode-2)
 
 <a id="mode-1"></a>
 #### 1. De novo stutter estimation + STR calling with de novo allele generation
@@ -107,6 +107,7 @@ The sole difference in this mode is that we no longer learn stutter models using
          --stutter-in       ext_stutter_models.txt
          --str-vcf          str_calls.vcf.gz
 ```
+If you don't have access to external stutter models for the **--stutter-in** option, use **--def-stutter-model**. This will use a simplistic stutter model for all loci (see the HipSTR help message for specifics).
 
 <a id="mode-3"></a>
 #### 3. External stutter models + STR calling with a reference panel
@@ -119,8 +120,10 @@ This mode is very similar to mode #2, except that we provide an additional VCF f
          --ref-vcf          ref_strs.vcf.gz
          --str-vcf          str_calls.vcf.gz
 ```
+If you don't have access to external stutter models for the **--stutter-in** option, use **--def-stutter-model**. This will use a simplistic stutter model for all loci (see the HipSTR help message for specifics).
 
-For scenarios *\#3* and *\#4*, if you don't have access to external stutter models for the **--stutter-in** option, one option is to use the **--def-stutter-model**. This will use a simplistic stutter model for all loci (see the HipSTR help message for specifics).
+### Data Requirements
+
 
 ### Phasing
 HipSTR utilizes phased SNP haplotypes to phase the resulting STR genotypes. To do so, it looks for pairs of reads in which the STR-containing read or its mate pair overlap a samples's heterozygous SNP. In these instances, the quality score for the overlapping base can be used to determine the likelihood that the read came from each haplotype. Alternatively, when this information is not available, we assign the read an equal likelihood of coming from either strand. These likelihoods are incorporated into the HipSTR genotyping model which outputs phased genotypes. The quality of a phasing is reflected in the *PQ* FORMAT field, which provides the posterior probability of each sample's phased genotype. For homozygous genotypes, this value will always equal the *Q* FORMAT field as phasing is irrelevant. However, for heterozygous genotypes, if *PQ ~ Q*, it indicates that one of the two phasings is much more favorable. Alterneatively, if none of a sample's reads overlap heterozygous SNPs, both phasings will be equally probable and *PQ ~ Q/2*. To enable the use of physical phasing, supply HipSTR with the `--snp-vcf` option and a SNP VCF containing **phased** haplotypes. The schematic below outlines the concepts underlying HipSTR's physical phasing model:
