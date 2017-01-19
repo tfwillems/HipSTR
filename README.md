@@ -7,7 +7,8 @@
 [Installation](#installation)  
 [Quick Start](#quick-start)		 
 [Tutorial](#tutorial)  
-[In-depth Usage](#in-depth-usage)  
+[In-depth Usage](#in-depth-usage)	
+[Data Requirements](#data-requirements)		
 [Phasing](#phasing)     
 [Speed](#speed)  
 [Call Filtering](#call-filtering)  
@@ -123,7 +124,15 @@ This mode is very similar to mode #2, except that we provide an additional VCF f
 If you don't have access to external stutter models for the **--stutter-in** option, use **--def-stutter-model**. This will use a simplistic stutter model for all loci (see the HipSTR help message for specifics).
 
 ### Data Requirements
+To genotype STRs, **HipSTR** requires Illumina sequencing data. However, as the depth of sequencing and the read length in these datasets can vary dramatically, here we briefly describe key factors to consider before generating data for HipSTR analyses.
 
+Because of the repetitive nature of STRs, reads that do not fully extend across the repeat only provide a lower bound on its length. While this lower bound is informative and is leveraged by **HipSTR**, obtaining accurate and robust STR genotypes requires reads that fully extend across the repetitive sequence (*i.e. spanning reads*). The number of reads that span an STR is a function of the read length, the sequencing depth, and the length of the repeat (as well as various other factors). The interplay between these factors is relatively complex, but [**Figure 2** in a recent review] (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4254273/figure/F2/) by *Press et al.* nicely highlights these dependencies. As one would intuitively expect, using longer read lengths and higher sequencing coverage increases the number of spanning reads. Conversely, increasing the length of the repeat reduces the number of spanning reads, making it more difficult to accurately genotype long STRs. When the number of spanning reads approaches single digits, you statistically run the risk of observing reads from only 1 out of 2 chromosome copies, making it impossible to correctly call both alleles in a heterozygous individual. 
+
+In our own analyses, we've found that 100 bp Illumina reads are sufficient to characterize the majority of STRs in the human genome. However, genotyping STRs that exceed 70bp (such as very long forensic STRs) invariably requires longer reads, but most human STRs are much shorter than this threshold. This read length will likely be sufficient for most model organisms unless their repeats are substantially longer than those in humans.
+
+The optimal minimum sequencing depth for HipSTR largely depends on your intended analyses. If you are interested in studying how STRs mutate or [want to identify de novo mutations](#de-novo-mutations), 30x coverage is an ideal minimum that allows HipSTR to provide the required high degree of specificity. Conversely, if you are merely interested in studying the allele frequencies for various STRs in a population, 10x coverage will likely be sufficient. However, in this setting, there will likely be many genotyping errors in which heterozygous genotypes are miscalled as homozygotes.
+
+Based on the nature of your sequencing data, one important HipSTR option to consider is **--min-reads**. HipSTR uses the value of this parameter to skip any STRs where few than *N* reads are available for genotyping across all individuals. By default, this value is 100, as we've found that this is a good minimum threshold for learning stutter models prior to genotyping. If you're analyzing very few samples (e.g. a single mother-father-child trio), you may want to consider lowering this threshold as you will seldom have 100 reads. In this setting, it makes sense to use options like **--min-reads 15 --def-stutter-model**, where the latter option uses a default stutter model as too few reads are available for accurately inferring one. However, if you're analyzing many samples (e.g. more than ten 30x genomes or more than thirty 10x genomes), it likely doesn't make sense to change this parameter. In these settings, regions with fewer than 100 reads may have high GC content that is problematic for Illumina sequencing, may be difficult to map to, or may merely be too long for your chosen read length.  
 
 ### Phasing
 HipSTR utilizes phased SNP haplotypes to phase the resulting STR genotypes. To do so, it looks for pairs of reads in which the STR-containing read or its mate pair overlap a samples's heterozygous SNP. In these instances, the quality score for the overlapping base can be used to determine the likelihood that the read came from each haplotype. Alternatively, when this information is not available, we assign the read an equal likelihood of coming from either strand. These likelihoods are incorporated into the HipSTR genotyping model which outputs phased genotypes. The quality of a phasing is reflected in the *PQ* FORMAT field, which provides the posterior probability of each sample's phased genotype. For homozygous genotypes, this value will always equal the *Q* FORMAT field as phasing is irrelevant. However, for heterozygous genotypes, if *PQ ~ Q*, it indicates that one of the two phasings is much more favorable. Alterneatively, if none of a sample's reads overlap heterozygous SNPs, both phasings will be equally probable and *PQ ~ Q/2*. To enable the use of physical phasing, supply HipSTR with the `--snp-vcf` option and a SNP VCF containing **phased** haplotypes. The schematic below outlines the concepts underlying HipSTR's physical phasing model:
@@ -133,7 +142,7 @@ HipSTR utilizes phased SNP haplotypes to phase the resulting STR genotypes. To d
 ## Speed
 HipSTR doesn't currently have multi-threaded support, but there are several options available to accelerate analyses:
 
-1. Analyze each chromosome in parallel using the **--chrom** option. For example, **--chrom chr2** will only genotype the BED regions on chr2
+1. Analyze each chromosome in parallel using the **--chrom** option. For example, **--chrom chr2** will only genotype BED regions on chr2
 2. Split your BED file into *N* files and analyze each of the *N* files in parallel. This allows you to parallelize analyses in a manner similar to option 1 but can be used for increased speed if *N* is much greater than the number of chromosomes.
 3. If you have hundreds of BAM files, we recommend that you merge them into a more manageable number (10-100) using the `samtools merge` command. Large numbers of BAMs can lead to slow disk IO and poor performance
 
@@ -179,6 +188,7 @@ The resulting VCF, which is printed to the standard output stream, will omit cal
 | **--bam-samps     <list_of_read_groups>** | Comma separated list of samples in same order as BAM files. <br> Assign each read the sample corresponding to its file. By default, <br> each read must have an RG tag and and the sample is determined from the SM field <br> **Why? Your BAM file RG tags don't have an SM field**
 | **--bam-libs      <list_of_read_groups>** | Comma separated list of libraries in same order as BAM files. <br> Assign each read the library corresponding to its file. By default, <br> each read must have an RG tag and and the library is determined from the LB field <br> NOTE: This option is required when --bam-samps has been specified <br> **Why? Your BAM file RG tags don't have an LB tag**
 | **--def-stutter-model**                   | For each locus, use a stutter model with PGEOM=0.9 and UP=DOWN=0.05 for <br>in-frame artifacts and PGEOM=0.9 and UP=DOWN=0.01 for out-of-frame artifacts <br> **Why? You have too few samples for stutter estimation and don't have stutter models**
+| **--min-reads**                           | 	Minimum total reads required to genotype a locus (Default = 100) <br> **Why? Refer to the discussion [here](#data-requirements)**
 
 This list is comprised of the most useful and frequently used additional options, but is not all encompassing. For a complete list of options, please type either `./HipSTR` or `./HipSTR --help`
 
