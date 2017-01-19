@@ -1,14 +1,15 @@
 # HipSTR
 **H**aplotype **i**nference and **p**hasing for **S**hort **T**andem **R**epeats  
-![HipSTR icon!](https://raw.githubusercontent.com/tfwillems/HipSTR/master/img/HipSTR_icon_small.png)
+![HipSTR icon!](https://raw.githubusercontent.com/tfwillems/HipSTR/master/img/HipSTR_icon_small.png)	
+
 #### Author: Thomas Willems <hipstrtool@gmail.com> <br> License: GNU v2
 
 [Introduction](#introduction)  
 [Installation](#installation)  
 [Quick Start](#quick-start)       
 [Tutorial](#tutorial)  
-[In-depth Usage](#in-depth-usage)	
-[Data Requirements](#data-requirements)		
+[In-depth Usage](#in-depth-usage)  
+[Data Requirements](#data-requirements)  
 [Phasing](#phasing)     
 [Speed](#speed)  
 [Call Filtering](#call-filtering)  
