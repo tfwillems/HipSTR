@@ -149,12 +149,12 @@ HipSTR doesn't currently have multi-threaded support, but there are several opti
 ## Call Filtering
 Although **HipSTR** mitigates many of the most common sources of STR genotyping errors, it's still extremely important to filter the resulting VCFs to discard low quality calls. To facilitate this process, the VCF output contains various FORMAT and INFO fields that are usually indicators of problematic calls. The INFO fields indicate the aggregate data for a locus and, if certain flags are raised, may suggest that the entire locus should be discarded. In contrast, FORMAT fields are available on a per-sample basis for each locus and, if certain flags are raised, suggest that some samples' genotypes should be discarded. The list below includes some of these fields and how they can be informative:
 
-####INFO fields:  
+#### INFO fields:  
 1. **DP**: Reports the total depth/number of informative reads for all samples at the locus. The mean coverage per-sample can obtained by dividing this value by the number of samples with non-missing genotypes. In general, genotypes with a low mean coverage are unreliable because the reads may only have captured one of the two alleles if an individual is heterozygous.
 2. **DSTUTTER**: Reports the total number of reads at a locus with what HipSTR thinks is a stutter artifact. If the total fraction of reads with stutter (DSTUTTER/DP) is high, genotypes for a locus will be unreliable because the reads frequently don't reflect the true underlying genotype. A high fraction of stutter-containing reads can be caused by too much PCR amplification, a duplicated locus that is mapping to a single location in the genome, or a failure of HipSTR to identify sufficient candidate alleles.  
 3. **DFLANKINDEL**: Reports the total number of reads for which the maximum likelihood alignment contains an indel in the regions flanking the STR. A high fraction of reads with this artifact (DFLANKINDEL/DP) can be caused by an actual indel in a region neighboring the STR. However, it can also arise if HipSTR fails to identify sufficient candidate alleles. When these alleles are very different in size from the candidate alleles or are non-unit multiples, they're frequently aligned as indels in the flanking sequences.
 
-####FORMAT fields:  
+#### FORMAT fields:  
 1. **Q**: Reports the posterior probability of the genotype. We've found that this is the best indicator of quality of an individual sample's genotype and nearly always utilize it to filter calls.   
 2. **DP**, **DSTUTTER** and **DFLANKINDEL**: Identical to the INFO field case, these fields are also available for each sample and can be used in the same way to identify problematic individual calls.  
 
@@ -188,7 +188,7 @@ The resulting VCF, which is printed to the standard output stream, will omit cal
 | **--bam-samps     <list_of_read_groups>** | Comma separated list of samples in same order as BAM files. <br> Assign each read the sample corresponding to its file. By default, <br> each read must have an RG tag and and the sample is determined from the SM field <br> **Why? Your BAM file RG tags don't have an SM field**
 | **--bam-libs      <list_of_read_groups>** | Comma separated list of libraries in same order as BAM files. <br> Assign each read the library corresponding to its file. By default, <br> each read must have an RG tag and and the library is determined from the LB field <br> NOTE: This option is required when --bam-samps has been specified <br> **Why? Your BAM file RG tags don't have an LB tag**
 | **--def-stutter-model**                   | For each locus, use a stutter model with PGEOM=0.9 and UP=DOWN=0.05 for <br>in-frame artifacts and PGEOM=0.9 and UP=DOWN=0.01 for out-of-frame artifacts <br> **Why? You have too few samples for stutter estimation and don't have stutter models**
-| **--min-reads**                           | 	Minimum total reads required to genotype a locus (Default = 100) <br> **Why? Refer to the discussion [here](#data-requirements)**
+| **--min-reads**                           | 	Minimum total reads required to genotype a locus (Default = 100) <br> **Why? Refer to the discussion**
 
 This list is comprised of the most useful and frequently used additional options, but is not all encompassing. For a complete list of options, please type either `./HipSTR` or `./HipSTR --help`
 
