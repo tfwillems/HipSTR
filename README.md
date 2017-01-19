@@ -177,8 +177,8 @@ The resulting VCF, which is printed to the standard output stream, will omit cal
 ```
 
 ## Additional Usage Options
-| Option | Description |
-| :------| :-----------|
+| Option  | Description  |
+| :------ | :----------- |
 | **--viz-out       <aln_viz.gz>**     | Output a file of each locus' alignments for visualization with VizAln or [VizAlnPdf](#aln-viz) <br> **Why? You want to visualize or inspect the STR genotypes**
 | **--log         <log.txt>**               | Output the log information to the provided file (Default = Standard error)
 | **--haploid-chrs  <list_of_chroms>**      | Comma separated list of chromosomes to treat as haploid (Default = all diploid) <br> **Why? You're analyzing a haploid chromosome like chrY**
