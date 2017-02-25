@@ -9,8 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "bamtools/include/api/BamAlignment.h"
-
+#include "bam_reader.h"
 #include "base_quality.h"
 #include "genotyper.h"
 #include "read_pooler.h"

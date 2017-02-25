@@ -5,14 +5,13 @@
 #include <string>
 #include <vector>
 
-#include "bamtools/include/api/BamAlignment.h"
-#include "vcf_reader.h"
-
 #include "bam_processor.h"
+#include "bam_reader.h"
 #include "base_quality.h"
 #include "error.h"
 #include "haplotype_tracker.h"
 #include "region.h"
+#include "vcf_reader.h"
 
 const std::string HAPLOTYPE_TAG = "HP";
 const double FROM_HAP_LL        = -0.01;   // Log-likelihood read comes from a haplotype if it matches BAM HP tag
@@ -40,7 +39,7 @@ private:
 			 std::ostream& out);
 
   // Extract the haplotype for an alignment based on the HP tag
-  int get_haplotype(BamTools::BamAlignment& aln);
+  int get_haplotype(BamAlignment& aln);
 
 
 public:

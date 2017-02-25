@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "bamtools/include/api/BamAlignment.h"
+#include "bam_reader.h"
 #include "bgzf_streams.h"
 #include "em_stutter_genotyper.h"
 #include "process_timer.h"

@@ -6,8 +6,6 @@
 #include <string>
 #include <vector>
 
-#include "bamtools/include/api/BamAlignment.h"
-
 #include "base_quality.h"
 #include "error.h"
 #include "SeqAlignment/AlignmentData.h"

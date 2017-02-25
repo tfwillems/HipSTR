@@ -6,7 +6,6 @@
 #include <string>
 #include <vector>
 
-#include "bamtools/include/api/BamMultiReader.h"
 #include "error.h"
 #include "math.h"
 
@@ -75,7 +74,7 @@ class BaseQuality {
       return log_correct_[qual_index];
   }
 
-  double sum_log_prob_correct(std::string& qualities){
+  double sum_log_prob_correct(const std::string& qualities){
     double sum = 0.0;
     for (unsigned int i = 0; i < qualities.size(); i++)
       sum += log_prob_correct(qualities[i]);
@@ -83,8 +82,6 @@ class BaseQuality {
   }
 
   std::string median_base_qualities(const std::vector<const std::string*>& qualities);
-
-  void deduce_quality_encodings(BamTools::BamMultiReader& reader);
 };
 
 #endif

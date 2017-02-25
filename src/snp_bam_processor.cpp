@@ -98,15 +98,12 @@ void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
   analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region_group, chrom_seq);
 }
 
-int SNPBamProcessor::get_haplotype(BamTools::BamAlignment& aln){
-  if (!aln.HasTag(HAPLOTYPE_TAG))
+int SNPBamProcessor::get_haplotype(BamAlignment& aln){
+  if (!aln.HasTag(HAPLOTYPE_TAG.c_str()))
     return -1;
-  uint8_t haplotype;
-  if (!aln.GetTag(HAPLOTYPE_TAG, haplotype)){
-    char type;
-    aln.GetTagType(HAPLOTYPE_TAG, type);
+  int64_t haplotype;
+  if (!aln.GetIntTag(HAPLOTYPE_TAG.c_str(), haplotype))
     printErrorAndDie("Failed to extract haplotype tag");
-  }
   assert(haplotype == 1 || haplotype == 2);
   return (int)haplotype;
 }

@@ -9,32 +9,32 @@ class ReadPair {
 private:
   int32_t min_read_start_;
   int32_t max_read_start_;
-  BamTools::BamAlignment aln_1_;
-  BamTools::BamAlignment aln_2_;
+  BamAlignment aln_1_;
+  BamAlignment aln_2_;
   std::string library_;
   std::string name_;
 
 public:
-  ReadPair(BamTools::BamAlignment& aln_1, std::string& library){
+  ReadPair(BamAlignment& aln_1, std::string& library){
     aln_1_          = aln_1;
     min_read_start_ = -1;
-    max_read_start_ = aln_1.Position;
+    max_read_start_ = aln_1.Position();
     library_        = library;
-    name_           = aln_1.Name;
+    name_           = aln_1.Name();
   }
 
-  ReadPair(BamTools::BamAlignment& aln_1, BamTools::BamAlignment& aln_2, std::string& library){
+  ReadPair(BamAlignment& aln_1, BamAlignment& aln_2, std::string& library){
     aln_1_          = aln_1;
     aln_2_          = aln_2;
-    min_read_start_ = std::min(aln_1.Position, aln_2.Position);
-    max_read_start_ = std::max(aln_1.Position, aln_2.Position);
+    min_read_start_ = std::min(aln_1.Position(), aln_2.Position());
+    max_read_start_ = std::max(aln_1.Position(), aln_2.Position());
     library_        = library;
-    assert(aln_1.Name.compare(aln_2.Name) == 0);
-    name_           = aln_1.Name;
+    assert(aln_1.Name().compare(aln_2.Name()) == 0);
+    name_           = aln_1.Name();
   }
   
-  BamTools::BamAlignment& aln_one(){ return aln_1_; }
-  BamTools::BamAlignment& aln_two(){ return aln_2_; }
+  BamAlignment& aln_one(){ return aln_1_; }
+  BamAlignment& aln_two(){ return aln_2_; }
   std::string& name()              { return name_;  }
   bool single_ended()              { return min_read_start_ == -1; }
 
@@ -56,14 +56,11 @@ public:
   }
 };
 
-std::string get_library(BamTools::BamAlignment& aln, std::map<std::string, std::string>& rg_to_library){
+std::string get_library(BamAlignment& aln, std::map<std::string, std::string>& rg_to_library){
   std::string rg;
-  std::string rg_tag = "RG";
-  char tag_type = 'Z';
-  if (!aln.GetTagType(rg_tag, tag_type))
+  if (!aln.GetStringTag("RG", rg))
     printErrorAndDie("Failed to retrieve BAM alignment's RG tag");
-  aln.GetTag("RG", rg);
-  auto iter = rg_to_library.find(aln.Filename + rg);
+  auto iter = rg_to_library.find(aln.Filename() + rg);
   if (iter == rg_to_library.end())
     printErrorAndDie("No library found for read group " + rg + " in BAM file headers");
   return iter->second;
@@ -71,9 +68,9 @@ std::string get_library(BamTools::BamAlignment& aln, std::map<std::string, std::
 
 void remove_pcr_duplicates(BaseQuality& base_quality, bool use_bam_rgs,
 			   std::map<std::string, std::string>& rg_to_library,
-			   std::vector< std::vector<BamTools::BamAlignment> >& paired_strs_by_rg,
-			   std::vector< std::vector<BamTools::BamAlignment> >& mate_pairs_by_rg,
-			   std::vector< std::vector<BamTools::BamAlignment> >& unpaired_strs_by_rg, std::ostream& logger){
+			   std::vector< std::vector<BamAlignment> >& paired_strs_by_rg,
+			   std::vector< std::vector<BamAlignment> >& mate_pairs_by_rg,
+			   std::vector< std::vector<BamAlignment> >& unpaired_strs_by_rg, std::ostream& logger){
   int32_t dup_count = 0;
   assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
   for (size_t i = 0; i < paired_strs_by_rg.size(); i++){
@@ -81,11 +78,11 @@ void remove_pcr_duplicates(BaseQuality& base_quality, bool use_bam_rgs,
 
     std::vector<ReadPair> read_pairs;
     for (size_t j = 0; j < paired_strs_by_rg[i].size(); j++){
-      std::string library = use_bam_rgs ? get_library(paired_strs_by_rg[i][j], rg_to_library): rg_to_library[paired_strs_by_rg[i][j].Filename];
+      std::string library = use_bam_rgs ? get_library(paired_strs_by_rg[i][j], rg_to_library): rg_to_library[paired_strs_by_rg[i][j].Filename()];
       read_pairs.push_back(ReadPair(paired_strs_by_rg[i][j], mate_pairs_by_rg[i][j], library));
     }
     for (size_t j = 0; j < unpaired_strs_by_rg[i].size(); j++){
-      std::string library = use_bam_rgs ? get_library(unpaired_strs_by_rg[i][j], rg_to_library): rg_to_library[unpaired_strs_by_rg[i][j].Filename];
+      std::string library = use_bam_rgs ? get_library(unpaired_strs_by_rg[i][j], rg_to_library): rg_to_library[unpaired_strs_by_rg[i][j].Filename()];
       read_pairs.push_back(ReadPair(unpaired_strs_by_rg[i][j], library));
     }
     std::sort(read_pairs.begin(), read_pairs.end());
@@ -105,8 +102,8 @@ void remove_pcr_duplicates(BaseQuality& base_quality, bool use_bam_rgs,
       if (read_pairs[j].duplicate(read_pairs[best_index])){
 	dup_count++;
 	// Update index if new pair's STR read has a higher total base quality
-	if (base_quality.sum_log_prob_correct(read_pairs[j].aln_one().Qualities) > 
-	    base_quality.sum_log_prob_correct(read_pairs[best_index].aln_one().Qualities)){
+	if (base_quality.sum_log_prob_correct(read_pairs[j].aln_one().Qualities()) >
+	    base_quality.sum_log_prob_correct(read_pairs[best_index].aln_one().Qualities())){
 	  best_index  = j;
 	  include_rev = (read_pairs[best_index].name().compare(read_pairs[j-1].name()) == 0);
 	}

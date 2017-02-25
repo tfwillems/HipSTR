@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "bamtools/include/api/BamAux.h"
+#include "../bam_reader.h"
 
 namespace NeedlemanWunsch {
   bool Align(const std::string& ref_seq,
@@ -16,14 +16,14 @@ namespace NeedlemanWunsch {
 	     std::string& ref_seq_al,
 	     std::string& read_seq_al,
 	     float* score,
-	     std::vector<BamTools::CigarOp>& cigar_list, bool use_ref_end_penalty = false);
+	     std::vector<CigarOp>& cigar_list, bool use_ref_end_penalty = false);
 
   bool LeftAlign(const std::string& ref_seq, 
 		 const std::string& read_seq,
 		 std::string& ref_seq_al, 
 		 std::string& read_seq_al,
 		 float* score, 
-		 std::vector<BamTools::CigarOp>& cigar_list, bool use_ref_end_penalty = false);
+		 std::vector<CigarOp>& cigar_list, bool use_ref_end_penalty = false);
 }
 #endif
 

@@ -54,16 +54,16 @@ void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::str
     for (unsigned int j = 0; j < alignments[i].size(); ++j, ++total_reads){
       // Trim alignment if it extends very far upstream or downstream of the STR. For tractability, we limit it to 40bp
       trimAlignment(alignments[i][j], (region_group.start() > 40 ? region_group.start()-40 : 1), region_group.stop()+40);
-      if (alignments[i][j].Length == 0)
+      if (alignments[i][j].Length() == 0)
         continue;
 
-      auto iter      = seq_to_alns.find(alignments[i][j].QueryBases);
+      auto iter      = seq_to_alns.find(alignments[i][j].QueryBases());
       bool have_prev = (iter != seq_to_alns.end());
       if (have_prev)
-        have_prev &= left_alns[iter->second].get_sequence().size() == alignments[i][j].QueryBases.size();
+        have_prev &= left_alns[iter->second].get_sequence().size() == alignments[i][j].QueryBases().size();
 
       if (!have_prev){
-        left_alns.push_back(Alignment(alignments[i][j].Name));
+        left_alns.push_back(Alignment(alignments[i][j].Name()));
         if (matchesReference(alignments[i][j]))
           convertAlignment(alignments[i][j], chrom_seq, left_alns.back());
         else if (!realign(alignments[i][j], chrom_seq, left_alns.back())){
@@ -72,15 +72,15 @@ void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::str
           left_alns.pop_back();
           continue;
 	}
-	seq_to_alns[alignments[i][j].QueryBases] = left_alns.size()-1;
+	seq_to_alns[alignments[i][j].QueryBases()] = left_alns.size()-1;
       }
       else {
         // Reuse alignments if the sequence has already been observed and didn't lead to a soft-clipped alignment
         // Soft-clipping is problematic because it complicates base quality extration (but not really that much)
         Alignment& prev_aln = left_alns[iter->second];
-        assert(prev_aln.get_sequence().size() == alignments[i][j].QueryBases.size());
-	std::string bases = uppercase(alignments[i][j].QueryBases);
-        Alignment new_aln(prev_aln.get_start(), prev_aln.get_stop(), alignments[i][j].Name, alignments[i][j].Qualities, bases, prev_aln.get_alignment());
+        assert(prev_aln.get_sequence().size() == alignments[i][j].QueryBases().size());
+	std::string bases = uppercase(alignments[i][j].QueryBases());
+        Alignment new_aln(prev_aln.get_start(), prev_aln.get_stop(), alignments[i][j].Name(), alignments[i][j].Qualities(), bases, prev_aln.get_alignment());
         new_aln.set_cigar_list(prev_aln.get_cigar_list());
         left_alns.push_back(new_aln);
       }
@@ -114,7 +114,7 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
   for (unsigned int i = 0; i < alignments.size(); ++i){
     for (unsigned int j = 0; j < alignments[i].size(); ++j){
       int bp_diff;
-      bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region.start()-region.period(), region.stop()+region.period(), bp_diff);
+      bool got_size = ExtractCigar(alignments[i][j].CigarData(), alignments[i][j].Position(), region.start()-region.period(), region.stop()+region.period(), bp_diff);
       if (got_size){
 	if (bp_diff < -(int)(region.stop()-region.start()+1))
 	  continue;

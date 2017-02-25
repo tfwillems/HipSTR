@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include "../bam_reader.h"
 #include "../error.h"
 #include "Haplotype.h"
 #include "NeedlemanWunsch.h"
@@ -89,7 +90,7 @@ void Haplotype::aln_haps_to_ref(){
   std::string ref_hap_seq = get_seq(), alt_hap_seq;
   std::string ref_hap_al, alt_hap_al;
   float score;
-  std::vector<BamTools::CigarOp> cigar_list;
+  std::vector<CigarOp> cigar_list;
 
   do {
     alt_hap_seq = get_seq();
