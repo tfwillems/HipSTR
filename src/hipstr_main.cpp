@@ -9,8 +9,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "bamtools/include/api/BamAlignment.h"
-
+#include "bam_io.h"
 #include "error.h"
 #include "genotyper_bam_processor.h"
 #include "pedigree.h"
@@ -371,13 +370,7 @@ int main(int argc, char** argv){
   bam_processor.logger() << "Detected " << bam_files.size() << " BAM files" << std::endl;
 
   // Open all BAM files
-  BamTools::BamMultiReader reader;
-  if (!reader.Open(bam_files)) {
-    std::cerr << reader.GetErrorString() << std::endl;
-    printErrorAndDie("Failed to open one or more BAM files");
-  }
-  //reader.SetExplicitMergeOrder(BamTools::BamMultiReader::MergeOrder::RoundRobinMerge);
-
+  BamCramMultiReader reader(bam_files);
 
   // Construct filename->read group map (if one has been specified) and determine the list
   // of samples of interest based on either the specified names or the RG tags in the BAM headers
@@ -404,89 +397,45 @@ int main(int argc, char** argv){
     bam_processor.logger() << "User-specified read groups for " << rg_samples.size() << " unique samples" << std::endl;
   }
   else {
-    if (!reader.GetHeader().HasReadGroups())
-      printErrorAndDie("Provided BAM files don't contain read groups in the header and the --bam-samps flag was not specified");
-
     for (unsigned int i = 0; i < bam_files.size(); i++){
-      // Although it would be ideal to use the dictionary provided by the BamMultiReader, it doesn't appropriately handle
-      // read group ID collisions across BAMs (as it just overwrites the previous entry).
-      // Instead, we can open an individual reader for each BAM and allow for conficting IDs, as long as they lie in separate files
+      const std::vector<ReadGroup>& read_groups = reader.bam_header(i)->read_groups();
+      if (read_groups.empty())
+	printErrorAndDie("Provided BAM files don't contain read groups in the header and the --bam-samps flag was not specified");
 
-      BamTools::BamReader single_file_reader;
-      if (!single_file_reader.Open(bam_files[i]))
-	printErrorAndDie("Failed to open one or more BAM files");
-
-      BamTools::SamReadGroupDictionary rg_dict = single_file_reader.GetHeader().ReadGroups;
-      for (auto rg_iter = rg_dict.Begin(); rg_iter != rg_dict.End(); rg_iter++){
+      for (auto rg_iter = read_groups.begin(); rg_iter != read_groups.end(); rg_iter++){
 	if (!rg_iter->HasID())     printErrorAndDie("RG in BAM header is lacking the ID tag");
 	if (!rg_iter->HasSample()) printErrorAndDie("RG in BAM header is lacking the SM tag");
 	if ((bam_lib_from_samp == 0) && !rg_iter->HasLibrary())
 	  printErrorAndDie("RG in BAM header is lacking the LB tag");
-
-	std::string rg_library = (bam_lib_from_samp == 0 ? rg_iter->Library : rg_iter->Sample);
+	std::string rg_library = (bam_lib_from_samp == 0 ? rg_iter->GetLibrary() : rg_iter->GetSample());
 
 	// Ensure that there aren't identical read group ids that map to different samples or libraries
-	if (rg_ids_to_sample.find(rg_iter->ID) != rg_ids_to_sample.end())
-	  if (rg_ids_to_sample[rg_iter->ID].compare(rg_iter->Sample) != 0)
-	    printErrorAndDie("Read group id " + rg_iter->ID + " maps to more than one sample");
-	if (rg_ids_to_library.find(rg_iter->ID) != rg_ids_to_library.end())
-	  if (rg_ids_to_library[rg_iter->ID].compare(rg_library) != 0)
-	    printErrorAndDie("Read group id " + rg_iter->ID + " maps to more than one library");
+	if (rg_ids_to_sample.find(rg_iter->GetID()) != rg_ids_to_sample.end())
+	  if (rg_ids_to_sample[rg_iter->GetID()].compare(rg_iter->GetSample()) != 0)
+	    printErrorAndDie("Read group id " + rg_iter->GetID() + " maps to more than one sample");
+	if (rg_ids_to_library.find(rg_iter->GetID()) != rg_ids_to_library.end())
+	  if (rg_ids_to_library[rg_iter->GetID()].compare(rg_library) != 0)
+	    printErrorAndDie("Read group id " + rg_iter->GetID() + " maps to more than one library");
 
-	rg_ids_to_sample[bam_files[i] + rg_iter->ID]  = rg_iter->Sample;
-	rg_ids_to_library[bam_files[i] + rg_iter->ID] = rg_library;
-	rg_samples.insert(rg_iter->Sample);
+	rg_ids_to_sample[bam_files[i] + rg_iter->GetID()]  = rg_iter->GetSample();
+	rg_ids_to_library[bam_files[i] + rg_iter->GetID()] = rg_library;
+	rg_samples.insert(rg_iter->GetSample());
 	rg_libs.insert(rg_library);
       }
-      single_file_reader.Close();
     }
+
     bam_processor.logger() << "BAMs contain unique read group IDs for "
 			   << rg_libs.size()    << " unique libraries and "
 			   << rg_samples.size() << " unique samples" << std::endl;
   }
 
-  // Open BAM index files, assuming they're either the same path with a .bai suffix or a path where .bai replaces .bam
-  std::vector<std::string> bam_indexes;
-  for (unsigned int i = 0; i < bam_files.size(); i++){
-    bool have_index      = false;
-    std::string bai_file = bam_files[i] + ".bai";
-    if (!file_exists(bai_file)){
-      int filename_len = bam_files[i].size();
-      if (filename_len > 4 && bam_files[i].substr(filename_len-4).compare(".bam") == 0){
-	bai_file = bam_files[i].substr(0, filename_len-4) + ".bai";
-	if (file_exists(bai_file)){
-	  have_index = true;
-	  bam_indexes.push_back(bai_file);
-	}
-      }
-    }
-    else {
-      have_index = true;
-      bam_indexes.push_back(bai_file);
-    }
+  BamWriter* bam_pass_writer = NULL;
+  if (!bam_pass_out_file.empty())
+    bam_pass_writer = new BamWriter(bam_pass_out_file, reader.bam_header());
 
-    if (!have_index){
-      std::stringstream error_msg;
-      error_msg << "Unable to find a BAM index file for " << bam_files[i] << "\n"
-		<< "Please ensure that each BAM has been sorted by position and indexed using samtools.";
-      printErrorAndDie(error_msg.str());
-    }
-  }
-  if (!reader.OpenIndexes(bam_indexes))
-    printErrorAndDie("Failed to open one or more BAM index files");
-
-  BamTools::BamWriter bam_pass_writer;
-  if (!bam_pass_out_file.empty()){
-    BamTools::RefVector ref_vector = reader.GetReferenceData();
-    bool file_open = bam_pass_writer.Open(bam_pass_out_file, reader.GetHeaderText(), ref_vector);
-    if (!file_open) printErrorAndDie("Failed to open output BAM file for reads used to genotype region");
-  }
-  BamTools::BamWriter bam_filt_writer;
-  if (!bam_filt_out_file.empty()){
-    BamTools::RefVector ref_vector = reader.GetReferenceData();
-    bool file_open = bam_filt_writer.Open(bam_filt_out_file, reader.GetHeaderText(), ref_vector);
-    if (!file_open) printErrorAndDie("Failed to open output BAM file for reads filtered for each region");
-  }
+  BamWriter* bam_filt_writer = NULL;
+  if (!bam_filt_out_file.empty())
+    bam_filt_writer = new BamWriter(bam_filt_out_file, reader.bam_header());
 
   if (!ref_vcf_file.empty()){
     if (!string_ends_with(ref_vcf_file, ".gz"))
@@ -562,9 +511,9 @@ int main(int argc, char** argv){
   bam_processor.process_regions(reader, region_file, fasta_dir, rg_ids_to_sample, rg_ids_to_library, bam_pass_writer, bam_filt_writer, std::cout, 1000000, chrom);
   bam_processor.finish();
 
-  if (!bam_pass_out_file.empty()) bam_pass_writer.Close();
-  if (!bam_filt_out_file.empty()) bam_filt_writer.Close();
-  reader.Close();
+  if (bam_pass_writer != NULL) delete bam_pass_writer;
+  if (bam_filt_writer != NULL) delete bam_filt_writer;
+
 
   total_time = (clock() - total_time)/CLOCKS_PER_SEC;
   bam_processor.logger() << "HipSTR execution finished: Total runtime = " << total_time << " sec" << "\n"

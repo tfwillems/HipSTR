@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "bam_processor.h"
-#include "bam_reader.h"
+#include "bam_io.h"
 #include "base_quality.h"
 #include "error.h"
 #include "haplotype_tracker.h"

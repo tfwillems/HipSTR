@@ -64,7 +64,7 @@ void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::str
 
       if (!have_prev){
         left_alns.push_back(Alignment(alignments[i][j].Name()));
-        if (matchesReference(alignments[i][j]))
+        if (alignments[i][j].MatchesReference())
           convertAlignment(alignments[i][j], chrom_seq, left_alns.back());
         else if (!realign(alignments[i][j], chrom_seq, left_alns.back())){
 	  // Failed to realign read

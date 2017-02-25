@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "../bam_reader.h"
+#include "../bam_io.h"
 
 namespace NeedlemanWunsch {
   bool Align(const std::string& ref_seq,

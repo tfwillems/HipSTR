@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "bam_reader.h"
+#include "bam_io.h"
 #include "base_quality.h"
 #include "genotyper.h"
 #include "read_pooler.h"

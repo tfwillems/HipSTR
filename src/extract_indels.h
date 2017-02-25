@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "bam_reader.h"
+#include "bam_io.h"
 #include "SeqAlignment/AlignmentData.h"
 
 bool ExtractCigar(const std::vector<CigarElement>& cigar_data,

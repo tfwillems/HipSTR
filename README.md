@@ -36,9 +36,9 @@ In our opinion, all of these factors make **HipSTR** the most reliable tool for 
 
 ## Installation
 HipSTR requires a standard c++ compiler and [CMake](http://www.cmake.org/download/).
-To obtain HipSTR and all of its associated submodules, use:
+To obtain HipSTR, use:
 
-    git clone --recursive https://github.com/HipSTR-Tool/HipSTR
+    git clone https://github.com/HipSTR-Tool/HipSTR
 
 To build, use Make:
 

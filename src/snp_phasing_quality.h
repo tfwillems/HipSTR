@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "bam_reader.h"
+#include "bam_io.h"
 #include "base_quality.h"
 #include "snp_tree.h"
 

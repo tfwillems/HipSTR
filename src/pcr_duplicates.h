@@ -5,7 +5,7 @@
 #include <map>
 #include <vector>
 
-#include "bam_reader.h"
+#include "bam_io.h"
 #include "base_quality.h"
 
 void remove_pcr_duplicates(BaseQuality& base_quality, bool use_bam_rgs,

@@ -5,24 +5,16 @@
 #include <string>
 #include <vector>
 
-#include "bamtools/include/api/BamAlignment.h"
-#include "bamtools/include/api/BamReader.h"
-
-#include "insert_size.h"
+#include "bam_io.h"
 #include "region.h"
 
-
-void filter_bam_paired_mode(BamTools::BamReader& reader,
+void filter_bam_paired_mode(BamCramReader& reader,
                             std::vector< std::vector<Region> >& regions,
                             std::map<std::string, int>& chrom_order,
-                            std::string& output_filename,
-                            InsertSizeCounter& counter,
-			    bool analyze_insert_size);
+                            std::string& output_filename);
 
-void filter_bam(BamTools::BamReader& reader,
+void filter_bam(BamCramReader& reader,
                 std::vector< std::vector<Region> >&regions,
                 std::map<std::string, int>& chrom_order,
-                std::string& output_filename,
-		InsertSizeCounter& counter,
-		bool analyze_insert_size);
+                std::string& output_filename);
 #endif

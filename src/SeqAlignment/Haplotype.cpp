@@ -1,6 +1,6 @@
 #include <assert.h>
 
-#include "../bam_reader.h"
+#include "../bam_io.h"
 #include "../error.h"
 #include "Haplotype.h"
 #include "NeedlemanWunsch.h"

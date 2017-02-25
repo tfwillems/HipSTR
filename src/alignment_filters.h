@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "bam_reader.h"
+#include "bam_io.h"
 
 namespace AlignmentFilters {
   /* Returns the CIGAR string corresponding to the vector of CigarOps. */

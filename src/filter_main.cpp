@@ -9,7 +9,7 @@
 #include <vector>
 #include <stdlib.h>
 
-#include "bam_reader.h"
+#include "bam_io.h"
 #include "error.h"
 #include "filter_bams.h"
 #include "region.h"
