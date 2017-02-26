@@ -1,16 +1,14 @@
 #ifndef BAM_PROCESSOR_H_
 #define BAM_PROCESSOR_H_
 
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
 
-#include "bamtools/include/api/BamAlignment.h"
-#include "bamtools/include/api/BamMultiReader.h"
-#include "bamtools/include/api/BamWriter.h"
-
+#include "bam_io.h"
 #include "base_quality.h"
 #include "error.h"
 #include "region.h"
@@ -18,7 +16,7 @@
 
 class BamProcessor {
  protected:
-  typedef std::vector<BamTools::BamAlignment> BamAlnList;
+  typedef std::vector<BamAlignment> BamAlnList;
 
  private:
   bool use_bam_rgs_;
@@ -30,27 +28,27 @@ class BamProcessor {
   double total_read_filter_time_;
   double locus_read_filter_time_;
 
-  void add_filtered_alignment(BamTools::BamAlignment& alignment, std::string filter, BamAlnList& filtered_alignments);
+  void add_filtered_alignment(BamAlignment& alignment, std::string filter, BamAlnList& filtered_alignments);
 
-  void extract_mappings(BamTools::BamAlignment& aln, const BamTools::RefVector& ref_vector,
+  void extract_mappings(BamAlignment& aln, const BamHeader* bam_header,
 			std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs);
 
-  void get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::BamAlignment& aln_2, const BamTools::RefVector& ref_vector,
+  void get_valid_pairings(BamAlignment& aln_1, BamAlignment& aln_2, const BamHeader* bam_header,
 			  std::vector< std::pair<std::string, int32_t> >& p1, std::vector< std::pair<std::string, int32_t> >& p2);
 
-  void read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, RegionGroup& region,
+  void read_and_filter_reads(BamCramMultiReader& reader, std::string& chrom_seq, RegionGroup& region,
 			     std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library, std::vector<std::string>& rg_names,
 			     std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
-			     BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer);
+			     BamWriter* pass_writer, BamWriter* filt_writer);
 
- std::string get_read_group(BamTools::BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping);
+ std::string get_read_group(BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping);
 
- std::string trim_alignment_name(BamTools::BamAlignment& aln);
+ std::string trim_alignment_name(BamAlignment& aln);
 
  void modify_and_write_alns(BamAlnList& alignments, std::map<std::string, std::string>& rg_to_sample,
-			    BamTools::BamWriter& writer);
+			    BamWriter* writer);
 
- bool spans_a_region(const std::vector<Region>& regions, BamTools::BamAlignment& alignment);
+ bool spans_a_region(const std::vector<Region>& regions, BamAlignment& alignment);
 
  protected:
  BaseQuality base_quality_;
@@ -97,10 +95,10 @@ class BamProcessor {
  void use_custom_read_groups()   { use_bam_rgs_ = false;           }
  void allow_pcr_dups()           { rem_pcr_dups_ = false;          }
 
- void process_regions(BamTools::BamMultiReader& reader,
+ void process_regions(BamCramMultiReader& reader,
 		      std::string& region_file, std::string& fasta_dir,
 		      std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
-		      BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer,
+		      BamWriter* pass_writer, BamWriter* filt_writer,
 		      std::ostream& out, int32_t max_regions, std::string chrom);
   
  virtual void process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
@@ -142,16 +140,9 @@ class BamProcessor {
    bams_from_10x_ = true;
  }
 
- static void add_passes_filters_tag(BamTools::BamAlignment& aln, std::string& passes);
+ static void add_passes_filters_tag(BamAlignment& aln, std::string& passes);
 
- static bool passes_filters(BamTools::BamAlignment& aln, int region_index);
-
- static void passes_filters(BamTools::BamAlignment& aln, std::vector<bool>& region_passes);
-
- static const std::string PASSES_FILTERS_TAG_NAME;
- static const std::string PASSES_FILTERS_TAG_TYPE;
- static const std::string FILTER_TAG_NAME;
- static const std::string FILTER_TAG_TYPE;
+ static void passes_filters(BamAlignment& aln, std::vector<bool>& region_passes);
 
  int32_t MAX_MATE_DIST;
  int32_t MIN_BP_BEFORE_INDEL;

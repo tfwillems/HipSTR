@@ -17,51 +17,39 @@ const std::string ALT_MAP_TAG           = "XA";
 const std::string PRIMARY_ALN_SCORE_TAG = "AS";
 const std::string SUBOPT_ALN_SCORE_TAG  = "XS";
 
-const std::string BamProcessor::PASSES_FILTERS_TAG_NAME = "PF";
-const std::string BamProcessor::PASSES_FILTERS_TAG_TYPE = "Z";
-const std::string BamProcessor::FILTER_TAG_NAME         = "FT";
-const std::string BamProcessor::FILTER_TAG_TYPE         = "Z";
-
-void BamProcessor::add_passes_filters_tag(BamTools::BamAlignment& aln, std::string& passes){
-  if (aln.HasTag(PASSES_FILTERS_TAG_NAME))
-    aln.RemoveTag(PASSES_FILTERS_TAG_NAME);
-  if(!aln.AddTag(PASSES_FILTERS_TAG_NAME, PASSES_FILTERS_TAG_TYPE, passes))
+void BamProcessor::add_passes_filters_tag(BamAlignment& aln, std::string& passes){
+  if (aln.HasTag("PF"))
+    aln.RemoveTag("PF");
+  if (!aln.AddStringTag("PF", passes))
     printErrorAndDie("Failed to add passes filters tag to BAM alignment");
 }
 
-bool BamProcessor::passes_filters(BamTools::BamAlignment& aln, int region_index){
-  std::string passes;
-  if (!aln.GetTag(PASSES_FILTERS_TAG_NAME, passes))
-    printErrorAndDie("Failed to extract passes filters tag from BAM alignment");
-  return passes[region_index] == '1';
-}
-
-void BamProcessor::passes_filters(BamTools::BamAlignment& aln, std::vector<bool>& region_passes){
+void BamProcessor::passes_filters(BamAlignment& aln, std::vector<bool>& region_passes){
   assert(region_passes.empty());
   std::string passes;
-  if (!aln.GetTag(PASSES_FILTERS_TAG_NAME, passes))
+  if (!aln.GetStringTag("PF", passes))
     printErrorAndDie("Failed to extract passes filters tag from BAM alignment");
   for (int i = 0; i < passes.size(); i++)
     region_passes.push_back(passes[i] == '1' ? true : false);
 }
 
-void BamProcessor::add_filtered_alignment(BamTools::BamAlignment& alignment, std::string filter, BamAlnList& filtered_alignments){
+void BamProcessor::add_filtered_alignment(BamAlignment& alignment, std::string filter, BamAlnList& filtered_alignments){
   filtered_alignments.push_back(alignment);
-  if (!filtered_alignments.back().AddTag(FILTER_TAG_NAME, FILTER_TAG_TYPE, filter))
+  if (!filtered_alignments.back().AddStringTag("FT", filter))
     printErrorAndDie("Failed to add filter tag to alignment");
 }
 
-void BamProcessor::extract_mappings(BamTools::BamAlignment& aln, const BamTools::RefVector& ref_vector,
+void BamProcessor::extract_mappings(BamAlignment& aln, const BamHeader* bam_header,
 				    std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs){
   assert(chrom_pos_pairs.size() == 0);
-  if (aln.RefID == -1 || aln.CigarData.size() == 0)
+  if (aln.RefID() == -1 || aln.CigarData().size() == 0)
     return;
-  assert(aln.RefID < ref_vector.size());
-  chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(ref_vector[aln.RefID].RefName, aln.Position));
+  assert(aln.RefID() < bam_header->num_seqs());
+  chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(bam_header->ref_name(aln.RefID()), aln.Position()));
 
-  if (aln.HasTag(ALT_MAP_TAG)){
+  if (aln.HasTag(ALT_MAP_TAG.c_str())){
     std::string alt_info;
-    if (!aln.GetTag(ALT_MAP_TAG, alt_info))
+    if (!aln.GetStringTag(ALT_MAP_TAG.c_str(), alt_info))
       printErrorAndDie("Failed to extract XA tag from BAM alignment");
     std::vector<std::string> alts;
     split_by_delim(alt_info, ';', alts);
@@ -73,10 +61,10 @@ void BamProcessor::extract_mappings(BamTools::BamAlignment& aln, const BamTools:
   }
 }
 
-void BamProcessor::get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::BamAlignment& aln_2, const BamTools::RefVector& ref_vector,
+void BamProcessor::get_valid_pairings(BamAlignment& aln_1, BamAlignment& aln_2, const BamHeader* bam_header,
 				      std::vector< std::pair<std::string, int32_t> >& p1, std::vector< std::pair<std::string, int32_t> >& p2){
   assert(p1.size() == 0 && p2.size() == 0);
-  if (aln_1.RefID == -1 || aln_2.RefID == -1)
+  if (aln_1.RefID() == -1 || aln_2.RefID() == -1)
     return;
 
   // BWA-MEM sometimes doesn't report the alternate alignment tag if there are too many alternate mappings
@@ -87,28 +75,28 @@ void BamProcessor::get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::B
   //     Otherwise, the mate mapping information is not informative and we discard the pair of reads.
   // ii) If the mate pair has an XA tag but the read has no XA tag, we require that the read has a decent alignment score relative to its best alternate score.
   //     Otherwise, even with an informative mate, there may be other equally valid alignments for the read
-  if (!aln_2.HasTag(ALT_MAP_TAG)){
-    if (aln_2.HasTag(PRIMARY_ALN_SCORE_TAG) && aln_2.HasTag(SUBOPT_ALN_SCORE_TAG)){
-      int mate_primary_score, mate_subopt_score;
-      if(!GetIntBamTag(aln_2, PRIMARY_ALN_SCORE_TAG, &mate_primary_score)) printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
-      if(!GetIntBamTag(aln_2, SUBOPT_ALN_SCORE_TAG,  &mate_subopt_score))  printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
+  if (!aln_2.HasTag(ALT_MAP_TAG.c_str())){
+    if (aln_2.HasTag(PRIMARY_ALN_SCORE_TAG.c_str()) && aln_2.HasTag(SUBOPT_ALN_SCORE_TAG.c_str())){
+      int64_t mate_primary_score, mate_subopt_score;
+      if(!aln_2.GetIntTag(PRIMARY_ALN_SCORE_TAG.c_str(), mate_primary_score)) printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
+      if(!aln_2.GetIntTag(SUBOPT_ALN_SCORE_TAG.c_str(),  mate_subopt_score))  printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
       if (mate_primary_score - mate_subopt_score < 10)
 	return;
     }
   }
-  else if (!aln_1.HasTag(ALT_MAP_TAG)){
-    if (aln_1.HasTag(PRIMARY_ALN_SCORE_TAG) && aln_1.HasTag(SUBOPT_ALN_SCORE_TAG)){
-      int primary_score, subopt_score;
-      if(!GetIntBamTag(aln_1, PRIMARY_ALN_SCORE_TAG, &primary_score))      printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
-      if(!GetIntBamTag(aln_1, SUBOPT_ALN_SCORE_TAG,  &subopt_score))       printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
+  else if (!aln_1.HasTag(ALT_MAP_TAG.c_str())){
+    if (aln_1.HasTag(PRIMARY_ALN_SCORE_TAG.c_str()) && aln_1.HasTag(SUBOPT_ALN_SCORE_TAG.c_str())){
+      int64_t primary_score, subopt_score;
+      if(!aln_1.GetIntTag(PRIMARY_ALN_SCORE_TAG.c_str(), primary_score))      printErrorAndDie("Failed to extract the primary alignment score from the BAM record");
+      if(!aln_1.GetIntTag(SUBOPT_ALN_SCORE_TAG.c_str(),  subopt_score))       printErrorAndDie("Failed to extract the suboptimal alignment score from the BAM record");
       if (primary_score - subopt_score < 10)
 	return;
     }
   }
 
   std::vector< std::pair<std::string, int32_t> > pairs_1, pairs_2;
-  extract_mappings(aln_1, ref_vector, pairs_1);
-  extract_mappings(aln_2, ref_vector, pairs_2);
+  extract_mappings(aln_1, bam_header, pairs_1);
+  extract_mappings(aln_2, bam_header, pairs_2);
   std::sort(pairs_1.begin(), pairs_1.end());
   std::sort(pairs_2.begin(), pairs_2.end());
 
@@ -130,21 +118,18 @@ void BamProcessor::get_valid_pairings(BamTools::BamAlignment& aln_1, BamTools::B
   }
 }
 
-std::string BamProcessor::get_read_group(BamTools::BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping){
+std::string BamProcessor::get_read_group(BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping){
   std::string rg;
-  std::string rg_tag = "RG";
-  char tag_type = 'Z';
-  if (!aln.GetTagType(rg_tag, tag_type))
+  if (!aln.GetStringTag("RG", rg))
     printErrorAndDie("Failed to retrieve BAM alignment's RG tag");
-  aln.GetTag("RG", rg);
-  auto iter = read_group_mapping.find(aln.Filename + rg);
+  auto iter = read_group_mapping.find(aln.Filename() + rg);
   if (iter == read_group_mapping.end())
     printErrorAndDie("No sample found for read group " + rg + " in BAM file headers");
   return iter->second;
 }
 
-std::string BamProcessor::trim_alignment_name(BamTools::BamAlignment& aln){
-  std::string aln_name = aln.Name;
+std::string BamProcessor::trim_alignment_name(BamAlignment& aln){
+  std::string aln_name = aln.Name();
   if (aln_name.size() > 2){
     if (aln_name[aln_name.size()-2] == '/')
       aln_name.resize(aln_name.size()-2);
@@ -153,14 +138,14 @@ std::string BamProcessor::trim_alignment_name(BamTools::BamAlignment& aln){
 }
 
 void BamProcessor::modify_and_write_alns(BamAlnList& alignments, std::map<std::string, std::string>& rg_to_sample,
-					 BamTools::BamWriter& writer){
+					 BamWriter* writer){
   for (auto read_iter = alignments.begin(); read_iter != alignments.end(); read_iter++){
     // Add RG to BAM record based on file
     if (!use_bam_rgs_){
-      std::string rg_tag = "HipSTR;" + rg_to_sample[read_iter->Filename] + ";" + rg_to_sample[read_iter->Filename];
-      read_iter->AddTag("RG", "Z", rg_tag);
+      std::string rg_tag = "HipSTR;" + rg_to_sample[read_iter->Filename()] + ";" + rg_to_sample[read_iter->Filename()];
+      read_iter->AddStringTag("RG", rg_tag);
     }
-    if (!writer.SaveAlignment(*read_iter))
+    if (!writer->SaveAlignment(*read_iter))
       printErrorAndDie("Failed to save alignment for STR-spanning read");
   }
 }
@@ -168,54 +153,49 @@ void BamProcessor::modify_and_write_alns(BamAlnList& alignments, std::map<std::s
 // Returns true if the alignment spans at least one region in the group.
 // Reads that don't actually span the region but start/end with a soft clip are also counted as spanning,
 // as the clipped sequence frequently extends past the region
-bool BamProcessor::spans_a_region(const std::vector<Region>& regions, BamTools::BamAlignment& alignment){
+bool BamProcessor::spans_a_region(const std::vector<Region>& regions, BamAlignment& alignment){
   for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
-    if (alignment.Position > region_iter->stop() || alignment.GetEndPosition() < region_iter->start())
+    if (alignment.Position() > region_iter->stop() || alignment.GetEndPosition() < region_iter->start())
       continue;
-    if (alignment.Position > region_iter->start() && !startsWithSoftClip(alignment))
+    if (alignment.Position() > region_iter->start() && !alignment.StartsWithSoftClip())
       continue;
-    if (alignment.GetEndPosition() < region_iter->stop() && !endsWithSoftClip(alignment))
+    if (alignment.GetEndPosition() < region_iter->stop() && !alignment.EndsWithSoftClip())
       continue;
     return true;
   }
   return false;
 }
 
-void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::string& chrom_seq, RegionGroup& region_group,
+void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string& chrom_seq, RegionGroup& region_group,
 					 std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library, std::vector<std::string>& rg_names,
 					 std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
-					 BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer){
+					 BamWriter* pass_writer, BamWriter* filt_writer){
   locus_read_filter_time_ = clock();
 
-  bool pass_to_bam     = pass_writer.IsOpen();
-  bool filtered_to_bam = filt_writer.IsOpen();
+  bool pass_to_bam     = (pass_writer != NULL);
+  bool filtered_to_bam = (filt_writer != NULL);
 
   BamAlnList region_alignments, filtered_alignments;
   int32_t read_count = 0;
   int32_t not_spanning = 0, unique_mapping = 0;
   int32_t read_has_N = 0, hard_clip = 0, split_alignment = 0, low_qual_score = 0;
-  BamTools::BamAlignment alignment;
-
-  const BamTools::RefVector& ref_vector = reader.GetReferenceData();
+  BamAlignment alignment;
+  const BamHeader* bam_header = reader.bam_header();
   BamAlnList paired_str_alns, mate_alns, unpaired_str_alns;
-  std::map<std::string, BamTools::BamAlignment> potential_strs, potential_mates;
+  std::map<std::string, BamAlignment> potential_strs, potential_mates;
   TOO_MANY_READS = false;
 
   const std::vector<Region>& regions = region_group.regions();
-  while (reader.GetNextAlignmentCore(alignment)){
+  while (reader.GetNextAlignment(alignment)){
     // Discard reads that don't overlap the STR region and whose mate pair has no chance of overlapping the region
-    if (alignment.Position > region_group.stop() || alignment.GetEndPosition() < region_group.start()){
-      if (!alignment.IsPaired() || alignment.MatePosition == alignment.Position)
+    if (alignment.Position() > region_group.stop() || alignment.GetEndPosition() < region_group.start()){
+      if (!alignment.IsPaired() || alignment.MatePosition() == alignment.Position())
 	continue;
-      if (alignment.MatePosition > region_group.stop())
+      if (alignment.MatePosition() > region_group.stop())
 	continue;
-      if (alignment.MatePosition+alignment.Length+100 < region_group.start())
+      if (alignment.MatePosition()+alignment.Length()+100 < region_group.start())
 	continue;
     }
-
-    // Populate string fields
-    if (!alignment.BuildCharData())
-      printErrorAndDie("Failed to build char data for BamAlignment");
 
     // Stop parsing reads if we've already exceeded the maximum number for downstream analyses
     if (paired_str_alns.size() > MAX_TOTAL_READS){
@@ -223,31 +203,31 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
       break;
     }
 
-    if (!alignment.IsMapped() || alignment.Position == 0 || alignment.CigarData.size() == 0 || alignment.Length == 0)
+    if (!alignment.IsMapped() || alignment.Position() == 0 || alignment.CigarData().size() == 0 || alignment.Length() == 0)
 	continue;
-    assert(alignment.CigarData.size() > 0 && alignment.RefID != -1);
+    assert(alignment.CigarData().size() > 0 && alignment.RefID() != -1);
 
     // If requested, trim any reads that potentially overlap the STR regions
-    if (alignment.Position < region_group.stop() && alignment.GetEndPosition() >= region_group.start()){
+    if (alignment.Position() < region_group.stop() && alignment.GetEndPosition() >= region_group.start()){
       if (BASE_QUAL_TRIM > ' '){
 	// Read trimming doesn't work if hard clipping has been applied
-	if (startsWithHardClip(alignment) || endsWithHardClip(alignment)){
+	if (alignment.StartsWithHardClip() || alignment.EndsWithHardClip()){
 	  read_count++;
 	  hard_clip++;
 	  if (filtered_to_bam) add_filtered_alignment(alignment, "HARD_CLIPPED", filtered_alignments);
 	  continue;
 	}
 
-	int32_t length = alignment.Length;
+	int32_t length = alignment.Length();
 	trimLowQualityEnds(alignment, BASE_QUAL_TRIM);
-	if (alignment.Position < region_group.stop() && alignment.GetEndPosition() >= region_group.start())
-	  if ((alignment.Length == 0) || (alignment.Length < length/2))
+	if (alignment.Position() < region_group.stop() && alignment.GetEndPosition() >= region_group.start())
+	  if ((alignment.Length() == 0) || (alignment.Length() < length/2))
 	    continue;
       }
     }
 
     // Only apply tests to putative STR reads that overlap the STR region
-    if (alignment.Position < region_group.stop() && alignment.GetEndPosition() >= region_group.start()){
+    if (alignment.Position() < region_group.stop() && alignment.GetEndPosition() >= region_group.start()){
       bool pass_one = false; // Denotes if read passed first set of simpler filters
       std::string pass_two(regions.size(), '0'); // Denotes if read passed sceond set of additional filters for each region
                                                  // Meant to signify if reads that pass first set should be used to generate haplotypes
@@ -260,13 +240,13 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	filter.append("HAS_SA_TAG");
       }
       // Ignore reads with N bases
-      else if (alignment.QueryBases.find('N') != std::string::npos){
+      else if (alignment.QueryBases().find('N') != std::string::npos){
 	read_has_N++;
 	filter.append("HAS_N_BASES");
       }
       // Ignore reads with a very low overall base quality score
       // Want to avoid situations in which it's more advantageous to have misalignments b/c the scores are so low
-      else if (base_quality_.sum_log_prob_correct(alignment.Qualities) < MIN_SUM_QUAL_LOG_PROB){
+      else if (base_quality_.sum_log_prob_correct(alignment.Qualities()) < MIN_SUM_QUAL_LOG_PROB){
 	low_qual_score++;
 	filter.append("LOW_BASE_QUALS");
       }
@@ -281,7 +261,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	// Determine whether we can use the read for haplotype generation for each region in the group
 	int region_index = 0;
 	for (auto region_iter = regions.begin(); region_iter != regions.end(); ++region_iter, ++region_index){
-	  if ((MIN_FLANK > 0) && (alignment.Position > (region_iter->start()-MIN_FLANK) || alignment.GetEndPosition() < (region_iter->stop()+MIN_FLANK)))
+	  if ((MIN_FLANK > 0) && (alignment.Position() > (region_iter->start()-MIN_FLANK) || alignment.GetEndPosition() < (region_iter->stop()+MIN_FLANK)))
 	    continue;
 
 	  // Ignore read if there is another location within MAXIMAL_END_MATCH_WINDOW bp for which it has a longer end match
@@ -319,13 +299,13 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	if (aln_iter != potential_mates.end()){
 	  if (alignment.IsFirstMate() == aln_iter->second.IsFirstMate()){
 	    potential_mates.erase(aln_iter);
-	    potential_strs.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
+	    potential_strs.insert(std::pair<std::string, BamAlignment>(aln_key, alignment));
 	    continue;
 	  }
 
 	  std::vector< std::pair<std::string, int32_t> > p_1, p_2;
-	  get_valid_pairings(alignment, aln_iter->second, ref_vector, p_1, p_2);
-	  if (p_1.size() == 1 && p_1[0].second == alignment.Position){
+	  get_valid_pairings(alignment, aln_iter->second, bam_header, p_1, p_2);
+	  if (p_1.size() == 1 && p_1[0].second == alignment.Position()){
 	    paired_str_alns.push_back(alignment);
 	    mate_alns.push_back(aln_iter->second);
 	    if (pass_to_bam){
@@ -351,8 +331,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	    }
 
 	    std::vector< std::pair<std::string, int32_t> > p_1, p_2;
-	    get_valid_pairings(alignment, str_iter->second, ref_vector, p_1, p_2);
-	    if (p_1.size() == 1 && p_1[0].second == alignment.Position){
+	    get_valid_pairings(alignment, str_iter->second, bam_header, p_1, p_2);
+	    if (p_1.size() == 1 && p_1[0].second == alignment.Position()){
 	      paired_str_alns.push_back(alignment);
 	      mate_alns.push_back(str_iter->second);
 	      if (pass_to_bam) region_alignments.push_back(alignment);
@@ -372,14 +352,14 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	    potential_strs.erase(str_iter);
 	  }
 	  else
-	    potential_strs.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
+	    potential_strs.insert(std::pair<std::string, BamAlignment>(aln_key, alignment));
 	}
       }
       else {
 	assert(!filter.empty());
 	if (filtered_to_bam)
 	  add_filtered_alignment(alignment, filter, filtered_alignments);
-	potential_mates.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
+	potential_mates.insert(std::pair<std::string, BamAlignment>(aln_key, alignment));
       }
     }
     else {
@@ -390,8 +370,8 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	  continue;
 
 	std::vector< std::pair<std::string, int32_t> > p_1, p_2;
-	get_valid_pairings(aln_iter->second, alignment, ref_vector, p_1, p_2);
-	if (p_1.size() == 1 && p_1[0].second == aln_iter->second.Position){
+	get_valid_pairings(aln_iter->second, alignment, bam_header, p_1, p_2);
+	if (p_1.size() == 1 && p_1[0].second == aln_iter->second.Position()){
 	  paired_str_alns.push_back(aln_iter->second);
 	  mate_alns.push_back(alignment);
 	  if (pass_to_bam){
@@ -415,7 +395,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	  potential_mates.erase(other_iter);
 	}
 	else
-	  potential_mates.insert(std::pair<std::string, BamTools::BamAlignment>(aln_key, alignment));
+	  potential_mates.insert(std::pair<std::string, BamAlignment>(aln_key, alignment));
       }
     }
   }
@@ -423,7 +403,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   int32_t num_filt_unpaired_reads = 0;
   for (auto aln_iter = potential_strs.begin(); aln_iter != potential_strs.end(); ++aln_iter){
     std::string filter = "";
-    if (aln_iter->second.HasTag(ALT_MAP_TAG)){
+    if (aln_iter->second.HasTag(ALT_MAP_TAG.c_str())){
       unique_mapping++;
       filter = "NO_UNIQUE_MAPPING";
     }
@@ -456,11 +436,11 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
 	   << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads for downstream analyses" << std::endl;
     
   // Output the reads passing all filters to a BAM file (if requested)
-  if (pass_writer.IsOpen())
+  if (pass_writer != NULL)
     modify_and_write_alns(region_alignments, rg_to_sample, pass_writer);
 
   // Output reads that overlapped the STR but were filtered to a BAM file (if requested)
-  if (filt_writer.IsOpen())
+  if (filt_writer != NULL)
     modify_and_write_alns(filtered_alignments, rg_to_sample, filt_writer);
 
   // Separate the reads based on their associated read groups
@@ -468,7 +448,7 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   for (unsigned int type = 0; type < 2; ++type){
     BamAlnList& aln_src  = (type == 0 ? paired_str_alns : unpaired_str_alns);
     for (unsigned int i = 0; i < aln_src.size(); ++i){
-      std::string rg = use_bam_rgs_ ? get_read_group(aln_src[i], rg_to_sample): rg_to_sample[aln_src[i].Filename];
+      std::string rg = use_bam_rgs_ ? get_read_group(aln_src[i], rg_to_sample): rg_to_sample[aln_src[i].Filename()];
       int rg_index;
       auto index_iter = rg_indices.find(rg);
       if (index_iter == rg_indices.end()){
@@ -497,9 +477,9 @@ void BamProcessor::read_and_filter_reads(BamTools::BamMultiReader& reader, std::
   total_read_filter_time_ += locus_read_filter_time_;
 }
 
-void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string& region_file, std::string& fasta_dir,
+void BamProcessor::process_regions(BamCramMultiReader& reader, std::string& region_file, std::string& fasta_dir,
 				   std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
-				   BamTools::BamWriter& pass_writer, BamTools::BamWriter& filt_writer,
+				   BamWriter* pass_writer, BamWriter* filt_writer,
 				   std::ostream& out, int32_t max_regions, std::string chrom){
   std::vector<Region> regions;
   readRegions(region_file, regions, max_regions, chrom, logger());
@@ -507,13 +487,13 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string
 
   FastaReader fasta_reader(fasta_dir);
   std::string ref_seq;
-  BamTools::RefVector ref_vector = reader.GetReferenceData();
+  const BamHeader* bam_header = reader.bam_header();
   int cur_chrom_id = -1; std::string chrom_seq;
   for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
     logger() << "\n\n" << "Processing region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << std::endl;
-    int chrom_id = reader.GetReferenceID(region_iter->chrom());
+    int chrom_id = bam_header->ref_id(region_iter->chrom());
     if (chrom_id == -1 && region_iter->chrom().size() > 3 && region_iter->chrom().substr(0, 3).compare("chr") == 0)
-      chrom_id = reader.GetReferenceID(region_iter->chrom().substr(3));
+      chrom_id = bam_header->ref_id(region_iter->chrom().substr(3));
 
     if (chrom_id == -1){
       logger() << "\n" << "WARNING: No reference sequence for chromosome " << region_iter->chrom() << " found in BAMs"  << "\n"
@@ -542,8 +522,8 @@ void BamProcessor::process_regions(BamTools::BamMultiReader& reader, std::string
     }
 
     locus_bam_seek_time_ = clock();
-    if (!reader.SetRegion(chrom_id, (region_iter->start() < MAX_MATE_DIST ? 0: region_iter->start()-MAX_MATE_DIST),
-			 chrom_id, region_iter->stop() + MAX_MATE_DIST))
+    if (!reader.SetRegion(bam_header->ref_name(chrom_id), (region_iter->start() < MAX_MATE_DIST ? 0: region_iter->start()-MAX_MATE_DIST),
+			  region_iter->stop() + MAX_MATE_DIST))
       printErrorAndDie("One or more BAM files failed to set the region properly");
 
     locus_bam_seek_time_  =  (clock() - locus_bam_seek_time_)/CLOCKS_PER_SEC;
