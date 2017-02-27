@@ -115,11 +115,17 @@ bool BamCramReader::GetNextAlignment(BamAlignment& aln){
 
 bool BamCramMultiReader::SetRegion(const std::string& chrom, int32_t start, int32_t end){
   aln_heap_.clear();
-  for (size_t i = 0; i < bam_readers_.size(); i++){
-    if (!bam_readers_[i]->SetRegion(chrom, start, end))
+  for (int32_t reader_index = 0; reader_index < bam_readers_.size(); reader_index++){
+    if (!bam_readers_[reader_index]->SetRegion(chrom, start, end))
       return false;
-    if (bam_readers_[i]->GetNextAlignment(cached_alns_[i]))
-      aln_heap_.push_back(std::pair<int32_t,size_t>(-cached_alns_[i].Position(), i));
+    if (bam_readers_[reader_index]->GetNextAlignment(cached_alns_[reader_index])){
+      if (merge_type_ == ORDER_ALNS_BY_POSITION)
+	aln_heap_.push_back(std::pair<int32_t, int32_t>(-cached_alns_[reader_index].Position(), reader_index));
+      else if (merge_type_ == ORDER_ALNS_BY_SAMPLE)
+	aln_heap_.push_back(std::pair<int32_t, int32_t>(-reader_index, reader_index));
+      else
+	printErrorAndDie("Invalid merge order in SetRegion()");
+    }
   }
   std::make_heap(aln_heap_.begin(), aln_heap_.end());
   return true;
@@ -129,15 +135,21 @@ bool BamCramMultiReader::GetNextAlignment(BamAlignment& aln){
   if (aln_heap_.empty())
     return false;
   std::pop_heap(aln_heap_.begin(), aln_heap_.end());
-  size_t reader_index = aln_heap_.back().second;
+  int32_t reader_index = aln_heap_.back().second;
   aln_heap_.pop_back();
 
-  //Assign optimal alignment to provided reference
+  // Assign optimal alignment to provided reference
   aln = cached_alns_[reader_index];
 
   // Add reader's next alignment to the cache
   if (bam_readers_[reader_index]->GetNextAlignment(cached_alns_[reader_index])){
-    aln_heap_.push_back(std::pair<int32_t, size_t>(-cached_alns_[reader_index].Position(), reader_index));
+    if (merge_type_ == ORDER_ALNS_BY_POSITION)
+      aln_heap_.push_back(std::pair<int32_t, int32_t>(-cached_alns_[reader_index].Position(), reader_index));
+    else if (merge_type_ == ORDER_ALNS_BY_SAMPLE)
+      aln_heap_.push_back(std::pair<int32_t, int32_t>(-reader_index, reader_index));
+    else
+      printErrorAndDie("Invalid merge order in GetNextAlignment()");
+
     std::push_heap(aln_heap_.begin(), aln_heap_.end());
   }
   return true;

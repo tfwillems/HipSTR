@@ -349,6 +349,11 @@ class ReadGroup {
   bool SetLibrary(const std::string& library){ library_ = library; }
 };
 
+
+
+
+
+
 class BamHeader {
  private:
   std::map<std::string, int32_t> seq_indices_;
@@ -496,10 +501,14 @@ class BamCramMultiReader {
  private:
   std::vector<BamCramReader*> bam_readers_;
   std::vector<BamAlignment> cached_alns_;
-  std::vector<std::pair<size_t, int32_t> > aln_heap_;
+  std::vector<std::pair<int32_t, int32_t> > aln_heap_;
+  int merge_type_;
 
  public:
-  BamCramMultiReader(std::vector<std::string>& paths, std::string fasta_path = ""){
+  const static int ORDER_ALNS_BY_POSITION = 0;
+  const static int ORDER_ALNS_BY_SAMPLE   = 1;
+
+  BamCramMultiReader(std::vector<std::string>& paths, std::string fasta_path = "", int merge_type = ORDER_ALNS_BY_POSITION){
     if (paths.empty())
       printErrorAndDie("Must provide at least one file to BamMultiReader constructor");
     for (size_t i = 0; i < paths.size(); i++){
@@ -507,6 +516,7 @@ class BamCramMultiReader {
       bam_readers_.push_back(new BamCramReader(paths[i], fasta_path));
       compare_bam_headers(bam_readers_[0]->bam_header(), bam_readers_[i]->bam_header(), paths[0], paths[i]);
     }
+    merge_type_ = merge_type;
   }
 
   ~BamCramMultiReader(){

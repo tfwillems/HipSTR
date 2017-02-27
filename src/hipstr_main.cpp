@@ -370,7 +370,9 @@ int main(int argc, char** argv){
   bam_processor.logger() << "Detected " << bam_files.size() << " BAM files" << std::endl;
 
   // Open all BAM files
-  BamCramMultiReader reader(bam_files);
+  std::string cram_fasta_path = "";
+  int merge_type = BamCramMultiReader::ORDER_ALNS_BY_SAMPLE;
+  BamCramMultiReader reader(bam_files, cram_fasta_path, merge_type);
 
   // Construct filename->read group map (if one has been specified) and determine the list
   // of samples of interest based on either the specified names or the RG tags in the BAM headers
