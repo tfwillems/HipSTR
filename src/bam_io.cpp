@@ -121,7 +121,7 @@ bool BamCramMultiReader::SetRegion(const std::string& chrom, int32_t start, int3
     if (bam_readers_[reader_index]->GetNextAlignment(cached_alns_[reader_index])){
       if (merge_type_ == ORDER_ALNS_BY_POSITION)
 	aln_heap_.push_back(std::pair<int32_t, int32_t>(-cached_alns_[reader_index].Position(), reader_index));
-      else if (merge_type_ == ORDER_ALNS_BY_SAMPLE)
+      else if (merge_type_ == ORDER_ALNS_BY_FILE)
 	aln_heap_.push_back(std::pair<int32_t, int32_t>(-reader_index, reader_index));
       else
 	printErrorAndDie("Invalid merge order in SetRegion()");
@@ -145,7 +145,7 @@ bool BamCramMultiReader::GetNextAlignment(BamAlignment& aln){
   if (bam_readers_[reader_index]->GetNextAlignment(cached_alns_[reader_index])){
     if (merge_type_ == ORDER_ALNS_BY_POSITION)
       aln_heap_.push_back(std::pair<int32_t, int32_t>(-cached_alns_[reader_index].Position(), reader_index));
-    else if (merge_type_ == ORDER_ALNS_BY_SAMPLE)
+    else if (merge_type_ == ORDER_ALNS_BY_FILE)
       aln_heap_.push_back(std::pair<int32_t, int32_t>(-reader_index, reader_index));
     else
       printErrorAndDie("Invalid merge order in GetNextAlignment()");

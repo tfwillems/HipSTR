@@ -506,11 +506,13 @@ class BamCramMultiReader {
 
  public:
   const static int ORDER_ALNS_BY_POSITION = 0;
-  const static int ORDER_ALNS_BY_SAMPLE   = 1;
+  const static int ORDER_ALNS_BY_FILE     = 1;
 
   BamCramMultiReader(std::vector<std::string>& paths, std::string fasta_path = "", int merge_type = ORDER_ALNS_BY_POSITION){
     if (paths.empty())
-      printErrorAndDie("Must provide at least one file to BamMultiReader constructor");
+      printErrorAndDie("Must provide at least one file to BamCramMultiReader constructor");
+    if (merge_type != ORDER_ALNS_BY_POSITION && merge_type != ORDER_ALNS_BY_FILE)
+      printErrorAndDie("Invalid merge type provided to BamCramMultiReader constructor");
     for (size_t i = 0; i < paths.size(); i++){
       cached_alns_.push_back(BamAlignment());
       bam_readers_.push_back(new BamCramReader(paths[i], fasta_path));
@@ -523,6 +525,8 @@ class BamCramMultiReader {
     for (size_t i = 0; i < bam_readers_.size(); i++)
       delete bam_readers_[i];
   }
+
+  int get_merge_type(){ return merge_type_; }
 
   const BamHeader* bam_header() const {
     return bam_readers_[0]->bam_header();

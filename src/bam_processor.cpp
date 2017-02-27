@@ -171,14 +171,12 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
 					 std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
 					 BamWriter* pass_writer, BamWriter* filt_writer){
   locus_read_filter_time_ = clock();
+  assert(reader.get_merge_type() == BamCramMultiReader::ORDER_ALNS_BY_FILE);
 
   bool pass_to_bam     = (pass_writer != NULL);
   bool filtered_to_bam = (filt_writer != NULL);
-
   BamAlnList region_alignments, filtered_alignments;
-  int32_t read_count = 0;
-  int32_t not_spanning = 0, unique_mapping = 0;
-  int32_t read_has_N = 0, hard_clip = 0, split_alignment = 0, low_qual_score = 0;
+  int32_t read_count = 0, not_spanning = 0, unique_mapping = 0, read_has_N = 0, hard_clip = 0, split_alignment = 0, low_qual_score = 0;
   BamAlignment alignment;
   const BamHeader* bam_header = reader.bam_header();
   BamAlnList paired_str_alns, mate_alns, unpaired_str_alns;
@@ -186,6 +184,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
   TOO_MANY_READS = false;
 
   const std::vector<Region>& regions = region_group.regions();
+  std::string prev_file = "";
   while (reader.GetNextAlignment(alignment)){
     // Discard reads that don't overlap the STR region and whose mate pair has no chance of overlapping the region
     if (alignment.Position() > region_group.stop() || alignment.GetEndPosition() < region_group.start()){
@@ -224,6 +223,12 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
 	  if ((alignment.Length() == 0) || (alignment.Length() < length/2))
 	    continue;
       }
+    }
+
+    // Clear out mate alignment cache if we've switched to a new file to reduce memory
+    if (prev_file.compare(alignment.Filename()) != 0){
+      prev_file = alignment.Filename();
+      potential_mates.clear();
     }
 
     // Only apply tests to putative STR reads that overlap the STR region

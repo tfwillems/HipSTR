@@ -371,7 +371,7 @@ int main(int argc, char** argv){
 
   // Open all BAM files
   std::string cram_fasta_path = "";
-  int merge_type = BamCramMultiReader::ORDER_ALNS_BY_SAMPLE;
+  int merge_type = BamCramMultiReader::ORDER_ALNS_BY_FILE;
   BamCramMultiReader reader(bam_files, cram_fasta_path, merge_type);
 
   // Construct filename->read group map (if one has been specified) and determine the list
