@@ -299,6 +299,16 @@ public:
     if (ok) b_->core.flag |= BAM_FREAD2;
     else    b_->core.flag &= (~BAM_FREAD2);
   }
+
+  /*
+   *  Trim an alignment that extends too far upstream or downstream of the provided region or has low base qualities on the ends
+   *  Trims until either i) the base quality exceeds the provided threshold or ii) the alignment is fully within the provided region bounds
+   *  Modifies the alignment such that subsequent calls to each function reflect the trimmming
+   *  However, if the aligment is written to a new BAM file, the original alignment will be output
+   */
+  void TrimAlignment(int32_t min_read_start, int32_t max_read_stop, char min_base_qual='~');
+
+  void TrimLowQualityEnds(char min_base_qual);
 };
 
 

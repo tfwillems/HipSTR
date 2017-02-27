@@ -164,3 +164,103 @@ void compare_bam_headers(const BamHeader* hdr_a, const BamHeader* hdr_b, const s
     }
   }
 }
+
+
+void BamAlignment::TrimAlignment(int32_t min_read_start, int32_t max_read_stop, char min_base_qual){
+  if (!built_)
+    ExtractSequenceFields();
+  assert(bases_.size() == qualities_.size());
+
+  int ltrim = 0;
+  int32_t start_pos = pos_;
+  while ((start_pos < min_read_start) && cigar_ops_.size() > 0){
+    // Check if we should stop trimming b/c the quality score is above the threshold
+    bool qual_above_thresh = false;
+    switch (cigar_ops_.front().Type){
+    case 'M': case '=': case 'X': case 'I': case 'S':
+      qual_above_thresh = (qualities_[ltrim] > min_base_qual);
+      break;
+    case 'D': case 'H':
+      break;
+    default:
+      printErrorAndDie("Invalid CIGAR option encountered in trimAlignment");
+      break;
+    }
+    if (qual_above_thresh)
+      break;
+
+    switch(cigar_ops_.front().Type){
+    case 'M': case '=': case 'X':
+      ltrim++;
+      start_pos++;
+      break;
+    case 'D':
+      start_pos++;
+      break;
+    case 'I': case 'S':
+      ltrim++;
+      break;
+    case 'H':
+      break;
+    default:
+      printErrorAndDie("Invalid CIGAR option encountered in TrimAlignment");
+      break;
+    }
+    if (cigar_ops_.front().Length == 1)
+      cigar_ops_.erase(cigar_ops_.begin(), cigar_ops_.begin()+1);
+    else
+      cigar_ops_.front().Length--;
+  }
+
+  int rtrim = 0, qual_string_len = qualities_.size()-1;
+  int32_t end_pos = end_pos_;
+  while ((end_pos > max_read_stop) && cigar_ops_.size() > 0){
+    // Check if we should stop trimming b/c the quality score is above the threshold
+    bool qual_above_thresh = false;
+    switch(cigar_ops_.back().Type){
+    case 'M': case '=': case 'X': case 'I': case 'S':
+      qual_above_thresh = (qualities_[qual_string_len-rtrim] > min_base_qual);
+      break;
+    case 'D': case 'H':
+      break;
+    default:
+      printErrorAndDie("Invalid CIGAR option encountered in TrimAlignment");
+      break;
+    }
+    if (qual_above_thresh)
+      break;
+
+    switch(cigar_ops_.back().Type){
+    case 'M': case '=': case 'X':
+      rtrim++;
+      end_pos--;
+      break;
+    case 'D':
+      end_pos--;
+      break;
+    case 'I': case 'S':
+      rtrim++;
+      break;
+    case 'H':
+      break;
+    default:
+      printErrorAndDie("Invalid CIGAR option encountered in trimAlignment");
+      break;
+    }
+    if (cigar_ops_.back().Length == 1)
+      cigar_ops_.pop_back();
+    else
+      cigar_ops_.back().Length--;
+  }
+
+  assert(ltrim+rtrim <= bases_.size());
+  bases_     = bases_.substr(ltrim, bases_.size()-ltrim-rtrim);
+  qualities_ = qualities_.substr(ltrim, qualities_.size()-ltrim-rtrim);
+  length_   -= (ltrim + rtrim);
+  pos_       = start_pos;
+  end_pos_   = end_pos;
+}
+
+void BamAlignment::TrimLowQualityEnds(char min_base_qual){
+  return TrimAlignment(end_pos_+1, pos_-1, min_base_qual);
+}

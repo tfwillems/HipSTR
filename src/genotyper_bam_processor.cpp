@@ -53,7 +53,7 @@ void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::str
 
     for (unsigned int j = 0; j < alignments[i].size(); ++j, ++total_reads){
       // Trim alignment if it extends very far upstream or downstream of the STR. For tractability, we limit it to 40bp
-      trimAlignment(alignments[i][j], (region_group.start() > 40 ? region_group.start()-40 : 1), region_group.stop()+40);
+      alignments[i][j].TrimAlignment((region_group.start() > 40 ? region_group.start()-40 : 1), region_group.stop()+40);
       if (alignments[i][j].Length() == 0)
         continue;
 
