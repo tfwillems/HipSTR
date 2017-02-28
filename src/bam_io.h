@@ -376,9 +376,9 @@ class BamHeader {
     parse_read_groups();
   }
 
-  const std::vector<uint32_t>&    seq_lengths() const { return seq_lengths_; }
-  const std::vector<std::string>& seq_names()   const { return seq_names_;   }
-  const std::vector<ReadGroup>& read_groups()   const { return read_groups_; }
+  const std::vector<uint32_t>& seq_lengths()  const { return seq_lengths_; }
+  const std::vector<std::string>& seq_names() const { return seq_names_;   }
+  const std::vector<ReadGroup>& read_groups() const { return read_groups_; }
 
   int32_t num_seqs() const { return header_->n_targets; }
   int32_t ref_id(const std::string& ref) const {

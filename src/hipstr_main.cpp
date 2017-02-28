@@ -87,7 +87,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
     //<< "\t" << "--skip-genotyping                     "  << "\t" << "Don't perform any STR genotyping and merely compute the stutter model for each STR"  << "\n"
     //<< "\t" << "--dont-use-all-reads                  "  << "\t" << "Only utilize the reads HipSTR thinks will be informative for genotyping"   << "\n"
     //<< "\t" << "                                      "  << "\t" << " Enabling this option usually slightly decreases accuracy but shortens runtimes (~2x)"      << "\n"
-	    << "\t" << "--read-qual-trim     <min_qual>       "  << "\t" << "Trim both ends of a read until a base has quality score > MIN_QUAL (Default = !)"    << "\n"
+    //<< "\t" << "--read-qual-trim     <min_qual>       "  << "\t" << "Trim both ends of a read until a base has quality score > MIN_QUAL (Default = 5)"    << "\n"
 	    << "\t" << "--fam <fam_file>                      "  << "\t" << "FAM file containing pedigree information for samples of interest. Use the pedigree"  << "\n"
 	    << "\t" << "                                      "  << "\t" << "  information to filter SNPs prior to phasing STRs (Default = use all SNPs)"         << "\n"
 	    << "\n" << "\n"
@@ -130,7 +130,7 @@ void parse_command_line_args(int argc, char** argv,
     {"fasta",           required_argument, 0, 'f'},
     {"bam-samps",       required_argument, 0, 'g'},
     {"bam-libs",        required_argument, 0, 'q'},
-    {"lib-from-samp",    no_argument, &bam_lib_from_samp,    1},
+    {"lib-from-samp",   no_argument, &bam_lib_from_samp,    1},
     {"min-reads",       required_argument, 0, 'i'},
     {"read-qual-trim",  required_argument, 0, 'j'},
     {"log",             required_argument, 0, 'l'},
@@ -148,7 +148,7 @@ void parse_command_line_args(int argc, char** argv,
     {"str-vcf",         required_argument, 0, 'o'},
     {"ref-vcf",         required_argument, 0, 'p'},
     {"regions",         required_argument, 0, 'r'},
-    {"use-unpaired",    no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 0},
+    {"use-unpaired",       no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 0},
     {"dont-use-all-reads", no_argument, &use_all_reads, 0},
     {"def-stutter-model",  no_argument, &def_stutter_model, 1},
     {"skip-genotyping",    no_argument, &skip_genotyping, 1},

@@ -79,7 +79,7 @@ class BamProcessor {
    MIN_SUM_QUAL_LOG_PROB    = -10;
    log_to_file_             = false;
    MAX_TOTAL_READS          = 1000000;
-   BASE_QUAL_TRIM           = ' ';
+   BASE_QUAL_TRIM           = '5';
    bams_from_10x_           = false;
  }
 
