@@ -344,9 +344,9 @@ class ReadGroup {
   const std::string& GetSample()  const { return sample_;  }
   const std::string& GetLibrary() const { return library_; }
 
-  bool SetID(const std::string& id)          { id_      = id;      }
-  bool SetSample(const std::string& sample)  { sample_  = sample;  }
-  bool SetLibrary(const std::string& library){ library_ = library; }
+  void SetID(const std::string& id)          { id_      = id;      }
+  void SetSample(const std::string& sample)  { sample_  = sample;  }
+  void SetLibrary(const std::string& library){ library_ = library; }
 };
 
 
