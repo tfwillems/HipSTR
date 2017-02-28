@@ -176,7 +176,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
   bool pass_to_bam     = (pass_writer != NULL);
   bool filtered_to_bam = (filt_writer != NULL);
   BamAlnList region_alignments, filtered_alignments;
-  int32_t read_count = 0, not_spanning = 0, unique_mapping = 0, read_has_N = 0, hard_clip = 0, split_alignment = 0, low_qual_score = 0;
+  int32_t read_count = 0, not_spanning = 0, unique_mapping = 0, read_has_N = 0, hard_clip = 0, split_alignment = 0, low_qual_score = 0, num_filt_unpaired_reads = 0;
   BamAlignment alignment;
   const BamHeader* bam_header = reader.bam_header();
   BamAlnList paired_str_alns, mate_alns, unpaired_str_alns;
@@ -395,7 +395,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
       else {
 	auto other_iter = potential_mates.find(aln_key);
 	if (other_iter != potential_mates.end()){
-	  if (alignment.IsFirstMate() == aln_iter->second.IsFirstMate())
+	  if (alignment.IsFirstMate() == other_iter->second.IsFirstMate())
 	    continue;
 	  potential_mates.erase(other_iter);
 	}
@@ -405,7 +405,6 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
     }
   }
 
-  int32_t num_filt_unpaired_reads = 0;
   for (auto aln_iter = potential_strs.begin(); aln_iter != potential_strs.end(); ++aln_iter){
     std::string filter = "";
     if (aln_iter->second.HasTag(ALT_MAP_TAG.c_str())){
