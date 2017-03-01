@@ -22,12 +22,11 @@ bool file_exists(std::string path){
 }
 
 void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_str_len){
-  std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <dir> --regions <region_file.bed> --str-vcf <str_gts.vcf.gz> [OPTIONS]" << "\n" << "\n"
+  std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <genome.fa> --regions <region_file.bed> --str-vcf <str_gts.vcf.gz> [OPTIONS]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
 	    << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of BAM files. Either --bams or --bam-files must be specified"   << "\n"
-	    << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory with FASTA files for each chromosome or the path to a"                     << "\n"
-	    << "\t" << "                                      "  << "\t" << " single FASTA file that contains all of the relevant sequences"                      << "\n"
+	    << "\t" << "--fasta         <genome.fa>           "  << "\t" << "FASTA file that contains all of the relevant sequences for your organism"            << "\n"
 	    << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                                 << "\n"
 	    << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Bgzipped VCF file to which STR genotypes will be written"                            << "\n" << "\n"
 
@@ -101,7 +100,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
   
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string,     std::string& bamlist_string,    std::string& rg_sample_string,  std::string& rg_lib_string,
-			     std::string& haploid_chr_string, std::string& hap_chr_file,      std::string& fasta_dir,         std::string& region_file,   std::string& snp_vcf_file,
+			     std::string& haploid_chr_string, std::string& hap_chr_file,      std::string& fasta_file,        std::string& region_file,   std::string& snp_vcf_file,
 			     std::string& chrom,              std::string& bam_pass_out_file, std::string& bam_filt_out_file,
 			     std::string& str_vcf_out_file,   std::string& fam_file,          std::string& log_file,       int& use_all_reads,
 			     int& remove_pcr_dups, int& bams_from_10x,     int& bam_lib_from_samp, int& def_stutter_model, int& skip_genotyping,   int& output_gls,
@@ -199,7 +198,7 @@ void parse_command_line_args(int argc, char** argv,
       fam_file = std::string(optarg);
       break;
     case 'f':
-      fasta_dir = std::string(optarg);
+      fasta_file = std::string(optarg);
       break;
     case 'g':
       rg_sample_string = std::string(optarg);
@@ -315,11 +314,11 @@ int main(int argc, char** argv){
 
   int use_all_reads = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0, def_stutter_model = 0, skip_genotyping = 0;
   std::string bamfile_string="", bamlist_string="", rg_sample_string="", rg_lib_string="", hap_chr_string="", hap_chr_file="";
-  std::string region_file="", fasta_dir="", chrom="", snp_vcf_file="";
+  std::string region_file="", fasta_file="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", fam_file = "", log_file = "";
   int output_gls = 0, output_pls = 0, output_phased_gls = 0, output_all_reads = 1, output_mall_reads = 1;
   std::string ref_vcf_file="";
-  parse_command_line_args(argc, argv, bamfile_string, bamlist_string, rg_sample_string, rg_lib_string, hap_chr_string, hap_chr_file, fasta_dir, region_file, snp_vcf_file, chrom,
+  parse_command_line_args(argc, argv, bamfile_string, bamlist_string, rg_sample_string, rg_lib_string, hap_chr_string, hap_chr_file, fasta_file, region_file, snp_vcf_file, chrom,
 			  bam_pass_out_file, bam_filt_out_file, str_vcf_out_file, fam_file, log_file, use_all_reads, remove_pcr_dups, bams_from_10x,
 			  bam_lib_from_samp, def_stutter_model, skip_genotyping, output_gls, output_pls, output_phased_gls, output_all_reads, output_mall_reads,
 			  ref_vcf_file, bam_processor);
@@ -344,11 +343,15 @@ int main(int argc, char** argv){
   else if ((!bamfile_string.empty()) && (!bamlist_string.empty()))
     printErrorAndDie("You can only specify one of the --bams or --bam-files options");
   else if (region_file.empty())
-    printErrorAndDie("--region option required");
-  else if (fasta_dir.empty())
+    printErrorAndDie("--regions option required");
+  else if (fasta_file.empty())
     printErrorAndDie("--fasta option required");
   else if (!skip_genotyping && str_vcf_out_file.empty())
     printErrorAndDie("--str-vcf option required");
+
+  // Check that the FASTA file exists
+  if (!file_exists(fasta_file))
+    printErrorAndDie("FASTA file " + fasta_file + " does not exist. Please ensure that the path provided to --fasta is valid");
 
   std::vector<std::string> bam_files;
   if (!bamlist_string.empty())
@@ -370,7 +373,7 @@ int main(int argc, char** argv){
   bam_processor.logger() << "Detected " << bam_files.size() << " BAM files" << std::endl;
 
   // Open all BAM files
-  std::string cram_fasta_path = "";
+  std::string cram_fasta_path = fasta_file;
   int merge_type = BamCramMultiReader::ORDER_ALNS_BY_FILE;
   BamCramMultiReader reader(bam_files, cram_fasta_path, merge_type);
 
@@ -510,7 +513,7 @@ int main(int argc, char** argv){
   }
 
   // Run analysis
-  bam_processor.process_regions(reader, region_file, fasta_dir, rg_ids_to_sample, rg_ids_to_library, bam_pass_writer, bam_filt_writer, std::cout, 1000000, chrom);
+  bam_processor.process_regions(reader, region_file, fasta_file, rg_ids_to_sample, rg_ids_to_library, bam_pass_writer, bam_filt_writer, std::cout, 1000000, chrom);
   bam_processor.finish();
 
   if (bam_pass_writer != NULL) delete bam_pass_writer;

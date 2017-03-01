@@ -19,7 +19,8 @@ const std::string SUBOPT_ALN_SCORE_TAG  = "XS";
 
 void BamProcessor::add_passes_filters_tag(BamAlignment& aln, std::string& passes){
   if (aln.HasTag("PF"))
-    aln.RemoveTag("PF");
+    if (!aln.RemoveTag("PF"))
+      printErrorAndDie("Failed to remove existing passes filters tag from BAM alignment");
   if (!aln.AddStringTag("PF", passes))
     printErrorAndDie("Failed to add passes filters tag to BAM alignment");
 }
@@ -481,7 +482,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
   total_read_filter_time_ += locus_read_filter_time_;
 }
 
-void BamProcessor::process_regions(BamCramMultiReader& reader, std::string& region_file, std::string& fasta_dir,
+void BamProcessor::process_regions(BamCramMultiReader& reader, std::string& region_file, std::string& fasta_file,
 				   std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
 				   BamWriter* pass_writer, BamWriter* filt_writer,
 				   std::ostream& out, int32_t max_regions, std::string chrom){
@@ -489,7 +490,7 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, std::string& regi
   readRegions(region_file, regions, max_regions, chrom, logger());
   orderRegions(regions);
 
-  FastaReader fasta_reader(fasta_dir);
+  FastaReader fasta_reader(fasta_file);
   std::string ref_seq;
   const BamHeader* bam_header = reader.bam_header();
   int cur_chrom_id = -1; std::string chrom_seq;

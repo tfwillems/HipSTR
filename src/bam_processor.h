@@ -96,7 +96,7 @@ class BamProcessor {
  void allow_pcr_dups()           { rem_pcr_dups_ = false;          }
 
  void process_regions(BamCramMultiReader& reader,
-		      std::string& region_file, std::string& fasta_dir,
+		      std::string& region_file, std::string& fasta_file,
 		      std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
 		      BamWriter* pass_writer, BamWriter* filt_writer,
 		      std::ostream& out, int32_t max_regions, std::string chrom);
