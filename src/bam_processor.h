@@ -28,7 +28,9 @@ class BamProcessor {
   double total_read_filter_time_;
   double locus_read_filter_time_;
 
-  void add_filtered_alignment(BamAlignment& alignment, std::string filter, BamAlnList& filtered_alignments);
+
+  void  write_passing_alignment(BamAlignment& aln, std::map<std::string, std::string>& rg_to_sample, BamWriter* writer);
+  void write_filtered_alignment(BamAlignment& aln, std::string filter, std::map<std::string, std::string>& rg_to_sample, BamWriter* writer);
 
   void extract_mappings(BamAlignment& aln, const BamHeader* bam_header,
 			std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs);
@@ -44,9 +46,6 @@ class BamProcessor {
  std::string get_read_group(BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping);
 
  std::string trim_alignment_name(BamAlignment& aln);
-
- void modify_and_write_alns(BamAlnList& alignments, std::map<std::string, std::string>& rg_to_sample,
-			    BamWriter* writer);
 
  bool spans_a_region(const std::vector<Region>& regions, BamAlignment& alignment);
 
