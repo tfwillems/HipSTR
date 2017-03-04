@@ -35,33 +35,22 @@ void BamProcessor::passes_filters(BamAlignment& aln, std::vector<bool>& region_p
 }
 
 void BamProcessor::write_passing_alignment(BamAlignment& aln, std::map<std::string, std::string>& rg_to_sample, BamWriter* writer){
-if (!use_bam_rgs_){
-    std::string rg_tag = "HipSTR;" + rg_to_sample[aln.Filename()];
-    if (aln.HasTag("RG"))
-      if (!aln.RemoveTag("RG"))
-	printErrorAndDie("Failed to remove alignment's RG tag");
-    aln.AddStringTag("RG", rg_tag);
-  }
-
+  if (writer == NULL)
+    return;
   if (!writer->SaveAlignment(aln))
     printErrorAndDie("Failed to save alignment");
 }
 
 void BamProcessor::write_filtered_alignment(BamAlignment& aln, std::string filter, std::map<std::string, std::string>& rg_to_sample, BamWriter* writer){
+  if (writer == NULL)
+    return;
+
   if (aln.HasTag("FT"))
     if (!aln.RemoveTag("FT"))
       printErrorAndDie("Failed to remove alignment's FT tag");
 
   if (!aln.AddStringTag("FT", filter))
     printErrorAndDie("Failed to add filter tag to alignment");
-
-  if (!use_bam_rgs_){
-    std::string rg_tag = "HipSTR;" + rg_to_sample[aln.Filename()];
-    if (aln.HasTag("RG"))
-      if (!aln.RemoveTag("RG"))
-	printErrorAndDie("Failed to remove alignment's RG tag");
-    aln.AddStringTag("RG", rg_tag);
-  }
 
   if (!writer->SaveAlignment(aln))
     printErrorAndDie("Failed to save alignment");
@@ -188,8 +177,6 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
   locus_read_filter_time_ = clock();
   assert(reader.get_merge_type() == BamCramMultiReader::ORDER_ALNS_BY_FILE);
 
-  bool pass_to_bam     = (pass_writer != NULL);
-  bool filtered_to_bam = (filt_writer != NULL);
   int32_t read_count = 0, not_spanning = 0, unique_mapping = 0, read_has_N = 0, hard_clip = 0, split_alignment = 0, low_qual_score = 0, num_filt_unpaired_reads = 0;
   BamAlignment alignment;
   const BamHeader* bam_header = reader.bam_header();
@@ -227,7 +214,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
 	if (alignment.StartsWithHardClip() || alignment.EndsWithHardClip()){
 	  read_count++;
 	  hard_clip++;
-	  if (filtered_to_bam) write_filtered_alignment(alignment, "HARD_CLIPPED", rg_to_sample, filt_writer);
+	  write_filtered_alignment(alignment, "HARD_CLIPPED", rg_to_sample, filt_writer);
 	  continue;
 	}
 
@@ -327,15 +314,13 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
 	  if (p_1.size() == 1 && p_1[0].second == alignment.Position()){
 	    paired_str_alns.push_back(alignment);
 	    mate_alns.push_back(aln_iter->second);
-	    if (pass_to_bam){
-	      write_passing_alignment(alignment, rg_to_sample, pass_writer);
-	      write_passing_alignment(aln_iter->second, rg_to_sample, pass_writer);
-	    }
+	    write_passing_alignment(alignment, rg_to_sample, pass_writer);
+	    write_passing_alignment(aln_iter->second, rg_to_sample, pass_writer);
 	  }
 	  else {
 	    unique_mapping++;
 	    filter.append("NO_UNIQUE_MAPPING");
-	    if (filtered_to_bam) write_filtered_alignment(alignment, filter, rg_to_sample, filt_writer);
+	    write_filtered_alignment(alignment, filter, rg_to_sample, filt_writer);
 	  }
 	  potential_mates.erase(aln_iter);
 	}
@@ -353,19 +338,17 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
 	    if (p_1.size() == 1 && p_1[0].second == alignment.Position()){
 	      paired_str_alns.push_back(alignment);
 	      mate_alns.push_back(str_iter->second);
-	      if (pass_to_bam) write_passing_alignment(alignment, rg_to_sample, pass_writer);
+	      write_passing_alignment(alignment, rg_to_sample, pass_writer);
 
 	      paired_str_alns.push_back(str_iter->second);
 	      mate_alns.push_back(alignment);
-	      if (pass_to_bam) write_passing_alignment(str_iter->second, rg_to_sample, pass_writer);
+	      write_passing_alignment(str_iter->second, rg_to_sample, pass_writer);
 	    }
 	    else {
 	      unique_mapping += 2;
 	      std::string filter = "NO_UNIQUE_MAPPING";
-	      if (filtered_to_bam){
-		write_filtered_alignment(alignment, filter, rg_to_sample, filt_writer);
-		write_filtered_alignment(str_iter->second, filter, rg_to_sample, filt_writer);
-	      }
+	      write_filtered_alignment(alignment, filter, rg_to_sample, filt_writer);
+	      write_filtered_alignment(str_iter->second, filter, rg_to_sample, filt_writer);
 	    }
 	    potential_strs.erase(str_iter);
 	  }
@@ -375,7 +358,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
       }
       else {
 	assert(!filter.empty());
-	if (filtered_to_bam) write_filtered_alignment(alignment, filter, rg_to_sample, filt_writer);
+	write_filtered_alignment(alignment, filter, rg_to_sample, filt_writer);
 	potential_mates.insert(std::pair<std::string, BamAlignment>(aln_key, alignment));
       }
     }
@@ -391,15 +374,13 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
 	if (p_1.size() == 1 && p_1[0].second == aln_iter->second.Position()){
 	  paired_str_alns.push_back(aln_iter->second);
 	  mate_alns.push_back(alignment);
-	  if (pass_to_bam){
-	    write_passing_alignment(aln_iter->second, rg_to_sample, pass_writer);
-	    write_passing_alignment(alignment, rg_to_sample, pass_writer);
-	  }
+	  write_passing_alignment(aln_iter->second, rg_to_sample, pass_writer);
+	  write_passing_alignment(alignment, rg_to_sample, pass_writer);
 	}
 	else {
 	  unique_mapping++;
 	  std::string filter = "NO_UNIQUE_MAPPING";
-	  if (filtered_to_bam) write_filtered_alignment(aln_iter->second, filter, rg_to_sample, filt_writer);
+	  write_filtered_alignment(aln_iter->second, filter, rg_to_sample, filt_writer);
 	}
 	potential_strs.erase(aln_iter);
       }
@@ -429,11 +410,10 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
 
     if (filter.empty()){
       unpaired_str_alns.push_back(aln_iter->second);
-      if (pass_to_bam) write_passing_alignment(aln_iter->second, rg_to_sample, pass_writer);
+      write_passing_alignment(aln_iter->second, rg_to_sample, pass_writer);
     }
-    else {
-      if (filtered_to_bam) write_filtered_alignment(aln_iter->second, filter, rg_to_sample, filt_writer);
-    }
+    else
+      write_filtered_alignment(aln_iter->second, filter, rg_to_sample, filt_writer);
   }
   potential_strs.clear(); potential_mates.clear();
   
