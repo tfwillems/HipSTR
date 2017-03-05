@@ -7,7 +7,9 @@
 #include <string>
 #include <vector>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "bam_io.h"
 #include "error.h"
@@ -19,6 +21,12 @@
 
 bool file_exists(std::string path){
   return (access(path.c_str(), F_OK) != -1);
+}
+
+bool is_file(const std::string& name){
+  struct stat st_buf;
+  stat(name.c_str(), &st_buf);
+  return (S_ISREG (st_buf.st_mode));
 }
 
 void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_str_len){
@@ -350,8 +358,8 @@ int main(int argc, char** argv){
     printErrorAndDie("--str-vcf option required");
 
   // Check that the FASTA file exists
-  if (!file_exists(fasta_file))
-    printErrorAndDie("FASTA file " + fasta_file + " does not exist. Please ensure that the path provided to --fasta is valid");
+  if (!file_exists(fasta_file) || !is_file(fasta_file))
+    printErrorAndDie("FASTA file " + fasta_file + " does not exist. Please ensure that the path provided to --fasta is a valid FASTA file");
 
   std::vector<std::string> bam_files;
   if (!bamlist_string.empty())
