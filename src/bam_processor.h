@@ -43,7 +43,7 @@ class BamProcessor {
 			     std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
 			     BamWriter* pass_writer, BamWriter* filt_writer);
 
- std::string get_read_group(BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping);
+ std::string get_read_group(const BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping);
 
  std::string trim_alignment_name(BamAlignment& aln);
 

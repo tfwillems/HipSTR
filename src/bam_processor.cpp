@@ -135,7 +135,7 @@ void BamProcessor::get_valid_pairings(BamAlignment& aln_1, BamAlignment& aln_2, 
   }
 }
 
-std::string BamProcessor::get_read_group(BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping){
+std::string BamProcessor::get_read_group(const BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping){
   std::string rg;
   if (!aln.GetStringTag("RG", rg))
     printErrorAndDie("Failed to retrieve BAM alignment's RG tag");
@@ -433,8 +433,9 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
   std::map<std::string, int> rg_indices;
   for (unsigned int type = 0; type < 2; ++type){
     BamAlnList& aln_src  = (type == 0 ? paired_str_alns : unpaired_str_alns);
-    for (unsigned int i = 0; i < aln_src.size(); ++i){
-      std::string rg = use_bam_rgs_ ? get_read_group(aln_src[i], rg_to_sample): rg_to_sample[aln_src[i].Filename()];
+    while (!aln_src.empty()){
+      const BamAlignment& aln = aln_src.back();
+      std::string rg = use_bam_rgs_ ? get_read_group(aln, rg_to_sample): rg_to_sample[aln.Filename()];
       int rg_index;
       auto index_iter = rg_indices.find(rg);
       if (index_iter == rg_indices.end()){
@@ -450,12 +451,14 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
 
       // Record STR read and its mate pair
       if (type == 0){
-	paired_strs_by_rg[rg_index].push_back(aln_src[i]);
-	mate_pairs_by_rg[rg_index].push_back(mate_alns[i]);
+	paired_strs_by_rg[rg_index].push_back(aln);
+	mate_pairs_by_rg[rg_index].push_back(mate_alns.back());
+	mate_alns.pop_back();
       }
       // Record unpaired STR read
       else
-	unpaired_strs_by_rg[rg_index].push_back(aln_src[i]);
+	unpaired_strs_by_rg[rg_index].push_back(aln);
+      aln_src.pop_back();
     }
   }
 
