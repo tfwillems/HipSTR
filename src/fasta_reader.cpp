@@ -17,7 +17,7 @@ void FastaReader::add_index(std::string& path){
     std::stringstream error_msg;
     error_msg << "No FASTA index file exists for " <<  path << "\n"
 	      << "Please rerun the analysis after generating the index using the command:\n" 
-	      << "\tsamtools index " << path << "\n";
+	      << "\tsamtools faidx " << path << "\n";
     printErrorAndDie(error_msg.str());
   }
 
