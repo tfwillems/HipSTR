@@ -749,6 +749,7 @@ void SeqStutterGenotyper::retrace_alignments(std::vector<AlignmentTrace*>& trace
   std::vector< std::pair<int, int> > haps;
   get_optimal_haplotypes(haps);
 
+  AlnList& pooled_alns = pooler_.get_alignments();
   std::vector<bool> realign_to_haplotype(num_alleles_, true);
   HapAligner hap_aligner(haplotype_, realign_to_haplotype);
   double* read_LL_ptr = log_aln_probs_;
@@ -767,7 +768,7 @@ void SeqStutterGenotyper::retrace_alignments(std::vector<AlignmentTrace*>& trace
     std::pair<int,int> trace_key(pool_index_[read_index], best_hap);
     auto trace_iter = trace_cache_.find(trace_key);
     if (trace_iter == trace_cache_.end()){
-      trace  = hap_aligner.trace_optimal_aln(alns_[read_index], seed_positions_[read_index], best_hap, &base_quality_);
+      trace = hap_aligner.trace_optimal_aln(pooled_alns[pool_index_[read_index]], seed_positions_[read_index], best_hap, &base_quality_);
       trace_cache_[trace_key] = trace;
     }
     else
