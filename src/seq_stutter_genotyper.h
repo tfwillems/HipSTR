@@ -26,6 +26,7 @@
 class SeqStutterGenotyper : public Genotyper {
  private:
   int MAX_REF_FLANK_LEN;
+  int MAX_FLANK_HAPLOTYPES;
   BaseQuality base_quality_;
   ReadPooler pooler_;
   int* pool_index_;                               // Pool index for each read
@@ -145,6 +146,7 @@ class SeqStutterGenotyper : public Genotyper {
     haplotype_             = NULL;
     second_mate_           = NULL;
     MAX_REF_FLANK_LEN      = 30;
+    MAX_FLANK_HAPLOTYPES   = 4;
     MIN_PATH_WEIGHT        = 2;
     MIN_KMER               = 10;
     MAX_KMER               = 15;

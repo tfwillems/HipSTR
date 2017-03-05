@@ -114,6 +114,10 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
     }
 
     if (!haplotype_counts.empty()){
+      if (haplotype_counts.size() > MAX_FLANK_HAPLOTYPES){
+        logger << "Skipping locus with too many flanking sequences. Found = " << haplotype_counts.size() << ", MAX = " << MAX_FLANK_HAPLOTYPES << std::endl;
+        return false;
+      }
       logger << "Identified " << haplotype_counts.size() << " new flank haplotype(s)" << "\n";
       for (auto hap_iter = haplotype_counts.begin(); hap_iter != haplotype_counts.end(); hap_iter++){
 	logger << "\t" << hap_iter->first << "\t" << hap_iter->second << "\n";
