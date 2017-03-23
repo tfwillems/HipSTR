@@ -46,7 +46,7 @@ msg
     stop=`expr $start + 100`
     sample=$4
     f=$5
-    tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | awk -v N=$6 'NR%N == 0 || $7 == "class=\"samplename\"" || $4 == "ALL"' | cut -f 1-4 --complement | python ${parent_path}/generate_aln_html.py | python ${parent_path}/html_alns_to_pdf.py $f
+    tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | awk -v N=$6 'NR%N == 0 || $7 == "class=\"samplename\"" || $4 == "ALL"' | cut -f 1-4 --complement | python ${parent_path}/scripts/generate_aln_html.py | python ${parent_path}/scripts/html_alns_to_pdf.py $f
     rm $f.svg
     open $f.pdf
 else

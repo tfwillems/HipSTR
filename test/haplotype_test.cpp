@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <string>
 
-#include "../SeqAlignment/HapBlock.h"
-#include "../SeqAlignment/Haplotype.h"
-#include "../SeqAlignment/RepeatBlock.h"
-#include "../stutter_model.h"
+#include "../src/SeqAlignment/HapBlock.h"
+#include "../src/SeqAlignment/Haplotype.h"
+#include "../src/SeqAlignment/RepeatBlock.h"
+#include "../src/stutter_model.h"
 
 int main(){
   std::string l1   = "ACGGTATC",   l2 = "ACGGTCTC";
@@ -33,8 +33,8 @@ int main(){
   Haplotype haplotype(hap_blocks);
   std::vector<HapBlock*> rev_blocks;
   Haplotype* rev_haplotype = haplotype.reverse(rev_blocks);
-  haplotype.print_block_structure(100, 100, std::cout);
-  rev_haplotype->print_block_structure(100, 100, std::cout);
+  haplotype.print_block_structure(100, 100, true, std::cout);
+  rev_haplotype->print_block_structure(100, 100, true, std::cout);
   do {
     std::string s1 = haplotype.get_seq();
     std::string s2 = rev_haplotype->get_seq();

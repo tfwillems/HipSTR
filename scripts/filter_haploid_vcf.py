@@ -1,13 +1,19 @@
 import argparse
 import collections
-import numpy
-import sys
-import vcf
-
 import os
-import tempfile
+import sys
 
-def filter_call(sample, TOTAL_DEPTH, QUAL, FLANK_INDEL_FRAC, STUTTER_FRAC, BOOTSTRAP_QUAL, FILTER_FRAME, REM_NO_SPANNING, best_frame, period):
+try:
+     import numpy
+except ImportError:
+     exit("This script requires the NumPy python package. Please install using pip or conda")
+
+try:
+     import vcf
+except ImportError:
+     exit("This script requires the PyVCF python package. Please install using pip or conda")
+
+def filter_call(sample, TOTAL_DEPTH, QUAL, FLANK_INDEL_FRAC, STUTTER_FRAC, FILTER_FRAME, REM_NO_SPANNING, best_frame, period):
      if REM_NO_SPANNING and sample['MALLREADS'] is None:
           return 1
      elif sample['DP'] < TOTAL_DEPTH:
@@ -18,13 +24,10 @@ def filter_call(sample, TOTAL_DEPTH, QUAL, FLANK_INDEL_FRAC, STUTTER_FRAC, BOOTS
           return 4
      elif 1.0*sample['DSTUTTER']/sample['DP'] > STUTTER_FRAC:
           return 5
-     elif BOOTSTRAP_QUAL != 0 and sample['BQ'] < BOOTSTRAP_QUAL:
-          return 6
      elif FILTER_FRAME and best_frame != int(sample['GB'])%period:
-          return 7
+          return 6
      else:
           return 0
-
 
 def read_sample_set(input_file):
      samples = set()
@@ -46,7 +49,6 @@ def main():
                          help="Omit a sample's call if the fraction of reads with a stutter artifact (FORMAT fields DSTUTTER/DP) > STUTTER_FRAC")
      parser.add_argument("--no-spanning",          action="store_true", required=False, default=False, dest="REM_NO_SPANNING",
                          help="Omit a sample's call if it does not have any spanning reads")
-     parser.add_argument("--min-call-bstrap-qual", help="Omit a sample's call if BQ < BSTRAP_QUAL",           type=float,  required=False,  default=0.0,   dest="BSTRAP_QUAL")
      parser.add_argument("--male-samples",         help="File containing male sample names, one per line",    type=str,    required=False,  default=None,  dest="MALE_SAMPLES")
      parser.add_argument("--female-samples",       help="File containing female sample names, one per line",  type=str,    required=False,  default=None,  dest="FEMALE_SAMPLES")
      parser.add_argument("--min-males",            type=int, required=False,  default=-1, dest="MIN_MALES",
@@ -71,10 +73,10 @@ def main():
  
      args = parser.parse_args()
      
-     if (args.MIN_MALES != -1 or  args.MAX_MALES != -1 or args.REMOVE_MALES) and args.MALE_SAMPLES is None:
-          exit("ERROR: --male-samples flag is required when --min-males flag is specified")
+     if (args.MIN_MALES != -1 or args.MAX_MALES != -1 or args.REMOVE_MALES) and args.MALE_SAMPLES is None:
+          exit("ERROR: --male-samples flag is required when --min-males, --max-males or --remove-males flags are specified")
      if (args.MAX_FEMALES != -1 or args.MAX_FEMALES != -1 or args.REMOVE_FEMALES) and args.FEMALE_SAMPLES is None:
-          exit("EROR: --female-samples flag is required when --max-females flag is specified")
+          exit("EROR: --female-samples flag is required when --min-females, --max-females or --remove-females flags are specified")
 
      male_samples = set()
      if args.MALE_SAMPLES is not None:
@@ -89,17 +91,17 @@ def main():
           vcf_reader = vcf.Reader(sys.stdin)
      else:
           vcf_reader = vcf.Reader(filename=args.VCF)
-     vcf_writer = vcf.Writer(sys.stdout, vcf_reader)
-     filt_stats = open(args.STATS if args.STATS is not None else os.devnull, "w")
-     total_filt_counts = numpy.zeros(9)
-     filter_labels     = ["PASS", "SPANNING", "DEPTH", "QUAL", "FLANK_INDEL", "STUTTER", "BSTRAP_QUAL", "OUT_OF_FRAME", "DUE_TO_SEX"]
+     vcf_writer        = vcf.Writer(sys.stdout, vcf_reader)
+     filt_stats        = open(args.STATS if args.STATS is not None else os.devnull, "w")
+     total_filt_counts = numpy.zeros(8)
+     filter_labels     = ["PASS", "SPANNING", "DEPTH", "QUAL", "FLANK_INDEL", "STUTTER", "OUT_OF_FRAME", "DUE_TO_SEX"]
      filt_stats.write("\t".join(["CHROM", "POS", "FRAC_FILT"] + filter_labels ) + "\n")
 
      for record in vcf_reader:
           samp_fmt = vcf.model.make_calldata_tuple(record.FORMAT.split(':'))
           for fmt in samp_fmt._fields:
                entry_type = vcf_reader.formats[fmt].type
-               entry_num = vcf_reader.formats[fmt].num
+               entry_num  = vcf_reader.formats[fmt].num
                samp_fmt._types.append(entry_type)
                samp_fmt._nums.append(entry_num)
                
@@ -113,17 +115,17 @@ def main():
           if args.FILTER_FRAME:
                frame_counts = collections.defaultdict(int)
                for sample in record:
-                    if sample['GT'] is None:
+                    if sample['GT'] is None or sample['GT'] == './.' or sample['GT'] == '.':
                          continue
                     frame_counts[int(sample['GB'])%period] += 1
                best_frame = sorted(frame_counts.items(), key = lambda x: x[1])[-1][0]
 
           for sample in record:
-               if sample['GT'] is None:
+               if sample['GT'] is None or sample['GT'] == './.' or sample['GT'] == '.':
                     continue
 
                filt_index = filter_call(sample, args.DEPTH, args.QUAL, args.FLANK_INDEL_FRAC, args.STUTTER_FRAC,
-                                        args.BSTRAP_QUAL, args.FILTER_FRAME, args.REM_NO_SPANNING, best_frame, period)
+                                        args.FILTER_FRAME, args.REM_NO_SPANNING, best_frame, period)
                if filt_index == 0:
                     if sample.sample in male_samples:
                          sex_counts[0] += 1
@@ -154,8 +156,8 @@ def main():
                
 
           if 1.0*record.INFO['DSTUTTER']/record.INFO['DP'] > args.LOC_STUTTER_FRAC:
-               filt_stats.write("%s\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n"
-                    %(record.CHROM, record.POS, 1.0, 0, 0, 0, 0, 0, 0, 0, "LOC_STUTTER_%f_%f"%(1.0*record.INFO['DSTUTTER']/record.INFO['DP'], args.LOC_STUTTER_FRAC)))
+               filt_stats.write("%s\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n"
+                    %(record.CHROM, record.POS, 1.0, 0, 0, 0, 0, 0, 0, 0, 0, "LOC_STUTTER_%f_%f"%(1.0*record.INFO['DSTUTTER']/record.INFO['DP'], args.LOC_STUTTER_FRAC)))
                continue
 
           if 1.0*record.INFO['DFLANKINDEL']/record.INFO['DP'] > args.LOC_FLANK_INDEL_FRAC:
@@ -186,31 +188,36 @@ def main():
           # Build allele index mapping
           allele_indices   = {0:0}
           filt_num_alleles = 1
-          for i in xrange(1, len(allele_counts)):
+          for i in range(1, len(allele_counts)):
               if allele_counts[i] != 0:
                   allele_indices[i] = filt_num_alleles
                   filt_num_alleles += 1
                
-          new_samples = []
-          filt_counts = [0, 0, 0, 0, 0, 0, 0, 0, 0]
-          num_kept    = 0
+          new_samples       = []
+          filt_counts       = [0, 0, 0, 0, 0, 0, 0, 0]
+          num_kept          = 0
           total_dp          = 0
-          total_dfilt       = 0
           total_dstutter    = 0
           total_dflankindel = 0
           for sample in record:
-               if sample['GT'] is None:
+               if sample['GT'] is None or sample['GT'] == './.' or sample['GT'] == '.':
                     new_samples.append(sample)
                     continue
 
                remove_due_to_sex = (args.REMOVE_MALES and sample.sample in male_samples) or (args.REMOVE_FEMALES and sample.sample in female_samples)
                filt_index = filter_call(sample, args.DEPTH, args.QUAL, args.FLANK_INDEL_FRAC, args.STUTTER_FRAC,
-                                        args.BSTRAP_QUAL, args.FILTER_FRAME, args.REM_NO_SPANNING, best_frame, period)
+                                        args.FILTER_FRAME, args.REM_NO_SPANNING, best_frame, period)
                if remove_due_to_sex:
                     filt_index = 7
 
                if filt_index != 0:
-                    sampdat   = [None] * nfields
+                    sampdat = []
+                    for i in range(len(samp_fmt._fields)):
+                        key = samp_fmt._fields[i]
+                        if key == "GT":
+                            sampdat.append(".")
+                        else:
+                            sampdat.append(None)
                else:
                     num_kept += 1
                     gt_a      = int(sample['GT'])
@@ -223,7 +230,6 @@ def main():
                         else:
                             sampdat.append(sample[key])
                     total_dp          += sample['DP']
-                    total_dfilt       += sample['DFILT']
                     total_dstutter    += sample['DSTUTTER']
                     total_dflankindel += sample['DFLANKINDEL']
                     
@@ -234,7 +240,7 @@ def main():
 
           # Fix set of alleles
           new_alleles = [record.alleles[0]]
-          for i in xrange(1, len(record.alleles)):
+          for i in range(1, len(record.alleles)):
               if allele_counts[i] != 0:
                   new_alleles.append(record.alleles[i])
 
@@ -248,27 +254,26 @@ def main():
               if len(new_alleles) == 1:
                   record.INFO.pop("BPDIFFS", None)
               else:
-                  record.INFO['BPDIFFS'] = map(lambda x: len(x) - len(new_alleles[0]), new_alleles[1:])          
+                  record.INFO['BPDIFFS'] = list(map(lambda x: len(x) - len(new_alleles[0]), new_alleles[1:]))
           record.INFO['REFAC'] = allele_counts[0]
           if 'AC' in record.INFO:
               if len(new_alleles) == 1:
                   record.INFO.pop("AC", None)
               else:
-                  record.INFO['AC'] = filter(lambda x: x != 0, allele_counts[1:])
+                  record.INFO['AC'] = list(filter(lambda x: x != 0, allele_counts[1:]))
           if 'AN' in record.INFO:
                record.INFO['AN'] = sum(allele_counts)
 
           # Recompute DP and other read depth info fields
           record.INFO['DP']          = total_dp
-          record.INFO['DFILT']       = total_dfilt
           record.INFO['DSTUTTER']    = total_dstutter
           record.INFO['DFLANKINDEL'] = total_dflankindel
           record.INFO['NFILT']      += sum(filt_counts[1:])
           vcf_writer.write_record(record)
           total_filt_counts += numpy.array(filt_counts)
-          filt_stats.write("%s\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n"%(record.CHROM, record.POS, 1.0 - 1.0*filt_counts[0]/sum(filt_counts), 
+          filt_stats.write("%s\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n"%(record.CHROM, record.POS, 1.0 - 1.0*filt_counts[0]/sum(filt_counts),
                                                                                filt_counts[0], filt_counts[1], filt_counts[2], filt_counts[3],
-                                                                               filt_counts[4], filt_counts[5], filt_counts[6], filt_counts[7], filt_counts[8], "PASS"))
+                                                                               filt_counts[4], filt_counts[5], filt_counts[6], filt_counts[7], "PASS"))
      filt_stats.write("\t".join(map(lambda x: str(int(x)), total_filt_counts)) + "\n")
      filt_stats.close()
 

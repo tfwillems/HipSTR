@@ -1,7 +1,7 @@
 #include <iostream>
 #include <math.h>
 
-#include "../fastonebigheader.h"
+#include "../src/fastonebigheader.h"
 
 int main(){
   for (double v = -20; v < 0; v += 0.1){
