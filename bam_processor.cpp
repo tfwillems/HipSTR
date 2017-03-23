@@ -138,7 +138,7 @@ std::string BamProcessor::get_read_group(BamTools::BamAlignment& aln, std::map<s
 }
 
 std::string BamProcessor::trim_alignment_name(BamTools::BamAlignment& aln){
-  std::string aln_name = aln.Name;
+  std::string aln_name = aln.Filename + aln.Name;
   if (aln_name.size() > 2){
     if (aln_name[aln_name.size()-2] == '/')
       aln_name.resize(aln_name.size()-2);
