@@ -23,10 +23,6 @@ void HapBlock::calc_homopolymer_lengths(std::string& seq, std::vector<int*>& lle
   rlen_vec.push_back(rlens);
 }
 
-bool compareStringLength(const std::string& s1, const std::string& s2){
-  return s1.size() < s2.size();
-}
-
 void HapBlock::print(std::ostream& out){
   out << "Haplotype Block: {"          << std::endl 
       << start_ << " -> " << end_      << std::endl

@@ -522,7 +522,7 @@ int main(int argc, char** argv){
   }
 
   // Run analysis
-  bam_processor.process_regions(reader, region_file, fasta_file, rg_ids_to_sample, rg_ids_to_library, bam_pass_writer, bam_filt_writer, std::cout, 1000000, chrom);
+  bam_processor.process_regions(reader, region_file, fasta_file, rg_ids_to_sample, rg_ids_to_library, bam_pass_writer, bam_filt_writer, std::cout, 10000000, chrom);
   bam_processor.finish();
 
   if (bam_pass_writer != NULL) delete bam_pass_writer;
