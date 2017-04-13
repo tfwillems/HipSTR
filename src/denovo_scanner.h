@@ -14,9 +14,11 @@
 #include "vcf_reader.h"
 
 class DenovoScanner {
- private:
+ public:
   const static int MIN_SECOND_BEST_SCORE = 100;
   const static int MAX_BEST_SCORE        = 10;
+
+ private:
   static std::string BPDIFFS_KEY, START_KEY, END_KEY, PERIOD_KEY;
   bool use_pop_priors_;
 
