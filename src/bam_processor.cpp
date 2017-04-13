@@ -185,7 +185,10 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
   TOO_MANY_READS = false;
 
   const std::vector<Region>& regions = region_group.regions();
-  std::string prev_file = "";
+  std::string prev_file  = "";
+  int32_t file_index     = 0;
+  std::string file_label = "0_";
+
   while (reader.GetNextAlignment(alignment)){
     // Discard reads that don't overlap the STR region and whose mate pair has no chance of overlapping the region
     if (alignment.Position() > region_group.stop() || alignment.GetEndPosition() < region_group.start()){
@@ -227,9 +230,14 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
     }
 
     // Clear out mate alignment cache if we've switched to a new file to reduce memory usage
+    // and update the file label for later use
     if (prev_file.compare(alignment.Filename()) != 0){
       prev_file = alignment.Filename();
       potential_mates.clear();
+
+      std::stringstream ss;
+      ss << ++file_index << "_";
+      file_label = ss.str();
     }
 
     // Only apply tests to putative STR reads that overlap the STR region
@@ -298,7 +306,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
 	}
       }
 
-      std::string aln_key = trim_alignment_name(alignment);
+      std::string aln_key = file_label + trim_alignment_name(alignment);
       if (pass_one){
 	add_passes_filters_tag(alignment, pass_two);
 	auto aln_iter = potential_mates.find(aln_key);
@@ -363,7 +371,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
       }
     }
     else {
-      std::string aln_key = trim_alignment_name(alignment);
+      std::string aln_key = file_label + trim_alignment_name(alignment);
       auto aln_iter = potential_strs.find(aln_key);
       if (aln_iter != potential_strs.end()){
 	if (alignment.IsFirstMate() == aln_iter->second.IsFirstMate())
