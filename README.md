@@ -35,8 +35,7 @@ Despite their utility, STRs are particularly difficult to genotype. The repetiti
 In our opinion, all of these factors make **HipSTR** the most reliable tool for genotyping STRs from **Illumina** sequencing data.
 
 ## Installation
-HipSTR requires a standard c++ compiler and [CMake](http://www.cmake.org/download/).
-To obtain HipSTR, use:
+HipSTR requires a standard c++ compiler. To obtain HipSTR, use:
 
     git clone https://github.com/HipSTR-Tool/HipSTR
 
