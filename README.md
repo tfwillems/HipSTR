@@ -293,9 +293,10 @@ chr2  | 32079410    | 32079469    | 4         | 15         | AGAT117
 chr17 | 38994441    | 38994492    | 4         | 12         | GATA25A04
 chr17 | 55299940    | 55299992    | 4         | 13         | AAT245
 
-We've provided various *BED* files containing STR loci for different organisms, including humans, [here](https://hipstr-tool.github.io/HipSTR-resources/)
+We've provided various *BED* files containing STR loci for different organisms, including humans, [here](https://github.com/HipSTR-Tool/HipSTR-references/)
 
-For other model organisms, we recommend that you 
+For other model organisms, we recommend that you modify the [framework](https://github.com/HipSTR-Tool/HipSTR-references/blob/master/mouse/mouse_reference.md)
+we used to build the mouse BED file.
 
 1. Use [Tandem Repeats Finder](https://tandem.bu.edu/trf/trf.html) or other tools to scan the reference genome for STRs
 2. Reformat the resulting output to conform with the format outlined above
