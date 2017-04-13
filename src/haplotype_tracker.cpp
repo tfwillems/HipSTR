@@ -89,7 +89,7 @@ void HaplotypeTracker::add_snp(VCF::Variant& variant){
 }
 
 void HaplotypeTracker::advance(std::string chrom, int32_t position, std::set<std::string>& sites_to_skip, std::ostream& logger){
-  logger << "Advancing haplotype tracker";
+  //logger << "Advancing haplotype tracker";
   int32_t start_of_window = (position >= window_size_ ? position - window_size_ : 0);
   int32_t end_of_window   = position + window_size_;
   if (chrom.compare(chrom_) != 0){
@@ -122,7 +122,7 @@ void HaplotypeTracker::advance(std::string chrom, int32_t position, std::set<std
   // Remove SNPs to left of window
   while (next_snp_position() < start_of_window && next_snp_position() != -1)
     remove_next_snp();
-  logger << " done" << std::endl;
+  //logger << " done" << std::endl;
 }
 
 /* Analyze edit distances between the phased SNP haplotypes of each child and its parents. Returns true iff all the children in the family
