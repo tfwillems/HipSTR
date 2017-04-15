@@ -123,4 +123,4 @@ bool VCFReader::get_next_variant(Variant& variant){
   return false;
 }
 
-};
+}

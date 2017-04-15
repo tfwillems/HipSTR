@@ -43,7 +43,6 @@ void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::str
   logger() << "Left aligning reads" << std::endl;
   std::map<std::string, int> seq_to_alns;
   int32_t align_fail_count = 0, total_reads = 0;
-  int bp_diff;
   left_alns.clear(); filt_log_p1.clear(); filt_log_p2.clear();
 
   std::vector<bool> passes_region_filters; passes_region_filters.reserve(region_group.num_regions());

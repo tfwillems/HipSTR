@@ -73,7 +73,7 @@ void writeAlignmentStrings(std::string& reference_string,
 	  output << "L";
 	  break;
 	default:
-	  printErrorAndDie("Invalid base for HTML creation: " + std::to_string(c));
+	  printErrorAndDie("Invalid base for HTML creation: " + std::string(1, c));
 	  break;
 	}
       }
@@ -95,7 +95,7 @@ void writeAlignmentStrings(std::string& reference_string,
 	  output << "n";
 	  break;
 	default:
-	  printErrorAndDie("Invalid base for HTML creation: " + std::to_string(c));
+	  printErrorAndDie("Invalid base for HTML creation: " + std::string(1, c));
 	  break;
 	}
       }

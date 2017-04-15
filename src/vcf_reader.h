@@ -227,5 +227,5 @@ public:
   bool get_next_variant(Variant& variant);
 };
 
-};
+}
 #endif

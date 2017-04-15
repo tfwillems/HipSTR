@@ -52,7 +52,7 @@ public:
       }
     }
     if (static_cast<unsigned int>((1 << BITS_PER_INDEL)-1) < loc)
-      printErrorAndDie("Location is too large for IndelTracker: " + std::to_string(loc));
+      printErrorAndDie("Location is too large for IndelTracker");
     return IndelTracker((val_ << BITS_PER_INDEL) | loc, num_indels_+1, al_length_+1);
   }
 

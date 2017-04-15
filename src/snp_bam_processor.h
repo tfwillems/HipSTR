@@ -100,7 +100,7 @@ public:
 
   void finish(){
     if (match_count_ + mismatch_count_ > 0)
-      log("\nSNP matching statistics: " + std::to_string(match_count_) + "\t" + std::to_string(mismatch_count_) + "\n");
+      logger() << "\nSNP matching statistics: " << match_count_ << "\t" << mismatch_count_ << "\n";
   }
 };
 

@@ -113,7 +113,9 @@ void HaplotypeTracker::advance(std::string chrom, int32_t position, std::set<std
   // Incorporate new SNPs within the window
   VCF::Variant snp_variant;
   while (last_snp_position() < end_of_window && snp_vcf_.get_next_variant(snp_variant)){
-    std::string key = snp_variant.get_chromosome() + ":" + std::to_string(snp_variant.get_position());
+    std::stringstream ss;
+    ss << snp_variant.get_chromosome() << ":" << snp_variant.get_position();
+    std::string key = ss.str();
     if (sites_to_skip.find(key) != sites_to_skip.end())
       continue;
     add_snp(snp_variant);

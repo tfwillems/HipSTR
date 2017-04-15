@@ -174,11 +174,10 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
   init_stutter_model();
 
   int num_iter   = 1;
-  bool converged = false;
   double LL      = -DBL_MAX;
   use_pop_freqs_ = true;
 
-  while (num_iter <= max_iter && !converged){
+  while (num_iter <= max_iter){
     // E-step
     calc_hap_aln_probs(log_aln_probs_);
     double new_LL = calc_log_sample_posteriors();
@@ -206,10 +205,8 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
     double frac_change = -(new_LL - LL)/LL;
     if (disp_stats)
       logger << abs_change << " " << min_LL_abs_change << " " << frac_change << " " << min_LL_frac_change << std::endl;
-    if (abs_change < min_LL_abs_change && frac_change < min_LL_frac_change){
-      converged = true;
+    if (abs_change < min_LL_abs_change && frac_change < min_LL_frac_change)
       return true;
-    }
 
     LL = new_LL;
     num_iter++;
