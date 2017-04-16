@@ -235,7 +235,7 @@ typedef struct __kstring_t {
      * @param fn    file name
      * @return      1 if _fn_ is BGZF; 0 if not or on I/O error
      */
-    int bgzf_is_bgzf(const char *fn) HTS_DEPRECATED("Use bgzf_compression() or hts_detect_format() instead");
+    int bgzf_is_bgzf(const char *fn);// HTS_DEPRECATED("Use bgzf_compression() or hts_detect_format() instead");
 
     /*********************
      * Advanced routines *

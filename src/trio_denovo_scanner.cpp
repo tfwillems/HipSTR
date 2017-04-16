@@ -73,9 +73,7 @@ void TrioDenovoScanner::add_child_to_record(double total_ll_no_mutation, double 
 
 void TrioDenovoScanner::scan(VCF::VCFReader& str_vcf, std::ostream& logger){
   VCF::Variant str_variant;
-  int32_t num_strs  = 0;
   while (str_vcf.get_next_variant(str_variant)){
-    num_strs++;
     int num_alleles = str_variant.num_alleles();
     if (num_alleles <= 1)
       continue;

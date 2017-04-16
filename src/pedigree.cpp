@@ -269,7 +269,7 @@ void PedigreeGraph::split_into_connected_components(std::vector<PedigreeGraph>& 
     components.push_back(PedigreeGraph(component_nodes[i]));
 }
 
-bool PedigreeGraph::is_nuclear_family(){
+bool PedigreeGraph::is_nuclear_family() const{
   if (no_ancestors_.size() != 2)
     return false;
   if (no_descendants_.size() == 0)
@@ -277,14 +277,14 @@ bool PedigreeGraph::is_nuclear_family(){
   if (no_ancestors_.size() + no_descendants_.size() != nodes_.size())
     return false;
 
-  std::string p1 = no_ancestors_[0]->get_name();
-  std::string p2 = no_ancestors_[1]->get_name();
+  const std::string& p1 = no_ancestors_[0]->get_name();
+  const std::string& p2 = no_ancestors_[1]->get_name();
   for (auto node_iter = no_descendants_.begin(); node_iter != no_descendants_.end(); node_iter++){
     if ((!(*node_iter)->has_mother()) || (!(*node_iter)->has_father()))
       return false;
 
-    std::string mother = (*node_iter)->get_mother()->get_name();
-    std::string father = (*node_iter)->get_father()->get_name();
+    const std::string& mother = (*node_iter)->get_mother()->get_name();
+    const std::string& father = (*node_iter)->get_father()->get_name();
     if ((mother.compare(p1) != 0) || (father.compare(p2) != 0))
       if ((mother.compare(p2) != 0) || (father.compare(p1) != 0))
 	return false;

@@ -23,8 +23,8 @@ class Haplotype {
 
   void init();
   
-  unsigned int left_homopolymer_len(char c, int block_index);
-  unsigned int right_homopolymer_len(char c, int block_index);
+  unsigned int left_homopolymer_len(char c, int block_index) const;
+  unsigned int right_homopolymer_len(char c, int block_index) const;
 
   std::vector<std::string> hap_aln_info_;
   void aln_haps_to_ref();
@@ -61,24 +61,24 @@ class Haplotype {
     out << std::endl;
   }
   
-  inline const std::string& get_seq(int block_index)     { return blocks_[block_index]->get_seq(counts_[block_index]); }
-  inline const std::string& get_aln_info()               { return hap_aln_info_[counter_]; }
-  inline char get_first_char()                     const { return blocks_[0]->get_seq(counts_[0])[0]; }
-  inline char get_last_char()                      const { return blocks_.back()->get_seq(counts_[blocks_.size()-1]).back(); }
-  inline HapBlock* get_block(int block_index)            { return blocks_[block_index]; }
-  inline HapBlock* get_first_block()                     { return blocks_.front();      }
-  inline HapBlock* get_last_block()                      { return blocks_.back();       }
-  inline int num_blocks()                          const { return blocks_.size();       }
-  inline int num_combs()                           const { return ncombs_;              }
-  inline int last_changed()                        const { return last_changed_;        }
-  inline int max_size()                            const { return max_size_;            }
-  inline int cur_size()                            const { return cur_size_;            }
-  inline int cur_index()                           const { return counter_;             }
-  inline int cur_index(int block_index)            const { return counts_[block_index]; }
-  inline bool reversed()                           const { return inc_rev_;             }
-  int num_options(int block_index)                 const { return blocks_[block_index]->num_options(); }
+  inline const std::string& get_seq(int block_index) const { return blocks_[block_index]->get_seq(counts_[block_index]); }
+  inline const std::string& get_aln_info()           const { return hap_aln_info_[counter_]; }
+  inline char get_first_char()                       const { return blocks_[0]->get_seq(counts_[0])[0]; }
+  inline char get_last_char()                        const { return blocks_.back()->get_seq(counts_[blocks_.size()-1]).back(); }
+  inline HapBlock* get_block(int block_index)        const { return blocks_[block_index]; }
+  inline HapBlock* get_first_block()                 const { return blocks_.front();      }
+  inline HapBlock* get_last_block()                  const { return blocks_.back();       }
+  inline int num_blocks()                            const { return blocks_.size();       }
+  inline int num_combs()                             const { return ncombs_;              }
+  inline int last_changed()                          const { return last_changed_;        }
+  inline int max_size()                              const { return max_size_;            }
+  inline int cur_size()                              const { return cur_size_;            }
+  inline int cur_index()                             const { return counter_;             }
+  inline int cur_index(int block_index)              const { return counts_[block_index]; }
+  inline bool reversed()                             const { return inc_rev_;             }
+  int num_options(int block_index)                   const { return blocks_[block_index]->num_options(); }
 
-  void get_coordinates(int hap_pos, int& block, int& block_pos){
+  void get_coordinates(int hap_pos, int& block, int& block_pos) const {
     assert(hap_pos >= 0 && hap_pos < cur_size_);
     for (int i = 0; i < blocks_.size(); i++){
       if (hap_pos < blocks_[i]->size(counts_[i])){
@@ -119,7 +119,7 @@ class Haplotype {
 
   void go_to(int hap_index);
 
-  unsigned int homopolymer_length(int block_index, int base_index);
+  unsigned int homopolymer_length(int block_index, int base_index) const;
 
   Haplotype* reverse(std::vector<HapBlock*>& rev_blocks);
 

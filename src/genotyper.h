@@ -57,7 +57,6 @@ class Genotyper {
     return res.str();
   }
 
-
   double log_homozygous_prior();
 
   double log_heterozygous_prior();
@@ -111,7 +110,7 @@ class Genotyper {
     log_aln_probs_         = NULL;
   }
 
-  ~Genotyper(){
+  virtual ~Genotyper(){
     delete [] log_p1_;
     delete [] log_p2_;
     delete [] sample_label_;

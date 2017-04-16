@@ -43,7 +43,6 @@ namespace AlignmentFilters {
   }
   
   pair<int,int> GetEndDistToIndel(BamAlignment& aln){
-    vector<int> vals;
     int head_dist = GetDistToIndel(aln.CigarData().begin(),  aln.CigarData().end());
     int tail_dist = GetDistToIndel(aln.CigarData().rbegin(), aln.CigarData().rend());
     return pair<int,int>(head_dist, tail_dist);

@@ -79,6 +79,7 @@ class BamProcessor {
    log_to_file_             = false;
    MAX_TOTAL_READS          = 1000000;
    BASE_QUAL_TRIM           = '5';
+   TOO_MANY_READS           = false;
    bams_from_10x_           = false;
  }
 

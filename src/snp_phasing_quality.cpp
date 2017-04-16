@@ -7,7 +7,7 @@ void printCigarString(BamAlignment& aln, std::ostream& out){
 }
 
 void extract_bases_and_qualities(BamAlignment& aln, std::vector<SNP>& snps,
-				 std::vector<char>& bases,  std::vector<char>& quals){
+				 std::vector<char>& bases, std::vector<char>& quals){
   assert(bases.size() == 0 && quals.size() == 0);
   assert(aln.CigarData().size() > 0);
   assert(std::is_sorted(snps.begin(), snps.end(), SNPSorter()));

@@ -107,13 +107,13 @@ class PedigreeNode {
     children_.clear();
   }
 
-  bool has_mother() const    { return mother_ != NULL;  }
-  bool has_father() const    { return father_ != NULL;  }
-  PedigreeNode* get_mother() const { return mother_;    }
-  PedigreeNode* get_father() const { return father_;    }
-  std::string   get_name()   const { return name_;      }
-  std::string   get_family() const { return family_id_; }
-  std::vector<PedigreeNode*>& get_children() { return children_; }
+  bool has_mother()                 const { return mother_ != NULL;  }
+  bool has_father()                 const { return father_ != NULL;  }
+  PedigreeNode* get_mother()        const { return mother_;          }
+  PedigreeNode* get_father()        const { return father_;          }
+  const std::string& get_name()     const { return name_;            }
+  const std::string& get_family()   const { return family_id_;       }
+  std::vector<PedigreeNode*>& get_children() { return children_;     }
 
   void set_mother(PedigreeNode* mother) { mother_ = mother;           }
   void set_father(PedigreeNode* father) { father_ = father;           }
@@ -223,7 +223,7 @@ class PedigreeGraph {
 
   void split_into_connected_components(std::vector<PedigreeGraph>& components);
 
-  bool is_nuclear_family();
+  bool is_nuclear_family() const;
 
   NuclearFamily convert_to_nuclear_family();
 };

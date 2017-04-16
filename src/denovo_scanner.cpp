@@ -102,9 +102,7 @@ void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std
 			 std::ostream& logger){
   HaplotypeTracker haplotype_tracker(families_, snp_vcf_file, window_size_);
   VCF::Variant str_variant;
-  int32_t num_strs  = 0;
   while (str_vcf.get_next_variant(str_variant)){
-    num_strs++;
     int num_alleles = str_variant.num_alleles();
     if (num_alleles <= 1)
       continue;
@@ -175,7 +173,7 @@ void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std
 		// Iterate over all the children to compute the likelihood for no denovos
 		int child_index = 0;
 		for (auto child_iter = family_iter->get_children().begin(); child_iter != family_iter->get_children().end(); ++child_iter, ++child_index){
-		  int child_i, child_j;
+		  int child_i = -1, child_j = -1;
 
 		  if (maternal_indices[child_index] == 0)       child_i = mat_i;
 		  else if (maternal_indices[child_index] == 1)  child_i = mat_j;
@@ -187,6 +185,7 @@ void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std
 		  else if (paternal_indices[child_index] == 2)  child_j = pat_i;
 		  else                                          child_j = pat_j;
 
+		  assert(child_i != -1 && child_j != -1);
 		  no_mutation_config_ll += phased_gls.get_gl(children_gl_index[child_index], child_i, child_j);
 		}
 		update_streaming_log_sum_exp(no_mutation_config_ll, ll_no_mutation_max, ll_no_mutation_total);

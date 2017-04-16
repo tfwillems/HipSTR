@@ -267,7 +267,7 @@ void Haplotype::print_block_structure(int max_ref_len, int max_other_len, bool i
   }
 }
 
-unsigned int Haplotype::left_homopolymer_len(char c, int block_index){
+unsigned int Haplotype::left_homopolymer_len(char c, int block_index) const {
   unsigned int total = 0;
   while (block_index >= 0){
     const std::string& seq = get_seq(block_index);
@@ -284,7 +284,7 @@ unsigned int Haplotype::left_homopolymer_len(char c, int block_index){
   return total;
 }
  
-unsigned int Haplotype::right_homopolymer_len(char c, int block_index){
+unsigned int Haplotype::right_homopolymer_len(char c, int block_index) const {
   unsigned int total = 0;
   while (block_index < blocks_.size()){
     const std::string& seq = get_seq(block_index);
@@ -301,7 +301,7 @@ unsigned int Haplotype::right_homopolymer_len(char c, int block_index){
   return total;
 }
 
-unsigned int Haplotype::homopolymer_length(int block_index, int base_index){
+unsigned int Haplotype::homopolymer_length(int block_index, int base_index) const {
   HapBlock* block        = blocks_[block_index];
   const std::string& seq = block->get_seq(counts_[block_index]);
   unsigned int llen = block->left_homopolymer_len(counts_[block_index],  base_index);

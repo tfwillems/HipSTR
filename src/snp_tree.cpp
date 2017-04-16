@@ -48,13 +48,10 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, co
   // Iterate through all VCF entries
   std::vector< std::vector<SNP> > snps_by_sample(vcf_samples.size());
   VCF::Variant variant;
-  uint32_t locus_count = 0, skip_count = 0;
+  uint32_t locus_count = 0;
   while (snp_vcf->get_next_variant(variant)){
-    //if (locus_count % 1000 == 0)   std::cout << "\rProcessing locus #" << locus_count << " (skipped " << skip_count << ") at position " << variant.position << std::flush;
-    if (!variant.is_biallelic_snp() || in_any_region(variant, skip_regions, skip_padding)){
-      skip_count++;
+    if (!variant.is_biallelic_snp() || in_any_region(variant, skip_regions, skip_padding))
       continue;
-    }
 
     // When performing pedigree-based filtering, we need to identify sites with any Mendelian
     // inconsistencies or missing genotypes as these won't be detected by the haplotype tracker

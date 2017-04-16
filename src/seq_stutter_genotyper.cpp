@@ -55,7 +55,7 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 
     std::map<std::string, int> haplotype_counts;
     std::vector< std::pair<std::string,int> > assembly_data;
-    int min_read_index = 0, read_index;
+    int min_read_index = 0, read_index = -1;
     for (int sample_index = 0; sample_index < num_samples_; sample_index++){
       assembly_data.clear();
       bool acyclic = false;
@@ -717,7 +717,6 @@ void SeqStutterGenotyper::debug_sample(int sample_index, std::ostream& logger){
   std::cerr << "DEBUGGING SAMPLE..." << std::endl;
   std::cerr << "READ LL's:" << std::endl;
   double* read_LL_ptr = log_aln_probs_;
-  int read_index = 0;
   for (unsigned int i = 0; i < num_reads_; ++i){
     if(sample_label_[i] == sample_index && seed_positions_[i] >= 0){
       std::cerr << "\t" << "READ #" << i << ", SEED BASE=" << seed_positions_[i] << ", POOL INDEX=" << pool_index_[i] << ", IS_SECOND_MATE=" << second_mate_[i]
@@ -732,7 +731,6 @@ void SeqStutterGenotyper::debug_sample(int sample_index, std::ostream& logger){
 
       for (unsigned int j = 0; j < num_alleles_; ++j, ++read_LL_ptr)
 	std::cerr << "\t\t" << j << " " << *read_LL_ptr << std::endl;
-      read_index++;
     }
     else
       read_LL_ptr += num_alleles_;

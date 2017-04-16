@@ -25,8 +25,8 @@ private:
   bcf1_t*    vcf_record_;
   VCFReader* vcf_reader_;
 
-  std::vector<std::string> alleles_;
   int num_samples_;
+  std::vector<std::string> alleles_;
   std::vector<bool> missing_;
   std::vector<bool> phased_;
   std::vector<int> gt_1_, gt_2_;
@@ -36,8 +36,10 @@ private:
 
 public:
   Variant(){
-    vcf_record_ = NULL;
-    vcf_header_ = NULL;
+    vcf_record_  = NULL;
+    vcf_header_  = NULL;
+    vcf_reader_  = NULL;
+    num_samples_ = 0;
   }
 
   Variant(bcf_hdr_t* vcf_header, bcf1_t* vcf_record, VCFReader* vcf_reader){
