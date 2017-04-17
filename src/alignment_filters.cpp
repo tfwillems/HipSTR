@@ -35,7 +35,7 @@ namespace AlignmentFilters {
     return -1;
   }
 
-  std::string GetCigarString(std::vector<CigarOp>& cigar_ops){
+  std::string GetCigarString(const std::vector<CigarOp>& cigar_ops){
     std::stringstream ss;
     for (auto iter = cigar_ops.begin(); iter != cigar_ops.end(); iter++)
       ss << iter->Length << iter->Type;

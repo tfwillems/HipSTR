@@ -61,18 +61,18 @@ class StutterModel {
 
   friend std::ostream& operator<< (std::ostream &out, StutterModel& model);
 
-  StutterModel* copy(){ return new StutterModel(in_geom_, in_up_, in_down_, out_geom_, out_up_, out_down_, motif_len_); }
+  StutterModel* copy() const { return new StutterModel(in_geom_, in_up_, in_down_, out_geom_, out_up_, out_down_, motif_len_); }
 
-  double get_parameter(bool in_frame, char parameter);
+  double get_parameter(bool in_frame, char parameter) const;
 
-  double log_stutter_pmf(int sample_bps, int read_bps);
+  double log_stutter_pmf(int sample_bps, int read_bps) const;
 
-  int period(){ return motif_len_; }
+  int period() const { return motif_len_; }
   void set_period(int period){ motif_len_ = period; }
 
-  void write(std::ostream& output);
+  void write(std::ostream& output) const;
 
-  void write_model(const std::string& chrom, int32_t start, int32_t end, std::ostream& output);
+  void write_model(const std::string& chrom, int32_t start, int32_t end, std::ostream& output) const;
 
   static StutterModel* read(std::istream& input);
 

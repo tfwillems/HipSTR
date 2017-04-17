@@ -11,7 +11,7 @@ extern const int ALIGN_WINDOW_WIDTH = 75;
  Realign read to reference region using left alignment variant. Store the new alignment information using
  the provided Alignment reference. Converts the bases to their upper case variants
  */
-bool realign(BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment){
+bool realign(BamAlignment& alignment, const std::string& ref_sequence, Alignment& new_alignment){
     int32_t start        = std::max(alignment.Position()-ALIGN_WINDOW_WIDTH-1, 0);
     int32_t stop         = std::min(alignment.GetEndPosition()+ALIGN_WINDOW_WIDTH-1, (int32_t)(ref_sequence.size()-1));
     int32_t length       = stop-start+1;
@@ -99,7 +99,7 @@ bool realign(BamAlignment& alignment, std::string& ref_sequence, Alignment& new_
     return aligned;
 }
 
-void convertAlignment(BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment){
+void convertAlignment(BamAlignment& alignment, const std::string& ref_sequence, Alignment& new_alignment){
   std::string read_sequence = uppercase(alignment.QueryBases());
   int32_t seq_index = 0, ref_index = alignment.Position();
   std::stringstream aln_ss;

@@ -17,30 +17,27 @@
 
 class HapBlock {
  protected:
-  std::string ref_seq_;
+  const std::string ref_seq_;
   std::vector<std::string> alt_seqs_;
   std::set<std::string> seq_set_;
-  int32_t start_;  // Start of region (inclusive)
-  int32_t end_;    // End   of region (not inclusive)
-  int min_size_;
-  int max_size_;
+  int32_t start_; // Start of region (inclusive)
+  int32_t end_;   // End of region (not inclusive)
+  int min_size_, max_size_;
 
   std::vector<int*> l_homopolymer_lens_;
   std::vector<int*> r_homopolymer_lens_;
   std::vector<int>  suffix_matches_;
 
   // Compute the homopolymer lengths and store them in the resulting vectors
-  void calc_homopolymer_lengths(std::string& seq, std::vector<int*>& llen_vec, std::vector<int*>& rlen_vec);
+  void calc_homopolymer_lengths(const std::string& seq, std::vector<int*>& llen_vec, std::vector<int*>& rlen_vec);
 
  public:
-  HapBlock(int32_t start, int32_t end, std::string ref_seq) {
+  HapBlock(int32_t start, int32_t end, const std::string& ref_seq)
+    : ref_seq_(ref_seq){
     start_    = start;
     end_      = end;
-    ref_seq_  = ref_seq;
     min_size_ = (int)ref_seq.size();
     max_size_ = (int)ref_seq.size();
-    alt_seqs_ = std::vector<std::string>();
-    suffix_matches_ = std::vector<int>();
     suffix_matches_.push_back(0);
     seq_set_.insert(ref_seq);
     calc_homopolymer_lengths(ref_seq, l_homopolymer_lens_, r_homopolymer_lens_);
@@ -65,7 +62,7 @@ class HapBlock {
   int max_size()    const { return max_size_; }
   bool contains(const std::string& seq) const { return seq_set_.find(seq) != seq_set_.end(); }
 
-  virtual void add_alternate(std::string& alt) {
+  virtual void add_alternate(const std::string& alt) {
     alt_seqs_.push_back(alt);
     min_size_ = std::min(min_size_, (int)alt.size());
     max_size_ = std::max(max_size_, (int)alt.size());
@@ -77,7 +74,7 @@ class HapBlock {
     calc_homopolymer_lengths(alt, l_homopolymer_lens_, r_homopolymer_lens_);
   }
 
-  void print(std::ostream& out);
+  void print(std::ostream& out) const;
 
   int size(int index) const {
     if (index == 0)
@@ -88,7 +85,7 @@ class HapBlock {
       throw std::out_of_range("Index out of bounds in HapBlock::size()");
   }
 
-  const std::string& get_seq(unsigned int index) {
+  const std::string& get_seq(unsigned int index) const {
     if (index == 0)
       return ref_seq_;
     else if (index-1 < alt_seqs_.size())
@@ -97,17 +94,17 @@ class HapBlock {
       throw std::out_of_range("Index out of bounds in HapBlock::get_seq()");
   }
 
-  inline int suffix_match_len(unsigned int seq_index){
+  inline int suffix_match_len(unsigned int seq_index) const {
     assert(seq_index < suffix_matches_.size());
     return suffix_matches_[seq_index];
   }
 
-  inline unsigned int left_homopolymer_len(unsigned int seq_index, int base_index){
+  inline unsigned int left_homopolymer_len(unsigned int seq_index, int base_index) const {
     assert(seq_index < l_homopolymer_lens_.size());
     return l_homopolymer_lens_[seq_index][base_index];
   }
 
-  inline unsigned int right_homopolymer_len(unsigned int seq_index, int base_index){
+  inline unsigned int right_homopolymer_len(unsigned int seq_index, int base_index) const {
     assert(seq_index < r_homopolymer_lens_.size());
     return r_homopolymer_lens_[seq_index][base_index];
   }
@@ -124,7 +121,7 @@ class HapBlock {
     return rev_block;
   }
 
-  int index_of(const std::string& seq){
+  int index_of(const std::string& seq) const {
     if (seq.compare(ref_seq_) == 0)
       return 0;
     for (unsigned int i = 0; i < alt_seqs_.size(); i++)
@@ -134,7 +131,7 @@ class HapBlock {
     return -1;
   }
 
-  virtual HapBlock* remove_alleles(std::vector<int>& allele_indices){
+  virtual HapBlock* remove_alleles(const std::vector<int>& allele_indices){
     std::set<int> bad_alleles(allele_indices.begin(), allele_indices.end());
     assert(bad_alleles.find(0) == bad_alleles.end());
 

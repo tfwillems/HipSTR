@@ -8,7 +8,7 @@
 #include "mathops.h"
 #include "stringops.h"
 
-std::string BaseQuality::median_base_qualities(const std::vector<const std::string*>& qualities){
+std::string BaseQuality::median_base_qualities(const std::vector<const std::string*>& qualities) const {
   assert(qualities.size() > 0);
 
   // Check that all base quality strings are of the same length
@@ -25,10 +25,4 @@ std::string BaseQuality::median_base_qualities(const std::vector<const std::stri
     median_qualities[i] = quals[quals.size()/2];
   }
   return median_qualities;
-}
-
-void printBaseCounts(int* counts, std::ostream& out){
-  for (unsigned int i = 0; i < 256; i++)
-    if (counts[i] != 0)
-      out << (char)i << " " << counts[i] << std::endl;
 }

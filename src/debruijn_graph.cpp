@@ -19,7 +19,7 @@ bool DebruijnGraph::is_sink_ok(){
   return (sink->num_incident_edges() > 0) && (sink->num_departing_edges() == 0);
 }
 
-bool DebruijnGraph::calc_kmer_length(std::string& ref_seq, int min_kmer, int max_kmer, int& kmer){
+bool DebruijnGraph::calc_kmer_length(const std::string& ref_seq, int min_kmer, int max_kmer, int& kmer){
   for (kmer = min_kmer; kmer <= max_kmer; kmer++){
     DebruijnGraph graph(kmer, ref_seq);
     if (!graph.has_cycles())
@@ -28,7 +28,7 @@ bool DebruijnGraph::calc_kmer_length(std::string& ref_seq, int min_kmer, int max
   return false;
 }
 
-void DebruijnGraph::add_string(std::string& seq, int weight){
+void DebruijnGraph::add_string(const std::string& seq, int weight){
   if (seq.size() <= k_)
     return;
 
@@ -199,7 +199,7 @@ void DebruijnGraph::enumerate_paths(int min_weight, int max_paths, std::vector<s
 }
 
 
-std::string DebruijnPath::get_sequence(DebruijnGraph* graph){
+std::string DebruijnPath::get_sequence(DebruijnGraph* graph) const {
   std::stringstream ss;
   const std::string& kmer = graph->get_node_label(node_id_);
   for (auto base_iter = kmer.rbegin(); base_iter != kmer.rend(); base_iter++)

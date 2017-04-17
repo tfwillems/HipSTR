@@ -17,13 +17,12 @@ class ProcessTimer {
     total_times_[key] += time;
   }
 
-  double get_total_time(std::string key){
+  double get_total_time(std::string key) const {
     auto iter = total_times_.find(key);
     if (iter == total_times_.end())
       return 0.0;
     return iter->second;
   }
 };
-
 
 #endif

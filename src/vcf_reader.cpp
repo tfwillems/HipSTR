@@ -4,11 +4,11 @@
 
 namespace VCF {
 
-  const std::vector<std::string>& Variant::get_samples(){
+  const std::vector<std::string>& Variant::get_samples() const {
     return vcf_reader_->get_samples();
   }
 
-  void Variant::get_genotype(std::string& sample, int& gt_a, int& gt_b){
+  void Variant::get_genotype(const std::string& sample, int& gt_a, int& gt_b) const {
     int sample_index = vcf_reader_->get_sample_index(sample);
     if (sample_index == -1)
       gt_a = gt_b = -1;
@@ -18,7 +18,7 @@ namespace VCF {
     }
   }
 
-  bool Variant::sample_call_missing(const std::string& sample){
+  bool Variant::sample_call_missing(const std::string& sample) const {
     int sample_index = vcf_reader_->get_sample_index(sample);
     return (sample_index == -1 ? true : missing_[sample_index]);
   }
@@ -58,7 +58,7 @@ namespace VCF {
     free(gts_);
   }
 
-void VCFReader::open(std::string& filename){
+void VCFReader::open(const std::string& filename){
   const char* cfilename = filename.c_str();
     
   if (bgzf_is_bgzf(cfilename) != 1)

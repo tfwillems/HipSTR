@@ -7,7 +7,7 @@
 #include "error.h"
 #include "stringops.h"
 
-void FastaReader::add_index(std::string& path){
+void FastaReader::add_index(const std::string& path){
   // Check if path for file exists
   if (!file_exists(path))
     printErrorAndDie("FASTA file " + path + " does not exist");
@@ -37,7 +37,7 @@ void FastaReader::add_index(std::string& path){
   fasta_indices_.push_back(index);
 }
 
-void FastaReader::init(std::string& path){
+void FastaReader::init(const std::string& path){
   assert(chrom_to_index_.empty() && fasta_indices_.empty());
 
   if (is_file(path))

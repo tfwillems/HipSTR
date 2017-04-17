@@ -31,7 +31,7 @@ class Haplotype {
   void adjust_indels(std::string& ref_hap_al, std::string& alt_hap_al);
 
  public:
-  Haplotype(std::vector<HapBlock*>& blocks) {
+  explicit Haplotype(std::vector<HapBlock*>& blocks){
     max_size_ = 0;
     for (unsigned int i = 0; i < blocks.size(); i++) {
       blocks_.push_back(blocks[i]);
@@ -49,13 +49,13 @@ class Haplotype {
     aln_haps_to_ref();
   }
 
-  void print_nchanges(std::ostream& out) {
+  void print_nchanges(std::ostream& out) const {
     for (unsigned int i = 0; i < blocks_.size(); i++)
       out << nchanges_[i] << " ";
     out << std::endl;
   }
   
-  void print_counter_state(std::ostream& out) {
+  void print_counter_state(std::ostream& out) const {
     for (unsigned int i = 0; i < blocks_.size(); i++)
       out << counts_[i] << " ";
     out << std::endl;
@@ -91,23 +91,23 @@ class Haplotype {
     assert(false);
   }
 
-  bool position_to_haplotype_index(int32_t pos, int& haplotype_index);
+  bool position_to_haplotype_index(int32_t pos, int& haplotype_index) const;
 
-  std::string get_seq(){
+  std::string get_seq() const {
     std::stringstream ss;
     for (int i = 0; i < num_blocks(); i++)
       ss << get_seq(i);
     return ss.str();
   }
 
-  void print(std::ostream& out) {
+  void print(std::ostream& out) const {
     for (int i = 0; i < num_blocks(); i++)
       out << get_seq(i);
     out << std::endl;
   }
   
   void print_block_structure(int max_ref_len, int max_other_len, bool indent,
-			     std::ostream& out);
+			     std::ostream& out) const;
 
   // Prevent haplotype from being changed using next()
   void fix()  { fixed_ = true;  }
@@ -127,5 +127,3 @@ class Haplotype {
 };
 
 #endif
-
-

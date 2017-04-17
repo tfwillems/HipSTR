@@ -9,7 +9,7 @@ class MutationModel {
   double log_mut_prior_;
 
  public:
-  MutationModel(VCF::Variant& str_variant){
+  explicit MutationModel(const VCF::Variant& str_variant){
     assert(str_variant.num_alleles() > 1);
     
     // The allele on each haplotype can mutate to N-1 alleles, so assuming a 
@@ -21,11 +21,11 @@ class MutationModel {
    * Log10-likelihood of mutating from the parental to the child allele,
    * given that a mutation occurred
    */
-  double log_prior_mutation(int parental_allele, int child_allele){
+  double log_prior_mutation(int parental_allele, int child_allele) const {
     return log_mut_prior_;
   }
 
-  double max_log_prior_mutation(int parental_allele){
+  double max_log_prior_mutation(int parental_allele) const {
     return log_mut_prior_;
   }
 };

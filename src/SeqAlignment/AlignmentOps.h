@@ -9,8 +9,8 @@
 
 extern const int ALIGN_WINDOW_WIDTH;
 
-bool realign(BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment);
+bool realign(BamAlignment& alignment, const std::string& ref_sequence, Alignment& new_alignment);
 
-void convertAlignment(BamAlignment& alignment, std::string& ref_sequence, Alignment& new_alignment);
+void convertAlignment(BamAlignment& alignment, const std::string& ref_sequence, Alignment& new_alignment);
 
 #endif

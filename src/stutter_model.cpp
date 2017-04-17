@@ -9,7 +9,7 @@ std::ostream& operator<< (std::ostream &out, StutterModel& model){
   return out;
 }
 
-double StutterModel::get_parameter(bool in_frame, char parameter){
+double StutterModel::get_parameter(bool in_frame, char parameter) const {
   switch(parameter){
   case 'U':
     return in_frame ? in_up_   : out_up_;
@@ -26,7 +26,7 @@ double StutterModel::get_parameter(bool in_frame, char parameter){
 /*
   Returns the read's log-likeliood given that it contains exactly the provided number of base pairs
 */
-double StutterModel::log_stutter_pmf(int sample_bps, int read_bps){
+double StutterModel::log_stutter_pmf(int sample_bps, int read_bps) const {
   double log_pmf;
   int bp_diff = read_bps - sample_bps;
   if (bp_diff % motif_len_ != 0){
@@ -52,12 +52,12 @@ double StutterModel::log_stutter_pmf(int sample_bps, int read_bps){
   return log_pmf;
 }
 
-void StutterModel::write(std::ostream& output){
+void StutterModel::write(std::ostream& output) const {
   output << in_geom_  << "\t" << in_down_  << "\t" << in_up_  << "\t" 
 	 << out_geom_ << "\t" << out_down_ << "\t" << out_up_ << "\t" << motif_len_ << std::endl;
 }
 
-void StutterModel::write_model(const std::string& chrom, int32_t start, int32_t end, std::ostream& output){
+void StutterModel::write_model(const std::string& chrom, int32_t start, int32_t end, std::ostream& output) const {
   output << chrom << "\t" << start << "\t" << end << "\t";
   write(output);
 }

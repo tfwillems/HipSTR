@@ -19,14 +19,16 @@ private:
   int32_t start_, stop_;
   int period_;
 public:
-  Region(std::string chrom, int32_t start, int32_t stop, int period){
+ Region(const std::string& chrom, int32_t start, int32_t stop, int period)
+   : chrom_(chrom){
     assert(stop > start);
-    chrom_ = chrom; start_ = start; stop_ = stop; period_ = period; name_ = "";
+    start_ = start; stop_ = stop; period_ = period;
   }
 
-  Region(std::string chrom, int32_t start, int32_t stop, int period, std::string name){
+  Region(const std::string& chrom, int32_t start, int32_t stop, int period, const std::string& name)
+    : chrom_(chrom), name_(name){
     assert(stop > start);
-    chrom_ = chrom; start_ = start; stop_ = stop; period_ = period; name_ = name;
+    start_ = start; stop_ = stop; period_ = period;
   }
 
   const std::string& chrom() const { return chrom_;  }
@@ -39,13 +41,13 @@ public:
   void set_start(int32_t start){ start_ = start; }
   void set_stop(int32_t stop)  { stop_  = stop;  }
 
-  std::string str(){
+  std::string str() const {
     std::stringstream ss;
     ss << chrom_ << ":" << start_ << "-" << stop_;
     return ss.str();
   }
 
-  bool operator<(const Region &r)  const {
+  bool operator<(const Region &r) const {
     if (chrom_.compare(r.chrom()) != 0)
       return chrom_.compare(r.chrom()) < 0;
     if (start_ != r.start())
@@ -57,7 +59,7 @@ public:
 
 };
 
-void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t max_regions, std::string chrom, std::ostream& logger);
+void readRegions(const std::string& input_file, uint32_t max_regions, const std::string& chrom_limit, std::vector<Region>& regions, std::ostream& logger);
 
 void orderRegions(std::vector<Region>& regions);
 
@@ -72,14 +74,14 @@ class RegionGroup {
   int32_t stop_;
 
  public:
-  RegionGroup(const Region& region){
+  explicit RegionGroup(const Region& region){
     regions_.push_back(region);
     chrom_ = region.chrom();
     start_ = region.start();
     stop_  = region.stop();
   }
 
-  const std::vector<Region>& regions(){
+  const std::vector<Region>& regions() const {
     return regions_;
   }
 
@@ -104,4 +106,5 @@ class RegionGroup {
     std::sort(regions_.begin(), regions_.end());
   }
 };
+
 #endif

@@ -31,11 +31,11 @@ class ReadPooler {
     qualities_by_pool_.clear();
   }
 
-  int32_t num_pools(){ return pool_index_; }
+  int32_t num_pools() const { return pool_index_; }
 
   int32_t add_alignment(Alignment& aln);
 
-  void pool(BaseQuality& base_quality){
+  void pool(const BaseQuality& base_quality){
     // For each pooled set of reads, set the base quality at each position to be the median across the set
     assert(pooled_alns_.size() == qualities_by_pool_.size());
     for (unsigned int i = 0; i < pooled_alns_.size(); i++)

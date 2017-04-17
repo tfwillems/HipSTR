@@ -6,10 +6,10 @@
 #include "HTMLCreator.h"
 #include "../stringops.h"
 
-void writeReferenceString(std::string& reference_string, 
-			  std::ostream& output, 
-			  std::string locus_id, 
-			  std::vector<bool>& within_locus, 
+void writeReferenceString(const std::string& reference_string,
+			  std::ostream& output,
+			  const std::string& locus_id,
+			  const std::vector<bool>& within_locus,
 			  bool draw_locus_id){
   output << locus_id << "\t" << "ALL" << "\t" << "<div>" << "\t<table class=\"reftable\">";
   if (draw_locus_id)
@@ -22,18 +22,18 @@ void writeReferenceString(std::string& reference_string,
   output << "</tr>" << std::endl;
 }
 
-void writeAlignmentStrings(std::string& reference_string, 
-			   std::ostream& output, 
-			   std::string locus_id,
-			   std::vector<std::string>& alignment_strings, 
-			   std::vector<std::string>& alignment_samples, 
-			   std::map<std::string, std::string>& sample_info,
+void writeAlignmentStrings(const std::string& reference_string,
+			   std::ostream& output,
+			   const std::string& locus_id,
+			   const std::vector<std::string>& alignment_strings,
+			   const std::vector<std::string>& alignment_samples,
+			   const std::map<std::string, std::string>& sample_info,
 			   bool highlight){
   assert(alignment_strings.size() == alignment_samples.size());
   for (int i = 0; i < alignment_strings.size(); i++){
     if (i == 0 or alignment_samples[i-1].compare(alignment_samples[i]) != 0){
       std::stringstream vcf_ss;
-      std::map<std::string, std::string>::iterator info_iter = sample_info.find(alignment_samples[i]);
+      auto info_iter = sample_info.find(alignment_samples[i]);
       if (info_iter != sample_info.end())
 	vcf_ss << info_iter->second;
 

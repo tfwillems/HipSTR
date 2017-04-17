@@ -9,12 +9,12 @@ void split_by_delim(const std::string &s, char delim,
 
 std::string uppercase(std::string str);
 
-bool string_starts_with(std::string& s, std::string prefix);
+bool string_starts_with(const std::string& s, std::string prefix);
 
-bool string_ends_with(std::string& s, std::string suffix); 
+bool string_ends_with(const std::string& s, std::string suffix);
 
 bool orderByLengthAndSequence(const std::string& s1, const std::string& s2);
 
-int length_suffix_match(std::string& s1, std::string& s2);
+int length_suffix_match(const std::string& s1, const std::string& s2);
 
 #endif

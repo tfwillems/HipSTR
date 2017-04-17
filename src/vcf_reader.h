@@ -36,8 +36,8 @@ private:
 
 public:
   Variant(){
-    vcf_record_  = NULL;
     vcf_header_  = NULL;
+    vcf_record_  = NULL;
     vcf_reader_  = NULL;
     num_samples_ = 0;
   }
@@ -52,70 +52,68 @@ public:
     extract_genotypes();
   }
   
-  ~Variant(){ }
-
-  const std::vector<std::string>& get_alleles() { return alleles_;         }
-  const std::string& get_allele(int allele)     { return alleles_[allele]; }
-  const std::vector<std::string>& get_samples();
+  const std::vector<std::string>& get_alleles() const { return alleles_;         }
+  const std::string& get_allele(int allele)     const { return alleles_[allele]; }
+  const std::vector<std::string>& get_samples() const;
   int num_alleles() const { return alleles_.size(); }
   int num_samples() const { return num_samples_;    }
 
-  bool is_biallelic_snp(){
+  bool is_biallelic_snp() const {
     if (vcf_record_ != NULL)
       return (vcf_record_->n_allele == 2) && bcf_is_snp(vcf_record_);
     return false;
   }
 
-  std::string get_chromosome(){
+  std::string get_chromosome() const {
     if (vcf_record_ != NULL)
       return bcf_seqname(vcf_header_, vcf_record_);
     else
       return "";
   }
 
-  int32_t get_position(){
+  int32_t get_position() const {
     if (vcf_record_ != NULL)
       return vcf_record_->pos+1;
     else
       return -1;
   }
 
-  std::string get_id(){
+  std::string get_id() const {
     if (vcf_record_ != NULL)
       return vcf_record_->d.id;
     else
       return "";
   }
 
-  int get_format_field_index(const std::string &fieldname) const{
+  int get_format_field_index(const std::string& fieldname) const {
     bcf_fmt_t* fmt = bcf_get_fmt(vcf_header_, vcf_record_, fieldname.c_str());
     return (fmt == NULL ? -1 : fmt->id);
   }
 
-  int get_info_field_index(const std::string &fieldname) const{
+  int get_info_field_index(const std::string& fieldname) const {
     bcf_info_t* info = bcf_get_info(vcf_header_, vcf_record_, fieldname.c_str());
     return (info == NULL ? -1 : info->key);
   }
 
-  bool has_format_field(const std::string& fieldname) const{
+  bool has_format_field(const std::string& fieldname) const {
     return (bcf_get_fmt(vcf_header_, vcf_record_, fieldname.c_str()) != NULL);
   }
 
-  bool has_info_field(const std::string& fieldname) const{
+  bool has_info_field(const std::string& fieldname) const {
     return (bcf_get_info(vcf_header_, vcf_record_, fieldname.c_str()) != NULL);
   }
 
-  bool sample_call_phased(int sample_index) const{
+  bool sample_call_phased(int sample_index) const {
     return phased_[sample_index];
   }
 
-  bool sample_call_missing(int sample_index) const{
+  bool sample_call_missing(int sample_index) const {
     return missing_[sample_index];
   }
 
-  bool sample_call_missing(const std::string& sample);
+  bool sample_call_missing(const std::string& sample) const;
 
-  void get_INFO_value_single_int(const std::string& fieldname, int32_t& val){
+  void get_INFO_value_single_int(const std::string& fieldname, int32_t& val) const {
     int mem            = 0;
     int32_t* info_vals = NULL;
     if (bcf_get_info_int32(vcf_header_, vcf_record_, fieldname.c_str(), &info_vals, &mem) != 1)
@@ -124,7 +122,7 @@ public:
     free(info_vals);
   }
 
-  void get_INFO_value_multiple_ints(const std::string& fieldname, std::vector<int32_t>& vals){
+  void get_INFO_value_multiple_ints(const std::string& fieldname, std::vector<int32_t>& vals) const {
     vals.clear();
     int mem             = 0;
     int32_t* info_vals  = NULL;
@@ -136,7 +134,7 @@ public:
     free(info_vals);
   }
 
-  void get_FORMAT_value_multiple_floats(const std::string& fieldname, std::vector< std::vector<float> >& vals){
+  void get_FORMAT_value_multiple_floats(const std::string& fieldname, std::vector< std::vector<float> >& vals) const {
     vals.clear();
     int mem            = 0;
     float* format_vals = NULL;
@@ -152,9 +150,9 @@ public:
     free(format_vals);
   }
 
-  void get_genotype(std::string& sample, int& gt_a, int& gt_b);
+  void get_genotype(const std::string& sample, int& gt_a, int& gt_b) const;
 
-  void get_genotype(int sample_index, int& gt_a, int& gt_b){
+  void get_genotype(int sample_index, int& gt_a, int& gt_b) const{
     gt_a = gt_1_[sample_index];
     gt_b = gt_2_[sample_index];
   }
@@ -162,22 +160,22 @@ public:
 
 class VCFReader {
 private:
-  htsFile*    vcf_input_;
-  bcf_hdr_t*  vcf_header_;
-  kstring_t   vcf_line_;
-  bcf1_t*     vcf_record_;
-  tbx_t*      tbx_input_;
-  hts_itr_t*  tbx_iter_;
-  bool        jumped_;
-  int         chrom_index_;
+  htsFile*   vcf_input_;
+  kstring_t  vcf_line_;
+  bcf1_t*    vcf_record_;
+  tbx_t*     tbx_input_;
+  hts_itr_t* tbx_iter_;
+  bcf_hdr_t* vcf_header_;
+  bool       jumped_;
+  int        chrom_index_;
   std::vector<std::string> samples_;
   std::vector<std::string> chroms_;
   std::map<std::string, int> sample_indices_;
 
-  void open(std::string& filename);
+  void open(const std::string& filename);
 
 public:
-  VCFReader(std::string& filename){
+  explicit VCFReader(const std::string& filename){
     vcf_input_  = NULL;
     tbx_input_  = NULL;
     tbx_iter_   = NULL;
@@ -198,7 +196,7 @@ public:
     bcf_destroy(vcf_record_);
   }
 
-  bool has_sample(std::string& sample) const{
+  bool has_sample(const std::string& sample) const{
     return sample_indices_.find(sample) != sample_indices_.end();
   }
 

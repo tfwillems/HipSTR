@@ -41,7 +41,7 @@ class BaseQuality {
    * Returns the log likelihood that the base with the
    * provided quality score should match a different base
    */
-  double log_prob_error(char quality) {
+  double log_prob_error(char quality) const {
     int qual_index = quality - MIN_BASE_QUALITY;
     if (quality < MIN_BASE_QUALITY){
       //std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using minimum expected score " << std::endl; 
@@ -60,7 +60,7 @@ class BaseQuality {
    * Returns the log likelihood that the base with the
    * provided quality score was observed without error
    */  
-  double log_prob_correct(char quality){
+  double log_prob_correct(char quality) const {
     int qual_index = quality - MIN_BASE_QUALITY;
     if (quality < MIN_BASE_QUALITY){
       ///std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using minimum expected score " << std::endl; 
@@ -74,14 +74,14 @@ class BaseQuality {
       return log_correct_[qual_index];
   }
 
-  double sum_log_prob_correct(const std::string& qualities){
+  double sum_log_prob_correct(const std::string& qualities) const {
     double sum = 0.0;
     for (unsigned int i = 0; i < qualities.size(); i++)
       sum += log_prob_correct(qualities[i]);
     return sum;
   }
 
-  std::string median_base_qualities(const std::vector<const std::string*>& qualities);
+  std::string median_base_qualities(const std::vector<const std::string*>& qualities) const;
 };
 
 #endif

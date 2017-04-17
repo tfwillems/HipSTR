@@ -19,7 +19,7 @@ class RepeatBlock : public HapBlock {
     bool reversed_;
 
  public:
- RepeatBlock(int32_t start, int32_t end, std::string ref_seq, int period, StutterModel* stutter_model, const bool reversed=false): HapBlock(start, end, ref_seq){
+ RepeatBlock(int32_t start, int32_t end, const std::string& ref_seq, int period, const StutterModel* stutter_model, const bool reversed=false): HapBlock(start, end, ref_seq){
       repeat_info_ = new RepeatStutterInfo(period, ref_seq, stutter_model);
       reversed_    = reversed;
       stutter_aligners_.push_back(new StutterAlignerClass(ref_seq, period, !reversed_, repeat_info_));
@@ -32,7 +32,7 @@ class RepeatBlock : public HapBlock {
       stutter_aligners_.clear();
     }
 
-    void add_alternate(std::string& alt){
+    void add_alternate(const std::string& alt){
       HapBlock::add_alternate(alt);
       repeat_info_->add_alternate_allele(alt);
       stutter_aligners_.push_back(new StutterAlignerClass(alt, repeat_info_->get_period(), !reversed_, repeat_info_));
@@ -53,7 +53,7 @@ class RepeatBlock : public HapBlock {
       return rev_block;
     }
 
-    RepeatBlock* remove_alleles(std::vector<int>& allele_indices){
+    RepeatBlock* remove_alleles(const std::vector<int>& allele_indices){
       std::set<int> bad_alleles(allele_indices.begin(), allele_indices.end());
       assert(bad_alleles.find(0) == bad_alleles.end());
 
@@ -64,6 +64,5 @@ class RepeatBlock : public HapBlock {
       return new_block;
     }
 };
-
 
 #endif

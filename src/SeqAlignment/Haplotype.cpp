@@ -5,7 +5,7 @@
 #include "Haplotype.h"
 #include "NeedlemanWunsch.h"
 
-bool Haplotype::position_to_haplotype_index(int32_t pos, int& haplotype_index){
+bool Haplotype::position_to_haplotype_index(int32_t pos, int& haplotype_index) const {
   haplotype_index = 0;
   if (inc_rev_){
     assert(pos > blocks_.back()->end() && pos <= blocks_.front()->start());
@@ -237,7 +237,7 @@ void Haplotype::go_to(int hap_index){
 }
 
 void Haplotype::print_block_structure(int max_ref_len, int max_other_len, bool indent,
-				      std::ostream& out){
+				      std::ostream& out) const {
   int max_rows = 0;
   for (int i = 0; i < num_blocks(); i++)
     max_rows = std::max(max_rows, blocks_[i]->num_options());

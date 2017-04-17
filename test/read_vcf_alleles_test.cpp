@@ -15,7 +15,7 @@ int main(int argc, char* argv[]){
 
   // Read list of regions
   std::vector<Region> regions;  
-  readRegions(region_file, regions, 1000, "", std::cerr);
+  readRegions(region_file, 1000, "", regions, std::cerr);
 
   VCF::VCFReader ref_vcf(vcf_file);
 
