@@ -13,14 +13,14 @@
 #include "HapBlock.h"
 #include "HTMLCreator.h"
 
-void getMaxInsertionSizes(std::vector<Alignment>& alignments, 
+void getMaxInsertionSizes(const std::vector<Alignment>& alignments,
 			  std::map<int32_t,int>& max_insertions){
   max_insertions.clear();
-  for (std::vector<Alignment>::iterator align_iter = alignments.begin(); align_iter != alignments.end(); align_iter++){
+  for (auto align_iter = alignments.begin(); align_iter != alignments.end(); ++align_iter){
     int32_t position = align_iter->get_start();
     const std::vector<CigarElement>& cigar_ops = align_iter->get_cigar_list();
     std::map<int32_t, int>::iterator insertion_iter;
-    for (std::vector<CigarElement>::const_iterator cigar_iter = cigar_ops.begin(); cigar_iter != cigar_ops.end(); cigar_iter++){
+    for (auto cigar_iter = cigar_ops.begin(); cigar_iter != cigar_ops.end(); ++cigar_iter){
       char type  = cigar_iter->get_type();
       int length = cigar_iter->get_num();
       switch(type){
@@ -44,13 +44,11 @@ void getMaxInsertionSizes(std::vector<Alignment>& alignments,
   }
 }
 
-void overlayAlignments(std::vector<Alignment>& alignments, 
-		       std::map<int32_t,int>& max_insertions, 
-		       std::vector<std::string>& results, 
-		       int32_t& min_start, int32_t& max_stop){						
+void overlayAlignments(const std::vector<Alignment>& alignments, std::map<int32_t,int>& max_insertions,
+		       std::vector<std::string>& results, int32_t& min_start, int32_t& max_stop){
   min_start = INT_MAX;
   max_stop  = INT_MIN;
-  for (std::vector<Alignment>::iterator align_iter = alignments.begin(); align_iter != alignments.end(); align_iter++)
+  for (auto align_iter = alignments.begin(); align_iter != alignments.end(); ++align_iter)
     min_start = std::min(min_start, align_iter->get_start());
 
   results.clear();
@@ -58,7 +56,7 @@ void overlayAlignments(std::vector<Alignment>& alignments,
   getMaxInsertionSizes(alignments, max_insertions);
   max_insertions.insert(std::pair<int32_t,int>(INT_MAX, -1)); // Dummy insertion so that there's always an insertion after the end of the reads
   
-  for (std::vector<Alignment>::iterator align_iter = alignments.begin(); align_iter != alignments.end(); align_iter++){
+  for (auto align_iter = alignments.begin(); align_iter != alignments.end(); ++align_iter){
     std::stringstream result;
     const std::string& nucleotides = align_iter->get_sequence();
     const std::vector<CigarElement>& cigar_ops = align_iter->get_cigar_list();
@@ -74,7 +72,7 @@ void overlayAlignments(std::vector<Alignment>& alignments,
       if (i == insertion_iter->first){
 	for (int j = 0; j < insertion_iter->second; j++)
 	  result << SPACE_CHAR;
-	insertion_iter++;
+	++insertion_iter;
       }
       if (i != position)
 	result << SPACE_CHAR;
@@ -82,7 +80,7 @@ void overlayAlignments(std::vector<Alignment>& alignments,
     
     while (true){
       if (length == 0){
-	cigar_iter++;
+	++cigar_iter;
 	if (cigar_iter == cigar_ops.end())
 	  break;
 	type   = cigar_iter->get_type();
@@ -99,7 +97,7 @@ void overlayAlignments(std::vector<Alignment>& alignments,
 	else
 	  for (int i = 0; i < num_ins; i++)
 	    result << NOT_APP_CHAR;
-	insertion_iter++;
+	++insertion_iter;
       }
       
       if (type == 'M' || type == '=' || type == 'X'){
@@ -141,14 +139,9 @@ void overlayAlignments(std::vector<Alignment>& alignments,
   }
 }
 
-std::string arrangeReferenceString(std::string& chrom_seq, 
-				   std::map<int32_t,int>& max_insertions,
-				   std::string& locus_id,
-				   int32_t str_start,
-				   int32_t str_stop,
-				   int32_t min_start,
-				   int32_t max_stop,
-				   bool draw_locus_id,
+std::string arrangeReferenceString(const std::string& chrom_seq, std::map<int32_t,int>& max_insertions,
+				   const std::string& locus_id, int32_t str_start, int32_t str_stop,
+				   int32_t min_start, int32_t max_stop, bool draw_locus_id,
 				   std::ostream& output){
   // Hack to deal with lobSTR VCF off by 1
   int offset = 1;
@@ -162,7 +155,7 @@ std::string arrangeReferenceString(std::string& chrom_seq,
 	ref_result << NOT_APP_CHAR;
 	within_locus.push_back(false);
       }
-      insertion_iter++;
+      ++insertion_iter;
     }
     ref_result << chrom_seq[i];
     within_locus.push_back((i>=str_start-offset && i <= str_stop-offset));
@@ -173,19 +166,18 @@ std::string arrangeReferenceString(std::string& chrom_seq,
   return ref_alignment;
 }
 
-void get_alignment_bounds(std::vector<Alignment>& alignments, 
-			  int32_t& min_start, 
-			  int32_t& max_stop){
+void get_alignment_bounds(const std::vector<Alignment>& alignments,
+			  int32_t& min_start, int32_t& max_stop){
   min_start = INT_MAX; max_stop = INT_MIN;  
-  for (std::vector<Alignment>::const_iterator iter = alignments.begin(); iter != alignments.end(); iter++){
+  for (auto iter = alignments.begin(); iter != alignments.end(); ++iter){
     min_start = std::min(min_start, iter->get_start());
     max_stop  = std::max(max_stop,  iter->get_stop());
   }
 }
 
-void visualizeAlignments(std::vector< std::vector<Alignment> >& alns, std::vector<std::string>& sample_names, 
-			 std::map<std::string, std::string>& sample_info, std::vector<HapBlock*>& hap_blocks,
-			 std::string& chrom_seq, std::string locus_id, bool draw_locus_id,
+void visualizeAlignments(const std::vector< std::vector<Alignment> >& alns, const std::vector<std::string>& sample_names,
+			 const std::map<std::string, std::string>& sample_info, const std::vector<HapBlock*>& hap_blocks,
+			 const std::string& chrom_seq, const std::string& locus_id, bool draw_locus_id,
 			 std::ostream& output) {
   assert(hap_blocks.size() == 3 && alns.size() == sample_names.size());
 
@@ -200,7 +192,7 @@ void visualizeAlignments(std::vector< std::vector<Alignment> >& alns, std::vecto
   std::vector<std::string> alignment_samples;
   for (unsigned int i = 0; i < sample_ordering.size(); i++){
     std::string& sample = sample_ordering[i].first;
-    std::vector<Alignment>& sample_alns = alns[sample_ordering[i].second];
+    const std::vector<Alignment>& sample_alns = alns[sample_ordering[i].second];
     alignments.insert(alignments.end(), sample_alns.begin(), sample_alns.end());
     for (unsigned int j = 0; j < sample_alns.size(); j++)
       alignment_samples.push_back(sample);

@@ -1,7 +1,7 @@
 #include "error.h"
 #include "directed_graph.h"
 
-void DirectedGraph::increment_edge(std::string& val_1, std::string& val_2, int delta){
+void DirectedGraph::increment_edge(const std::string& val_1, const std::string& val_2, int delta){
   Node* source  = get_node(val_1);
   Node* dest    = get_node(val_2);
   int source_id = source->get_id();
@@ -24,7 +24,7 @@ void DirectedGraph::increment_edge(std::string& val_1, std::string& val_2, int d
   edges_.push_back(new_edge);
 }
 
-bool DirectedGraph::can_sort_topologically(){
+bool DirectedGraph::can_sort_topologically() const {
   std::map<int, int> parent_counts;
   std::vector<int> sources;
   for (unsigned int i = 0; i < nodes_.size(); i++){
@@ -63,9 +63,7 @@ bool DirectedGraph::can_sort_topologically(){
     return false; // Only a DAG if no unprocessed individuals are left
 }
 
-
-
-void DirectedGraph::print(std::ostream& out){
+void DirectedGraph::print(std::ostream& out) const {
   assert(nodes_.size() == node_labels_.size());
 
   out << "NODES" << "\n";

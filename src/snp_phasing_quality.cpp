@@ -1,12 +1,7 @@
 #include "snp_phasing_quality.h"
 #include "error.h"
 
-void printCigarString(BamAlignment& aln, std::ostream& out){
-  for (unsigned int i = 0; i < aln.CigarData().size(); ++i)
-    out << aln.CigarData()[i].Length << aln.CigarData()[i].Type;
-}
-
-void extract_bases_and_qualities(BamAlignment& aln, std::vector<SNP>& snps,
+void extract_bases_and_qualities(BamAlignment& aln, const std::vector<SNP>& snps,
 				 std::vector<char>& bases, std::vector<char>& quals){
   assert(bases.size() == 0 && quals.size() == 0);
   assert(aln.CigarData().size() > 0);
@@ -65,7 +60,7 @@ void extract_bases_and_qualities(BamAlignment& aln, std::vector<SNP>& snps,
   assert(bases.size() == snps.size() && snp_index == snps.size());
 }
 
-void add_log_phasing_probs(BamAlignment& aln, SNPTree* tree, BaseQuality& base_qualities,
+void add_log_phasing_probs(BamAlignment& aln, const SNPTree* tree, const BaseQuality& base_qualities,
 			   double& log_p1, double& log_p2, int32_t& p1_match_count, int32_t& p2_match_count, int32_t& mismatch_count){
   std::vector<SNP> snps;  
   // NOTE: GetEndPosition() returns a non-inclusive position. Use -1 to only find SNPs overlapped by read
@@ -97,9 +92,8 @@ void add_log_phasing_probs(BamAlignment& aln, SNPTree* tree, BaseQuality& base_q
   }
 }
 
-
 void calc_het_snp_factors(std::vector<BamAlignment>& str_reads, std::vector<BamAlignment>& mate_reads,
-			  BaseQuality& base_qualities, SNPTree* snp_tree,
+			  const BaseQuality& base_qualities, const SNPTree* snp_tree,
 			  std::vector<double>& log_p1s, std::vector<double>& log_p2s, int32_t& match_count, int32_t& mismatch_count) {
   assert(str_reads.size() == mate_reads.size());
   int32_t p1_match_count = 0, p2_match_count = 0;
@@ -113,7 +107,7 @@ void calc_het_snp_factors(std::vector<BamAlignment>& str_reads, std::vector<BamA
   match_count += (p1_match_count + p2_match_count);
 }
 
-void calc_het_snp_factors(std::vector<BamAlignment>& str_reads, BaseQuality& base_qualities, SNPTree* snp_tree,
+void calc_het_snp_factors(std::vector<BamAlignment>& str_reads, const BaseQuality& base_qualities, const SNPTree* snp_tree,
 			  std::vector<double>& log_p1s, std::vector<double>& log_p2s, int32_t& match_count, int32_t& mismatch_count){
   int32_t p1_match_count = 0, p2_match_count = 0;
   for (unsigned int i = 0; i < str_reads.size(); i++){

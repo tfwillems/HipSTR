@@ -9,7 +9,7 @@
 #include "RepeatBlock.h"
 #include "../stringops.h"
 
-void HaplotypeGenerator::trim(int ideal_min_length, int32_t& region_start, int32_t& region_end, std::vector<std::string>& sequences){
+void HaplotypeGenerator::trim(int ideal_min_length, int32_t& region_start, int32_t& region_end, std::vector<std::string>& sequences) const {
   int min_len = INT_MAX;
   for (unsigned int i = 0; i < sequences.size(); i++)
     min_len = std::min(min_len, (int)sequences[i].size());
@@ -79,7 +79,7 @@ void HaplotypeGenerator::trim(int ideal_min_length, int32_t& region_start, int32
   region_end   -= right_trim;
 }
 
-bool HaplotypeGenerator::extract_sequence(Alignment& aln, int32_t region_start, int32_t region_end, std::string& seq){
+bool HaplotypeGenerator::extract_sequence(const Alignment& aln, int32_t region_start, int32_t region_end, std::string& seq) const {
   if (aln.get_start() >= region_start) return false;
   if (aln.get_stop()  <= region_end)   return false;
 
@@ -154,9 +154,9 @@ bool HaplotypeGenerator::extract_sequence(Alignment& aln, int32_t region_start, 
   return false;
 }
 
-void HaplotypeGenerator::gen_candidate_seqs(std::string& ref_seq, int ideal_min_length,
-					    std::vector< std::vector<Alignment> >& alignments, std::vector<std::string>& vcf_alleles,
-					    int32_t& region_start, int32_t& region_end, std::vector<std::string>& sequences){
+void HaplotypeGenerator::gen_candidate_seqs(const std::string& ref_seq, int ideal_min_length,
+					    const std::vector< std::vector<Alignment> >& alignments, const std::vector<std::string>& vcf_alleles,
+					    int32_t& region_start, int32_t& region_end, std::vector<std::string>& sequences) const {
   assert(sequences.empty());
   std::map<std::string, double> sample_counts;
   std::map<std::string, int> read_counts, must_inc;
@@ -240,8 +240,8 @@ void HaplotypeGenerator::gen_candidate_seqs(std::string& ref_seq, int ideal_min_
   trim(ideal_min_length, region_start, region_end, sequences);
 }
 
-void HaplotypeGenerator::get_aln_bounds(std::vector< std::vector<Alignment> >& alignments,
-					int32_t& min_aln_start, int32_t& max_aln_stop){
+void HaplotypeGenerator::get_aln_bounds(const std::vector< std::vector<Alignment> >& alignments,
+					int32_t& min_aln_start, int32_t& max_aln_stop) const {
   // Determine the minimum and maximum alignment boundaries
   min_aln_start = INT_MAX;
   max_aln_stop  = INT_MIN;
@@ -253,8 +253,8 @@ void HaplotypeGenerator::get_aln_bounds(std::vector< std::vector<Alignment> >& a
   }
 }
 
-bool HaplotypeGenerator::add_vcf_haplotype_block(int32_t pos, std::string& chrom_seq,
-						 std::vector<std::string>& vcf_alleles, StutterModel* stutter_model){
+bool HaplotypeGenerator::add_vcf_haplotype_block(int32_t pos, const std::string& chrom_seq,
+						 const std::vector<std::string>& vcf_alleles, const StutterModel* stutter_model){
   if (!failure_msg_.empty())
     printErrorAndDie("Unable to add a VCF haplotype block, as a previous addition failed");
   assert(!vcf_alleles.empty());
@@ -291,8 +291,8 @@ bool HaplotypeGenerator::add_vcf_haplotype_block(int32_t pos, std::string& chrom
   return true;
 }
 
-bool HaplotypeGenerator::add_haplotype_block(const Region& region, std::string& chrom_seq, std::vector< std::vector<Alignment> >& alignments,
-					     std::vector<std::string>& vcf_alleles, StutterModel* stutter_model){
+bool HaplotypeGenerator::add_haplotype_block(const Region& region, const std::string& chrom_seq, const std::vector< std::vector<Alignment> >& alignments,
+					     const std::vector<std::string>& vcf_alleles, const StutterModel* stutter_model){
   if (!failure_msg_.empty())
     printErrorAndDie("Unable to add a haplotype block, as a previous addition failed");
 
@@ -352,7 +352,7 @@ bool HaplotypeGenerator::add_haplotype_block(const Region& region, std::string& 
   return true;
 }
 
-bool HaplotypeGenerator::fuse_haplotype_blocks(std::string& chrom_seq){
+bool HaplotypeGenerator::fuse_haplotype_blocks(const std::string& chrom_seq){
   if (!failure_msg_.empty())
     printErrorAndDie("Unable to fuse haplotype blocks, as previous additions failed");
   if (hap_blocks_.empty())

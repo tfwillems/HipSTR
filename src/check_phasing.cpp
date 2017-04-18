@@ -19,7 +19,7 @@
 #include "version.h"
 #include "vcf_reader.h"
 
-bool file_exists(std::string path){
+bool file_exists(const std::string& path){
   return (access(path.c_str(), F_OK) != -1);
 }
 
@@ -56,10 +56,9 @@ void parse_command_line_args(int argc, char** argv, std::string& fam_file, std::
   };
 
   std::string filename;
-  int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "f:o:r:v:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "f:o:r:v:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -149,7 +148,7 @@ int main(int argc, char** argv){
   // Read the STR regions
   std::vector<Region> regions;
   int32_t max_regions = 1000000000;
-  readRegions(region_file, regions, max_regions, chrom, logger);
+  readRegions(region_file, max_regions, chrom, regions, logger);
   orderRegions(regions);
   
   // Build the haplotype tracker

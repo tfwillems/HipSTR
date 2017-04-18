@@ -23,10 +23,10 @@ class Edge {
     weight_      = weight;
   }
 
-  int  get_id()                  { return id_;            }
-  int  get_source()              { return source_;        }
-  int  get_destination()         { return destination_;   }
-  int  get_weight()              { return weight_;        }
+  int  get_id()            const { return id_;            }
+  int  get_source()        const { return source_;        }
+  int  get_destination()   const { return destination_;   }
+  int  get_weight()        const { return weight_;        }
   void set_id(int id)            { id_          = id;     }
   void set_source(int source)    { source_      = source; }
   void set_destination(int dest) { destination_ = dest;   }
@@ -50,16 +50,16 @@ class Node {
   }
 
  public:
-  Node (int id){
+  explicit Node (int id){
     id_ = id;
   }
 
-  int get_id()       { return id_; }
+  int get_id() const { return id_; }
   void set_id(int id){ id_ = id;   }
-  std::vector<Edge*>& get_incident_edges() { return arriving_;         }
-  std::vector<Edge*>& get_departing_edges(){ return departing_;        }
-  int num_departing_edges()                { return departing_.size(); }
-  int num_incident_edges()                 { return arriving_.size();  }
+  std::vector<Edge*>& get_incident_edges()  { return arriving_;   }
+  std::vector<Edge*>& get_departing_edges() { return departing_;  }
+  int num_departing_edges()           const { return departing_.size(); }
+  int num_incident_edges()            const { return arriving_.size();  }
 
   void add_edge(Edge* edge){
     bool added = false;
@@ -87,7 +87,7 @@ class Node {
     assert(removed);
   }
 
-  void get_child_nodes(std::vector<int>& children){
+  void get_child_nodes(std::vector<int>& children) const {
     for (unsigned int i = 0; i < departing_.size(); i++)
       children.push_back(departing_[i]->get_destination());
   }
@@ -102,11 +102,9 @@ protected:
   std::map<std::string, int> node_map_;
   
 public:
-  DirectedGraph(){}
+  bool can_sort_topologically() const;
 
-  bool can_sort_topologically();
-
-  bool has_cycles(){
+  bool has_cycles() const {
     return !can_sort_topologically();
   }
 
@@ -117,11 +115,11 @@ public:
       delete edges_[i];
   }
 
-  bool has_node(std::string& value){
+  bool has_node(const std::string& value) const {
     return node_map_.find(value) != node_map_.end();
   }
 
-  Node* get_node(std::string& value){
+  Node* get_node(const std::string& value){
     auto node_iter = node_map_.find(value);
     if (node_iter != node_map_.end())
       return nodes_[node_iter->second];
@@ -132,12 +130,12 @@ public:
     return nodes_.back();
   }
 
-  const std::string& get_node_label(int node_id){
+  const std::string& get_node_label(int node_id) const {
     return node_labels_[node_id];
   }
 
-  void increment_edge(std::string& val_1, std::string& val_2, int delta=1);
-  void print(std::ostream& out);
+  void increment_edge(const std::string& val_1, const std::string& val_2, int delta=1);
+  void print(std::ostream& out) const;
 };
 
 #endif

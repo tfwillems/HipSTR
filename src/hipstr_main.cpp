@@ -19,7 +19,7 @@
 #include "vcf_reader.h"
 #include "version.h"
 
-bool file_exists(std::string path){
+bool file_exists(const std::string& path){
   return (access(path.c_str(), F_OK) != -1);
 }
 
@@ -175,10 +175,9 @@ void parse_command_line_args(int argc, char** argv,
   };
 
   std::string filename;
-  int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "b:B:c:d:D:e:f:F:g:i:j:k:l:m:n:o:p:q:r:s:S:t:u:v:w:x:y:z:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "b:B:c:d:D:e:f:F:g:i:j:k:l:m:n:o:p:q:r:s:S:t:u:v:w:x:y:z:", long_options, &option_index);
     if (c == -1)
       break;
 
