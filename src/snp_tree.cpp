@@ -2,6 +2,7 @@
 
 #include <set>
 
+#include "denovo_scanner.h"
 #include "error.h"
 #include "snp_tree.h"
 
@@ -10,7 +11,7 @@ std::ostream& operator<<(std::ostream& out, SNP& snp) {
   return out;
 }
 
-bool in_any_region(VCF::Variant& variant, const std::vector<Region>& skip_regions, int32_t skip_padding){
+bool in_any_region(const VCF::Variant& variant, const std::vector<Region>& skip_regions, int32_t skip_padding){
   for (auto region_iter = skip_regions.begin(); region_iter != skip_regions.end(); region_iter++)
     if (variant.get_position() >= region_iter->start() - skip_padding)
       if (variant.get_position() <= region_iter->stop() + skip_padding)
@@ -18,7 +19,7 @@ bool in_any_region(VCF::Variant& variant, const std::vector<Region>& skip_region
   return false;
 }
 
-void filter_snps(std::vector<SNP>& snps, std::set<int32_t>& bad_sites){
+void filter_snps(std::vector<SNP>& snps, const std::set<int32_t>& bad_sites){
   int insert_index = 0;
   for (int i = 0; i < snps.size(); i++)
     if (bad_sites.find(snps[i].pos()+1) == bad_sites.end()) // +1 required b/c bad sites are 1-based, while SNPs are 0-based
@@ -81,15 +82,14 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, co
   logger << "Region contained a total of " << locus_count << " valid SNPs" << std::endl;
 
   // Filter out SNPs on a per-sample basis using any available pedigree information
-  int MAX_BEST_SCORE = 10;
-  int MIN_SECOND_BEST_SCORE = 100;
   if (tracker != NULL){
     int32_t filt_count = 0, unfilt_count = 0;
     const std::vector<NuclearFamily>& families = tracker->families();
     int family_index = 0;
     for (auto family_iter = families.begin(); family_iter != families.end(); ++family_iter, ++family_index){
       std::vector<int> maternal_indices, paternal_indices;
-      bool good_haplotypes = tracker->infer_haplotype_inheritance(*family_iter, MAX_BEST_SCORE, MIN_SECOND_BEST_SCORE, maternal_indices, paternal_indices, bad_sites_by_family[family_index]);
+      bool good_haplotypes = tracker->infer_haplotype_inheritance(*family_iter, DenovoScanner::MAX_BEST_SCORE, DenovoScanner::MIN_SECOND_BEST_SCORE,
+								  maternal_indices, paternal_indices, bad_sites_by_family[family_index]);
 
       // If the family haplotypes aren't good enough, clear all of the sample's SNPs. Otherwise, remove only the bad sites from each sample's list
       for (auto sample_iter = family_iter->get_samples().begin(); sample_iter != family_iter->get_samples().end(); sample_iter++){
@@ -107,11 +107,10 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, co
     }
     logger << "Removed " << filt_count << " out of " << filt_count+unfilt_count << " individual heterozygous SNP calls due to pedigree uncertainties or inconsistencies" << std::endl;
   }
-  
 
   // Create SNP trees
   for (unsigned int i = 0; i < snps_by_sample.size(); i++){
-    //logger << "Building interval tree for " << variant_file.sampleNames[i] << " containing " << snps_by_sample[i].size() << " heterozygous SNPs" << std::endl;
+    //logger << "Building SNP tree for " << variant_file.sampleNames[i] << " containing " << snps_by_sample[i].size() << " heterozygous SNPs" << std::endl;
     snp_trees.push_back(new SNPTree(snps_by_sample[i]));
   }
 

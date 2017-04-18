@@ -17,7 +17,7 @@
 #include "version.h"
 #include "vcf_reader.h"
 
-bool file_exists(std::string path){
+bool file_exists(const std::string& path){
   return (access(path.c_str(), F_OK) != -1);
 }
 
@@ -82,10 +82,9 @@ void parse_command_line_args(int argc, char** argv, std::string& fam_file, std::
   };
 
   std::string filename;
-  int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "c:d:f:l:m:o:t:v:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "c:d:f:l:m:o:t:v:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -144,7 +143,7 @@ void parse_command_line_args(int argc, char** argv, std::string& fam_file, std::
   }
 }
 
-void read_site_skip_list(std::string input_file, std::set<std::string>& sites_to_skip){
+void read_site_skip_list(const std::string& input_file, std::set<std::string>& sites_to_skip){
   sites_to_skip.clear();
   std::ifstream input(input_file.c_str());
   std::string line;
@@ -262,5 +261,5 @@ int main(int argc, char** argv){
   if (!log_file.empty())
     log_.close();
 
-  return 0;  
+  return 0;
 }

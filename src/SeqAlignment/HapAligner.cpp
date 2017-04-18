@@ -263,7 +263,7 @@ void HapAligner::calc_best_seed_position(int32_t region_start, int32_t region_en
  * Identify the base with the largest minimum distance from an insertion, a deletion and a stutter block
  * as defined by its alignment to the reference genome
  */
-int HapAligner::calc_seed_base(Alignment& aln){
+int HapAligner::calc_seed_base(const Alignment& aln){
   int32_t pos          = aln.get_start();
   int best_seed = -1, cur_base = 0, max_dist = MIN_SEED_DIST;
   for (auto cigar_iter = aln.get_cigar_list().begin(); cigar_iter != aln.get_cigar_list().end(); cigar_iter++){
@@ -303,7 +303,6 @@ int HapAligner::calc_seed_base(Alignment& aln){
     }
     default: {
       printErrorAndDie("Unrecognized CIGAR char in calc_seed_base()");
-      break;  
     }
     }
   }
@@ -314,7 +313,7 @@ int HapAligner::calc_seed_base(Alignment& aln){
   return best_seed;
 }
 
-void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality, std::vector<bool>& realign_read,
+void HapAligner::process_reads(const std::vector<Alignment>& alignments, int init_read_index, const BaseQuality* base_quality, const std::vector<bool>& realign_read,
 			       double* aln_probs, int* seed_positions){
   assert(alignments.size() == realign_read.size());
   AlignmentTrace trace(fw_haplotype_->num_blocks());
@@ -567,7 +566,7 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq, cons
   return aln_ss.str();
 }
 
-void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_quality, bool retrace_aln,
+void HapAligner::process_read(const Alignment& aln, int seed_base, const BaseQuality* base_quality, bool retrace_aln,
 			      double* prob_ptr, AlignmentTrace& trace){
   assert(seed_base != -1);
   assert(aln.get_sequence().size() == aln.get_base_qualities().size());
@@ -705,7 +704,7 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
   delete [] base_log_correct;
 }
 
-AlignmentTrace* HapAligner::trace_optimal_aln(Alignment& orig_aln, int seed_base, int best_haplotype, BaseQuality* base_quality){
+AlignmentTrace* HapAligner::trace_optimal_aln(const Alignment& orig_aln, int seed_base, int best_haplotype, const BaseQuality* base_quality){
   fw_haplotype_->go_to(best_haplotype);
   fw_haplotype_->fix();
   rev_haplotype_->go_to(best_haplotype);

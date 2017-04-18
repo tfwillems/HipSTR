@@ -16,7 +16,6 @@ class HapAligner {
   Haplotype* rev_haplotype_;
   std::vector<bool> realign_to_hap_;
   std::vector<HapBlock*> rev_blocks_;
-
   std::vector<int32_t> repeat_starts_;
   std::vector<int32_t> repeat_ends_;
 
@@ -75,19 +74,19 @@ class HapAligner {
   /** 
    * Returns the 0-based index into the sequence string that should be used as the seed for alignment or -1 if no valid seed exists
    **/
-  int calc_seed_base(Alignment& alignment);
+  int calc_seed_base(const Alignment& alignment);
 
-  void process_read(Alignment& aln, int seed_base, BaseQuality* base_quality, bool retrace_aln,
+  void process_read(const Alignment& aln, int seed_base, const BaseQuality* base_quality, bool retrace_aln,
 		    double* prob_ptr, AlignmentTrace& traced_aln);
 
-  void process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality, std::vector<bool>& realign_read,
+  void process_reads(const std::vector<Alignment>& alignments, int init_read_index, const BaseQuality* base_quality, const std::vector<bool>& realign_read,
 		     double* aln_probs, int* seed_positions);
 
   /*
     Retraces the Alignment's optimal alignment to the provided haplotype.
     Returns the result as a new Alignment relative to the reference haplotype
    */
-  AlignmentTrace* trace_optimal_aln(Alignment& orig_aln, int seed_base, int best_haplotype, BaseQuality* base_quality);
+  AlignmentTrace* trace_optimal_aln(const Alignment& orig_aln, int seed_base, int best_haplotype, const BaseQuality* base_quality);
 };
 
 #endif

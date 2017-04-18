@@ -15,7 +15,7 @@
 
 class EMStutterGenotyper: public Genotyper {
  private:
-  int motif_len_;                     // # bp in STR motif
+  int motif_len_;                     // Number of base pairs in STR motif
   int* allele_index_;                 // Index of each read's STR size
   StutterModel* stutter_model_;
   std::vector<int> bps_per_allele_;   // Size of each STR allele in bps
@@ -44,10 +44,10 @@ class EMStutterGenotyper: public Genotyper {
 
  public:
  EMStutterGenotyper(bool haploid, int motif_length,
-		    std::vector< std::vector<int> >& num_bps,
-		    std::vector< std::vector<double> >& log_p1,
-		    std::vector< std::vector<double> >& log_p2,
-		    std::vector<std::string>& sample_names, int ref_allele): Genotyper(haploid, sample_names, log_p1, log_p2){
+		    const std::vector< std::vector<int> >& num_bps,
+		    const std::vector< std::vector<double> >& log_p1,
+		    const std::vector< std::vector<double> >& log_p2,
+		    const std::vector<std::string>& sample_names, int ref_allele): Genotyper(haploid, sample_names, log_p1, log_p2){
     assert(num_bps.size() == log_p1.size() && num_bps.size() == log_p2.size() && num_bps.size() == sample_names.size());
     motif_len_     = motif_length;
     use_pop_freqs_ = false;
@@ -105,7 +105,7 @@ class EMStutterGenotyper: public Genotyper {
   
   bool train(int max_iter, double min_LL_abs_change, double min_LL_frac_change, bool disp_stats, std::ostream& logger);
 
-  StutterModel* get_stutter_model(){
+  StutterModel* get_stutter_model() const {
     if (stutter_model_ == NULL)
       printErrorAndDie("No stutter model has been specified or learned");
     return stutter_model_;

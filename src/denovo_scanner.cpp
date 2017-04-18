@@ -16,7 +16,7 @@ std::string DenovoScanner::START_KEY   = "START";
 std::string DenovoScanner::END_KEY     = "END";
 std::string DenovoScanner::PERIOD_KEY  = "PERIOD";
 
-void DenovoScanner::write_vcf_header(std::string& full_command){
+void DenovoScanner::write_vcf_header(const std::string& full_command){
   denovo_vcf_ << "##fileformat=VCFv4.1" << "\n"
 	      << "##command=" << full_command << "\n";
 
@@ -42,7 +42,7 @@ void DenovoScanner::write_vcf_header(std::string& full_command){
 }
 
 
-void DenovoScanner::initialize_vcf_record(VCF::Variant& str_variant){
+void DenovoScanner::initialize_vcf_record(const VCF::Variant& str_variant){
   // VCF line format = CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE_1 SAMPLE_2 ... SAMPLE_N
   denovo_vcf_ << str_variant.get_chromosome() << "\t" << str_variant.get_position() << "\t" << str_variant.get_id() << "\t" << str_variant.get_allele(0) << "\t";
   if (str_variant.num_alleles() > 1){
@@ -72,7 +72,8 @@ void DenovoScanner::initialize_vcf_record(VCF::Variant& str_variant){
   denovo_vcf_ << "\t" << "CHILDREN:NOMUT:ANYMUT:DENOVO:OTHER";
 }
 
-void DenovoScanner::add_family_to_record(NuclearFamily& family, double total_ll_no_mutation, std::vector<double>& total_lls_one_denovo, std::vector<double>& total_lls_one_other){
+void DenovoScanner::add_family_to_record(const NuclearFamily& family, double total_ll_no_mutation,
+					 const std::vector<double>& total_lls_one_denovo, const std::vector<double>& total_lls_one_other){
   assert(total_lls_one_denovo.size() == total_lls_one_other.size() && total_lls_one_denovo.size() == family.get_children().size());
   const std::vector<std::string>& children = family.get_children();
 
@@ -98,7 +99,7 @@ void DenovoScanner::add_family_to_record(NuclearFamily& family, double total_ll_
     denovo_vcf_ << "," << total_lls_one_other[i];
 }
 
-void DenovoScanner::scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std::set<std::string>& sites_to_skip,
+void DenovoScanner::scan(const std::string& snp_vcf_file, VCF::VCFReader& str_vcf, const std::set<std::string>& sites_to_skip,
 			 std::ostream& logger){
   HaplotypeTracker haplotype_tracker(families_, snp_vcf_file, window_size_);
   VCF::Variant str_variant;

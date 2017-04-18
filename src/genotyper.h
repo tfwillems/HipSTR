@@ -42,7 +42,7 @@ class Genotyper {
 
   // Convert a list of integers into a string with key|count pairs separated by semicolons
   // e.g. -1,0,-1,2,2,1 will be converted into -1|2;0|1;1|1;2|2
-  std::string condense_read_counts(std::vector<int>& read_diffs){
+  std::string condense_read_counts(const std::vector<int>& read_diffs) const {
     if (read_diffs.size() == 0)
       return ".";
     std::map<int, int> diff_counts;
@@ -57,9 +57,9 @@ class Genotyper {
     return res.str();
   }
 
-  double log_homozygous_prior();
+  double log_homozygous_prior() const;
 
-  double log_heterozygous_prior();
+  double log_heterozygous_prior() const;
 
   virtual void init_log_sample_priors(double* log_sample_ptr);
 
@@ -71,11 +71,13 @@ class Genotyper {
   }
 
   // Determine the genotype associated with each sample based on the current genotype posteriors
-  void get_optimal_haplotypes(std::vector< std::pair<int, int> >& gts);
+  void get_optimal_haplotypes(std::vector< std::pair<int, int> >& gts) const;
 
  public:
-  Genotyper(bool haploid, std::vector<std::string>& sample_names,
-	    std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2){
+  Genotyper(bool haploid,
+	    const std::vector<std::string>& sample_names,
+	    const std::vector< std::vector<double> >& log_p1,
+	    const std::vector< std::vector<double> >& log_p2){
     assert(log_p1.size() == log_p2.size() && log_p1.size() == sample_names.size());
     num_reads_ = 0;
     for (unsigned int i = 0; i < log_p1.size(); i++)
@@ -122,13 +124,14 @@ class Genotyper {
       delete [] log_aln_probs_;
   }
 
-  double posterior_time() { return total_posterior_time_;  }
+  double posterior_time() const { return total_posterior_time_;  }
 
-  static void write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out);
+  static void write_vcf_header(const std::string& full_command, const std::vector<std::string>& sample_names,
+			       bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out);
 
-  void calc_PLs(const std::vector<double>& gls, std::vector<int>& pls);
+  void calc_PLs(const std::vector<double>& gls, std::vector<int>& pls) const;
 
-  double calc_gl_diff(const std::vector<double>& gls, int gt_a, int gt_b);
+  double calc_gl_diff(const std::vector<double>& gls, int gt_a, int gt_b) const;
 
   void extract_genotypes_and_likelihoods(int num_variants, std::vector<int>& hap_to_allele,
 					 std::vector< std::pair<int,int>  >& best_haplotypes,

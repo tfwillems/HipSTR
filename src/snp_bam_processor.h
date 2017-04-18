@@ -35,15 +35,15 @@ private:
   void process_10x_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 			 std::vector<BamAlnList>& mate_pairs_by_rg,
 			 std::vector<BamAlnList>& unpaired_strs_by_rg,
-			 std::vector<std::string>& rg_names, RegionGroup& region_group, std::string& chrom_seq,
+			 const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq,
 			 std::ostream& out);
 
   // Extract the haplotype for an alignment based on the HP tag
-  int get_haplotype(BamAlignment& aln);
+  int get_haplotype(BamAlignment& aln) const;
 
 
 public:
- SNPBamProcessor(bool use_bam_rgs, bool remove_pcr_dups):BamProcessor(use_bam_rgs, remove_pcr_dups){
+ SNPBamProcessor(bool use_bam_rgs, bool remove_pcr_dups) : BamProcessor(use_bam_rgs, remove_pcr_dups){
     match_count_     = 0;
     mismatch_count_  = 0;
     total_snp_phase_info_time_  = 0;
@@ -59,29 +59,29 @@ public:
       delete haplotype_tracker_;
   }
 
-  double total_snp_phase_info_time() { return total_snp_phase_info_time_; }
-  double locus_snp_phase_info_time() { return locus_snp_phase_info_time_; }
+  double total_snp_phase_info_time() const { return total_snp_phase_info_time_; }
+  double locus_snp_phase_info_time() const { return locus_snp_phase_info_time_; }
 
   void process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 		     std::vector<BamAlnList>& mate_pairs_by_rg,
 		     std::vector<BamAlnList>& unpaired_strs_by_rg,
-		     std::vector<std::string>& rg_names, RegionGroup& region_group, std::string& chrom_seq,
+		     const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq,
 		     std::ostream& out);
 
   virtual void analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
 					 std::vector< std::vector<double> >& log_p1s, 
 					 std::vector< std::vector<double> >& log_p2s,
-					 std::vector<std::string>& rg_names, RegionGroup& region_group, std::string& chrom_seq){
+					 const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq){
     log("Ignoring read phasing probabilties");
   }
 
-  void set_input_snp_vcf(std::string& vcf_file){
+  void set_input_snp_vcf(const std::string& vcf_file){
     if (phased_snp_vcf_ != NULL)
       delete phased_snp_vcf_;
     phased_snp_vcf_ = new VCF::VCFReader(vcf_file);
   }
 
-  void use_pedigree_to_filter_snps(std::vector<NuclearFamily>& families, std::string snp_vcf_file){
+  void use_pedigree_to_filter_snps(const std::vector<NuclearFamily>& families, const std::string& snp_vcf_file){
     if (phased_snp_vcf_ == NULL)
       printErrorAndDie("Cannot enforce pedigree structure on SNPs if no SNP VCF has been specified");
     if (haplotype_tracker_ != NULL)
@@ -103,6 +103,5 @@ public:
       logger() << "\nSNP matching statistics: " << match_count_ << "\t" << mismatch_count_ << "\n";
   }
 };
-
 
 #endif

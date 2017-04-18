@@ -26,13 +26,14 @@ class DenovoScanner {
   std::vector<NuclearFamily> families_;
   bgzfostream denovo_vcf_;
 
-  void write_vcf_header(std::string& full_command);
-  void initialize_vcf_record(VCF::Variant& str_variant);
-  void add_family_to_record(NuclearFamily& family, double total_ll_no_denovo, std::vector<double>& total_lls_one_denovo, std::vector<double>& total_lls_one_other);
+  void write_vcf_header(const std::string& full_command);
+  void initialize_vcf_record(const VCF::Variant& str_variant);
+  void add_family_to_record(const NuclearFamily& family, double total_ll_no_denovo,
+			    const std::vector<double>& total_lls_one_denovo, const std::vector<double>& total_lls_one_other);
 
  public:
-  DenovoScanner(std::vector<NuclearFamily>& families, std::string& output_file, std::string& full_command, bool use_pop_priors){
-    families_       = families;
+ DenovoScanner(const std::vector<NuclearFamily>& families, const std::string& output_file, const std::string& full_command, bool use_pop_priors)
+   : families_(families){
     use_pop_priors_ = use_pop_priors;
     window_size_    = 500000;
     denovo_vcf_.open(output_file.c_str());
@@ -41,7 +42,7 @@ class DenovoScanner {
     write_vcf_header(full_command);
   }
 
-  void scan(std::string& snp_vcf_file, VCF::VCFReader& str_vcf, std::set<std::string>& sites_to_skip,
+  void scan(const std::string& snp_vcf_file, VCF::VCFReader& str_vcf, const std::set<std::string>& sites_to_skip,
 	    std::ostream& logger);
 
   void finish(){ denovo_vcf_.close(); }

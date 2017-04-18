@@ -35,8 +35,8 @@ int getUsedPhysicalMemoryKB(){
   Left align BamAlignments in the provided vector and store those that successfully realign in the provided vector.
   Also extracts other information for successfully realigned reads into provided vectors.
  */
-void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::string& chrom_seq, std::vector<BamAlnList>& alignments,
-					     std::vector< std::vector<double> >& log_p1,       std::vector< std::vector<double> >& log_p2,
+void GenotyperBamProcessor::left_align_reads(const RegionGroup& region_group, const std::string& chrom_seq, std::vector<BamAlnList>& alignments,
+					     const std::vector< std::vector<double> >& log_p1, const std::vector< std::vector<double> >& log_p2,
 					     std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
 					     std::vector<Alignment>& left_alns){
   locus_left_aln_time_ = clock();
@@ -101,9 +101,9 @@ void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::str
 }
 
 StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>& alignments,
-							 std::vector< std::vector<double> >& log_p1s,
-							 std::vector< std::vector<double> >& log_p2s,
-							 bool haploid, std::vector<std::string>& rg_names, const Region& region){
+							 const std::vector< std::vector<double> >& log_p1s,
+							 const std::vector< std::vector<double> >& log_p2s,
+							 bool haploid, const std::vector<std::string>& rg_names, const Region& region){
   std::vector< std::vector<int> > str_bp_lengths(alignments.size());
   std::vector< std::vector<double> > str_log_p1s(alignments.size()), str_log_p2s(alignments.size());
   int inf_reads = 0;
@@ -160,7 +160,7 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
 void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
 						      std::vector< std::vector<double> >& log_p1s,
 						      std::vector< std::vector<double> >& log_p2s,
-						      std::vector<std::string>& rg_names, RegionGroup& region_group, std::string& chrom_seq){
+						      const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq){
   int32_t total_reads = 0;
   for (unsigned int i = 0; i < alignments.size(); i++)
     total_reads += alignments[i].size();

@@ -8,8 +8,8 @@
 void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 				    std::vector<BamAlnList>& mate_pairs_by_rg,
 				    std::vector<BamAlnList>& unpaired_strs_by_rg,
-				    std::vector<std::string>& rg_names, RegionGroup& region_group,
-				    std::string& chrom_seq, std::ostream& out){
+				    const std::vector<std::string>& rg_names, const RegionGroup& region_group,
+				    const std::string& chrom_seq, std::ostream& out){
   // Only use specialized function for 10X genomics BAMs if flag has been set
   if (bams_from_10x_){
     process_10x_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, region_group, chrom_seq, out);
@@ -98,7 +98,7 @@ void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
   analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region_group, chrom_seq);
 }
 
-int SNPBamProcessor::get_haplotype(BamAlignment& aln){
+int SNPBamProcessor::get_haplotype(BamAlignment& aln) const {
   if (!aln.HasTag(HAPLOTYPE_TAG.c_str()))
     return -1;
   int64_t haplotype;
@@ -116,8 +116,8 @@ int SNPBamProcessor::get_haplotype(BamAlignment& aln){
 void SNPBamProcessor::process_10x_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 					std::vector<BamAlnList>& mate_pairs_by_rg,
 					std::vector<BamAlnList>& unpaired_strs_by_rg,
-					std::vector<std::string>& rg_names, RegionGroup& region_group,
-					std::string& chrom_seq, std::ostream& out){
+					const std::vector<std::string>& rg_names, const RegionGroup& region_group,
+					const std::string& chrom_seq, std::ostream& out){
   locus_snp_phase_info_time_ = clock();
   assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
 
@@ -177,4 +177,3 @@ void SNPBamProcessor::process_10x_reads(std::vector<BamAlnList>& paired_strs_by_
   // Run any additional analyses using phasing probabilities
   analyze_reads_and_phasing(alignments, log_p1s, log_p2s, rg_names, region_group, chrom_seq);
 }
-

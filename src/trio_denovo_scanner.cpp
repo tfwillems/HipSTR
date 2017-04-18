@@ -15,7 +15,7 @@ std::string TrioDenovoScanner::START_KEY   = "START";
 std::string TrioDenovoScanner::END_KEY     = "END";
 std::string TrioDenovoScanner::PERIOD_KEY  = "PERIOD";
 
-void TrioDenovoScanner::write_vcf_header(std::string& full_command){
+void TrioDenovoScanner::write_vcf_header(const std::string& full_command){
   denovo_vcf_ << "##fileformat=VCFv4.1" << "\n"
 	      << "##command=" << full_command << "\n";
 
@@ -37,7 +37,7 @@ void TrioDenovoScanner::write_vcf_header(std::string& full_command){
   denovo_vcf_ << "\n";
 }
 
-void TrioDenovoScanner::initialize_vcf_record(VCF::Variant& str_variant){
+void TrioDenovoScanner::initialize_vcf_record(const VCF::Variant& str_variant){
   // VCF line format = CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE_1 SAMPLE_2 ... SAMPLE_N
   denovo_vcf_ << str_variant.get_chromosome() << "\t" << str_variant.get_position() << "\t" << str_variant.get_id() << "\t" << str_variant.get_allele(0) << "\t";
   if (str_variant.num_alleles() > 1){
