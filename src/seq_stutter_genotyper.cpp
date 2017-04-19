@@ -994,7 +994,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     int read_strand = 0;
     if (!haploid_ && ((hap_a != hap_b) || (std::abs(log_p1_[read_index]-log_p2_[read_index]) > TOLERANCE))){
       double v1 = log_p1_[read_index]+read_LL_ptr[hap_a], v2 = log_p2_[read_index]+read_LL_ptr[hap_b];
-      if (std::abs(v1-v2) > TOLERANCE){
+      if (std::abs(v1-v2) > STRAND_TOLERANCE){
 	read_strand = (v1 > v2 ? 0 : 1);
 	if (read_strand == 0)
 	  unique_reads_hap_one[sample_label_[read_index]]++;
@@ -1214,7 +1214,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     samp_info << allele_bp_diffs[gts[sample_index].first] << "|" << allele_bp_diffs[gts[sample_index].second];
     sample_results[sample_names[i]] = samp_info.str();
 
-    double allele_bias = 1;
+    double allele_bias = 1.01;
     if (!haploid_ && (gts[sample_index].first != gts[sample_index].second))
       allele_bias = compute_allele_bias(unique_reads_hap_one[sample_index], unique_reads_hap_two[sample_index]);
 
@@ -1254,7 +1254,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
 
     // Output the log-10 value of the allele bias p-value
     if (output_allele_bias){
-      if (std::abs(allele_bias-1) < TOLERANCE)
+      if (allele_bias > 1)
 	out << ":.:.";
       else
 	out << ":" << allele_bias << ":" << (unique_reads_hap_one[sample_index] + unique_reads_hap_two[sample_index]);

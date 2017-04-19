@@ -27,6 +27,8 @@ class SeqStutterGenotyper : public Genotyper {
  private:
   int MAX_REF_FLANK_LEN;
   int MAX_FLANK_HAPLOTYPES;
+  double STRAND_TOLERANCE;
+
   BaseQuality base_quality_;
   ReadPooler pooler_;
   int* pool_index_;                               // Pool index for each read
@@ -150,6 +152,7 @@ class SeqStutterGenotyper : public Genotyper {
     MIN_PATH_WEIGHT        = 2;
     MIN_KMER               = 10;
     MAX_KMER               = 15;
+    STRAND_TOLERANCE       = 0.1;
     initialized_           = false;
     reassemble_flanks_     = reassemble_flanks;
     total_hap_build_time_  = total_hap_aln_time_  = 0;
