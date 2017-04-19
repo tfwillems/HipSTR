@@ -393,7 +393,7 @@ Although this approach can be effective, it does not provide a quantitative meas
 
 We'll add more documentation and a tutorial regarding **DenovoFinder** in the coming weeks, but in the mean time, please type 
 
-	./DenovoFinder --help` 
+	./DenovoFinder --help
 
 for more information. As **DenovoFinder** is unpublished work, we ask that you don't publish any manuscripts using it until we've written a short publication describing its methodology and applications.
 
