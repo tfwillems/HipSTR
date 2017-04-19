@@ -188,7 +188,7 @@ public:
   }
 
   ~VCFReader(){
-    //if (vcf_input_  != NULL)   ;
+    if (vcf_input_  != NULL)   hts_close(vcf_input_);
     if (vcf_header_ != NULL)   bcf_hdr_destroy(vcf_header_);
     if (tbx_iter_   != NULL)   tbx_itr_destroy(tbx_iter_);
     if (tbx_input_  != NULL)   tbx_destroy(tbx_input_);
