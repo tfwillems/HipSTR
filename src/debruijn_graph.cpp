@@ -207,7 +207,7 @@ std::string DebruijnPath::get_sequence(DebruijnGraph* graph) const {
 
   DebruijnPath* parent = parent_;
   while (parent != NULL){
-    ss << graph->get_node_label(parent->node_id_).front();
+    ss << graph->get_node_label(parent->node_id_)[0];
     parent = parent->parent_;
   }
   std::string result = ss.str();

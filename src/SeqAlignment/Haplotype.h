@@ -64,7 +64,10 @@ class Haplotype {
   inline const std::string& get_seq(int block_index) const { return blocks_[block_index]->get_seq(counts_[block_index]); }
   inline const std::string& get_aln_info()           const { return hap_aln_info_[counter_]; }
   inline char get_first_char()                       const { return blocks_[0]->get_seq(counts_[0])[0]; }
-  inline char get_last_char()                        const { return blocks_.back()->get_seq(counts_[blocks_.size()-1]).back(); }
+  inline char get_last_char()                        const {
+    const std::string& seq = blocks_.back()->get_seq(counts_[blocks_.size()-1]);
+    return seq[seq.size()-1];
+  }
   inline HapBlock* get_block(int block_index)        const { return blocks_[block_index]; }
   inline HapBlock* get_first_block()                 const { return blocks_.front();      }
   inline HapBlock* get_last_block()                  const { return blocks_.back();       }

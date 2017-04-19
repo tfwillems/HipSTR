@@ -622,16 +622,18 @@ bool SeqStutterGenotyper::genotype(const std::string& chrom_seq, std::ostream& l
 void SeqStutterGenotyper::reorder_alleles(std::vector<std::string>& alleles,
 					  std::vector<int>& old_to_new, std::vector<int>& new_to_old){
   assert(old_to_new.empty() && new_to_old.empty());
-  std::vector< std::pair<std::string, int> > tuples;
+  std::map<std::string, int> old_indices;
   for (int i = 0; i < alleles.size(); i++)
-    tuples.push_back(std::pair<std::string, int>(alleles[i], i));
-  std::sort(tuples.begin()+1, tuples.end(), [](const std::pair<std::string, int>& left, const std::pair<std::string, int>& right) { 
-      return orderByLengthAndSequence(left.first, right.first);});
+    old_indices[alleles[i]] = i;
+
+  std::vector<std::string> new_alleles = alleles;
+  std::sort(new_alleles.begin()+1, new_alleles.end(), orderByLengthAndSequence);
 
   old_to_new = std::vector<int>(alleles.size(), -1);
-  for (int i = 0; i < tuples.size(); i++){
-    new_to_old.push_back(tuples[i].second);
-    old_to_new[tuples[i].second] = i;
+  for (int i = 0; i < new_alleles.size(); i++){
+    int old_index = old_indices[new_alleles[i]];
+    new_to_old.push_back(old_index);
+    old_to_new[old_index] = i;
   }
 }
 
