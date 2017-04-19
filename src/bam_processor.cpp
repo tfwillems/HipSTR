@@ -17,7 +17,7 @@ const std::string ALT_MAP_TAG           = "XA";
 const std::string PRIMARY_ALN_SCORE_TAG = "AS";
 const std::string SUBOPT_ALN_SCORE_TAG  = "XS";
 
-void BamProcessor::add_passes_filters_tag(BamAlignment& aln, std::string& passes){
+void BamProcessor::add_passes_filters_tag(BamAlignment& aln, const std::string& passes){
   if (aln.HasTag("PF"))
     if (!aln.RemoveTag("PF"))
       printErrorAndDie("Failed to remove existing passes filters tag from BAM alignment");
@@ -34,14 +34,14 @@ void BamProcessor::passes_filters(BamAlignment& aln, std::vector<bool>& region_p
     region_passes.push_back(passes[i] == '1' ? true : false);
 }
 
-void BamProcessor::write_passing_alignment(BamAlignment& aln, std::map<std::string, std::string>& rg_to_sample, BamWriter* writer){
+void BamProcessor::write_passing_alignment(BamAlignment& aln, const std::map<std::string, std::string>& rg_to_sample, BamWriter* writer){
   if (writer == NULL)
     return;
   if (!writer->SaveAlignment(aln))
     printErrorAndDie("Failed to save alignment");
 }
 
-void BamProcessor::write_filtered_alignment(BamAlignment& aln, std::string filter, std::map<std::string, std::string>& rg_to_sample, BamWriter* writer){
+void BamProcessor::write_filtered_alignment(BamAlignment& aln, std::string filter, const std::map<std::string, std::string>& rg_to_sample, BamWriter* writer){
   if (writer == NULL)
     return;
 
@@ -57,29 +57,34 @@ void BamProcessor::write_filtered_alignment(BamAlignment& aln, std::string filte
 }
 
 void BamProcessor::extract_mappings(BamAlignment& aln, const BamHeader* bam_header,
-				    std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs){
+				    std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs) const {
   assert(chrom_pos_pairs.size() == 0);
   if (aln.RefID() == -1 || aln.CigarData().size() == 0)
     return;
   assert(aln.RefID() < bam_header->num_seqs());
   chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(bam_header->ref_name(aln.RefID()), aln.Position()));
 
-  if (aln.HasTag(ALT_MAP_TAG.c_str())){
+  for (unsigned int i = 0; i < 2; i++){
+    std::string tag = (i == 0 ? "XA" : "SA");
+    if (!aln.HasTag(tag.c_str()))
+      continue;
     std::string alt_info;
-    if (!aln.GetStringTag(ALT_MAP_TAG.c_str(), alt_info))
-      printErrorAndDie("Failed to extract XA tag from BAM alignment");
+    if (!aln.GetStringTag(tag.c_str(), alt_info))
+      printErrorAndDie("Failed to extract XA or SA tag from BAM alignment");
     std::vector<std::string> alts;
     split_by_delim(alt_info, ';', alts);
-    for (unsigned int i = 0; i < alts.size(); i++){
+    for (unsigned int j = 0; j < alts.size(); j++){
       std::vector<std::string> tokens;
-      split_by_delim(alts[i], ',', tokens);
-      chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(tokens[0], std::abs(std::stol(tokens[1]))));
+      split_by_delim(alts[j], ',', tokens);
+      int32_t pos = std::abs(std::stol(tokens[1]));
+      if (tokens[0].compare(chrom_pos_pairs[0].first) != 0 || std::abs(pos - chrom_pos_pairs[0].second) > 200)
+	chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(tokens[0], pos));
     }
   }
 }
 
 void BamProcessor::get_valid_pairings(BamAlignment& aln_1, BamAlignment& aln_2, const BamHeader* bam_header,
-				      std::vector< std::pair<std::string, int32_t> >& p1, std::vector< std::pair<std::string, int32_t> >& p2){
+				      std::vector< std::pair<std::string, int32_t> >& p1, std::vector< std::pair<std::string, int32_t> >& p2) const {
   assert(p1.size() == 0 && p2.size() == 0);
   if (aln_1.RefID() == -1 || aln_2.RefID() == -1)
     return;
@@ -135,7 +140,7 @@ void BamProcessor::get_valid_pairings(BamAlignment& aln_1, BamAlignment& aln_2, 
   }
 }
 
-std::string BamProcessor::get_read_group(const BamAlignment& aln, std::map<std::string, std::string>& read_group_mapping){
+std::string BamProcessor::get_read_group(const BamAlignment& aln, const std::map<std::string, std::string>& read_group_mapping) const {
   std::string rg;
   if (!aln.GetStringTag("RG", rg))
     printErrorAndDie("Failed to retrieve BAM alignment's RG tag");
@@ -145,7 +150,7 @@ std::string BamProcessor::get_read_group(const BamAlignment& aln, std::map<std::
   return iter->second;
 }
 
-std::string BamProcessor::trim_alignment_name(BamAlignment& aln){
+std::string BamProcessor::trim_alignment_name(const BamAlignment& aln) const {
   std::string aln_name = aln.Name();
   if (aln_name.size() > 2){
     if (aln_name[aln_name.size()-2] == '/')
@@ -157,7 +162,7 @@ std::string BamProcessor::trim_alignment_name(BamAlignment& aln){
 // Returns true if the alignment spans at least one region in the group.
 // Reads that don't actually span the region but start/end with a soft clip are also counted as spanning,
 // as the clipped sequence frequently extends past the region
-bool BamProcessor::spans_a_region(const std::vector<Region>& regions, BamAlignment& alignment){
+bool BamProcessor::spans_a_region(const std::vector<Region>& regions, BamAlignment& alignment) const {
   for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
     if (alignment.Position() > region_iter->stop() || alignment.GetEndPosition() < region_iter->start())
       continue;
@@ -170,14 +175,14 @@ bool BamProcessor::spans_a_region(const std::vector<Region>& regions, BamAlignme
   return false;
 }
 
-void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string& chrom_seq, RegionGroup& region_group,
-					 std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library, std::vector<std::string>& rg_names,
+void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::string& chrom_seq, const RegionGroup& region_group,
+					 const std::map<std::string, std::string>& rg_to_sample, const std::map<std::string, std::string>& rg_to_library, std::vector<std::string>& rg_names,
 					 std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
 					 BamWriter* pass_writer, BamWriter* filt_writer){
   locus_read_filter_time_ = clock();
   assert(reader.get_merge_type() == BamCramMultiReader::ORDER_ALNS_BY_FILE);
 
-  int32_t read_count = 0, not_spanning = 0, unique_mapping = 0, read_has_N = 0, hard_clip = 0, split_alignment = 0, low_qual_score = 0, num_filt_unpaired_reads = 0;
+  int32_t read_count = 0, not_spanning = 0, unique_mapping = 0, read_has_N = 0, hard_clip = 0, low_qual_score = 0, num_filt_unpaired_reads = 0;
   BamAlignment alignment;
   const BamHeader* bam_header = reader.bam_header();
   BamAlnList paired_str_alns, mate_alns, unpaired_str_alns;
@@ -248,13 +253,8 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
       std::string filter = "";
       read_count++;
 
-      // Ignore chimeric alignments
-      if (alignment.HasTag("SA")){
-	split_alignment++;
-	filter.append("HAS_SA_TAG");
-      }
       // Ignore reads with N bases
-      else if (alignment.QueryBases().find('N') != std::string::npos){
+      if (alignment.QueryBases().find('N') != std::string::npos){
 	read_has_N++;
 	filter.append("HAS_N_BASES");
       }
@@ -427,7 +427,6 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
   
   logger() << read_count << " reads overlapped region, of which "
 	   << "\n\t" << hard_clip        << " were hard clipped"
-	   << "\n\t" << split_alignment  << " had an SA (split alignment) BAM tag"
 	   << "\n\t" << read_has_N       << " had an 'N' base call"
 	   << "\n\t" << low_qual_score   << " had low base quality scores"
 	   << "\n\t" << not_spanning     << " did not span the STR"
@@ -443,7 +442,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
     BamAlnList& aln_src  = (type == 0 ? paired_str_alns : unpaired_str_alns);
     while (!aln_src.empty()){
       const BamAlignment& aln = aln_src.back();
-      std::string rg = use_bam_rgs_ ? get_read_group(aln, rg_to_sample): rg_to_sample[aln.Filename()];
+      std::string rg = use_bam_rgs_ ? get_read_group(aln, rg_to_sample): rg_to_sample.find(aln.Filename())->second;
       int rg_index;
       auto index_iter = rg_indices.find(rg);
       if (index_iter == rg_indices.end()){
@@ -474,16 +473,15 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, std::string
   total_read_filter_time_ += locus_read_filter_time_;
 }
 
-void BamProcessor::process_regions(BamCramMultiReader& reader, std::string& region_file, std::string& fasta_file,
-				   std::map<std::string, std::string>& rg_to_sample, std::map<std::string, std::string>& rg_to_library,
+void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string& region_file, const std::string& fasta_file,
+				   const std::map<std::string, std::string>& rg_to_sample, const std::map<std::string, std::string>& rg_to_library,
 				   BamWriter* pass_writer, BamWriter* filt_writer,
-				   std::ostream& out, int32_t max_regions, std::string chrom){
+				   std::ostream& out, int32_t max_regions, const std::string& chrom){
   std::vector<Region> regions;
-  readRegions(region_file, regions, max_regions, chrom, logger());
+  readRegions(region_file, max_regions, chrom, regions, logger());
   orderRegions(regions);
 
   FastaReader fasta_reader(fasta_file);
-  std::string ref_seq;
   const BamHeader* bam_header = reader.bam_header();
   int cur_chrom_id = -1; std::string chrom_seq;
   for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
