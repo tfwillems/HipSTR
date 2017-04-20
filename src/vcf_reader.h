@@ -25,7 +25,7 @@ private:
   bcf1_t*    vcf_record_;
   VCFReader* vcf_reader_;
 
-  int num_samples_;
+  int num_samples_, num_missing_;
   std::vector<std::string> alleles_;
   std::vector<bool> missing_;
   std::vector<bool> phased_;
@@ -40,6 +40,7 @@ public:
     vcf_record_  = NULL;
     vcf_reader_  = NULL;
     num_samples_ = 0;
+    num_missing_ = 0;
   }
 
   Variant(bcf_hdr_t* vcf_header, bcf1_t* vcf_record, VCFReader* vcf_reader){
@@ -50,6 +51,10 @@ public:
     bcf_unpack(vcf_record_, BCF_UN_ALL);
     extract_alleles();
     extract_genotypes();
+    num_missing_ = 0;
+    for (int i = 0; i < num_samples_; ++i)
+      if (missing_[i])
+	++num_missing_;
   }
   
   const std::vector<std::string>& get_alleles() const { return alleles_;         }
@@ -57,6 +62,7 @@ public:
   const std::vector<std::string>& get_samples() const;
   int num_alleles() const { return alleles_.size(); }
   int num_samples() const { return num_samples_;    }
+  int num_missing() const { return num_missing_;    }
 
   bool is_biallelic_snp() const {
     if (vcf_record_ != NULL)

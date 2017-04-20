@@ -32,28 +32,42 @@ namespace VCF {
     int   mem = 0;
     int* gts_ = NULL;
     std::string GT_KEY = "GT";
-    if (bcf_get_format_int32(vcf_header_, vcf_record_, GT_KEY.c_str(), &gts_, &mem) <= 0)
+    int num_entries = bcf_get_format_int32(vcf_header_, vcf_record_, GT_KEY.c_str(), &gts_, &mem);
+    if (num_entries <= 0)
       printErrorAndDie("Failed to extract the genotypes from the VCF record");
+    if (num_entries != num_samples_ && num_entries != 2*num_samples_)
+      printErrorAndDie("Incorrect number of genotypes extracted from the VCF record");
+
+    if (num_entries == num_samples_){
+      // When all sample genotypes are missing, the number of extracted GT's is the
+      // same as the number of samples
+      missing_ = std::vector<bool>(num_samples_, true);
+      phased_  = std::vector<bool>(num_samples_, false);
+      gt_1_    = std::vector<int>(num_samples_, -1);
+      gt_2_    = std::vector<int>(num_samples_, -1);
+    }
+    else {
+      missing_.reserve(num_samples_);
+      phased_.reserve(num_samples_);
+      gt_1_.reserve(num_samples_);
+      gt_2_.reserve(num_samples_);
     
-    missing_.reserve(num_samples_);
-    gt_1_.reserve(num_samples_);
-    gt_2_.reserve(num_samples_);
-    
-    int gt_index = 0;
-    for (int i = 0; i < num_samples_; i++){
-      if (bcf_gt_is_missing(gts_[gt_index]) || bcf_gt_is_missing(gts_[gt_index+1])){
-	missing_.push_back(true);
-	phased_.push_back(false);
-	gt_1_.push_back(-1);
-	gt_2_.push_back(-1);
+      int gt_index = 0;
+      for (int i = 0; i < num_samples_; i++){
+	if (bcf_gt_is_missing(gts_[gt_index]) || bcf_gt_is_missing(gts_[gt_index+1])){
+	  missing_.push_back(true);
+	  phased_.push_back(false);
+	  gt_1_.push_back(-1);
+	  gt_2_.push_back(-1);
+	}
+	else {
+	  missing_.push_back(false);
+	  phased_.push_back(bcf_gt_is_phased(gts_[gt_index+1]));
+	  gt_1_.push_back(bcf_gt_allele(gts_[gt_index]));
+	  gt_2_.push_back(bcf_gt_allele(gts_[gt_index+1]));
+	}
+	gt_index += 2;
       }
-      else {
-	missing_.push_back(false);
-	phased_.push_back(bcf_gt_is_phased(gts_[gt_index+1]));
-	gt_1_.push_back(bcf_gt_allele(gts_[gt_index]));
-	gt_2_.push_back(bcf_gt_allele(gts_[gt_index+1]));
-      }
-      gt_index += 2;
     }
     free(gts_);
   }
