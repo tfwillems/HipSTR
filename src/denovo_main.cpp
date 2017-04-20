@@ -235,7 +235,7 @@ int main(int argc, char** argv){
 
     // Scan for de novos, and output the results to a VCF
     logger << "\tJointly testing all children in each family for de novo mutations" << "\n"
-	   << "\tPlease ensure that phased genotype likelihoods (FORMAT = PHASEDGL) are availale in the VCF\n" << std::endl;
+	   << "\tPlease ensure that phased genotype likelihoods (FORMAT = PHASEDGL) are available in the VCF\n" << std::endl;
     DenovoScanner denovo_scanner(families, denovo_vcf_file, full_command, use_pop_priors);
     denovo_scanner.scan(snp_vcf_file, str_vcf, sites_to_skip, logger);
     denovo_scanner.finish();
@@ -249,7 +249,7 @@ int main(int argc, char** argv){
 
     // Scan for de novos using the trio approach
     logger << "\tIndividually testing each child in each family for de novo mutations" << "\n"
-	   << "\tPlease ensure that genotype likelihoods (FORMAT = GL) are availale in the VCF\n" << std::endl;
+	   << "\tPlease ensure that genotype likelihoods (FORMAT = GL) are available in the VCF\n" << std::endl;
     TrioDenovoScanner denovo_scanner(families, denovo_vcf_file, full_command, use_pop_priors);
     denovo_scanner.scan(str_vcf, logger);
     denovo_scanner.finish();
