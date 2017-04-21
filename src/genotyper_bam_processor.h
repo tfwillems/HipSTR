@@ -226,13 +226,13 @@ public:
     if (too_many_reads_ != 0)
       logger() << "Skipped " << too_many_reads_ << " loci with too many reads.\n\t If this comprises a sizeable portion of your loci, see the --max-reads command line option\n";
     if (too_few_reads_ != 0)
-      logger() << "Skipped " << too_few_reads_  << " loci with too few reads for stutter model model training or genotyping." << "\n"
+      logger() << "Skipped " << too_few_reads_  << " loci with too few reads for stutter model model training or genotyping.\n"
 	       << "\t If this comprises a sizeable portion of your loci, see the --min-reads command line option\n";
     if (num_missing_models_ != 0)
       logger() << "Skipped " << num_missing_models_ << " loci that did not have a stutter model in the file provided to --stutter-in\n";
     if (num_em_converge_+num_em_fail_ != 0)
-      logger() << "Stutter model training succeeded for " << num_em_converge_ << " out of " << num_em_converge_+num_em_fail_ << " loci";
-    logger() << "Genotyping succeeded for " << num_genotype_success_ << " out of " << num_genotype_success_+num_genotype_fail_ << " loci";
+      logger() << "Stutter model training succeeded for " << num_em_converge_ << " out of " << num_em_converge_+num_em_fail_ << " loci\n";
+    logger() << "Genotyping succeeded for " << num_genotype_success_ << " out of " << num_genotype_success_+num_genotype_fail_ << " loci\n";
 
     logger() << "\nApproximate timing breakdown" << "\n"
              << " BAM seek time       = " << total_bam_seek_time()       << " seconds\n"
