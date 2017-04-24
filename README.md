@@ -14,8 +14,7 @@
 [Speed](#speed)  
 [Call Filtering](#call-filtering)  
 [Additional Usage Options](#additional-usage-options)		  
-[File Formats](#file-formats)   
-[De novo Mutations](#de-novo-mutations)   
+[File Formats](#file-formats)     
 [FAQ](#faq)     
 [Help](#help)       
 [Citation](#citation)
@@ -193,16 +192,16 @@ python scripts/filter_haploid_vcf.py -h
 
 | Option  | Description  
 | :------- | :----------- 
-| **viz-out       &lt;aln_viz.gz>**     | Output a file of each locus' alignments for visualization with VizAln or [VizAlnPdf](#aln-viz) <br> **Why? You want to visualize or inspect the STR genotypes**
-| **log         &lt;log.txt>**               | Output the log information to the provided file (Default = Standard error)  
-| **haploid-chrs  &lt;list_of_chroms>**      | Comma separated list of chromosomes to treat as haploid (Default = all diploid) <br> **Why? You're analyzing a haploid chromosome like chrY**  
+| **viz-out**       aln_viz.gz     | Output a file of each locus' alignments for visualization with VizAln or [VizAlnPdf](#aln-viz) <br> **Why? You want to visualize or inspect the STR genotypes**
+| **log**         log.txt               | Output the log information to the provided file (Default = Standard error)  
+| **haploid-chrs**  list_of_chroms      | Comma separated list of chromosomes to treat as haploid (Default = all diploid) <br> **Why? You're analyzing a haploid chromosome like chrY**  
 | **no-rmdup**                            | Don't remove PCR duplicates. By default, they'll be removed <br> **Why? Your sequencing data  is for PCR-amplified regions**  
 | **use-unpaired**                        | Use unpaired reads when genotyping (Default = False) <br> **Why? Your sequencing data only contains single-ended reads**  
-| **snp-vcf    &lt;phased_snps.vcf.gz>**     | Bgzipped input VCF file containing phased SNP genotypes for the samples to be genotyped. These SNPs will be used to physically phase STRs<br> **Why? You have available phased SNP genotypes**  
-| **bam-samps     &lt;list_of_read_groups>** | Comma separated list of samples in same order as BAM/CRAM files. <br> Assign each read the sample corresponding to its file. By default, <br> each read must have an RG tag and and the sample is determined from the SM field <br> **Why? Your BAM/CRAM file RG tags don't have an SM field**
-| **bam-libs      &lt;list_of_read_groups>** | Comma separated list of libraries in same order as BAM/CRAM files. <br> Assign each read the library corresponding to its file. By default, <br> each read must have an RG tag and and the library is determined from the LB field <br> NOTE: This option is required when --bam-samps has been specified <br> **Why? Your BAM/CRAM file RG tags don't have an LB tag**
+| **snp-vcf**    phased_snps.vcf.gz     | Bgzipped input VCF file containing phased SNP genotypes for the samples to be genotyped. These SNPs will be used to physically phase STRs<br> **Why? You have available phased SNP genotypes**  
+| **bam-samps**     list_of_read_groups | Comma separated list of samples in same order as BAM files. <br> Assign each read the sample corresponding to its file. By default, <br> each read must have an RG tag and and the sample is determined from the SM field <br> **Why? Your BAM file RG tags don't have an SM field**  
+| **bam-libs**      list_of_read_groups | Comma separated list of libraries in same order as BAM files. <br> Assign each read the library corresponding to its file. By default, <br> each read must have an RG tag and and the library is determined from the LB field <br> NOTE: This option is required when --bam-samps has been specified <br> **Why? Your BAM file RG tags don't have an LB tag**  
 | **def-stutter-model**                   | For each locus, use a stutter model with PGEOM=0.9 and UP=DOWN=0.05 for in-frame artifacts and PGEOM=0.9 and UP=DOWN=0.01 for out-of-frame artifacts <br> **Why? You have too few samples for stutter estimation and don't have stutter models**  
-| **min-reads &lt;num_reads>**                           | 	Minimum total reads required to genotype a locus (Default = 100) <br> **Why? Refer to the discussion [above](#data-requirements)**
+| **min-reads** num_reads                           | 	Minimum total reads required to genotype a locus (Default = 100) <br> **Why? Refer to the discussion [above](#data-requirements)**
 
 
 This list is comprised of the most useful and frequently used additional options, but is not all encompassing. For a complete list of options, please type
@@ -385,17 +384,6 @@ Each of the stutter parameters is defined as follows:
 | OUP      |  Probability that out-of-frame changes increase the size of the observed STR allele
 | IGEOM    | Parameter governing geometric step size distribution for in-frame changes
 | OGEOM    | Paramter  governing geometric step size distribution for out-of-frame changes
-
-## De novo Mutations
-To detect *de novo* STR mutations in families, one option is to generate HipSTR calls as described above, apply stringent filters to the genotypes (see below), and identify any sites where the genotypes are inconsistent with Mendelian inheritance. We used this approach in our [paper](http://biorxiv.org/content/early/2016/09/27/077727.full.pdf) to identify hundreds of replicable STR mutations in a well-studied trio in genomics. 
-
-Although this approach can be effective, it does not provide a quantitative measure of the confidence in each identified mutation. To overcome this limitation, we've recently been developing **DenovoFinder**, a part of this package that provides a more robust quantitative approach. **DenovoFinder** is automatically built as part of the compilation process. The tool takes VCF files produced by **HipSTR** as input and computes the *likelihood* that a *de novo* mutation occurred at each STR for each family. To run **DenovoFinder**, your VCF file must either contain genotype likelihoods (FORMAT field = GL) or a special type of field called phased genotype likelihoods (FORMAT field = PHASEDGL). As these are not included in the VCF by default, ensure that you run HipSTR with either **output-gls** or both the **snp-vcf** and **output-phased-gls** options if you're interested in using this module in later analyses.
-
-We'll add more documentation and a tutorial regarding **DenovoFinder** in the coming weeks, but in the mean time, please type 
-
-	./DenovoFinder --help
-
-for more information. As **DenovoFinder** is unpublished work, we ask that you don't publish any manuscripts using it until we've written a short publication describing its methodology and applications.
 
 ## FAQ
 1. **Can I run HipSTR if my dataset only contains single-ended reads?**     
