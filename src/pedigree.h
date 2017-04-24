@@ -21,17 +21,14 @@ class NuclearFamily {
   std::vector<int> vcf_indices_;
 
  public:
-  NuclearFamily(std::string family_id, std::string mother, std::string father, std::vector<std::string> children){
-    family_id_ = family_id;
-    mother_    = mother;
-    father_    = father;
-    children_  = children;
+  NuclearFamily(const std::string& family_id, const std::string& mother, const std::string& father, const std::vector<std::string>& children)
+    : family_id_(family_id), mother_(mother), father_(father), children_(children){
     samples_.push_back(mother_);
     samples_.push_back(father_);
     samples_.insert(samples_.end(), children_.begin(), children_.end());
   }
 
-  void load_vcf_indices(VCF::VCFReader& vcf_reader){
+  void load_vcf_indices(const VCF::VCFReader& vcf_reader){
     vcf_indices_.clear();
     for (int i = 0; i < samples_.size(); i++){
       if (!vcf_reader.has_sample(samples_[i]))
@@ -52,14 +49,14 @@ class NuclearFamily {
   const std::vector<std::string>& get_children() const { return children_; }
   const std::vector<std::string>& get_samples()  const { return samples_; }
 
-  bool is_missing_sample(std::set<std::string>& samples) const {
+  bool is_missing_sample(const std::set<std::string>& samples) const {
     for (auto sample_iter = samples_.begin(); sample_iter != samples_.end(); sample_iter++)
       if (samples.find(*sample_iter) == samples.end())
         return true;
     return false;
   }
 
-  bool is_missing_genotype(VCF::Variant& variant) const {
+  bool is_missing_genotype(const VCF::Variant& variant) const {
     if (vcf_indices_.empty())
       printErrorAndDie("No VCF indices were preloaded in the NuclearFamily");
     for (auto index_iter = vcf_indices_.begin(); index_iter != vcf_indices_.end(); index_iter++)
@@ -68,7 +65,7 @@ class NuclearFamily {
     return false;
   }
 
-  bool is_mendelian(VCF::Variant& variant) const {
+  bool is_mendelian(const VCF::Variant& variant) const {
     if (vcf_indices_.empty())
       printErrorAndDie("No VCF indices were preloaded in the NuclearFamily");
 
@@ -95,25 +92,23 @@ class PedigreeNode {
   std::string family_id_;
 
  public:
-  PedigreeNode(std::string name, std::string family_id){
-    name_      = name;
-    family_id_ = family_id;
-    mother_    = NULL;
-    father_    = NULL;
-    children_  = std::vector<PedigreeNode*>();
+  PedigreeNode(const std::string& name, const std::string& family_id)
+    : name_(name), family_id_(family_id){
+    mother_ = NULL;
+    father_ = NULL;
   }
 
   ~PedigreeNode(){
     children_.clear();
   }
 
-  bool has_mother() const    { return mother_ != NULL;  }
-  bool has_father() const    { return father_ != NULL;  }
-  PedigreeNode* get_mother() const { return mother_;    }
-  PedigreeNode* get_father() const { return father_;    }
-  std::string   get_name()   const { return name_;      }
-  std::string   get_family() const { return family_id_; }
-  std::vector<PedigreeNode*>& get_children() { return children_; }
+  bool has_mother()                 const { return mother_ != NULL;  }
+  bool has_father()                 const { return father_ != NULL;  }
+  PedigreeNode* get_mother()        const { return mother_;          }
+  PedigreeNode* get_father()        const { return father_;          }
+  const std::string& get_name()     const { return name_;            }
+  const std::string& get_family()   const { return family_id_;       }
+  std::vector<PedigreeNode*>& get_children() { return children_;     }
 
   void set_mother(PedigreeNode* mother) { mother_ = mother;           }
   void set_father(PedigreeNode* father) { father_ = father;           }
@@ -125,9 +120,9 @@ class PedigreeNode {
     children_.erase(iter);
   }
   
-  void print(std::ostream& out){
+  void print(std::ostream& out) const {
     out << "NAME:"     << name_
-	<< "\tFATHER:" << (father_ == NULL ? "NONE": father_->get_name()) 
+	<< "\tFATHER:" << (father_ == NULL ? "NONE" : father_->get_name())
 	<< "\tMOTHER:" << (mother_ == NULL ? "NONE" : mother_->get_name()) << std::endl; 
   }
 };
@@ -144,30 +139,23 @@ class PedigreeGraph {
   std::vector<PedigreeNode*> nodes_;
 
   bool topological_sort(std::vector<PedigreeNode*>& nodes);
-  bool build(std::string input_file);  
+  bool build(const std::string& input_file);
   void init_no_ancestors();
   void init_no_descendants();
   bool build_subgraph(std::vector<PedigreeNode*>& sorted_nodes);
     
  public:
-  PedigreeGraph(){
-    no_ancestors_   = std::vector<PedigreeNode*>();
-    no_descendants_ = std::vector<PedigreeNode*>();
-    nodes_          = std::vector<PedigreeNode*>();
-  }
+  PedigreeGraph(){}
 
-  PedigreeGraph(std::string input_file){
-    no_ancestors_   = std::vector<PedigreeNode*>();
-    no_descendants_ = std::vector<PedigreeNode*>();
-    nodes_          = std::vector<PedigreeNode*>();
-    bool success    = build(input_file);
+  explicit PedigreeGraph(const std::string& input_file){
+    bool success = build(input_file);
     if (!success)
       printErrorAndDie("Supplied pedigree file " + input_file + " contains cycles");
     init_no_ancestors();
     init_no_descendants();
   }
 
-  PedigreeGraph(std::vector<PedigreeNode*>& subgraph_nodes){
+  explicit PedigreeGraph(std::vector<PedigreeNode*>& subgraph_nodes){
     if (!build_subgraph(subgraph_nodes))
       printErrorAndDie("Subgraph in pedigree contains a cycle");
     init_no_ancestors();
@@ -213,24 +201,24 @@ class PedigreeGraph {
     no_descendants_.clear();
   }
 
-  int size(){ return nodes_.size(); }
+  int size() const { return nodes_.size(); }
 
-  void print(std::ostream& out){
+  void print(std::ostream& out) const {
     out << "Pedigree graph contains " << nodes_.size() << " nodes" << std::endl;
   }
 
-  void prune(std::set<std::string>& sample_set);
+  void prune(const std::set<std::string>& sample_set);
 
   void split_into_connected_components(std::vector<PedigreeGraph>& components);
 
-  bool is_nuclear_family();
+  bool is_nuclear_family() const;
 
-  NuclearFamily convert_to_nuclear_family();
+  NuclearFamily convert_to_nuclear_family() const;
 };
 
-void read_sample_list(std::string input_file, std::set<std::string>& sample_set);
+void read_sample_list(const std::string& input_file, std::set<std::string>& sample_set);
 
-void extract_pedigree_nuclear_families(std::string pedigree_fam_file, std::set<std::string>& samples_with_data,
+void extract_pedigree_nuclear_families(const std::string& pedigree_fam_file, const std::set<std::string>& samples_with_data,
                                        std::vector<NuclearFamily>& nuclear_families, std::ostream& logger);
 
 #endif

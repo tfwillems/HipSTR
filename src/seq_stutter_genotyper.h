@@ -9,8 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "bamtools/include/api/BamAlignment.h"
-
+#include "bam_io.h"
 #include "base_quality.h"
 #include "genotyper.h"
 #include "read_pooler.h"
@@ -27,6 +26,9 @@
 class SeqStutterGenotyper : public Genotyper {
  private:
   int MAX_REF_FLANK_LEN;
+  int MAX_FLANK_HAPLOTYPES;
+  double STRAND_TOLERANCE;
+
   BaseQuality base_quality_;
   ReadPooler pooler_;
   int* pool_index_;                               // Pool index for each read
@@ -66,14 +68,14 @@ class SeqStutterGenotyper : public Genotyper {
   bool* second_mate_;
 
   // Set up the relevant data structures. Invoked by the constructor 
-  bool build_haplotype(std::string& chrom_seq, std::vector<StutterModel*>& stutter_models, std::ostream& logger);
-  void init(std::vector<StutterModel *>& stutter_models, std::string& chrom_seq, std::ostream& logger);
+  bool build_haplotype(const std::string& chrom_seq, std::vector<StutterModel*>& stutter_models, std::ostream& logger);
+  void init(std::vector<StutterModel *>& stutter_models, const std::string& chrom_seq, std::ostream& logger);
 
   void reorder_alleles(std::vector<std::string>& alleles,
 		       std::vector<int>& old_to_new, std::vector<int>& new_to_old);
 
   // Extract the sequences for each allele and the VCF start position
-  void get_alleles(const Region& region, int block_index, std::string& chrom_seq,
+  void get_alleles(const Region& region, int block_index, const std::string& chrom_seq,
 		   int32_t& pos, std::vector<std::string>& alleles);
 
   void debug_sample(int sample_index, std::ostream& logger);
@@ -96,7 +98,7 @@ class SeqStutterGenotyper : public Genotyper {
   // Identify alleles present in stutter artifacts. Align each read to the new haplotypes
   // containing these alleles and incorporate these alignment probabilities
   // into the relevant data structures
-  bool id_and_align_to_stutter_alleles(std::string& chrom_seq, std::ostream& logger);
+  bool id_and_align_to_stutter_alleles(const std::string& chrom_seq, std::ostream& logger);
 
   // Exploratory function related to identifying indels in the flanking sequences
   void analyze_flank_indels(std::ostream& logger);
@@ -127,7 +129,7 @@ class SeqStutterGenotyper : public Genotyper {
 
   double compute_allele_bias(int hap_a_read_count, int hap_b_read_count);
 
-  void write_vcf_record(std::vector<std::string>& sample_names, int hap_block_index, const Region& region, std::string& chrom_seq,
+  void write_vcf_record(const std::vector<std::string>& sample_names, int hap_block_index, const Region& region, const std::string& chrom_seq,
 			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads,
 			bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
@@ -135,9 +137,9 @@ class SeqStutterGenotyper : public Genotyper {
   RegionGroup* region_group_;
 
  public:
-  SeqStutterGenotyper(RegionGroup& region_group, bool haploid, bool reassemble_flanks,
+  SeqStutterGenotyper(const RegionGroup& region_group, bool haploid, bool reassemble_flanks,
 		      std::vector<Alignment>& alignments, std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,
-		      std::vector<std::string>& sample_names, std::string& chrom_seq,
+		      const std::vector<std::string>& sample_names, const std::string& chrom_seq,
 		      std::vector<StutterModel*>& stutter_models, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(haploid, sample_names, log_p1, log_p2){
     region_group_          = region_group.copy();
     alns_                  = alignments;
@@ -146,9 +148,11 @@ class SeqStutterGenotyper : public Genotyper {
     haplotype_             = NULL;
     second_mate_           = NULL;
     MAX_REF_FLANK_LEN      = 30;
+    MAX_FLANK_HAPLOTYPES   = 4;
     MIN_PATH_WEIGHT        = 2;
     MIN_KMER               = 10;
     MAX_KMER               = 15;
+    STRAND_TOLERANCE       = 0.1;
     initialized_           = false;
     reassemble_flanks_     = reassemble_flanks;
     total_hap_build_time_  = total_hap_aln_time_  = 0;
@@ -170,7 +174,7 @@ class SeqStutterGenotyper : public Genotyper {
     delete haplotype_;
   }
   
-  void write_vcf_record(std::vector<std::string>& sample_names, std::string& chrom_seq,
+  void write_vcf_record(const std::vector<std::string>& sample_names, const std::string& chrom_seq,
 			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads,
 			bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
 			std::ostream& html_output, std::ostream& out, std::ostream& logger);
@@ -181,13 +185,13 @@ class SeqStutterGenotyper : public Genotyper {
   double aln_trace_time() { return total_aln_trace_time_;  }
   double assembly_time()  { return total_assembly_time_;   }
 
-  bool genotype(std::string& chrom_seq, std::ostream& logger);
+  bool genotype(const std::string& chrom_seq, std::ostream& logger);
 
   /*
    * Recompute the stutter model(s) using the PCR artifacts obtained from the ML alignments
    * and regenotype the samples using this new model
   */
-  bool recompute_stutter_models(std::string& chrom_seq, std::ostream& logger, int max_em_iter, double abs_ll_converge, double frac_ll_converge);
+  bool recompute_stutter_models(const std::string& chrom_seq, std::ostream& logger, int max_em_iter, double abs_ll_converge, double frac_ll_converge);
 };
 
 #endif

@@ -52,7 +52,7 @@ public:
       }
     }
     if (static_cast<unsigned int>((1 << BITS_PER_INDEL)-1) < loc)
-      printErrorAndDie("Location is too large for IndelTracker: " + std::to_string(loc));
+      printErrorAndDie("Location is too large for IndelTracker");
     return IndelTracker((val_ << BITS_PER_INDEL) | loc, num_indels_+1, al_length_+1);
   }
 
@@ -258,7 +258,7 @@ namespace NeedlemanWunsch {
 		      const std::string& readseq,
 		      std::string& ref_seq_al, 
 		      std::string& read_seq_al,
-		      std::vector<BamTools::CigarOp>& cigar_list){
+		      std::vector<CigarOp>& cigar_list){
     cigar_list.clear();
     std::stringstream refseq_ss, readseq_ss, cigar_ss;
   
@@ -329,14 +329,14 @@ namespace NeedlemanWunsch {
     for(unsigned int i = 1; i < raw_cigar.length(); i++){
       new_cigar_char = raw_cigar[i];
       if (new_cigar_char != cigar_char){
-	cigar_list.push_back(BamTools::CigarOp(cigar_char, num));
+	cigar_list.push_back(CigarOp(cigar_char, num));
 	num = 1;
 	cigar_char = new_cigar_char;
       }
       else
 	num += 1;
     }
-    cigar_list.push_back(BamTools::CigarOp(cigar_char, num));
+    cigar_list.push_back(CigarOp(cigar_char, num));
   }
 
   void initMatrices(std::vector<float>& M,    std::vector<float>& Iref,    std::vector<float>& Iread,
@@ -382,7 +382,7 @@ namespace NeedlemanWunsch {
 
   bool Align(const std::string& ref_seq, const std::string& read_seq,
 	     std::string& ref_seq_al, std::string& read_seq_al,
-	     float* score, std::vector<BamTools::CigarOp>& cigar_list, bool use_ref_end_penalty){
+	     float* score, std::vector<CigarOp>& cigar_list, bool use_ref_end_penalty){
     int L1       = ref_seq.length();
     int L2       = read_seq.length();
     int mat_size = (L1+1)*(L2+1);
@@ -578,7 +578,7 @@ namespace NeedlemanWunsch {
   
   bool LeftAlign(const std::string& ref_seq, const std::string& read_seq,
 		 std::string& ref_seq_al, std::string& read_seq_al,
-		 float* score, std::vector<BamTools::CigarOp>& cigar_list, bool use_ref_end_penalty){
+		 float* score, std::vector<CigarOp>& cigar_list, bool use_ref_end_penalty){
     int L1       = ref_seq.length();
     int L2       = read_seq.length();
     int mat_size = (L1+1)*(L2+1);
@@ -624,10 +624,9 @@ namespace NeedlemanWunsch {
     
     // Determine maximum number of indels
     int num_indels = 0;
-    for (std::vector<BamTools::CigarOp>::iterator cigar_iter = cigar_list.begin(); cigar_iter != cigar_list.end(); cigar_iter++){
+    for (auto cigar_iter = cigar_list.begin(); cigar_iter != cigar_list.end(); cigar_iter++)
       if (cigar_iter->Type == 'I' || cigar_iter->Type == 'D')
 	num_indels++;
-    }
 
     // Check that the indel tracker can support this number of indels
     if (num_indels > IndelTracker::max_indels())

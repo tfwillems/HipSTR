@@ -15,7 +15,7 @@ std::string TrioDenovoScanner::START_KEY   = "START";
 std::string TrioDenovoScanner::END_KEY     = "END";
 std::string TrioDenovoScanner::PERIOD_KEY  = "PERIOD";
 
-void TrioDenovoScanner::write_vcf_header(std::string& full_command){
+void TrioDenovoScanner::write_vcf_header(const std::string& full_command){
   denovo_vcf_ << "##fileformat=VCFv4.1" << "\n"
 	      << "##command=" << full_command << "\n";
 
@@ -37,7 +37,7 @@ void TrioDenovoScanner::write_vcf_header(std::string& full_command){
   denovo_vcf_ << "\n";
 }
 
-void TrioDenovoScanner::initialize_vcf_record(VCF::Variant& str_variant){
+void TrioDenovoScanner::initialize_vcf_record(const VCF::Variant& str_variant){
   // VCF line format = CHROM POS ID REF ALT QUAL FILTER INFO FORMAT SAMPLE_1 SAMPLE_2 ... SAMPLE_N
   denovo_vcf_ << str_variant.get_chromosome() << "\t" << str_variant.get_position() << "\t" << str_variant.get_id() << "\t" << str_variant.get_allele(0) << "\t";
   if (str_variant.num_alleles() > 1){
@@ -53,7 +53,14 @@ void TrioDenovoScanner::initialize_vcf_record(VCF::Variant& str_variant){
   int32_t start;  str_variant.get_INFO_value_single_int(START_KEY, start);
   int32_t end;    str_variant.get_INFO_value_single_int(END_KEY, end);
   int32_t period; str_variant.get_INFO_value_single_int(PERIOD_KEY, period);
-  std::vector<int32_t> bp_diffs; str_variant.get_INFO_value_multiple_ints(BPDIFFS_KEY, bp_diffs);
+  std::vector<int32_t> bp_diffs;
+  if (str_variant.num_alleles() > 2)
+    str_variant.get_INFO_value_multiple_ints(BPDIFFS_KEY, bp_diffs);
+  else {
+    int32_t diff;
+    str_variant.get_INFO_value_single_int(BPDIFFS_KEY, diff);
+    bp_diffs.push_back(diff);
+  }
   assert(bp_diffs.size()+1 == str_variant.num_alleles());
 
   denovo_vcf_ << "BPDIFFS=" << bp_diffs[0];
@@ -73,11 +80,11 @@ void TrioDenovoScanner::add_child_to_record(double total_ll_no_mutation, double 
 
 void TrioDenovoScanner::scan(VCF::VCFReader& str_vcf, std::ostream& logger){
   VCF::Variant str_variant;
-  int32_t num_strs  = 0;
   while (str_vcf.get_next_variant(str_variant)){
-    num_strs++;
     int num_alleles = str_variant.num_alleles();
     if (num_alleles <= 1)
+      continue;
+    if (str_variant.num_samples() == str_variant.num_missing())
       continue;
 
     int32_t start;  str_variant.get_INFO_value_single_int(START_KEY, start);

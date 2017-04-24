@@ -1,7 +1,11 @@
 import argparse
 import collections
 import sys
-import vcf
+
+try:
+     import vcf
+except ImportError:
+     exit("This script requires the PyVCF python package. Please install using pip or conda")
 
 def filter_call(sample, filters):
      if sample['DP'] < filters.DEPTH:
@@ -82,7 +86,7 @@ def main():
           vcf_reader = vcf.Reader(sys.stdin)
      else:
           vcf_reader = vcf.Reader(filename=args.VCF)
-     vcf_writer = vcf.Writer(sys.stdout, vcf_reader)
+     vcf_writer    = vcf.Writer(sys.stdout, vcf_reader)
      total_counts  = collections.defaultdict(int)
      filter_counts = {}
      for sample in vcf_reader.samples:
@@ -110,7 +114,7 @@ def main():
           allele_counts = len(record.alleles)*[0]
 
           for sample in record:
-               if sample['GT'] is None:
+               if sample['GT'] is None or sample['GT'] == "./.":
                     continue
 
                filter_reason = filter_call(sample, args)
@@ -125,7 +129,7 @@ def main():
           # Build allele index mapping
           allele_indices   = {0:0}
           filt_num_alleles = 1
-          for i in xrange(1, len(allele_counts)):
+          for i in range(1, len(allele_counts)):
               if allele_counts[i] != 0:
                   allele_indices[i] = filt_num_alleles
                   filt_num_alleles += 1
@@ -137,13 +141,19 @@ def main():
           total_dstutter    = 0
           total_dflankindel = 0
           for sample in record:
-               if sample['GT'] is None:
+               if sample['GT'] is None or sample['GT'] == "./.":
                     new_samples.append(sample)
                     continue
 
                if filter_call(sample, args) is not None:
                     num_filt += 1
-                    sampdat   = [None] * nfields
+                    sampdat   = []
+                    for i in range(len(samp_fmt._fields)):
+                         key = samp_fmt._fields[i]
+                         if key == "GT":
+                              sampdat.append("./.")
+                         else:
+                              sampdat.append(None)
                else:
                     num_kept    += 1
                     gt_a, gt_b   = map(int, sample['GT'].split('|'))
@@ -170,7 +180,7 @@ def main():
           
           # Fix set of alleles
           new_alleles = [record.alleles[0]]
-          for i in xrange(1, len(record.alleles)):
+          for i in range(1, len(record.alleles)):
               if allele_counts[i] != 0:
                   new_alleles.append(record.alleles[i])
 
@@ -190,13 +200,13 @@ def main():
               if len(new_alleles) == 1:
                   record.INFO.pop("BPDIFFS", None)
               else:
-                  record.INFO['BPDIFFS'] = map(lambda x: len(x) - len(new_alleles[0]), new_alleles[1:])          
+                  record.INFO['BPDIFFS'] = list(map(lambda x: len(x) - len(new_alleles[0]), new_alleles[1:]))
           record.INFO['REFAC'] = allele_counts[0]
           if 'AC' in record.INFO:
               if len(new_alleles) == 1:
                   record.INFO.pop("AC", None)
               else:
-                  record.INFO['AC'] = filter(lambda x: x != 0, allele_counts[1:])
+                  record.INFO['AC'] = list(filter(lambda x: x != 0, allele_counts[1:]))
           if 'AN' in record.INFO:
                record.INFO['AN'] = sum(allele_counts)
                   

@@ -15,14 +15,14 @@
 // ii)  Homozygotes have a prior of 2/(n(n+1))
 // iii) Total prior is n*2/(n(n+1)) + n(n-1)*1/(n(n+1)) = 2/(n+1) + (n-1)/(n+1) = 1
 
-double Genotyper::log_homozygous_prior(){
+double Genotyper::log_homozygous_prior() const {
   if (haploid_)
     return -int_log(num_alleles_);
   else
     return int_log(2) - int_log(num_alleles_) - int_log(num_alleles_+1);
 }
 
-double Genotyper::log_heterozygous_prior(){
+double Genotyper::log_heterozygous_prior() const {
   if (haploid_)
     return -DBL_MAX/2;
   else
@@ -77,7 +77,7 @@ double Genotyper::calc_log_sample_posteriors(std::vector<int>& read_weights){
   return total_LL;
 }
 
-void Genotyper::get_optimal_haplotypes(std::vector< std::pair<int, int> >& gts){
+void Genotyper::get_optimal_haplotypes(std::vector< std::pair<int, int> >& gts) const {
   assert(gts.size() == 0);
   gts = std::vector< std::pair<int,int> > (num_samples_, std::pair<int,int>(-1,-1));
   double* log_posterior_ptr = log_sample_posteriors_;
@@ -94,14 +94,14 @@ void Genotyper::get_optimal_haplotypes(std::vector< std::pair<int, int> >& gts){
   }
 }
 
-void Genotyper::calc_PLs(const std::vector<double>& gls, std::vector<int>& pls){
+void Genotyper::calc_PLs(const std::vector<double>& gls, std::vector<int>& pls) const {
   assert(pls.empty());
   double max_gl = *(std::max_element(gls.begin(), gls.end()));
   for (unsigned int i = 0; i < gls.size(); i++)
     pls.push_back(std::min(999, (int)(-10*(gls[i]-max_gl))));
 }
 
-double Genotyper::calc_gl_diff(const std::vector<double>& gls, int gt_a, int gt_b){
+double Genotyper::calc_gl_diff(const std::vector<double>& gls, int gt_a, int gt_b) const {
   if (num_alleles_ == 1)
     return -1000;
 
@@ -224,7 +224,8 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
   }
 }
 
-void Genotyper::write_vcf_header(std::string& full_command, std::vector<std::string>& sample_names, bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out){
+void Genotyper::write_vcf_header(const std::string& full_command, const std::vector<std::string>& sample_names,
+				 bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out){
   out << "##fileformat=VCFv4.1" << "\n"
       << "##command=" << full_command << "\n";
 

@@ -1,10 +1,11 @@
 #include <assert.h>
 
+#include "../bam_io.h"
 #include "../error.h"
 #include "Haplotype.h"
 #include "NeedlemanWunsch.h"
 
-bool Haplotype::position_to_haplotype_index(int32_t pos, int& haplotype_index){
+bool Haplotype::position_to_haplotype_index(int32_t pos, int& haplotype_index) const {
   haplotype_index = 0;
   if (inc_rev_){
     assert(pos > blocks_.back()->end() && pos <= blocks_.front()->start());
@@ -89,7 +90,7 @@ void Haplotype::aln_haps_to_ref(){
   std::string ref_hap_seq = get_seq(), alt_hap_seq;
   std::string ref_hap_al, alt_hap_al;
   float score;
-  std::vector<BamTools::CigarOp> cigar_list;
+  std::vector<CigarOp> cigar_list;
 
   do {
     alt_hap_seq = get_seq();
@@ -236,7 +237,7 @@ void Haplotype::go_to(int hap_index){
 }
 
 void Haplotype::print_block_structure(int max_ref_len, int max_other_len, bool indent,
-				      std::ostream& out){
+				      std::ostream& out) const {
   int max_rows = 0;
   for (int i = 0; i < num_blocks(); i++)
     max_rows = std::max(max_rows, blocks_[i]->num_options());
@@ -266,7 +267,7 @@ void Haplotype::print_block_structure(int max_ref_len, int max_other_len, bool i
   }
 }
 
-unsigned int Haplotype::left_homopolymer_len(char c, int block_index){
+unsigned int Haplotype::left_homopolymer_len(char c, int block_index) const {
   unsigned int total = 0;
   while (block_index >= 0){
     const std::string& seq = get_seq(block_index);
@@ -283,7 +284,7 @@ unsigned int Haplotype::left_homopolymer_len(char c, int block_index){
   return total;
 }
  
-unsigned int Haplotype::right_homopolymer_len(char c, int block_index){
+unsigned int Haplotype::right_homopolymer_len(char c, int block_index) const {
   unsigned int total = 0;
   while (block_index < blocks_.size()){
     const std::string& seq = get_seq(block_index);
@@ -300,7 +301,7 @@ unsigned int Haplotype::right_homopolymer_len(char c, int block_index){
   return total;
 }
 
-unsigned int Haplotype::homopolymer_length(int block_index, int base_index){
+unsigned int Haplotype::homopolymer_length(int block_index, int base_index) const {
   HapBlock* block        = blocks_[block_index];
   const std::string& seq = block->get_seq(counts_[block_index]);
   unsigned int llen = block->left_homopolymer_len(counts_[block_index],  base_index);

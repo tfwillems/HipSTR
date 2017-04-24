@@ -53,7 +53,7 @@ bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector
     return false;
 }
 
-bool UnphasedGL::build(VCF::Variant& variant){
+bool UnphasedGL::build(const VCF::Variant& variant){
   std::vector< std::vector<float> > values;
   variant.get_FORMAT_value_multiple_floats(UNPHASED_GL_KEY, values);
   num_samples_         = 0;
@@ -81,7 +81,7 @@ bool UnphasedGL::build(VCF::Variant& variant){
   return true;
 }
 
-bool PhasedGL::build(VCF::Variant& variant){
+bool PhasedGL::build(const VCF::Variant& variant){
   std::vector< std::vector<float> > values;
   variant.get_FORMAT_value_multiple_floats(PHASED_GL_KEY, values);
   num_samples_         = 0;

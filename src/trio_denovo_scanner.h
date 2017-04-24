@@ -19,13 +19,13 @@ class TrioDenovoScanner {
   bgzfostream denovo_vcf_;
   bool use_pop_priors_;
 
-  void write_vcf_header(std::string& full_command);
-  void initialize_vcf_record(VCF::Variant& str_variant);
+  void write_vcf_header(const std::string& full_command);
+  void initialize_vcf_record(const VCF::Variant& str_variant);
   void add_child_to_record(double total_ll_no_denovo, double total_ll_one_denovo, double total_ll_one_other);
 
  public:
-  TrioDenovoScanner(std::vector<NuclearFamily>& families, std::string& output_file, std::string& full_command, bool use_pop_priors){
-    families_       = families;
+  TrioDenovoScanner(const std::vector<NuclearFamily>& families, const std::string& output_file, const std::string& full_command, bool use_pop_priors)
+    : families_(families){
     use_pop_priors_ = use_pop_priors;
     denovo_vcf_.open(output_file.c_str());
     denovo_vcf_.precision(3);

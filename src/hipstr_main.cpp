@@ -7,10 +7,11 @@
 #include <string>
 #include <vector>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 
-#include "bamtools/include/api/BamAlignment.h"
-
+#include "bam_io.h"
 #include "error.h"
 #include "genotyper_bam_processor.h"
 #include "pedigree.h"
@@ -18,27 +19,33 @@
 #include "vcf_reader.h"
 #include "version.h"
 
-bool file_exists(std::string path){
+bool file_exists(const std::string& path){
   return (access(path.c_str(), F_OK) != -1);
 }
 
+bool is_file(const std::string& name){
+  struct stat st_buf;
+  stat(name.c_str(), &st_buf);
+  return (S_ISREG (st_buf.st_mode));
+}
+
 void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_str_len){
-  std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <dir> --regions <region_file.bed> --str-vcf <str_gts.vcf.gz> [OPTIONS]" << "\n" << "\n"
+  std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <genome.fa> --regions <region_file.bed> --str-vcf <str_gts.vcf.gz> [OPTIONS]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
-	    << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of BAM files. Either --bams or --bam-files must be specified"   << "\n"
-	    << "\t" << "--fasta         <dir>                 "  << "\t" << "Directory with FASTA files for each chromosome or the path to a"                     << "\n"
-	    << "\t" << "                                      "  << "\t" << " single FASTA file that contains all of the relevant sequences"                      << "\n"
-	    << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                                 << "\n"
-	    << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Bgzipped VCF file to which STR genotypes will be written"                            << "\n" << "\n"
+	    << "\t" << "--bams          <list_of_bams>        "  << "\t" << "Comma separated list of BAM/CRAM files. Either --bams or --bam-files must be specified"   << "\n"
+	    << "\t" << "--fasta         <genome.fa>           "  << "\t" << "FASTA file containing all of the relevant sequences for your organism   "                 << "\n"
+	    << "\t" << "                                      "  << "\t" << "  When analyzing CRAMs, this FASTA file must match the file used for compression"         << "\n"
+	    << "\t" << "--regions       <region_file.bed>     "  << "\t" << "BED file containing coordinates for each STR region"                                      << "\n"
+	    << "\t" << "--str-vcf       <str_gts.vcf.gz>      "  << "\t" << "Bgzipped VCF file to which STR genotypes will be written"                                 << "\n" << "\n"
 
 	    << "Optional input parameters:" << "\n"
-	    << "\t" << "--bam-files  <bam_files.txt>          "  << "\t" << "File containing BAM files to analyze, one per line "                                 << "\n"
-	    << "\t" << "--ref-vcf    <str_ref_panel.vcf.gz>   "  << "\t" << "Bgzipped input VCF file of a reference panel of STR genotypes. VCF alleles will be"  << "\n"
-	    << "\t" << "                                      "  << "\t" << " used as candidate variants instead of looking for candidates in the BAMs (Default)" << "\n"
-	    << "\t" << "--snp-vcf    <phased_snps.vcf.gz>     "  << "\t" << "Bgzipped input VCF file containing phased SNP genotypes for the samples"             << "\n" 
-	    << "\t" << "                                      "  << "\t" << " to be genotyped. These SNPs will be used to physically phase STRs "                 << "\n"
-	    << "\t" << "--stutter-in <stutter_models.txt>     "  << "\t" << "Use stutter models in the file to genotype STRs (Default = Learn via EM algorithm)"  << "\n" << "\n"
+	    << "\t" << "--bam-files  <bam_files.txt>          "  << "\t" << "File containing BAM/CRAM files to analyze, one per line "                              << "\n"
+	    << "\t" << "--ref-vcf    <str_ref_panel.vcf.gz>   "  << "\t" << "Bgzipped input VCF file of a reference panel of STR genotypes. VCF alleles will be"    << "\n"
+	    << "\t" << "                                      "  << "\t" << " used as candidate variants instead of finding candidates in the BAMs/CRAMs (Default)" << "\n"
+	    << "\t" << "--snp-vcf    <phased_snps.vcf.gz>     "  << "\t" << "Bgzipped input VCF file containing phased SNP genotypes for the samples"               << "\n"
+	    << "\t" << "                                      "  << "\t" << " to be genotyped. These SNPs will be used to physically phase STRs "                   << "\n"
+	    << "\t" << "--stutter-in <stutter_models.txt>     "  << "\t" << "Use stutter models in the file to genotype STRs (Default = Learn via EM algorithm)"    << "\n" << "\n"
     
 	    << "Optional output parameters:" << "\n"
 	    << "\t" << "--log           <log.txt>             "  << "\t" << "Output the log information to the provided file (Default = Standard error)"         << "\n"
@@ -64,11 +71,11 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to the VCF (Default = False)"                << "\n"
 	    << "\t" << "--output-phased-gls                   "  << "\t" << "Write phased genotype likelihoods to the VCF (Default = False)"                      << "\n" << "\n"
 
-	    << "Optional BAM tweaking parameters:" << "\n"
-	    << "\t" << "--bam-samps     <list_of_samples>     "  << "\t" << "Comma separated list of read groups in same order as BAM files. "                    << "\n"
+	    << "Optional BAM/CRAM tweaking parameters:" << "\n"
+	    << "\t" << "--bam-samps     <list_of_samples>     "  << "\t" << "Comma separated list of read groups in same order as BAM/CRAM files. "               << "\n"
 	    << "\t" << "                                      "  << "\t" << "  Assign each read the read group corresponding to its file. By default, "           << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG tag and the sample is determined from the SM field"      << "\n"
-	    << "\t" << "--bam-libs      <list_of_libraries>   "  << "\t" << "Comma separated list of libraries in same order as BAM files. "                      << "\n"
+	    << "\t" << "--bam-libs      <list_of_libraries>   "  << "\t" << "Comma separated list of libraries in same order as BAM/CRAM files. "                 << "\n"
 	    << "\t" << "                                      "  << "\t" << "  Assign each read the library corresponding to its file. By default, "              << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG tag and the library is determined from the LB field"     << "\n"
 	    << "\t" << "--lib-from-samp                       "  << "\t" << " Assign each read the library corresponding to its sample name. By default,  "       << "\n"
@@ -88,7 +95,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
     //<< "\t" << "--skip-genotyping                     "  << "\t" << "Don't perform any STR genotyping and merely compute the stutter model for each STR"  << "\n"
     //<< "\t" << "--dont-use-all-reads                  "  << "\t" << "Only utilize the reads HipSTR thinks will be informative for genotyping"   << "\n"
     //<< "\t" << "                                      "  << "\t" << " Enabling this option usually slightly decreases accuracy but shortens runtimes (~2x)"      << "\n"
-	    << "\t" << "--read-qual-trim     <min_qual>       "  << "\t" << "Trim both ends of a read until a base has quality score > MIN_QUAL (Default = !)"    << "\n"
+    //<< "\t" << "--read-qual-trim     <min_qual>       "  << "\t" << "Trim both ends of a read until a base has quality score > MIN_QUAL (Default = 5)"    << "\n"
 	    << "\t" << "--fam <fam_file>                      "  << "\t" << "FAM file containing pedigree information for samples of interest. Use the pedigree"  << "\n"
 	    << "\t" << "                                      "  << "\t" << "  information to filter SNPs prior to phasing STRs (Default = use all SNPs)"         << "\n"
 	    << "\n" << "\n"
@@ -96,13 +103,13 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t i.  An in-depth description of HipSTR is available at https://hipstr-tool.github.io/HipSTR"  << "\n"
 	    << "\t ii. Check out the HipSTR tutorial at https://hipstr-tool.github.io/HipSTR-tutorial"          << "\n\n"
 	    << "*** Found a bug/issue or have a feature request? ***"                                           << "\n"
-	    << "\t i.  File an issue on GitHub (https://github.com/HipSTR-Tool/HipSTR)"                         << "\n"
+	    << "\t i.  File an issue on GitHub (https://github.com/tfwillems/HipSTR)"                           << "\n"
 	    << "\t ii. Email us at hipstrtool@gmail.com" << "\n"                                                << "\n" << std::endl;
 }
   
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string,     std::string& bamlist_string,    std::string& rg_sample_string,  std::string& rg_lib_string,
-			     std::string& haploid_chr_string, std::string& hap_chr_file,      std::string& fasta_dir,         std::string& region_file,   std::string& snp_vcf_file,
+			     std::string& haploid_chr_string, std::string& hap_chr_file,      std::string& fasta_file,        std::string& region_file,   std::string& snp_vcf_file,
 			     std::string& chrom,              std::string& bam_pass_out_file, std::string& bam_filt_out_file,
 			     std::string& str_vcf_out_file,   std::string& fam_file,          std::string& log_file,       int& use_all_reads,
 			     int& remove_pcr_dups, int& bams_from_10x,     int& bam_lib_from_samp, int& def_stutter_model, int& skip_genotyping,   int& output_gls,
@@ -131,7 +138,7 @@ void parse_command_line_args(int argc, char** argv,
     {"fasta",           required_argument, 0, 'f'},
     {"bam-samps",       required_argument, 0, 'g'},
     {"bam-libs",        required_argument, 0, 'q'},
-    {"lib-from-samp",    no_argument, &bam_lib_from_samp,    1},
+    {"lib-from-samp",   no_argument, &bam_lib_from_samp,    1},
     {"min-reads",       required_argument, 0, 'i'},
     {"read-qual-trim",  required_argument, 0, 'j'},
     {"log",             required_argument, 0, 'l'},
@@ -149,7 +156,7 @@ void parse_command_line_args(int argc, char** argv,
     {"str-vcf",         required_argument, 0, 'o'},
     {"ref-vcf",         required_argument, 0, 'p'},
     {"regions",         required_argument, 0, 'r'},
-    {"use-unpaired",    no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 0},
+    {"use-unpaired",       no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 0},
     {"dont-use-all-reads", no_argument, &use_all_reads, 0},
     {"def-stutter-model",  no_argument, &def_stutter_model, 1},
     {"skip-genotyping",    no_argument, &skip_genotyping, 1},
@@ -168,10 +175,9 @@ void parse_command_line_args(int argc, char** argv,
   };
 
   std::string filename;
-  int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "b:B:c:d:D:e:f:F:g:i:j:k:l:m:n:o:p:q:r:s:S:t:u:v:w:x:y:z:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "b:B:c:d:D:e:f:F:g:i:j:k:l:m:n:o:p:q:r:s:S:t:u:v:w:x:y:z:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -200,7 +206,7 @@ void parse_command_line_args(int argc, char** argv,
       fam_file = std::string(optarg);
       break;
     case 'f':
-      fasta_dir = std::string(optarg);
+      fasta_file = std::string(optarg);
       break;
     case 'g':
       rg_sample_string = std::string(optarg);
@@ -316,11 +322,11 @@ int main(int argc, char** argv){
 
   int use_all_reads = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0, def_stutter_model = 0, skip_genotyping = 0;
   std::string bamfile_string="", bamlist_string="", rg_sample_string="", rg_lib_string="", hap_chr_string="", hap_chr_file="";
-  std::string region_file="", fasta_dir="", chrom="", snp_vcf_file="";
+  std::string region_file="", fasta_file="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", fam_file = "", log_file = "";
   int output_gls = 0, output_pls = 0, output_phased_gls = 0, output_all_reads = 1, output_mall_reads = 1;
   std::string ref_vcf_file="";
-  parse_command_line_args(argc, argv, bamfile_string, bamlist_string, rg_sample_string, rg_lib_string, hap_chr_string, hap_chr_file, fasta_dir, region_file, snp_vcf_file, chrom,
+  parse_command_line_args(argc, argv, bamfile_string, bamlist_string, rg_sample_string, rg_lib_string, hap_chr_string, hap_chr_file, fasta_file, region_file, snp_vcf_file, chrom,
 			  bam_pass_out_file, bam_filt_out_file, str_vcf_out_file, fam_file, log_file, use_all_reads, remove_pcr_dups, bams_from_10x,
 			  bam_lib_from_samp, def_stutter_model, skip_genotyping, output_gls, output_pls, output_phased_gls, output_all_reads, output_mall_reads,
 			  ref_vcf_file, bam_processor);
@@ -345,42 +351,42 @@ int main(int argc, char** argv){
   else if ((!bamfile_string.empty()) && (!bamlist_string.empty()))
     printErrorAndDie("You can only specify one of the --bams or --bam-files options");
   else if (region_file.empty())
-    printErrorAndDie("--region option required");
-  else if (fasta_dir.empty())
+    printErrorAndDie("--regions option required");
+  else if (fasta_file.empty())
     printErrorAndDie("--fasta option required");
   else if (!skip_genotyping && str_vcf_out_file.empty())
     printErrorAndDie("--str-vcf option required");
+
+  // Check that the FASTA file exists
+  if (!file_exists(fasta_file) || !is_file(fasta_file))
+    printErrorAndDie("FASTA file " + fasta_file + " does not exist. Please ensure that the path provided to --fasta is a valid FASTA file");
 
   std::vector<std::string> bam_files;
   if (!bamlist_string.empty())
     split_by_delim(bamlist_string, ',', bam_files);
 
-  // Read file containing BAM paths line-by-line
+  // Read file containing BAM/CRAM paths line-by-line
   if (!bamfile_string.empty()){
     if (!file_exists(bamfile_string))
-      printErrorAndDie("File containing BAM file names does not exist: " + bamfile_string);
+      printErrorAndDie("File containing BAM/CRAM file names does not exist: " + bamfile_string);
     std::ifstream input(bamfile_string.c_str());
     if (!input.is_open())
-      printErrorAndDie("Failed to open file containing BAM file names: " + bamfile_string);
+      printErrorAndDie("Failed to open file containing BAM/CRAM file names: " + bamfile_string);
     std::string line;
     while (std::getline(input, line))
       if (!line.empty())
 	bam_files.push_back(line);
     input.close();
   }
-  bam_processor.logger() << "Detected " << bam_files.size() << " BAM files" << std::endl;
+  bam_processor.logger() << "Detected " << bam_files.size() << " BAM/CRAM files" << std::endl;
 
-  // Open all BAM files
-  BamTools::BamMultiReader reader;
-  if (!reader.Open(bam_files)) {
-    std::cerr << reader.GetErrorString() << std::endl;
-    printErrorAndDie("Failed to open one or more BAM files");
-  }
-  //reader.SetExplicitMergeOrder(BamTools::BamMultiReader::MergeOrder::RoundRobinMerge);
-
+  // Open all BAM/CRAM files
+  std::string cram_fasta_path = fasta_file;
+  int merge_type = BamCramMultiReader::ORDER_ALNS_BY_FILE;
+  BamCramMultiReader reader(bam_files, cram_fasta_path, merge_type);
 
   // Construct filename->read group map (if one has been specified) and determine the list
-  // of samples of interest based on either the specified names or the RG tags in the BAM headers
+  // of samples of interest based on either the specified names or the RG tags in the BAM/CRAM headers
   std::set<std::string> rg_samples, rg_libs;
   std::map<std::string, std::string> rg_ids_to_sample, rg_ids_to_library;
   if (!rg_sample_string.empty()){
@@ -391,9 +397,9 @@ int main(int argc, char** argv){
     split_by_delim(rg_sample_string, ',', read_groups);
     split_by_delim(rg_lib_string, ',', libraries);
     if (bam_files.size() != read_groups.size())
-      printErrorAndDie("Number of BAM files in --bams and samples in --bam-samps must match");
+      printErrorAndDie("Number of BAM/CRAM files in --bams and samples in --bam-samps must match");
     if ((bam_lib_from_samp == 0) && (bam_files.size() != libraries.size()))
-      printErrorAndDie("Number of BAM files in --bams and libraries in --bam-libs must match");
+      printErrorAndDie("Number of BAM/CRAM files in --bams and libraries in --bam-libs must match");
 
     for (unsigned int i = 0; i < bam_files.size(); i++){
       rg_ids_to_sample[bam_files[i]]  = read_groups[i];
@@ -404,89 +410,45 @@ int main(int argc, char** argv){
     bam_processor.logger() << "User-specified read groups for " << rg_samples.size() << " unique samples" << std::endl;
   }
   else {
-    if (!reader.GetHeader().HasReadGroups())
-      printErrorAndDie("Provided BAM files don't contain read groups in the header and the --bam-samps flag was not specified");
-
     for (unsigned int i = 0; i < bam_files.size(); i++){
-      // Although it would be ideal to use the dictionary provided by the BamMultiReader, it doesn't appropriately handle
-      // read group ID collisions across BAMs (as it just overwrites the previous entry).
-      // Instead, we can open an individual reader for each BAM and allow for conficting IDs, as long as they lie in separate files
+      const std::vector<ReadGroup>& read_groups = reader.bam_header(i)->read_groups();
+      if (read_groups.empty())
+	printErrorAndDie("Provided BAM/CRAM files don't contain read groups in the header and the --bam-samps flag was not specified");
 
-      BamTools::BamReader single_file_reader;
-      if (!single_file_reader.Open(bam_files[i]))
-	printErrorAndDie("Failed to open one or more BAM files");
-
-      BamTools::SamReadGroupDictionary rg_dict = single_file_reader.GetHeader().ReadGroups;
-      for (auto rg_iter = rg_dict.Begin(); rg_iter != rg_dict.End(); rg_iter++){
-	if (!rg_iter->HasID())     printErrorAndDie("RG in BAM header is lacking the ID tag");
-	if (!rg_iter->HasSample()) printErrorAndDie("RG in BAM header is lacking the SM tag");
+      for (auto rg_iter = read_groups.begin(); rg_iter != read_groups.end(); rg_iter++){
+	if (!rg_iter->HasID())     printErrorAndDie("RG in BAM/CRAM header is lacking the ID tag");
+	if (!rg_iter->HasSample()) printErrorAndDie("RG in BAM/CRAM header is lacking the SM tag");
 	if ((bam_lib_from_samp == 0) && !rg_iter->HasLibrary())
-	  printErrorAndDie("RG in BAM header is lacking the LB tag");
-
-	std::string rg_library = (bam_lib_from_samp == 0 ? rg_iter->Library : rg_iter->Sample);
+	  printErrorAndDie("RG in BAM/CRAM header is lacking the LB tag");
+	std::string rg_library = (bam_lib_from_samp == 0 ? rg_iter->GetLibrary() : rg_iter->GetSample());
 
 	// Ensure that there aren't identical read group ids that map to different samples or libraries
-	if (rg_ids_to_sample.find(rg_iter->ID) != rg_ids_to_sample.end())
-	  if (rg_ids_to_sample[rg_iter->ID].compare(rg_iter->Sample) != 0)
-	    printErrorAndDie("Read group id " + rg_iter->ID + " maps to more than one sample");
-	if (rg_ids_to_library.find(rg_iter->ID) != rg_ids_to_library.end())
-	  if (rg_ids_to_library[rg_iter->ID].compare(rg_library) != 0)
-	    printErrorAndDie("Read group id " + rg_iter->ID + " maps to more than one library");
+	if (rg_ids_to_sample.find(rg_iter->GetID()) != rg_ids_to_sample.end())
+	  if (rg_ids_to_sample[rg_iter->GetID()].compare(rg_iter->GetSample()) != 0)
+	    printErrorAndDie("Read group id " + rg_iter->GetID() + " maps to more than one sample");
+	if (rg_ids_to_library.find(rg_iter->GetID()) != rg_ids_to_library.end())
+	  if (rg_ids_to_library[rg_iter->GetID()].compare(rg_library) != 0)
+	    printErrorAndDie("Read group id " + rg_iter->GetID() + " maps to more than one library");
 
-	rg_ids_to_sample[bam_files[i] + rg_iter->ID]  = rg_iter->Sample;
-	rg_ids_to_library[bam_files[i] + rg_iter->ID] = rg_library;
-	rg_samples.insert(rg_iter->Sample);
+	rg_ids_to_sample[bam_files[i] + rg_iter->GetID()]  = rg_iter->GetSample();
+	rg_ids_to_library[bam_files[i] + rg_iter->GetID()] = rg_library;
+	rg_samples.insert(rg_iter->GetSample());
 	rg_libs.insert(rg_library);
       }
-      single_file_reader.Close();
     }
-    bam_processor.logger() << "BAMs contain unique read group IDs for "
+
+    bam_processor.logger() << "BAMs/CRAMs contain unique read group IDs for "
 			   << rg_libs.size()    << " unique libraries and "
 			   << rg_samples.size() << " unique samples" << std::endl;
   }
 
-  // Open BAM index files, assuming they're either the same path with a .bai suffix or a path where .bai replaces .bam
-  std::vector<std::string> bam_indexes;
-  for (unsigned int i = 0; i < bam_files.size(); i++){
-    bool have_index      = false;
-    std::string bai_file = bam_files[i] + ".bai";
-    if (!file_exists(bai_file)){
-      int filename_len = bam_files[i].size();
-      if (filename_len > 4 && bam_files[i].substr(filename_len-4).compare(".bam") == 0){
-	bai_file = bam_files[i].substr(0, filename_len-4) + ".bai";
-	if (file_exists(bai_file)){
-	  have_index = true;
-	  bam_indexes.push_back(bai_file);
-	}
-      }
-    }
-    else {
-      have_index = true;
-      bam_indexes.push_back(bai_file);
-    }
+  BamWriter* bam_pass_writer = NULL;
+  if (!bam_pass_out_file.empty())
+    bam_pass_writer = new BamWriter(bam_pass_out_file, reader.bam_header());
 
-    if (!have_index){
-      std::stringstream error_msg;
-      error_msg << "Unable to find a BAM index file for " << bam_files[i] << "\n"
-		<< "Please ensure that each BAM has been sorted by position and indexed using samtools.";
-      printErrorAndDie(error_msg.str());
-    }
-  }
-  if (!reader.OpenIndexes(bam_indexes))
-    printErrorAndDie("Failed to open one or more BAM index files");
-
-  BamTools::BamWriter bam_pass_writer;
-  if (!bam_pass_out_file.empty()){
-    BamTools::RefVector ref_vector = reader.GetReferenceData();
-    bool file_open = bam_pass_writer.Open(bam_pass_out_file, reader.GetHeaderText(), ref_vector);
-    if (!file_open) printErrorAndDie("Failed to open output BAM file for reads used to genotype region");
-  }
-  BamTools::BamWriter bam_filt_writer;
-  if (!bam_filt_out_file.empty()){
-    BamTools::RefVector ref_vector = reader.GetReferenceData();
-    bool file_open = bam_filt_writer.Open(bam_filt_out_file, reader.GetHeaderText(), ref_vector);
-    if (!file_open) printErrorAndDie("Failed to open output BAM file for reads filtered for each region");
-  }
+  BamWriter* bam_filt_writer = NULL;
+  if (!bam_filt_out_file.empty())
+    bam_filt_writer = new BamWriter(bam_filt_out_file, reader.bam_header());
 
   if (!ref_vcf_file.empty()){
     if (!string_ends_with(ref_vcf_file, ".gz"))
@@ -559,12 +521,12 @@ int main(int argc, char** argv){
   }
 
   // Run analysis
-  bam_processor.process_regions(reader, region_file, fasta_dir, rg_ids_to_sample, rg_ids_to_library, bam_pass_writer, bam_filt_writer, std::cout, 1000000, chrom);
+  bam_processor.process_regions(reader, region_file, fasta_file, rg_ids_to_sample, rg_ids_to_library, bam_pass_writer, bam_filt_writer, std::cout, 10000000, chrom);
   bam_processor.finish();
 
-  if (!bam_pass_out_file.empty()) bam_pass_writer.Close();
-  if (!bam_filt_out_file.empty()) bam_filt_writer.Close();
-  reader.Close();
+  if (bam_pass_writer != NULL) delete bam_pass_writer;
+  if (bam_filt_writer != NULL) delete bam_filt_writer;
+
 
   total_time = (clock() - total_time)/CLOCKS_PER_SEC;
   bam_processor.logger() << "HipSTR execution finished: Total runtime = " << total_time << " sec" << "\n"

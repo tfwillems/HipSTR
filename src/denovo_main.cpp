@@ -17,7 +17,7 @@
 #include "version.h"
 #include "vcf_reader.h"
 
-bool file_exists(std::string path){
+bool file_exists(const std::string& path){
   return (access(path.c_str(), F_OK) != -1);
 }
 
@@ -82,10 +82,9 @@ void parse_command_line_args(int argc, char** argv, std::string& fam_file, std::
   };
 
   std::string filename;
-  int c;
   while (true){
     int option_index = 0;
-    c = getopt_long(argc, argv, "c:d:f:l:m:o:t:v:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "c:d:f:l:m:o:t:v:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -144,7 +143,7 @@ void parse_command_line_args(int argc, char** argv, std::string& fam_file, std::
   }
 }
 
-void read_site_skip_list(std::string input_file, std::set<std::string>& sites_to_skip){
+void read_site_skip_list(const std::string& input_file, std::set<std::string>& sites_to_skip){
   sites_to_skip.clear();
   std::ifstream input(input_file.c_str());
   std::string line;
@@ -236,7 +235,7 @@ int main(int argc, char** argv){
 
     // Scan for de novos, and output the results to a VCF
     logger << "\tJointly testing all children in each family for de novo mutations" << "\n"
-	   << "\tPlease ensure that phased genotype likelihoods (FORMAT = PHASEDGL) are availale in the VCF\n" << std::endl;
+	   << "\tPlease ensure that phased genotype likelihoods (FORMAT = PHASEDGL) are available in the VCF\n" << std::endl;
     DenovoScanner denovo_scanner(families, denovo_vcf_file, full_command, use_pop_priors);
     denovo_scanner.scan(snp_vcf_file, str_vcf, sites_to_skip, logger);
     denovo_scanner.finish();
@@ -250,7 +249,7 @@ int main(int argc, char** argv){
 
     // Scan for de novos using the trio approach
     logger << "\tIndividually testing each child in each family for de novo mutations" << "\n"
-	   << "\tPlease ensure that genotype likelihoods (FORMAT = GL) are availale in the VCF\n" << std::endl;
+	   << "\tPlease ensure that genotype likelihoods (FORMAT = GL) are available in the VCF\n" << std::endl;
     TrioDenovoScanner denovo_scanner(families, denovo_vcf_file, full_command, use_pop_priors);
     denovo_scanner.scan(str_vcf, logger);
     denovo_scanner.finish();
@@ -262,5 +261,5 @@ int main(int argc, char** argv){
   if (!log_file.empty())
     log_.close();
 
-  return 0;  
+  return 0;
 }

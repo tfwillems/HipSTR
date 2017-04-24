@@ -11,7 +11,7 @@
 #include "error.h"
 #include "region.h"
 
-void readRegions(std::string& input_file, std::vector<Region>& regions, uint32_t max_regions, std::string chrom_limit, std::ostream& logger){
+void readRegions(const std::string& input_file, uint32_t max_regions, const std::string& chrom_limit, std::vector<Region>& regions, std::ostream& logger){
   logger << "Reading region file " << input_file << std::endl;
   std::ifstream input(input_file.c_str());
   if (!input.is_open()) 

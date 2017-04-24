@@ -20,26 +20,25 @@ std::string uppercase(std::string str){
   return res.str();
 }
 
-bool string_starts_with(std::string&s, std::string prefix){
+bool string_starts_with(const std::string&s, std::string prefix){
   if (s.size() < prefix.size())
     return false;
   return s.substr(0, prefix.size()).compare(prefix) == 0;
 }
 
-bool string_ends_with(std::string& s, std::string suffix){
+bool string_ends_with(const std::string& s, std::string suffix){
   if (s.size() < suffix.size())
     return false;
   return s.substr(s.size()-suffix.size(), suffix.size()).compare(suffix) == 0;
 }
 
-bool orderByLengthAndSequence(const std::string& s1, const std::string s2){
+bool orderByLengthAndSequence(const std::string& s1, const std::string& s2){
   if (s1.size() != s2.size())
     return s1.size() < s2.size();
   return s1.compare(s2) < 0;
 }
 
-
-int length_suffix_match(std::string& s1, std::string& s2){
+int length_suffix_match(const std::string& s1, const std::string& s2){
   auto iter_1 = s1.rbegin();
   auto iter_2 = s2.rbegin();
   int num_matches = 0;

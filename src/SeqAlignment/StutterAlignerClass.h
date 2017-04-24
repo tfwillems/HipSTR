@@ -9,10 +9,10 @@
 class StutterAlignerClass {
  private:
   std::vector<double> log_probs_;
-  const int   block_len_;
   char* block_seq_;
-  const int   period_;
-  const bool  left_align_;
+  const int  block_len_;
+  const int  period_;
+  const bool left_align_;
   std::vector<int*> upstream_match_lengths_;
 
   int num_artifacts_;
@@ -31,7 +31,7 @@ class StutterAlignerClass {
 				    const double* base_log_wrong, const double* base_log_correct, const int D,
 				    int& best_del_pos);
 
-  int* num_upstream_matches(std::string& seq, int period){
+  int* num_upstream_matches(const std::string& seq, int period) const {
     int* match_lengths = new int[seq.size()];
     for (unsigned int i = 0; i < std::min(period, (int)seq.size()); i++)
       match_lengths[i] = 0;
@@ -41,7 +41,7 @@ class StutterAlignerClass {
   }
   
  public:
- StutterAlignerClass(std::string& block_seq, int period, bool left_align, RepeatStutterInfo* stutter_info)
+ StutterAlignerClass(const std::string& block_seq, int period, bool left_align, const RepeatStutterInfo* stutter_info)
    : block_len_(block_seq.size()), period_(period), left_align_(left_align){
     log_probs_.reserve(block_len_+1);
 

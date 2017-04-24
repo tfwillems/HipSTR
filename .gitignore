@@ -1,6 +1,6 @@
-BamSieve
 DenovoFinder
 HipSTR
+PhasingChecker
 src/version.cpp
 test/allele_expansion_test
 test/base_qual_test

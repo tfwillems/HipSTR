@@ -35,15 +35,14 @@ int getUsedPhysicalMemoryKB(){
   Left align BamAlignments in the provided vector and store those that successfully realign in the provided vector.
   Also extracts other information for successfully realigned reads into provided vectors.
  */
-void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::string& chrom_seq, std::vector<BamAlnList>& alignments,
-					     std::vector< std::vector<double> >& log_p1,       std::vector< std::vector<double> >& log_p2,
+void GenotyperBamProcessor::left_align_reads(const RegionGroup& region_group, const std::string& chrom_seq, std::vector<BamAlnList>& alignments,
+					     const std::vector< std::vector<double> >& log_p1, const std::vector< std::vector<double> >& log_p2,
 					     std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
 					     std::vector<Alignment>& left_alns){
   locus_left_aln_time_ = clock();
   logger() << "Left aligning reads" << std::endl;
   std::map<std::string, int> seq_to_alns;
   int32_t align_fail_count = 0, total_reads = 0;
-  int bp_diff;
   left_alns.clear(); filt_log_p1.clear(); filt_log_p2.clear();
 
   std::vector<bool> passes_region_filters; passes_region_filters.reserve(region_group.num_regions());
@@ -53,18 +52,18 @@ void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::str
 
     for (unsigned int j = 0; j < alignments[i].size(); ++j, ++total_reads){
       // Trim alignment if it extends very far upstream or downstream of the STR. For tractability, we limit it to 40bp
-      trimAlignment(alignments[i][j], (region_group.start() > 40 ? region_group.start()-40 : 1), region_group.stop()+40);
-      if (alignments[i][j].Length == 0)
+      alignments[i][j].TrimAlignment((region_group.start() > 40 ? region_group.start()-40 : 1), region_group.stop()+40);
+      if (alignments[i][j].Length() == 0)
         continue;
 
-      auto iter      = seq_to_alns.find(alignments[i][j].QueryBases);
+      auto iter      = seq_to_alns.find(alignments[i][j].QueryBases());
       bool have_prev = (iter != seq_to_alns.end());
       if (have_prev)
-        have_prev &= left_alns[iter->second].get_sequence().size() == alignments[i][j].QueryBases.size();
+        have_prev &= left_alns[iter->second].get_sequence().size() == alignments[i][j].QueryBases().size();
 
       if (!have_prev){
-        left_alns.push_back(Alignment(alignments[i][j].Name));
-        if (matchesReference(alignments[i][j]))
+        left_alns.push_back(Alignment(alignments[i][j].Name()));
+        if (alignments[i][j].MatchesReference())
           convertAlignment(alignments[i][j], chrom_seq, left_alns.back());
         else if (!realign(alignments[i][j], chrom_seq, left_alns.back())){
 	  // Failed to realign read
@@ -72,15 +71,15 @@ void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::str
           left_alns.pop_back();
           continue;
 	}
-	seq_to_alns[alignments[i][j].QueryBases] = left_alns.size()-1;
+	seq_to_alns[alignments[i][j].QueryBases()] = left_alns.size()-1;
       }
       else {
         // Reuse alignments if the sequence has already been observed and didn't lead to a soft-clipped alignment
         // Soft-clipping is problematic because it complicates base quality extration (but not really that much)
         Alignment& prev_aln = left_alns[iter->second];
-        assert(prev_aln.get_sequence().size() == alignments[i][j].QueryBases.size());
-	std::string bases = uppercase(alignments[i][j].QueryBases);
-        Alignment new_aln(prev_aln.get_start(), prev_aln.get_stop(), alignments[i][j].Name, alignments[i][j].Qualities, bases, prev_aln.get_alignment());
+        assert(prev_aln.get_sequence().size() == alignments[i][j].QueryBases().size());
+	std::string bases = uppercase(alignments[i][j].QueryBases());
+        Alignment new_aln(prev_aln.get_start(), prev_aln.get_stop(), alignments[i][j].Name(), alignments[i][j].Qualities(), bases, prev_aln.get_alignment());
         new_aln.set_cigar_list(prev_aln.get_cigar_list());
         left_alns.push_back(new_aln);
       }
@@ -102,9 +101,9 @@ void GenotyperBamProcessor::left_align_reads(RegionGroup& region_group, std::str
 }
 
 StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>& alignments,
-							 std::vector< std::vector<double> >& log_p1s,
-							 std::vector< std::vector<double> >& log_p2s,
-							 bool haploid, std::vector<std::string>& rg_names, const Region& region){
+							 const std::vector< std::vector<double> >& log_p1s,
+							 const std::vector< std::vector<double> >& log_p2s,
+							 bool haploid, const std::vector<std::string>& rg_names, const Region& region){
   std::vector< std::vector<int> > str_bp_lengths(alignments.size());
   std::vector< std::vector<double> > str_log_p1s(alignments.size()), str_log_p2s(alignments.size());
   int inf_reads = 0;
@@ -114,7 +113,7 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
   for (unsigned int i = 0; i < alignments.size(); ++i){
     for (unsigned int j = 0; j < alignments[i].size(); ++j){
       int bp_diff;
-      bool got_size = ExtractCigar(alignments[i][j].CigarData, alignments[i][j].Position, region.start()-region.period(), region.stop()+region.period(), bp_diff);
+      bool got_size = ExtractCigar(alignments[i][j].CigarData(), alignments[i][j].Position(), region.start()-region.period(), region.stop()+region.period(), bp_diff);
       if (got_size){
 	if (bp_diff < -(int)(region.stop()-region.start()+1))
 	  continue;
@@ -161,7 +160,7 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
 void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
 						      std::vector< std::vector<double> >& log_p1s,
 						      std::vector< std::vector<double> >& log_p2s,
-						      std::vector<std::string>& rg_names, RegionGroup& region_group, std::string& chrom_seq){
+						      const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq){
   int32_t total_reads = 0;
   for (unsigned int i = 0; i < alignments.size(); i++)
     total_reads += alignments[i].size();

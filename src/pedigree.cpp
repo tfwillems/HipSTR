@@ -62,7 +62,7 @@ bool PedigreeGraph::topological_sort(std::vector<PedigreeNode*>& nodes){
   return parent_counts.size() == 0; // Only a DAG if no unprocessed individuals are left
 }
 
-bool PedigreeGraph::build(std::string filename) {
+bool PedigreeGraph::build(const std::string& filename) {
   std::ifstream input(filename.c_str());
   if (!input.is_open())
     printErrorAndDie("Failed to open pedigree file " + filename);
@@ -120,7 +120,7 @@ bool PedigreeGraph::build(std::string filename) {
   return topological_sort(nodes);
 }
 
-void PedigreeGraph::prune(std::set<std::string>& sample_set){
+void PedigreeGraph::prune(const std::set<std::string>& sample_set){
   // Determine if each node has an upstream requested sample
   std::map<PedigreeNode*, bool> upstream_status;
   for (int i = 0; i < nodes_.size(); i++){
@@ -269,7 +269,7 @@ void PedigreeGraph::split_into_connected_components(std::vector<PedigreeGraph>& 
     components.push_back(PedigreeGraph(component_nodes[i]));
 }
 
-bool PedigreeGraph::is_nuclear_family(){
+bool PedigreeGraph::is_nuclear_family() const{
   if (no_ancestors_.size() != 2)
     return false;
   if (no_descendants_.size() == 0)
@@ -277,14 +277,14 @@ bool PedigreeGraph::is_nuclear_family(){
   if (no_ancestors_.size() + no_descendants_.size() != nodes_.size())
     return false;
 
-  std::string p1 = no_ancestors_[0]->get_name();
-  std::string p2 = no_ancestors_[1]->get_name();
+  const std::string& p1 = no_ancestors_[0]->get_name();
+  const std::string& p2 = no_ancestors_[1]->get_name();
   for (auto node_iter = no_descendants_.begin(); node_iter != no_descendants_.end(); node_iter++){
     if ((!(*node_iter)->has_mother()) || (!(*node_iter)->has_father()))
       return false;
 
-    std::string mother = (*node_iter)->get_mother()->get_name();
-    std::string father = (*node_iter)->get_father()->get_name();
+    const std::string& mother = (*node_iter)->get_mother()->get_name();
+    const std::string& father = (*node_iter)->get_father()->get_name();
     if ((mother.compare(p1) != 0) || (father.compare(p2) != 0))
       if ((mother.compare(p2) != 0) || (father.compare(p1) != 0))
 	return false;
@@ -292,17 +292,17 @@ bool PedigreeGraph::is_nuclear_family(){
   return true;
 }
 
-NuclearFamily PedigreeGraph::convert_to_nuclear_family(){
+NuclearFamily PedigreeGraph::convert_to_nuclear_family() const {
   assert(is_nuclear_family());
-  std::string mother = no_descendants_[0]->get_mother()->get_name();;
-  std::string father = no_descendants_[0]->get_father()->get_name();;
+  std::string mother = no_descendants_[0]->get_mother()->get_name();
+  std::string father = no_descendants_[0]->get_father()->get_name();
   std::vector<std::string> children;
   for (auto node_iter = no_descendants_.begin(); node_iter != no_descendants_.end(); node_iter++)
     children.push_back((*node_iter)->get_name());
   return NuclearFamily(no_descendants_[0]->get_family(), mother, father, children);
 }
 
-void read_sample_list(std::string input_file, std::set<std::string>& sample_set){
+void read_sample_list(const std::string& input_file, std::set<std::string>& sample_set){
   sample_set.clear();
   std::ifstream input(input_file);
   if (!input.is_open())
@@ -312,7 +312,7 @@ void read_sample_list(std::string input_file, std::set<std::string>& sample_set)
     sample_set.insert(line);
 }
 
-void extract_pedigree_nuclear_families(std::string pedigree_fam_file, std::set<std::string>& samples_with_data,
+void extract_pedigree_nuclear_families(const std::string& pedigree_fam_file, const std::set<std::string>& samples_with_data,
 				       std::vector<NuclearFamily>& nuclear_families, std::ostream& logger){
   assert(nuclear_families.size() == 0);
 

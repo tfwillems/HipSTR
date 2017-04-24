@@ -1,7 +1,3 @@
-/*
-Copyright (C) 2014 Thomas Willems <twillems@mit.edu>
-*/
-
 #include <vector>
 #include <string>
 #include <sstream>
@@ -39,48 +35,47 @@ namespace AlignmentFilters {
     return -1;
   }
 
-  std::string GetCigarString(std::vector<BamTools::CigarOp>& cigar_ops){
+  std::string GetCigarString(const std::vector<CigarOp>& cigar_ops){
     std::stringstream ss;
     for (auto iter = cigar_ops.begin(); iter != cigar_ops.end(); iter++)
       ss << iter->Length << iter->Type;
     return ss.str();
   }
   
-  pair<int,int> GetEndDistToIndel(BamTools::BamAlignment& aln){
-    vector<int> vals;
-    int head_dist = GetDistToIndel(aln.CigarData.begin(),  aln.CigarData.end());
-    int tail_dist = GetDistToIndel(aln.CigarData.rbegin(), aln.CigarData.rend());
+  pair<int,int> GetEndDistToIndel(BamAlignment& aln){
+    int head_dist = GetDistToIndel(aln.CigarData().begin(),  aln.CigarData().end());
+    int tail_dist = GetDistToIndel(aln.CigarData().rbegin(), aln.CigarData().rend());
     return pair<int,int>(head_dist, tail_dist);
   }
   
-  pair<int,int> GetNumEndMatches(BamTools::BamAlignment& aln, const string& ref_seq, int ref_seq_start){
-    if (aln.Position < ref_seq_start)
+  pair<int,int> GetNumEndMatches(BamAlignment& aln, const string& ref_seq, int ref_seq_start){
+    if (aln.Position() < ref_seq_start)
       return pair<int,int>(-1,-1);
     
     unsigned int read_index = 0;
-    unsigned int ref_index  = aln.Position-ref_seq_start;
-    vector<BamTools::CigarOp>::iterator cigar_iter = aln.CigarData.begin();
+    unsigned int ref_index  = aln.Position()-ref_seq_start;
+    auto cigar_iter = aln.CigarData().begin();
     bool beginning = true;
     int match_run  = 0;
     int head_match = 0;
 
     // Process leading clip CIGAR types
-    if (cigar_iter != aln.CigarData.end() && cigar_iter->Type == 'H')
+    if (cigar_iter != aln.CigarData().end() && cigar_iter->Type == 'H')
       cigar_iter++;
-    if (cigar_iter != aln.CigarData.end() && cigar_iter->Type == 'S'){
+    if (cigar_iter != aln.CigarData().end() && cigar_iter->Type == 'S'){
       read_index += cigar_iter->Length;
       cigar_iter++;
     }
     
     // Process CIGAR items as long as read region lies within reference sequence bounds
-    while (cigar_iter != aln.CigarData.end() && ref_index < ref_seq.size() && read_index < aln.QueryBases.size()){
+    while (cigar_iter != aln.CigarData().end() && ref_index < ref_seq.size() && read_index < aln.QueryBases().size()){
       if (cigar_iter->Type == 'M'){
 	if (ref_index + cigar_iter->Length > ref_seq.size()) 
 	  return pair<int,int>(-1, -1);
-	if (read_index + cigar_iter->Length > aln.QueryBases.size())
+	if (read_index + cigar_iter->Length > aln.Length())
 	  printErrorAndDie("Nucleotides for aligned read don't correspond to the CIGAR string");
 	for (unsigned int len = cigar_iter->Length; len > 0; len--){
-	  if ((char)tolower(ref_seq[ref_index]) == (char)tolower(aln.QueryBases[read_index]))
+	  if ((char)tolower(ref_seq[ref_index]) == (char)tolower(aln.QueryBases()[read_index]))
 	    match_run++;
 	  else {
 	    if (beginning) head_match = match_run;
@@ -114,15 +109,15 @@ namespace AlignmentFilters {
     }
 
     // Process trailing clip CIGAR types
-    if (cigar_iter != aln.CigarData.end() && cigar_iter->Type == 'S'){
+    if (cigar_iter != aln.CigarData().end() && cigar_iter->Type == 'S'){
       read_index += cigar_iter->Length;
       cigar_iter++;
     }
-    if (cigar_iter != aln.CigarData.end() && cigar_iter->Type == 'H')
+    if (cigar_iter != aln.CigarData().end() && cigar_iter->Type == 'H')
       cigar_iter++;
     
     // Ensure that we processed all CIGAR options
-    if (cigar_iter != aln.CigarData.end()){
+    if (cigar_iter != aln.CigarData().end()){
       if (ref_index >= ref_seq.size())
 	return pair<int,int>(-1,-1);
       else
@@ -130,7 +125,7 @@ namespace AlignmentFilters {
     }
     
     // Ensure that CIGAR string corresponded to aligned bases
-    if (read_index != aln.QueryBases.size()){
+    if (read_index != aln.QueryBases().size()){
       if (ref_index >= ref_seq.size())
 	return pair<int,int>(-1,-1);
       else
@@ -148,13 +143,13 @@ namespace AlignmentFilters {
      Stores the sequence, start and end position of the read after removing clipped bases
      using the provided references
    */
-  void GetUnclippedInfo(BamTools::BamAlignment& aln, string& bases, int32_t& unclipped_start, int32_t& unclipped_end){
-    unclipped_start = aln.Position;
-    unclipped_end   = aln.Position-1;
+  void GetUnclippedInfo(BamAlignment& aln, string& bases, int32_t& unclipped_start, int32_t& unclipped_end){
+    unclipped_start = aln.Position();
+    unclipped_end   = aln.Position()-1;
     bool begin      = true;
     int start_index = 0, num_bases = 0;
-    for(vector<BamTools::CigarOp>::iterator cigar_iter = aln.CigarData.begin(); cigar_iter != aln.CigarData.end(); cigar_iter++){
-      switch(cigar_iter->Type) {
+    for (auto cigar_iter = aln.CigarData().begin(); cigar_iter != aln.CigarData().end(); cigar_iter++){
+      switch(cigar_iter->Type){
       case 'D':
 	unclipped_end += cigar_iter->Length;
 	begin          = false;
@@ -180,11 +175,10 @@ namespace AlignmentFilters {
 	break;
       }
     }
-    bases = aln.QueryBases.substr(start_index, num_bases);
+    bases = aln.QueryBases().substr(start_index, num_bases);
   }
 
- 
-  bool HasLargestEndMatches(BamTools::BamAlignment& aln, const string& ref_seq, int ref_seq_start, int max_external, int max_internal){
+  bool HasLargestEndMatches(BamAlignment& aln, const string& ref_seq, int ref_seq_start, int max_external, int max_internal){
     // Extract sequence, start and end coordinates of read after clipping
     string bases;
     int start, end;
@@ -228,10 +222,10 @@ namespace AlignmentFilters {
     return true;
   }
 
-  void GetNumClippedBases(BamTools::BamAlignment& aln, int& num_hard_clips, int& num_soft_clips){
+  void GetNumClippedBases(BamAlignment& aln, int& num_hard_clips, int& num_soft_clips){
     num_hard_clips = 0;
     num_soft_clips = 0;
-    for (std::vector<BamTools::CigarOp>::iterator cigar_iter = aln.CigarData.begin(); cigar_iter != aln.CigarData.end(); cigar_iter++){
+    for (auto cigar_iter = aln.CigarData().begin(); cigar_iter != aln.CigarData().end(); cigar_iter++){
       switch(cigar_iter->Type){
       case 'H':
 	num_hard_clips += cigar_iter->Length;

@@ -4,9 +4,9 @@
 bool ExtractCigar(const std::vector<CigarElement>& cigar_data, const int& cigar_start,
 		  const int& region_start, const int& region_end,
 		  int& bp_diff_from_ref) {
-  std::vector<BamTools::CigarOp> cigar_ops;
+  std::vector<CigarOp> cigar_ops;
   for (auto cigar_iter = cigar_data.begin(); cigar_iter != cigar_data.end(); cigar_iter++)
-    cigar_ops.push_back(BamTools::CigarOp(cigar_iter->get_type(), cigar_iter->get_num()));
+    cigar_ops.push_back(CigarOp(cigar_iter->get_type(), cigar_iter->get_num()));
   return ExtractCigar(cigar_ops, cigar_start, region_start, region_end, bp_diff_from_ref);
 }
 
@@ -15,7 +15,7 @@ bool ExtractCigar(const std::vector<CigarElement>& cigar_data, const int& cigar_
    If successful, stores the difference using the provided int reference.
    Adapted from same function in lobSTR
  */
-bool ExtractCigar(std::vector<BamTools::CigarOp>& cigar_data, const int& cigar_start,
+bool ExtractCigar(const std::vector<CigarOp>& cigar_data, const int& cigar_start,
 		  const int& region_start, const int& region_end,
 		  int& bp_diff_from_ref) {
   assert(cigar_start >= 0 && region_end >= region_start);

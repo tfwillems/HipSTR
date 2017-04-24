@@ -27,18 +27,18 @@ class FastaReader {
   std::map<std::string, faidx_t*> chrom_to_index_;
   std::vector<faidx_t*> fasta_indices_;
 
-  bool file_exists(std::string path){
+  bool file_exists(std::string path) const {
     return (access(path.c_str(), F_OK) != -1);
   }
 
-  bool is_file(const std::string& name){
+  bool is_file(const std::string& name) const {
     struct stat st_buf;
     stat(name.c_str(), &st_buf);
     return (S_ISREG (st_buf.st_mode));
   }
 
-  void add_index(std::string& path);
-  void init(std::string& path);
+  void add_index(const std::string& path);
+  void init(const std::string& path);
 
  public:
   /*
@@ -46,7 +46,7 @@ class FastaReader {
    *             or (ii) a directory containing one or more indexed FASTA files
    * Sequences from all chromosomes in the relevant FASTA file(s) will be available for queries
    */
-  FastaReader(std::string path){
+  explicit FastaReader(const std::string& path){
     init(path);
   }
 
@@ -58,7 +58,7 @@ class FastaReader {
   /*
    * Retrieves the sequence with name CHROM from the relevant FASTA file and stores it in SEQ
    */
-  void get_sequence(std::string& chrom, std::string& seq){
+  void get_sequence(const std::string& chrom, std::string& seq){
     std::string chrom_key = chrom;
     auto index_iter = chrom_to_index_.find(chrom);
     if (index_iter == chrom_to_index_.end()){
@@ -81,7 +81,7 @@ class FastaReader {
    * Retrieves the sequence with name CHROM from the relevant FASTA file
    * and stores the 0-index based substring from START -> END (inclusive) in SEQ
    */
-  void get_sequence(std::string& chrom, int32_t start, int32_t end, std::string& seq){
+  void get_sequence(const std::string& chrom, int32_t start, int32_t end, std::string& seq){
     std::string chrom_key = chrom;
     auto index_iter = chrom_to_index_.find(chrom);
     if (index_iter == chrom_to_index_.end()){

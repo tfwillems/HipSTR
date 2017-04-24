@@ -55,38 +55,28 @@ class SNPTree {
       center_ = 0;
     }
 
-    SNPTree(const SNPTree& other) {
+    SNPTree(const SNPTree& other)
+      : snps_(other.snps_){
         center_ = other.center_;
-        snps_   = other.snps_;
 	left_   = (other.left_  ? new SNPTree(*other.left_)  : NULL);
 	right_  = (other.right_ ? new SNPTree(*other.right_) : NULL);
     }
     
-    SNPTree& operator=(const SNPTree& other) {
-      center_ = other.center_;
-      snps_   = other.snps_;
-      if (other.left_)
-	left_ = new SNPTree(*other.left_);
-      else {
-	if (left_) delete left_;
-	left_ = NULL;
-      }
+    SNPTree& operator=(const SNPTree& other){
+      if (&other != this){
+	center_ = other.center_;
+	snps_   = other.snps_;
 
-      if (other.right_)
-	right_ = new SNPTree(*other.right_);
-      else {
-	if (right_) delete right_;
-	right_ = NULL;
+	if (left_  != NULL) delete left_;
+	if (right_ != NULL) delete right_;
+	left_  = (other.left_  ? new SNPTree(*other.left_)  : NULL);
+	right_ = (other.right_ ? new SNPTree(*other.right_) : NULL);
       }
       return *this;
     }
 
- SNPTree(std::vector<SNP>& snp_vals,
-	 unsigned int depth = 16,
-	 unsigned int minbucket = 64,
-	 int leftextent  = 0,
-	 int rightextent = 0,
-	 unsigned int maxbucket = 512) {
+ SNPTree(std::vector<SNP>& snp_vals, unsigned int depth = 16, unsigned int minbucket = 64,
+	 int leftextent  = 0, int rightextent = 0, unsigned int maxbucket = 512){
    left_ = right_ = NULL;
    
    --depth;
@@ -145,12 +135,9 @@ class SNPTree {
  ~SNPTree(void) {
    // traverse the left and right
    // delete them all the way down
-   if (left_)
-     delete left_;
-   if (right_)
-     delete right_;
+   if (left_  != NULL) delete left_;
+   if (right_ != NULL) delete right_;
  }
- 
 };
 
 

@@ -105,16 +105,15 @@ void HapAligner::align_seq_to_hap(Haplotype* haplotype, bool reuse_alns,
     }
     else {
       // Handle normal n -> n-1 transitions while preventing sequencing indels from extending into preceding stutter blocks
-      int coord_index      = (block_index == 0 ? 1 : 0);
-      int homopolymer_len  = haplotype->homopolymer_length(block_index, std::max(0, coord_index-1));
+      int coord_index = (block_index == 0 ? 1 : 0);
 
       for (; coord_index < block_seq.size(); ++coord_index, ++haplotype_index){
 	assert(matrix_index == seq_len*haplotype_index);
 	char hap_char = block_seq[coord_index];
 	
 	// Update the homopolymer tract length
-	homopolymer_len = std::min(MAX_HOMOP_LEN, std::max(haplotype->homopolymer_length(block_index, coord_index),
-							   haplotype->homopolymer_length(block_index, std::max(0, coord_index-1))));
+	int homopolymer_len = std::min(MAX_HOMOP_LEN, std::max(haplotype->homopolymer_length(block_index, coord_index),
+							       haplotype->homopolymer_length(block_index, std::max(0, coord_index-1))));
 
 	// Boundary conditions for leftmost base in read
 	match_matrix[matrix_index]    = (seq_0[0] == hap_char ? base_log_correct[0] : base_log_wrong[0]);
@@ -264,7 +263,7 @@ void HapAligner::calc_best_seed_position(int32_t region_start, int32_t region_en
  * Identify the base with the largest minimum distance from an insertion, a deletion and a stutter block
  * as defined by its alignment to the reference genome
  */
-int HapAligner::calc_seed_base(Alignment& aln){
+int HapAligner::calc_seed_base(const Alignment& aln){
   int32_t pos          = aln.get_start();
   int best_seed = -1, cur_base = 0, max_dist = MIN_SEED_DIST;
   for (auto cigar_iter = aln.get_cigar_list().begin(); cigar_iter != aln.get_cigar_list().end(); cigar_iter++){
@@ -304,18 +303,17 @@ int HapAligner::calc_seed_base(Alignment& aln){
     }
     default: {
       printErrorAndDie("Unrecognized CIGAR char in calc_seed_base()");
-      break;  
     }
     }
   }
 
   // Verify seed validity
   if (best_seed < -1 || best_seed == 0 || best_seed >= ((int)aln.get_sequence().size())-1)
-    printErrorAndDie("Invalid alignment seed " + std::to_string(best_seed));
+    printErrorAndDie("Invalid alignment seed");
   return best_seed;
 }
 
-void HapAligner::process_reads(std::vector<Alignment>& alignments, int init_read_index, BaseQuality* base_quality, std::vector<bool>& realign_read,
+void HapAligner::process_reads(const std::vector<Alignment>& alignments, int init_read_index, const BaseQuality* base_quality, const std::vector<bool>& realign_read,
 			       double* aln_probs, int* seed_positions){
   assert(alignments.size() == realign_read.size());
   AlignmentTrace trace(fw_haplotype_->num_blocks());
@@ -428,7 +426,6 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq, cons
       }
     }
     else {
-      int homopolymer_len     = haplotype->homopolymer_length(block_index, std::max(0, base_index-1));
       int prev_matrix_type    = NONE;
       std::string block_seq   = haplotype->get_seq(block_index);
       int32_t pos             = haplotype->get_block(block_index)->start() + (haplotype->reversed() ? -base_index : base_index);
@@ -441,8 +438,8 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq, cons
       // start coordinate and sizes are +/- for insertions and deletions, respectively
       while (base_index >= 0 && seq_index >= 0){
 	// Update the homopolymer tract length
-	homopolymer_len = std::min(MAX_HOMOP_LEN, std::max(haplotype->homopolymer_length(block_index, base_index),
-							   haplotype->homopolymer_length(block_index, std::max(0, base_index-1))));
+	int homopolymer_len = std::min(MAX_HOMOP_LEN, std::max(haplotype->homopolymer_length(block_index, base_index),
+							       haplotype->homopolymer_length(block_index, std::max(0, base_index-1))));
 
 	if (matrix_type != prev_matrix_type){
 	  // Record any processed indels
@@ -569,7 +566,7 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq, cons
   return aln_ss.str();
 }
 
-void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_quality, bool retrace_aln,
+void HapAligner::process_read(const Alignment& aln, int seed_base, const BaseQuality* base_quality, bool retrace_aln,
 			      double* prob_ptr, AlignmentTrace& trace){
   assert(seed_base != -1);
   assert(aln.get_sequence().size() == aln.get_base_qualities().size());
@@ -707,7 +704,7 @@ void HapAligner::process_read(Alignment& aln, int seed_base, BaseQuality* base_q
   delete [] base_log_correct;
 }
 
-AlignmentTrace* HapAligner::trace_optimal_aln(Alignment& orig_aln, int seed_base, int best_haplotype, BaseQuality* base_quality){
+AlignmentTrace* HapAligner::trace_optimal_aln(const Alignment& orig_aln, int seed_base, int best_haplotype, const BaseQuality* base_quality){
   fw_haplotype_->go_to(best_haplotype);
   fw_haplotype_->fix();
   rev_haplotype_->go_to(best_haplotype);

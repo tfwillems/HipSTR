@@ -24,10 +24,9 @@ class DebruijnGraph : public DirectedGraph {
   void prune_edges(std::vector<bool>& remove_edges);
 
  public:
-  DebruijnGraph(int k, std::string& ref_seq){
+ DebruijnGraph(int k, const std::string& ref_seq) : ref_seq_(ref_seq){
     assert(ref_seq.size() > k);
     k_           = k;
-    ref_seq_     = ref_seq;
     source_kmer_ = ref_seq.substr(0, k_);
     sink_kmer_   = ref_seq.substr(ref_seq.size()-k, k_);
     num_strings_ = 0;
@@ -38,11 +37,11 @@ class DebruijnGraph : public DirectedGraph {
     ref_edge_.resize(edges_.size(), true);
   }
 
-  void add_string(std::string& seq, int weight=1);
+  void add_string(const std::string& seq, int weight=1);
 
   void enumerate_paths(int min_weight, int max_paths, std::vector<std::pair<std::string, int> >& paths);
 
-  static bool calc_kmer_length(std::string& ref_seq, int min_kmer, int max_kmer, int& kmer);
+  static bool calc_kmer_length(const std::string& ref_seq, int min_kmer, int max_kmer, int& kmer);
 
   bool is_source_ok();
 
@@ -59,7 +58,7 @@ class DebruijnPath {
   int depth_;
 
  public:
-  DebruijnPath(int node_id){
+  explicit DebruijnPath(int node_id){
     parent_     = NULL;
     min_weight_ = 1000000;
     max_weight_ = 0;
@@ -67,11 +66,11 @@ class DebruijnPath {
     depth_      = 0;
   }
 
-  int get_min_weight()       { return min_weight_; }
-  int get_max_weight()       { return max_weight_; }
-  int get_node_id()          { return node_id_;    }
-  int get_depth()            { return depth_;      }
-  DebruijnPath* get_parent() { return parent_;     }
+  int get_min_weight()       const { return min_weight_; }
+  int get_max_weight()       const { return max_weight_; }
+  int get_node_id()          const { return node_id_;    }
+  int get_depth()            const { return depth_;      }
+  DebruijnPath* get_parent() const { return parent_;     }
 
   DebruijnPath* add_edge(Edge* edge){
     DebruijnPath* new_path = new DebruijnPath(edge->get_destination());
@@ -82,7 +81,7 @@ class DebruijnPath {
     return new_path;
   }
   
-  std::string get_sequence(DebruijnGraph* graph);
+  std::string get_sequence(DebruijnGraph* graph) const;
 };
 
 bool path_comparator(DebruijnPath* p1, DebruijnPath* p2);
