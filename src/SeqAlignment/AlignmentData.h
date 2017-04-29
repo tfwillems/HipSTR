@@ -36,22 +36,25 @@ class Alignment {
   std::string sequence_;
   std::string alignment_;
   std::vector<bool> use_for_haps_;
+  bool rev_strand_;
 
  public:
-  Alignment(int32_t start, int32_t stop,
+   Alignment(int32_t start, int32_t stop, bool rev_strand,
 	    const std::string& name,
 	    const std::string& base_qualities,
 	    const std::string& sequence,
 	    const std::string& alignment)
     : name_(name), base_qualities_(base_qualities), sequence_(sequence), alignment_(alignment){
-    start_ = start;
-    stop_  = stop;
+    start_      = start;
+    stop_       = stop;
+    rev_strand_ = rev_strand;
   }
 
   explicit Alignment(const std::string& name)
     : name_(name){
-    start_ = 0;
-    stop_  = -1;
+    start_      = 0;
+    stop_       = -1;
+    rev_strand_ = false;
   }
 
   inline const std::string& get_name()   const { return name_;   }
@@ -123,6 +126,7 @@ class Alignment {
   inline const std::string& get_alignment()                const { return alignment_;      }
   inline const std::vector<CigarElement>& get_cigar_list() const { return cigar_list_;     }
   bool use_for_hap_generation(int region_index) const { return use_for_haps_[region_index]; }
+  bool is_from_reverse_strand() const { return rev_strand_; }
 
   std::string getCigarString() const {
     std::stringstream cigar_str;

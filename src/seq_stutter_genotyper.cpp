@@ -27,6 +27,7 @@
 #include "SeqAlignment/RepeatBlock.h"
 
 #include "cephes/cephes.h"
+#include "htslib/htslib/kfunc.h"
 
 int max_index(double* vals, unsigned int num_vals){
   int best_index = 0;
@@ -971,10 +972,11 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   std::vector<int> num_reads_with_stutter(num_samples_, 0), num_reads_with_flank_indels(num_samples_, 0);
   std::vector<int> num_reads_strand_one(num_samples_, 0), num_reads_strand_two(num_samples_, 0);
   std::vector<int> unique_reads_hap_one(num_samples_, 0), unique_reads_hap_two(num_samples_, 0);
+  std::vector<int> rv_unique_reads_hap_one(num_samples_, 0), rv_unique_reads_hap_two(num_samples_, 0);
   std::vector< std::vector<int> > bps_per_sample(num_samples_), ml_bps_per_sample(num_samples_);
   std::vector< std::vector<double> > log_read_phases(num_samples_);
-  std::vector<AlnList> max_LL_alns_strand_one(num_samples_), left_alns_strand_one(num_samples_), orig_alns_strand_one(num_samples_);
-  std::vector<AlnList> max_LL_alns_strand_two(num_samples_), left_alns_strand_two(num_samples_), orig_alns_strand_two(num_samples_);
+  std::vector<AlnList> max_LL_alns_strand_one(num_samples_), left_alns_strand_one(num_samples_);
+  std::vector<AlnList> max_LL_alns_strand_two(num_samples_), left_alns_strand_two(num_samples_);
   std::vector<bool> realign_to_haplotype(num_alleles_, true);
   HapAligner hap_aligner(haplotype_, realign_to_haplotype);
   double* read_LL_ptr = log_aln_probs_;
@@ -998,10 +1000,14 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
       double v1 = log_p1_[read_index]+read_LL_ptr[hap_a], v2 = log_p2_[read_index]+read_LL_ptr[hap_b];
       if (std::abs(v1-v2) > STRAND_TOLERANCE){
 	read_strand = (v1 > v2 ? 0 : 1);
-	if (read_strand == 0)
+	if (read_strand == 0) {
 	  unique_reads_hap_one[sample_label_[read_index]]++;
-	else
+	  if (alns_[read_index].is_from_reverse_strand()) rv_unique_reads_hap_one[sample_label_[read_index]]++;
+	}
+	else {
 	  unique_reads_hap_two[sample_label_[read_index]]++;
+	  if (alns_[read_index].is_from_reverse_strand()) rv_unique_reads_hap_two[sample_label_[read_index]]++;
+	}
       }
     }
 
@@ -1163,12 +1169,14 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     out << allele_counts[new_to_old.back()];
   }
 
-  // If we used all reads during genotyping and performed assembly, we'll output the allele bias
+  // If we used all reads during genotyping and performed assembly, we'll output the allele bias and Fisher strand bias
   bool output_allele_bias = (!haploid_ && reassemble_flanks_);
+  bool output_strand_bias = (!haploid_ && reassemble_flanks_);
 
   // Add FORMAT field
   out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DSTUTTER:DFLANKINDEL:PDP:PSNP:GLDIFF" : "\tGT:GB:Q:DP:DSTUTTER:DFLANKINDEL:GLDIFF");
   if (output_allele_bias)         out << ":AB:DAB";
+  if (output_strand_bias)         out << ":FS";
   if (output_allreads)            out << ":ALLREADS";
   if (output_mallreads)           out << ":MALLREADS";
   if (output_gls)                 out << ":GL";
@@ -1207,7 +1215,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
       out << ".";
       continue;
     }
-    
+
     int sample_index    = sample_iter->second;
     double phase1_reads = (num_aligned_reads[sample_index] == 0 ? 0 : exp(log_sum_exp(log_read_phases[sample_index])));
     double phase2_reads = num_aligned_reads[sample_index] - phase1_reads;
@@ -1219,6 +1227,17 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     double allele_bias = 1.01;
     if (!haploid_ && (gts[sample_index].first != gts[sample_index].second))
       allele_bias = compute_allele_bias(unique_reads_hap_one[sample_index], unique_reads_hap_two[sample_index]);
+
+    // Compute the strand bias p-value using the kt_fisher_exact function from htslib
+    // For the bias, we use the two-sided p-value
+    double strand_bias = 1.01;
+    if (!haploid_ && (gts[sample_index].first != gts[sample_index].second)){
+      double left, right, two;
+      kt_fisher_exact(unique_reads_hap_one[sample_index] - rv_unique_reads_hap_one[sample_index], rv_unique_reads_hap_one[sample_index],
+		      unique_reads_hap_two[sample_index] - rv_unique_reads_hap_two[sample_index], rv_unique_reads_hap_two[sample_index],
+		      &left, &right, &two);
+      strand_bias = log10(std::min(1.0, two));
+    }
 
     if (!haploid_){
       out << old_to_new[gts[sample_index].first] << "|" << old_to_new[gts[sample_index].second]     // Genotype
@@ -1254,12 +1273,20 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
 	out << ":" << gl_diffs[sample_index];
     }
 
-    // Output the log-10 value of the allele bias p-value
+    // Output the log10 value of the allele bias p-value
     if (output_allele_bias){
       if (allele_bias > 1)
-	out << ":.:.";
+	out << ":" << 0 << ":.";
       else
 	out << ":" << allele_bias << ":" << (unique_reads_hap_one[sample_index] + unique_reads_hap_two[sample_index]);
+    }
+
+    // Output the log10 value of the Fisher strand bias p-value
+    if (output_strand_bias){
+      if (strand_bias > 1)
+	out << ":" << 0;
+      else
+	out << ":" << strand_bias;
     }
 
     // Add bp diffs from regular left-alignment
@@ -1336,9 +1363,9 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     // Combine alignments from both strands after ordering them by position independently
     std::vector<AlnList> max_LL_alns(num_samples_);
     for (unsigned int i = 0; i < num_samples_; i++){
-      for (unsigned int j = 0; j < 3; j++){
-	AlnList& aln_ref_one = (j == 0 ? orig_alns_strand_one[i] : (j == 1 ? left_alns_strand_one[i] : max_LL_alns_strand_one[i]));
-	AlnList& aln_ref_two = (j == 0 ? orig_alns_strand_two[i] : (j == 1 ? left_alns_strand_two[i] : max_LL_alns_strand_two[i]));
+      for (unsigned int j = 0; j < 2; j++){
+	AlnList& aln_ref_one = (j == 0 ? left_alns_strand_one[i] : max_LL_alns_strand_one[i]);
+	AlnList& aln_ref_two = (j == 0 ? left_alns_strand_two[i] : max_LL_alns_strand_two[i]);
 	std::sort(aln_ref_one.begin(), aln_ref_one.end());
 	std::sort(aln_ref_two.begin(), aln_ref_two.end());
 	max_LL_alns[i].insert(max_LL_alns[i].end(), aln_ref_one.begin(), aln_ref_one.end());

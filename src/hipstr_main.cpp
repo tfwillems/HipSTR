@@ -483,7 +483,7 @@ int main(int argc, char** argv){
   if (!skip_genotyping){
     if (!string_ends_with(str_vcf_out_file, ".gz"))
       printErrorAndDie("Path for STR VCF output file must end in .gz as it will be bgzipped");
-    bam_processor.set_output_str_vcf(str_vcf_out_file, full_command, rg_samples);
+    bam_processor.set_output_str_vcf(str_vcf_out_file, fasta_file, full_command, rg_samples);
   }
 
   if (!hap_chr_string.empty()){

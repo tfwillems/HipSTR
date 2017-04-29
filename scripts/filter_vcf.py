@@ -24,8 +24,10 @@ def filter_call(sample, filters):
                return "Flank indels"
           elif filters.STUTTER_FRAC < 1 and 1.0*sample['DSTUTTER']/sample['DP'] > filters.STUTTER_FRAC:
                return "Stutter fraction"
-          elif filters.ALLELE_BIAS > -100 and sample["AB"] is not None and sample['AB'] < filters.ALLELE_BIAS:
+          elif filters.ALLELE_BIAS > -100 and sample['AB'] < filters.ALLELE_BIAS:
                return "Allele bias"
+          elif filters.STRAND_BIAS > -100 and sample['FS'] < filters.STRAND_BIAS:
+               return "Strand bias"
 
           if filters.SPAN_DEPTH > 0:
                if sample["MALLREADS"] is None:
@@ -63,13 +65,16 @@ def main():
      parser.add_argument("--min-call-allele-bias", type=float, required=False, default=-100.0, dest="ALLELE_BIAS",
                          help="Omit a sample's call if AB < ALLELE_BIAS")
 
+     parser.add_argument("--min-call-strand-bias", type=float, required=False, default=-100.0, dest="STRAND_BIAS",
+                         help="Omit a sample's call if FS < STRAND_BIAS")
+
      parser.add_argument("--min-call-spanning-depth", type=int, required=False, default=0.0, dest="SPAN_DEPTH",
                          help="Omit a sample's call if the minimum number of spanning reads supporting an allele < SPAN_DEPTH")
 
      parser.add_argument("--min-loc-depth", type=int, required=False, default=0, dest="MIN_LOC_DEPTH",
                          help="Omit locus if the total depth (DP INFO field) < MIN_LOC_DEPTH")
 
-     parser.add_argument("--max-loc-depth", type=int, required=False, default=1000000, dest="MAX_LOC_DEPTH",
+     parser.add_argument("--max-loc-depth", type=int, required=False, default=1000000000, dest="MAX_LOC_DEPTH",
                          help="Omit locus if the total depth (DP INFO field) > MAX_LOC_DEPTH")
 
      parser.add_argument("--max-loc-flank-indel", type=float, required=False, default=1.0, dest="LOC_FLANK_INDEL_FRAC",

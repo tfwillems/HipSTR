@@ -190,7 +190,7 @@ public:
       printErrorAndDie("Failed to open output file for stutter models");
   }
 
-  void set_output_str_vcf(const std::string& vcf_file, const std::string& full_command, const std::set<std::string>& samples_to_output){
+  void set_output_str_vcf(const std::string& vcf_file, const std::string& fasta_path, const std::string& full_command, const std::set<std::string>& samples_to_output){
     output_str_gts_ = true;
     str_vcf_.open(vcf_file.c_str());
 
@@ -206,7 +206,7 @@ public:
     std::sort(samples_to_genotype_.begin(), samples_to_genotype_.end());
     
     // Write VCF header
-    Genotyper::write_vcf_header(full_command, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, str_vcf_);
+    Genotyper::write_vcf_header(fasta_path, full_command, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, str_vcf_);
   }
 
   void analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,

@@ -79,7 +79,7 @@ void GenotyperBamProcessor::left_align_reads(const RegionGroup& region_group, co
         Alignment& prev_aln = left_alns[iter->second];
         assert(prev_aln.get_sequence().size() == alignments[i][j].QueryBases().size());
 	std::string bases = uppercase(alignments[i][j].QueryBases());
-        Alignment new_aln(prev_aln.get_start(), prev_aln.get_stop(), alignments[i][j].Name(), alignments[i][j].Qualities(), bases, prev_aln.get_alignment());
+        Alignment new_aln(prev_aln.get_start(), prev_aln.get_stop(), alignments[i][j].IsReverseStrand(), alignments[i][j].Name(), alignments[i][j].Qualities(), bases, prev_aln.get_alignment());
         new_aln.set_cigar_list(prev_aln.get_cigar_list());
         left_alns.push_back(new_aln);
       }
