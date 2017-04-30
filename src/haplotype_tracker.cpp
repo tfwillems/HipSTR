@@ -82,14 +82,13 @@ void HaplotypeTracker::add_snp(const VCF::Variant& variant){
   }
 }
 
-void HaplotypeTracker::advance(const std::string& chrom, int32_t position, const std::set<std::string>& sites_to_skip, std::ostream& logger){
-  //logger << "Advancing haplotype tracker";
+void HaplotypeTracker::advance(const std::string& chrom, int32_t position, const std::set<std::string>& sites_to_skip){
   int32_t start_of_window = (position >= window_size_ ? position - window_size_ : 0);
   int32_t end_of_window   = position + window_size_;
   if (chrom.compare(chrom_) != 0){
     chrom_ = chrom;
     reset();
-    if(!snp_vcf_.set_region(chrom, start_of_window))
+    if (!snp_vcf_.set_region(chrom, start_of_window))
       printErrorAndDie("Failed to set the region to chromosome " + chrom + " in the SNP VCF. Please check the SNP VCF and rerun the analysis");
   }
   else {

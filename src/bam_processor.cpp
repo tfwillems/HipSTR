@@ -34,14 +34,14 @@ void BamProcessor::passes_filters(BamAlignment& aln, std::vector<bool>& region_p
     region_passes.push_back(passes[i] == '1' ? true : false);
 }
 
-void BamProcessor::write_passing_alignment(BamAlignment& aln, const std::map<std::string, std::string>& rg_to_sample, BamWriter* writer){
+void BamProcessor::write_passing_alignment(BamAlignment& aln, BamWriter* writer){
   if (writer == NULL)
     return;
   if (!writer->SaveAlignment(aln))
     printErrorAndDie("Failed to save alignment");
 }
 
-void BamProcessor::write_filtered_alignment(BamAlignment& aln, std::string filter, const std::map<std::string, std::string>& rg_to_sample, BamWriter* writer){
+void BamProcessor::write_filtered_alignment(BamAlignment& aln, std::string filter, BamWriter* writer){
   if (writer == NULL)
     return;
 
@@ -176,7 +176,7 @@ bool BamProcessor::spans_a_region(const std::vector<Region>& regions, BamAlignme
 }
 
 void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::string& chrom_seq, const RegionGroup& region_group,
-					 const std::map<std::string, std::string>& rg_to_sample, const std::map<std::string, std::string>& rg_to_library, std::vector<std::string>& rg_names,
+					 const std::map<std::string, std::string>& rg_to_sample, std::vector<std::string>& rg_names,
 					 std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
 					 BamWriter* pass_writer, BamWriter* filt_writer){
   locus_read_filter_time_ = clock();
@@ -222,7 +222,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 	if (alignment.StartsWithHardClip() || alignment.EndsWithHardClip()){
 	  read_count++;
 	  hard_clip++;
-	  write_filtered_alignment(alignment, "HARD_CLIPPED", rg_to_sample, filt_writer);
+	  write_filtered_alignment(alignment, "HARD_CLIPPED", filt_writer);
 	  continue;
 	}
 
@@ -322,13 +322,13 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 	  if (p_1.size() == 1 && p_1[0].second == alignment.Position()){
 	    paired_str_alns.push_back(alignment);
 	    mate_alns.push_back(aln_iter->second);
-	    write_passing_alignment(alignment, rg_to_sample, pass_writer);
-	    write_passing_alignment(aln_iter->second, rg_to_sample, pass_writer);
+	    write_passing_alignment(alignment, pass_writer);
+	    write_passing_alignment(aln_iter->second, pass_writer);
 	  }
 	  else {
 	    unique_mapping++;
 	    filter.append("NO_UNIQUE_MAPPING");
-	    write_filtered_alignment(alignment, filter, rg_to_sample, filt_writer);
+	    write_filtered_alignment(alignment, filter, filt_writer);
 	  }
 	  potential_mates.erase(aln_iter);
 	}
@@ -346,17 +346,17 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 	    if (p_1.size() == 1 && p_1[0].second == alignment.Position()){
 	      paired_str_alns.push_back(alignment);
 	      mate_alns.push_back(str_iter->second);
-	      write_passing_alignment(alignment, rg_to_sample, pass_writer);
+	      write_passing_alignment(alignment, pass_writer);
 
 	      paired_str_alns.push_back(str_iter->second);
 	      mate_alns.push_back(alignment);
-	      write_passing_alignment(str_iter->second, rg_to_sample, pass_writer);
+	      write_passing_alignment(str_iter->second, pass_writer);
 	    }
 	    else {
 	      unique_mapping += 2;
 	      std::string filter = "NO_UNIQUE_MAPPING";
-	      write_filtered_alignment(alignment, filter, rg_to_sample, filt_writer);
-	      write_filtered_alignment(str_iter->second, filter, rg_to_sample, filt_writer);
+	      write_filtered_alignment(alignment, filter, filt_writer);
+	      write_filtered_alignment(str_iter->second, filter, filt_writer);
 	    }
 	    potential_strs.erase(str_iter);
 	  }
@@ -366,7 +366,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
       }
       else {
 	assert(!filter.empty());
-	write_filtered_alignment(alignment, filter, rg_to_sample, filt_writer);
+	write_filtered_alignment(alignment, filter, filt_writer);
 	potential_mates.insert(std::pair<std::string, BamAlignment>(aln_key, alignment));
       }
     }
@@ -382,13 +382,13 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 	if (p_1.size() == 1 && p_1[0].second == aln_iter->second.Position()){
 	  paired_str_alns.push_back(aln_iter->second);
 	  mate_alns.push_back(alignment);
-	  write_passing_alignment(aln_iter->second, rg_to_sample, pass_writer);
-	  write_passing_alignment(alignment, rg_to_sample, pass_writer);
+	  write_passing_alignment(aln_iter->second, pass_writer);
+	  write_passing_alignment(alignment, pass_writer);
 	}
 	else {
 	  unique_mapping++;
 	  std::string filter = "NO_UNIQUE_MAPPING";
-	  write_filtered_alignment(aln_iter->second, filter, rg_to_sample, filt_writer);
+	  write_filtered_alignment(aln_iter->second, filter, filt_writer);
 	}
 	potential_strs.erase(aln_iter);
       }
@@ -418,10 +418,10 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 
     if (filter.empty()){
       unpaired_str_alns.push_back(aln_iter->second);
-      write_passing_alignment(aln_iter->second, rg_to_sample, pass_writer);
+      write_passing_alignment(aln_iter->second, pass_writer);
     }
     else
-      write_filtered_alignment(aln_iter->second, filter, rg_to_sample, filt_writer);
+      write_filtered_alignment(aln_iter->second, filter, filt_writer);
   }
   potential_strs.clear(); potential_mates.clear();
   
@@ -527,7 +527,7 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string
     std::vector<std::string> rg_names;
     std::vector<BamAlnList> paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg;
     RegionGroup region_group(*region_iter); // TO DO: Extend region groups to have multiple regions
-    read_and_filter_reads(reader, chrom_seq, region_group, rg_to_sample, rg_to_library, rg_names,
+    read_and_filter_reads(reader, chrom_seq, region_group, rg_to_sample, rg_names,
 			  paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, pass_writer, filt_writer);
 
     // The user specified a list of samples to which we need to restrict the analyses

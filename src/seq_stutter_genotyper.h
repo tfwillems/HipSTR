@@ -98,7 +98,7 @@ class SeqStutterGenotyper : public Genotyper {
   // Identify alleles present in stutter artifacts. Align each read to the new haplotypes
   // containing these alleles and incorporate these alignment probabilities
   // into the relevant data structures
-  bool id_and_align_to_stutter_alleles(const std::string& chrom_seq, std::ostream& logger);
+  bool id_and_align_to_stutter_alleles(std::ostream& logger);
 
   // Exploratory function related to identifying indels in the flanking sequences
   void analyze_flank_indels(std::ostream& logger);
@@ -190,13 +190,13 @@ class SeqStutterGenotyper : public Genotyper {
   double aln_trace_time() { return total_aln_trace_time_;  }
   double assembly_time()  { return total_assembly_time_;   }
 
-  bool genotype(const std::string& chrom_seq, std::ostream& logger);
+  bool genotype(std::ostream& logger);
 
   /*
    * Recompute the stutter model(s) using the PCR artifacts obtained from the ML alignments
    * and regenotype the samples using this new model
   */
-  bool recompute_stutter_models(const std::string& chrom_seq, std::ostream& logger, int max_em_iter, double abs_ll_converge, double frac_ll_converge);
+  bool recompute_stutter_models(std::ostream& logger, int max_em_iter, double abs_ll_converge, double frac_ll_converge);
 };
 
 #endif

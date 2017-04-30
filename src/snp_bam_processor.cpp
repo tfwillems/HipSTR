@@ -27,7 +27,7 @@ void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
     // If we are tracking SNP haplotypes for pedigree-based filtering, we need to update the haplotypes to the current position
     if (haplotype_tracker_ != NULL){
       std::set<std::string> sites_to_skip;
-      haplotype_tracker_->advance(region_group.chrom(), region_group.start(), sites_to_skip, logger());
+      haplotype_tracker_->advance(region_group.chrom(), region_group.start(), sites_to_skip);
     }
 
     std::vector<SNPTree*> snp_trees;

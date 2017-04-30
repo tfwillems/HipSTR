@@ -202,7 +202,7 @@ class HaplotypeTracker {
     return snp_haplotypes_[index_1].edit_distances(snp_haplotypes_[index_2]);
   }
 
-  void advance(const std::string& chrom, int32_t pos, const std::set<std::string>& sites_to_skip, std::ostream& logger);
+  void advance(const std::string& chrom, int32_t pos, const std::set<std::string>& sites_to_skip);
 
   bool infer_haplotype_inheritance(const NuclearFamily& family, int max_best_score, int min_second_best_score,
 				   std::vector<int>& maternal_indices, std::vector<int>& paternal_indices, std::set<int32_t>& bad_sites);

@@ -46,8 +46,7 @@ void StutterAlignerClass::load_read(const int base_seq_len,       const char* ba
   }
 }
 
-double StutterAlignerClass::align_no_artifact_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
-						      const double* base_log_wrong, const double* base_log_correct){
+double StutterAlignerClass::align_no_artifact_reverse(const int offset){
   return match_probs_[offset];
 }
 
@@ -149,7 +148,7 @@ double StutterAlignerClass::align_stutter_region_reverse(const int base_seq_len,
 							 int& best_pos){
   best_pos = -1;
   if (D == 0)
-    return align_no_artifact_reverse(base_seq_len, base_seq,   offset, base_log_wrong, base_log_correct);
+    return align_no_artifact_reverse(offset);
   else if (D > 0)
     return align_pcr_insertion_reverse(base_seq_len, base_seq, offset, base_log_wrong, base_log_correct, D, best_pos);
   else

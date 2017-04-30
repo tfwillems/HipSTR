@@ -519,7 +519,7 @@ void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplo
   total_hap_aln_time_ += locus_hap_aln_time;
 }
 
-bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(const std::string& chrom_seq, std::ostream& logger){
+bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::ostream& logger){
   std::vector< std::vector<int> > alleles_to_remove(haplotype_->num_blocks());
   while (true){
     // Look for candidate alleles present in stutter artifacts
@@ -545,7 +545,7 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(const std::string& chr
   return true;
 }
 
-bool SeqStutterGenotyper::genotype(const std::string& chrom_seq, std::ostream& logger){
+bool SeqStutterGenotyper::genotype(std::ostream& logger){
   // Unsuccessful initialization. May be due to
   // 1) Failing to find the corresponding alleles in the VCF (if one has been provided)
   // 2) Large deletion extending past STR
@@ -590,7 +590,7 @@ bool SeqStutterGenotyper::genotype(const std::string& chrom_seq, std::ostream& l
 
   if (ref_vcf_ == NULL){
     // Look for additional alleles in stutter artifacts and align to them (if necessary)
-    if (!id_and_align_to_stutter_alleles(chrom_seq, logger))
+    if (!id_and_align_to_stutter_alleles(logger))
       return false;
 
     // Remove alleles with no MAP genotype calls and recompute the posteriors
@@ -1380,7 +1380,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   }
 }
 
-bool SeqStutterGenotyper::recompute_stutter_models(const std::string& chrom_seq, std::ostream& logger,
+bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger,
 						  int max_em_iter, double abs_ll_converge, double frac_ll_converge){
   logger << "Retraining EM stutter genotyper using maximum likelihood alignments" << std::endl;
   std::vector<AlignmentTrace*> traced_alns;
@@ -1418,5 +1418,5 @@ bool SeqStutterGenotyper::recompute_stutter_models(const std::string& chrom_seq,
     block->get_repeat_info()->set_stutter_model(length_genotyper.get_stutter_model());
   }
   trace_cache_.clear();
-  return genotype(chrom_seq, logger);
+  return genotype(logger);
 }

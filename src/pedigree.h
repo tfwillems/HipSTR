@@ -44,10 +44,10 @@ class NuclearFamily {
   const std::string& get_family_id() const { return family_id_; }
   const std::string& get_mother()    const { return mother_; }
   const std::string& get_father()    const { return father_; }
-  const int size()                   const { return 2 + children_.size(); }
-  const int num_children()           const { return children_.size();      }
   const std::vector<std::string>& get_children() const { return children_; }
   const std::vector<std::string>& get_samples()  const { return samples_; }
+  int size()         const { return 2 + children_.size(); }
+  int num_children() const { return children_.size();     }
 
   bool is_missing_sample(const std::set<std::string>& samples) const {
     for (auto sample_iter = samples_.begin(); sample_iter != samples_.end(); sample_iter++)

@@ -13,7 +13,6 @@ const char SPACE_CHAR    = ' ';
 void writeReferenceString(const std::string& reference_string,
 			  std::ostream& output,
 			  const std::string& locus_id,
-			  const std::vector<bool>& within_locus,
 			  bool draw_locus_id);
 
 void writeAlignmentStrings(const std::string& reference_string,

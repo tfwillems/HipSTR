@@ -124,7 +124,7 @@ void DenovoScanner::scan(const std::string& snp_vcf_file, VCF::VCFReader& str_vc
 
     PhasedGL phased_gls(str_variant);
     logger << "\t";
-    haplotype_tracker.advance(str_variant.get_chromosome(), str_variant.get_position(), sites_to_skip, logger);
+    haplotype_tracker.advance(str_variant.get_chromosome(), str_variant.get_position(), sites_to_skip);
 
     MutationModel mut_model(str_variant);
     DiploidGenotypePrior* dip_gt_priors;

@@ -9,7 +9,6 @@
 void writeReferenceString(const std::string& reference_string,
 			  std::ostream& output,
 			  const std::string& locus_id,
-			  const std::vector<bool>& within_locus,
 			  bool draw_locus_id){
   output << locus_id << "\t" << "ALL" << "\t" << "<div>" << "\t<table class=\"reftable\">";
   if (draw_locus_id)

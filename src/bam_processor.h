@@ -29,8 +29,8 @@ class BamProcessor {
   double locus_read_filter_time_;
 
 
-  void  write_passing_alignment(BamAlignment& aln, const std::map<std::string, std::string>& rg_to_sample, BamWriter* writer);
-  void write_filtered_alignment(BamAlignment& aln, std::string filter, const std::map<std::string, std::string>& rg_to_sample, BamWriter* writer);
+  void  write_passing_alignment(BamAlignment& aln, BamWriter* writer);
+  void write_filtered_alignment(BamAlignment& aln, std::string filter, BamWriter* writer);
 
   void extract_mappings(BamAlignment& aln, const BamHeader* bam_header,
 			std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs) const;
@@ -39,7 +39,7 @@ class BamProcessor {
 			  std::vector< std::pair<std::string, int32_t> >& p1, std::vector< std::pair<std::string, int32_t> >& p2) const;
 
   void read_and_filter_reads(BamCramMultiReader& reader, const std::string& chrom_seq, const RegionGroup& region,
-			     const std::map<std::string, std::string>& rg_to_sample, const std::map<std::string, std::string>& rg_to_library, std::vector<std::string>& rg_names,
+			     const std::map<std::string, std::string>& rg_to_sample, std::vector<std::string>& rg_names,
 			     std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
 			     BamWriter* pass_writer, BamWriter* filt_writer);
 
@@ -109,10 +109,7 @@ class BamProcessor {
 			    std::vector<BamAlnList>& mate_pairs_by_rg,
 			    std::vector<BamAlnList>& unpaired_strs_by_rg,
 			    const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq,
-			    std::ostream& out){
-   log("Doing nothing with reads");
- }
-
+			    std::ostream& out) = 0;
 
  void set_log(const std::string& log_file){
    if (log_to_file_)

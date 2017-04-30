@@ -20,8 +20,7 @@ class StutterAlignerClass {
   double* del_probs_;
   double* match_probs_;
  
-  double align_no_artifact_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
-				   const double* base_log_wrong, const double* base_log_correct);
+  double align_no_artifact_reverse(const int offset);
   
   double align_pcr_insertion_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
 				     const double* base_log_wrong, const double* base_log_correct, const int D,
