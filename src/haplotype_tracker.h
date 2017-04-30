@@ -56,8 +56,6 @@ class DiploidEditDistance {
       }
     }
   }
-
-  friend std::ostream& operator<< (std::ostream &out, DiploidEditDistance& distances);
 };
 
 class DiploidHaplotype {
@@ -134,6 +132,10 @@ class HaplotypeTracker {
   int32_t num_snps_;
   std::deque<int32_t> positions_;
   int32_t prev_window_start_, prev_window_end_;
+
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  HaplotypeTracker(const HaplotypeTracker& other);
+  HaplotypeTracker& operator=(const HaplotypeTracker& other);
 
   int32_t next_snp_position() const {
     if (num_snps_ == 0)

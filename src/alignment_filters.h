@@ -7,9 +7,6 @@
 #include "bam_io.h"
 
 namespace AlignmentFilters {
-  /* Returns the CIGAR string corresponding to the vector of CigarOps. */
-  std::string GetCigarString(const std::vector<CigarOp>& cigar_ops);
-  
   /* Length of perfect base matches at 5' and 3' end of read. */
   std::pair<int,int> GetNumEndMatches(BamAlignment& aln, const std::string& ref_seq, int ref_seq_start);
   
@@ -22,10 +19,6 @@ namespace AlignmentFilters {
      Ignores clipped bases when performing these comparions 
   */
   bool HasLargestEndMatches(BamAlignment& aln, const std::string& ref_seq, int ref_seq_start, int max_upstream, int max_downstream);
-
-
-  /* Determines the number of hard and soft clipped bases based on the CIGAR string and stores them in the provided integer references */
-  void GetNumClippedBases(BamAlignment& aln, int& num_hard_clips, int& num_soft_clips);
 }
 
 #endif

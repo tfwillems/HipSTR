@@ -21,9 +21,9 @@ class VCFReader;
 
 class Variant {
 private:
-  bcf_hdr_t* vcf_header_;
-  bcf1_t*    vcf_record_;
-  VCFReader* vcf_reader_;
+  bcf_hdr_t const * vcf_header_;
+  VCFReader const * vcf_reader_;
+  bcf1_t* vcf_record_;
 
   int num_samples_, num_missing_;
   std::vector<std::string> alleles_;
@@ -89,16 +89,6 @@ public:
       return vcf_record_->d.id;
     else
       return "";
-  }
-
-  int get_format_field_index(const std::string& fieldname) const {
-    bcf_fmt_t* fmt = bcf_get_fmt(vcf_header_, vcf_record_, fieldname.c_str());
-    return (fmt == NULL ? -1 : fmt->id);
-  }
-
-  int get_info_field_index(const std::string& fieldname) const {
-    bcf_info_t* info = bcf_get_info(vcf_header_, vcf_record_, fieldname.c_str());
-    return (info == NULL ? -1 : info->key);
   }
 
   bool has_format_field(const std::string& fieldname) const {
@@ -180,6 +170,10 @@ private:
 
   void open(const std::string& filename);
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  VCFReader(const VCFReader& other);
+  VCFReader& operator=(const VCFReader& other);
+
 public:
   explicit VCFReader(const std::string& filename){
     vcf_input_  = NULL;
@@ -228,7 +222,7 @@ public:
     return set_region(region_str.str());
   }
 
-  const std::vector<std::string>& get_samples(){ return samples_; }
+  const std::vector<std::string>& get_samples() const { return samples_; }
 
   bool get_next_variant(Variant& variant);
 };

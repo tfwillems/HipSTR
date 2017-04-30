@@ -430,7 +430,7 @@ std::string HapAligner::retrace(Haplotype* haplotype, const char* read_seq, cons
       std::string block_seq   = haplotype->get_seq(block_index);
       int32_t pos             = haplotype->get_block(block_index)->start() + (haplotype->reversed() ? -base_index : base_index);
       const int32_t increment = (haplotype->reversed() ? 1 : -1);
-      int32_t indel_seq_index, indel_position;
+      int32_t indel_seq_index = -1, indel_position = -1;
       std::stringstream flank_ss;
 
       // Retrace flanks while tracking any indels that occur

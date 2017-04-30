@@ -1,11 +1,5 @@
 #include "haplotype_tracker.h"
 
-std::ostream& operator<< (std::ostream &out, DiploidEditDistance& edit_distance){
-  out << "\t" << edit_distance.distances_[0] << " " << edit_distance.distances_[1]
-      << " "  << edit_distance.distances_[2] << " " << edit_distance.distances_[3];
-  return out;
-}
-
 void DiploidHaplotype::add_snp(int gt_a, int gt_b){
   assert(snps_1_.size() > 0 && snps_2_.size() > 0);
   if (gt_a == 1) snps_1_.back() |= set_mask_;

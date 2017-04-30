@@ -59,6 +59,10 @@ class BamProcessor {
 
  std::set<std::string> sample_set_;
 
+ // Private unimplemented copy constructor and assignment operator to prevent operations
+ BamProcessor(const BamProcessor& other);
+ BamProcessor& operator=(const BamProcessor& other);
+
   public:
  BamProcessor(bool use_bam_rgs, bool remove_pcr_dups){
    use_bam_rgs_             = use_bam_rgs;

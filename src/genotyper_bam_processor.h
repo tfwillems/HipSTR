@@ -91,6 +91,10 @@ private:
 				    const std::vector< std::vector<double> >& log_p1s, const std::vector< std::vector<double> >& log_p2s,
 				    bool haploid, const std::vector<std::string>& rg_names, const Region& region);
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  GenotyperBamProcessor(const GenotyperBamProcessor& other);
+  GenotyperBamProcessor& operator=(const GenotyperBamProcessor& other);
+
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups) : SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
     output_stutter_models_ = false;

@@ -31,6 +31,10 @@ class DenovoScanner {
   void add_family_to_record(const NuclearFamily& family, double total_ll_no_denovo,
 			    const std::vector<double>& total_lls_one_denovo, const std::vector<double>& total_lls_one_other);
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  DenovoScanner(const DenovoScanner& other);
+  DenovoScanner& operator=(const DenovoScanner& other);
+
  public:
  DenovoScanner(const std::vector<NuclearFamily>& families, const std::string& output_file, const std::string& full_command, bool use_pop_priors)
    : families_(families){

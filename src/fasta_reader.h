@@ -40,6 +40,10 @@ class FastaReader {
   void add_index(const std::string& path);
   void init(const std::string& path);
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  FastaReader(const FastaReader& other);
+  FastaReader& operator=(const FastaReader& other);
+
  public:
   /*
    * PATH is either (i)  a single indexed FASTA file, containing one or more chromosomes

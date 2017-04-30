@@ -31,6 +31,10 @@ class HapBlock {
   // Compute the homopolymer lengths and store them in the resulting vectors
   void calc_homopolymer_lengths(const std::string& seq, std::vector<int*>& llen_vec, std::vector<int*>& rlen_vec);
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  HapBlock(const HapBlock& other);
+  HapBlock& operator=(const HapBlock& other);
+
  public:
   HapBlock(int32_t start, int32_t end, const std::string& ref_seq)
     : ref_seq_(ref_seq){

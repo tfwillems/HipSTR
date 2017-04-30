@@ -28,8 +28,6 @@ class SNP {
     base_1_ = base_1;
     base_2_ = base_2;
   }
-  
-  friend std::ostream& operator<< (std::ostream &out, SNP& snp);
 
   inline uint32_t pos()  const { return pos_;    }
   inline char base_one() const { return base_1_; }
@@ -133,8 +131,7 @@ class SNPTree {
  }
  
  ~SNPTree(void) {
-   // traverse the left and right
-   // delete them all the way down
+   // Traverse the left and right subtrees and delete them all the way down
    if (left_  != NULL) delete left_;
    if (right_ != NULL) delete right_;
  }

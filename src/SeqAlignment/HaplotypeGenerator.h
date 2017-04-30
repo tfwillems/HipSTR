@@ -44,6 +44,10 @@ class HaplotypeGenerator {
   void get_aln_bounds(const std::vector< std::vector<Alignment> >& alignments,
 		      int32_t& min_aln_start, int32_t& max_aln_stop) const;
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  HaplotypeGenerator(const HaplotypeGenerator& other);
+  HaplotypeGenerator& operator=(const HaplotypeGenerator& other);
+
  public:
   HaplotypeGenerator(int32_t min_aln_start, int32_t max_aln_stop){
     finished_                = false;

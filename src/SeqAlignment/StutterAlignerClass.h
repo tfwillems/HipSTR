@@ -39,6 +39,10 @@ class StutterAlignerClass {
       match_lengths[i] = (seq[i-period] != seq[i] ? 0 : 1 + match_lengths[i-1]);
     return match_lengths;
   }
+
+  // Private unimplemented copy constructor to prevent operation
+  StutterAlignerClass(const StutterAlignerClass& other);
+  StutterAlignerClass& operator=(const StutterAlignerClass& other);
   
  public:
  StutterAlignerClass(const std::string& block_seq, int period, bool left_align, const RepeatStutterInfo* stutter_info)

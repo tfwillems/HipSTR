@@ -136,6 +136,11 @@ class SeqStutterGenotyper : public Genotyper {
 
   RegionGroup* region_group_;
 
+
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  SeqStutterGenotyper(const SeqStutterGenotyper& other);
+  SeqStutterGenotyper& operator=(const SeqStutterGenotyper& other);
+
  public:
   SeqStutterGenotyper(const RegionGroup& region_group, bool haploid, bool reassemble_flanks,
 		      std::vector<Alignment>& alignments, std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,

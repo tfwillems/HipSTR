@@ -231,7 +231,9 @@ bool PedigreeGraph::build_subgraph(std::vector<PedigreeNode*>& subgraph_nodes){
   return topological_sort(nodes);
 }
 
-void PedigreeGraph::split_into_connected_components(std::vector<PedigreeGraph>& components){
+void PedigreeGraph::split_into_connected_components(std::vector<PedigreeGraph*>& components){
+  assert(components.size() == 0);
+
   // Determine the component to which each node belongs
   std::set<PedigreeNode*> visited;
   std::vector< std::vector<PedigreeNode*> > component_nodes;
@@ -264,9 +266,8 @@ void PedigreeGraph::split_into_connected_components(std::vector<PedigreeGraph>& 
   assert(visited.size() == nodes_.size());
 
   // Construct individual graphs for each component
-  assert(components.size() == 0);
   for (int i = 0; i < component_nodes.size(); i++)
-    components.push_back(PedigreeGraph(component_nodes[i]));
+    components.push_back(new PedigreeGraph(component_nodes[i]));
 }
 
 bool PedigreeGraph::is_nuclear_family() const{
@@ -302,16 +303,6 @@ NuclearFamily PedigreeGraph::convert_to_nuclear_family() const {
   return NuclearFamily(no_descendants_[0]->get_family(), mother, father, children);
 }
 
-void read_sample_list(const std::string& input_file, std::set<std::string>& sample_set){
-  sample_set.clear();
-  std::ifstream input(input_file);
-  if (!input.is_open())
-    printErrorAndDie("Unable to open sample list file " + input_file);
-  std::string line;
-  while (std::getline(input, line))
-    sample_set.insert(line);
-}
-
 void extract_pedigree_nuclear_families(const std::string& pedigree_fam_file, const std::set<std::string>& samples_with_data,
 				       std::vector<NuclearFamily>& nuclear_families, std::ostream& logger){
   assert(nuclear_families.size() == 0);
@@ -323,14 +314,15 @@ void extract_pedigree_nuclear_families(const std::string& pedigree_fam_file, con
   pedigree.prune(samples_with_data);
 
   // Identify simple nuclear families in the pedigree
-  std::vector<PedigreeGraph> pedigree_components;
+  std::vector<PedigreeGraph*> pedigree_components;
   pedigree.split_into_connected_components(pedigree_components);
   int num_others = 0;
   for (unsigned int i = 0; i < pedigree_components.size(); i++){
-    if (pedigree_components[i].is_nuclear_family())
-      nuclear_families.push_back(pedigree_components[i].convert_to_nuclear_family());
+    if (pedigree_components[i]->is_nuclear_family())
+      nuclear_families.push_back(pedigree_components[i]->convert_to_nuclear_family());
     else
       num_others++;
+    delete pedigree_components[i];
   }
   logger << "Detected " << nuclear_families.size() << " nuclear families and " << num_others << " other family structures\n";
 }

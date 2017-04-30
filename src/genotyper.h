@@ -12,6 +12,11 @@
 #include "mathops.h"
 
 class Genotyper {
+ private:
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  Genotyper(const Genotyper& other);
+  Genotyper& operator=(const Genotyper& other);
+
  protected:
   unsigned int num_reads_;    // Total number of reads across all samples
   int num_samples_;           // Total number of samples

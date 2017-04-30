@@ -70,10 +70,6 @@ public:
     return val_ < other.val_;
   }
 
-  bool greater_than(IndelTracker& other){
-    return val_ > other.val_;
-  }
-  
   static unsigned int max_indels(){
     return MAX_BITS/BITS_PER_INDEL;
   }

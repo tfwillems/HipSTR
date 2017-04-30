@@ -34,6 +34,26 @@ class RepeatStutterInfo {
     allele_sizes_.push_back(ref_allele.size());
   }
 
+  RepeatStutterInfo(const RepeatStutterInfo& other){
+    period_        = other.period_;
+    max_ins_       = other.max_ins_;
+    max_del_       = other.max_del_;
+    stutter_model_ = (other.stutter_model_ == NULL ? NULL : other.stutter_model_->copy());
+    allele_sizes_  = other.allele_sizes_;
+  }
+
+  RepeatStutterInfo& operator=(const RepeatStutterInfo& other){
+    if (&other != this){
+      if (stutter_model_ != NULL) delete stutter_model_;
+      period_        = other.period_;
+      max_ins_       = other.max_ins_;
+      max_del_       = other.max_del_;
+      stutter_model_ = (other.stutter_model_ == NULL ? NULL : other.stutter_model_->copy());
+      allele_sizes_  = other.allele_sizes_;
+    }
+    return *this;
+  }
+
   ~RepeatStutterInfo(){
     if (stutter_model_ != NULL)
       delete stutter_model_;

@@ -18,6 +18,10 @@ class RepeatBlock : public HapBlock {
     std::vector<StutterAlignerClass*> stutter_aligners_;
     bool reversed_;
 
+    // Private unimplemented copy constructor and assignment operator to prevent operations
+    RepeatBlock(const RepeatBlock& other);
+    RepeatBlock& operator=(const RepeatBlock& other);
+
  public:
  RepeatBlock(int32_t start, int32_t end, const std::string& ref_seq, int period, const StutterModel* stutter_model, const bool reversed=false): HapBlock(start, end, ref_seq){
       repeat_info_ = new RepeatStutterInfo(period, ref_seq, stutter_model);

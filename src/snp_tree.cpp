@@ -6,11 +6,6 @@
 #include "error.h"
 #include "snp_tree.h"
 
-std::ostream& operator<<(std::ostream& out, SNP& snp) {
-  out << "SNP: (" << snp.pos() << ", " << snp.base_one() << "|" << snp.base_two() << ")";
-  return out;
-}
-
 bool in_any_region(const VCF::Variant& variant, const std::vector<Region>& skip_regions, int32_t skip_padding){
   for (auto region_iter = skip_regions.begin(); region_iter != skip_regions.end(); region_iter++)
     if (variant.get_position() >= region_iter->start() - skip_padding)

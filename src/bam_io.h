@@ -366,6 +366,24 @@ class BamHeader {
     parse_read_groups();
   }
 
+  BamHeader(const BamHeader& other){
+    header_      = bam_hdr_dup(other.header_);
+    seq_indices_ = other.seq_indices_;
+    seq_names_   = other.seq_names_;
+    seq_lengths_ = other.seq_lengths_;
+    read_groups_ = other.read_groups_;
+  }
+
+  BamHeader& operator=(const BamHeader& other){
+    bam_hdr_destroy(header_);
+    header_      = bam_hdr_dup(other.header_);
+    seq_indices_ = other.seq_indices_;
+    seq_names_   = other.seq_names_;
+    seq_lengths_ = other.seq_lengths_;
+    read_groups_ = other.read_groups_;
+    return *this;
+  }
+
   const std::vector<uint32_t>& seq_lengths()  const { return seq_lengths_; }
   const std::vector<std::string>& seq_names() const { return seq_names_;   }
   const std::vector<ReadGroup>& read_groups() const { return read_groups_; }
@@ -416,6 +434,10 @@ private:
   int32_t     start_;      // Start pos
   uint64_t    min_offset_; // Offset after first alignment
   BamAlignment first_aln_; // First alignment
+
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  BamCramReader(const BamCramReader& other);
+  BamCramReader& operator=(const BamCramReader& other);
 
   bool file_exists(const std::string& path){
     return (access(path.c_str(), F_OK) != -1);
@@ -495,6 +517,10 @@ class BamCramMultiReader {
   std::vector<std::pair<int32_t, int32_t> > aln_heap_;
   int merge_type_;
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  BamCramMultiReader(const BamCramMultiReader& other);
+  BamCramMultiReader& operator=(const BamCramMultiReader& other);
+
  public:
   const static int ORDER_ALNS_BY_POSITION = 0;
   const static int ORDER_ALNS_BY_FILE     = 1;
@@ -544,6 +570,10 @@ class BamCramMultiReader {
 class BamWriter {
  private:
   BGZF* output_;
+
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  BamWriter(const BamWriter& other);
+  BamWriter& operator=(const BamWriter& other);
 
  public:
   BamWriter(const std::string& path, const BamHeader* bam_header){
