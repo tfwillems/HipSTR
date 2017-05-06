@@ -226,7 +226,7 @@ public:
     if (output_viz_)
       viz_out_.close();
 
-    log("\n\n\n------HipSTR Execution Summary------");
+    logger() << "\n\n\n------HipSTR Execution Summary------\n";
     if (too_many_reads_ != 0)
       logger() << "Skipped " << too_many_reads_ << " loci with too many reads.\n\t If this comprises a sizeable portion of your loci, see the --max-reads command line option\n";
     if (too_few_reads_ != 0)

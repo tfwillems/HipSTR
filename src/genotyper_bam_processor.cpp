@@ -137,9 +137,9 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
     return NULL;
   }
 
-  log("Building EM stutter genotyper");
+  logger() << "Building EM stutter model" << std::endl;
   EMStutterGenotyper length_genotyper(haploid, region.period(), str_bp_lengths, str_log_p1s, str_log_p2s, rg_names, 0);
-  log("Training EM stutter genotyper");
+  logger() << "Training EM stutter model" << std::endl;
   bool trained = length_genotyper.train(MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE, false, logger());
   if (trained){
     if (output_stutter_models_)
@@ -191,7 +191,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
   for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
     StutterModel* stutter_model = NULL;
     if (def_stutter_model_ != NULL){
-      log("Using default stutter model");
+      logger() << "Using default stutter model" << std::endl;
       stutter_model = def_stutter_model_->copy();
       stutter_model->set_period(region_iter->period());
     }

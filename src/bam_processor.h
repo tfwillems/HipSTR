@@ -11,6 +11,7 @@
 #include "bam_io.h"
 #include "base_quality.h"
 #include "error.h"
+#include "null_ostream.h"
 #include "region.h"
 #include "stringops.h"
 
@@ -54,7 +55,9 @@ class BamProcessor {
 
  bool bams_from_10x_; // True iff BAMs were generated from 10X GEMCODE platform
 
+ bool quiet_;
  bool log_to_file_;
+ NullOstream null_log_;
  std::ofstream log_;
 
  std::set<std::string> sample_set_;
@@ -80,6 +83,7 @@ class BamProcessor {
    locus_read_filter_time_  = -1;
    MAX_STR_LENGTH           = 100;
    MIN_SUM_QUAL_LOG_PROB    = -10;
+   quiet_                   = false;
    log_to_file_             = false;
    MAX_TOTAL_READS          = 1000000;
    BASE_QUAL_TRIM           = '5';
@@ -98,6 +102,7 @@ class BamProcessor {
  double locus_read_filter_time() { return locus_read_filter_time_; }
  void use_custom_read_groups()   { use_bam_rgs_ = false;           }
  void allow_pcr_dups()           { rem_pcr_dups_ = false;          }
+ void suppress_logging()         { quiet_ = true;                  }
 
  void process_regions(BamCramMultiReader& reader,
 		      const std::string& region_file, const std::string& fasta_file,
@@ -118,17 +123,11 @@ class BamProcessor {
    log_.open(log_file, std::ofstream::out);
    if (!log_.is_open())
      printErrorAndDie("Failed to open the log file: " + log_file);
- }
-
- inline void log(const std::string& msg){
-   if (log_to_file_)
-     log_ << msg << std::endl;
-   else
-     std::cerr << msg << std::endl;
+   quiet_ = false;
  }
 
  inline std::ostream& logger(){
-   return (log_to_file_ ? log_ : std::cerr);
+   return (quiet_ ? null_log_ : (log_to_file_ ? log_ : std::cerr));
  }
 
  void set_sample_set(const std::string& sample_names){

@@ -84,6 +84,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "Other optional parameters:" << "\n"
 	    << "\t" << "--help                                "  << "\t" << "Print this help message and exit"                                                     << "\n"
 	    << "\t" << "--version                             "  << "\t" << "Print HipSTR version and exit"                                                        << "\n"
+	    << "\t" << "--quiet                               "  << "\t" << "Don't output any logging messages"                                                    << "\n"
 	    << "\t" << "--def-stutter-model                   "  << "\t" << "For each locus, use a stutter model with PGEOM=0.9 and UP=DOWN=0.05 for in-frame"     << "\n"
 	    << "\t" << "                                      "  << "\t" << " artifacts and PGEOM=0.9 and UP=DOWN=0.01 for out-of-frame artifacts"                 << "\n"
 	    << "\t" << "--chrom              <chrom>          "  << "\t" << "Only consider STRs on this chromosome"                                                << "\n"
@@ -127,6 +128,7 @@ void parse_command_line_args(int argc, char** argv,
   int print_help    = 0;
   int viz_left_alns = 0;
   int print_version = 0;
+  int suppress_log  = 0;
 
   static struct option long_options[] = {
     {"10x-bams",        no_argument, &bams_from_10x, 1},
@@ -159,6 +161,7 @@ void parse_command_line_args(int argc, char** argv,
     {"use-unpaired",       no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 0},
     {"dont-use-all-reads", no_argument, &use_all_reads, 0},
     {"def-stutter-model",  no_argument, &def_stutter_model, 1},
+    {"quiet",              no_argument, &suppress_log, 1},
     {"skip-genotyping",    no_argument, &skip_genotyping, 1},
     {"snp-vcf",         required_argument, 0, 'v'},
     {"stutter-in",      required_argument, 0, 'm'},
@@ -305,6 +308,8 @@ void parse_command_line_args(int argc, char** argv,
   }
   if (viz_left_alns)
     bam_processor.visualize_left_alns();
+  if (suppress_log)
+    bam_processor.suppress_logging();
 }
 
 int main(int argc, char** argv){
@@ -350,8 +355,12 @@ int main(int argc, char** argv){
     printErrorAndDie("You must specify either the --bams or --bam-files option");
   else if ((!bamfile_string.empty()) && (!bamlist_string.empty()))
     printErrorAndDie("You can only specify one of the --bams or --bam-files options");
-  else if (region_file.empty())
-    printErrorAndDie("--regions option required");
+  else if (region_file.empty()){
+    std::stringstream err;
+    err << "--regions option required" << "\n"
+	<< "\tVisit https://github.com/HipSTR-Tool/HipSTR-references to view premade region files available for various model organisms";
+    printErrorAndDie(err.str());
+  }
   else if (fasta_file.empty())
     printErrorAndDie("--fasta option required");
   else if (!skip_genotyping && str_vcf_out_file.empty())
