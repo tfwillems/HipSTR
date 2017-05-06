@@ -425,16 +425,16 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
   }
   potential_strs.clear(); potential_mates.clear();
   
-  logger() << read_count << " reads overlapped region, of which "
-	   << "\n\t" << hard_clip        << " were hard clipped"
-	   << "\n\t" << read_has_N       << " had an 'N' base call"
-	   << "\n\t" << low_qual_score   << " had low base quality scores"
-	   << "\n\t" << not_spanning     << " did not span the STR"
-	   << "\n\t" << unique_mapping   << " did not have a unique mapping";
+  selective_logger() << read_count << " reads overlapped region, of which "
+		     << "\n\t" << hard_clip        << " were hard clipped"
+		     << "\n\t" << read_has_N       << " had an 'N' base call"
+		     << "\n\t" << low_qual_score   << " had low base quality scores"
+		     << "\n\t" << not_spanning     << " did not span the STR"
+		     << "\n\t" << unique_mapping   << " did not have a unique mapping";
   if (REQUIRE_PAIRED_READS)
-    logger() << "\n\t" << num_filt_unpaired_reads << " did not have a mate pair";
-  logger() << "\n\t" << (paired_str_alns.size()+unpaired_str_alns.size()) << " PASSED ALL FILTERS" << "\n"
-	   << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads for downstream analyses" << std::endl;
+    selective_logger() << "\n\t" << num_filt_unpaired_reads << " did not have a mate pair";
+  selective_logger() << "\n\t" << (paired_str_alns.size()+unpaired_str_alns.size()) << " PASSED ALL FILTERS" << "\n"
+		     << "Found " << paired_str_alns.size() << " fully paired reads and " << unpaired_str_alns.size() << " unpaired reads for downstream analyses" << std::endl;
     
   // Separate the reads based on their associated read groups
   std::map<std::string, int> rg_indices;
@@ -478,28 +478,28 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string
 				   BamWriter* pass_writer, BamWriter* filt_writer,
 				   std::ostream& out, int32_t max_regions, const std::string& chrom){
   std::vector<Region> regions;
-  readRegions(region_file, max_regions, chrom, regions, logger());
+  readRegions(region_file, max_regions, chrom, regions, full_logger());
   orderRegions(regions);
 
   FastaReader fasta_reader(fasta_file);
   const BamHeader* bam_header = reader.bam_header();
   int cur_chrom_id = -1; std::string chrom_seq;
   for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
-    logger() << "\n\n" << "Processing region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << std::endl;
+    full_logger() << "" << "Processing region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << std::endl;
     int chrom_id = bam_header->ref_id(region_iter->chrom());
     if (chrom_id == -1 && region_iter->chrom().size() > 3 && region_iter->chrom().substr(0, 3).compare("chr") == 0)
       chrom_id = bam_header->ref_id(region_iter->chrom().substr(3));
 
     if (chrom_id == -1){
-      logger() << "\n" << "WARNING: No reference sequence for chromosome " << region_iter->chrom() << " found in BAMs"  << "\n"
-	       << "\t" << "Please ensure that the names of reference sequences in your BED file match those in you BAMs" << "\n"
-	       << "\t" << "Skipping region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << "\n" << std::endl;
+      full_logger() << "\n" << "WARNING: No reference sequence for chromosome " << region_iter->chrom() << " found in BAMs"  << "\n"
+		    << "\t" << "Please ensure that the names of reference sequences in your BED file match those in you BAMs" << "\n"
+		    << "\t" << "Skipping region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << "\n" << std::endl;
       continue;
     }
 
     if (region_iter->stop() - region_iter->start() > MAX_STR_LENGTH){
-      logger() << "Skipping region as the reference allele length exceeds the threshold (" << region_iter->stop()-region_iter->start() << " vs " << MAX_STR_LENGTH << ")" << "\n"
-	       << "You can increase this threshold using the --max-str-length option" << std::endl;
+      full_logger() << "Skipping region as the reference allele length exceeds the threshold (" << region_iter->stop()-region_iter->start() << " vs " << MAX_STR_LENGTH << ")" << "\n"
+		    << "You can increase this threshold using the --max-str-length option" << std::endl;
       continue;
     }
     
@@ -512,7 +512,7 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string
     }
 
     if (region_iter->start() < 50 || region_iter->stop()+50 >= chrom_seq.size()){
-      logger() << "Skipping region within 50bp of the end of the contig" << std::endl;
+      full_logger() << "Skipping region within 50bp of the end of the contig" << std::endl;
       continue;
     }
 
@@ -533,7 +533,7 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string
     // The user specified a list of samples to which we need to restrict the analyses
     // Discard reads for any samples not in this set
     if (!sample_set_.empty()){
-      logger() << "Restricting reads to the " << sample_set_.size() << " samples in the specified sample list" << std::endl;
+      selective_logger() << "Restricting reads to the " << sample_set_.size() << " samples in the specified sample list" << std::endl;
       unsigned int ins_index = 0;
       for (unsigned int i = 0; i < rg_names.size(); i++){
 	if (sample_set_.find(rg_names[i]) != sample_set_.end()){
@@ -555,7 +555,7 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string
     }
 
     if (rem_pcr_dups_)
-      remove_pcr_duplicates(base_quality_, use_bam_rgs_, rg_to_library, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, logger());
+      remove_pcr_duplicates(base_quality_, use_bam_rgs_, rg_to_library, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, selective_logger());
 
     process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, region_group, chrom_seq, out);
   }

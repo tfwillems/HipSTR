@@ -105,7 +105,7 @@ public:
 
   void finish(){
     if (match_count_ + mismatch_count_ > 0)
-      logger() << "\nSNP matching statistics: " << match_count_ << "\t" << mismatch_count_ << "\n";
+      selective_logger() << "\nSNP matching statistics: " << match_count_ << "\t" << mismatch_count_ << "\n";
   }
 };
 

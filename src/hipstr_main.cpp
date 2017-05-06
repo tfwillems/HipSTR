@@ -84,7 +84,8 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "Other optional parameters:" << "\n"
 	    << "\t" << "--help                                "  << "\t" << "Print this help message and exit"                                                     << "\n"
 	    << "\t" << "--version                             "  << "\t" << "Print HipSTR version and exit"                                                        << "\n"
-	    << "\t" << "--quiet                               "  << "\t" << "Don't output any logging messages"                                                    << "\n"
+	    << "\t" << "--quiet                               "  << "\t" << "Only output terse logging messages (Default = output all messages)"                   << "\n"
+	    << "\t" << "--silent                              "  << "\t" << "Don't output any logging messages  (Default = output all messages)"                   << "\n"
 	    << "\t" << "--def-stutter-model                   "  << "\t" << "For each locus, use a stutter model with PGEOM=0.9 and UP=DOWN=0.05 for in-frame"     << "\n"
 	    << "\t" << "                                      "  << "\t" << " artifacts and PGEOM=0.9 and UP=DOWN=0.01 for out-of-frame artifacts"                 << "\n"
 	    << "\t" << "--chrom              <chrom>          "  << "\t" << "Only consider STRs on this chromosome"                                                << "\n"
@@ -128,7 +129,8 @@ void parse_command_line_args(int argc, char** argv,
   int print_help    = 0;
   int viz_left_alns = 0;
   int print_version = 0;
-  int suppress_log  = 0;
+  int quiet_log     = 0;
+  int silent_log    = 0;
 
   static struct option long_options[] = {
     {"10x-bams",        no_argument, &bams_from_10x, 1},
@@ -161,7 +163,8 @@ void parse_command_line_args(int argc, char** argv,
     {"use-unpaired",       no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 0},
     {"dont-use-all-reads", no_argument, &use_all_reads, 0},
     {"def-stutter-model",  no_argument, &def_stutter_model, 1},
-    {"quiet",              no_argument, &suppress_log, 1},
+    {"quiet",              no_argument, &quiet_log, 1},
+    {"silent",             no_argument, &silent_log, 1},
     {"skip-genotyping",    no_argument, &skip_genotyping, 1},
     {"snp-vcf",         required_argument, 0, 'v'},
     {"stutter-in",      required_argument, 0, 'm'},
@@ -308,8 +311,10 @@ void parse_command_line_args(int argc, char** argv,
   }
   if (viz_left_alns)
     bam_processor.visualize_left_alns();
-  if (suppress_log)
-    bam_processor.suppress_logging();
+  if (quiet_log)
+    bam_processor.suppress_most_logging();
+  if (silent_log)
+    bam_processor.suppress_all_logging();
 }
 
 int main(int argc, char** argv){
@@ -340,7 +345,7 @@ int main(int argc, char** argv){
     bam_processor.set_log(log_file);
   if (bams_from_10x){
     bam_processor.use_10x_bam_tags();
-    bam_processor.logger() << "Using 10X BAM tags to genotype and phase STRs (WARNING: Any arguments provided to --snp-vcf will be ignored)" << std::endl;
+    bam_processor.full_logger() << "Using 10X BAM tags to genotype and phase STRs (WARNING: Any arguments provided to --snp-vcf will be ignored)" << std::endl;
   }
   if (use_all_reads == 1)     bam_processor.REQUIRE_SPANNING = false;
   if (output_gls)             bam_processor.output_gls();
@@ -387,7 +392,7 @@ int main(int argc, char** argv){
 	bam_files.push_back(line);
     input.close();
   }
-  bam_processor.logger() << "Detected " << bam_files.size() << " BAM/CRAM files" << std::endl;
+  bam_processor.full_logger() << "Detected " << bam_files.size() << " BAM/CRAM files" << std::endl;
 
   // Open all BAM/CRAM files
   std::string cram_fasta_path = fasta_file;
@@ -416,7 +421,7 @@ int main(int argc, char** argv){
       rg_samples.insert(read_groups[i]);
     }
     bam_processor.use_custom_read_groups();
-    bam_processor.logger() << "User-specified read groups for " << rg_samples.size() << " unique samples" << std::endl;
+    bam_processor.full_logger() << "User-specified read groups for " << rg_samples.size() << " unique samples" << std::endl;
   }
   else {
     for (unsigned int i = 0; i < bam_files.size(); i++){
@@ -446,9 +451,9 @@ int main(int argc, char** argv){
       }
     }
 
-    bam_processor.logger() << "BAMs/CRAMs contain unique read group IDs for "
-			   << rg_libs.size()    << " unique libraries and "
-			   << rg_samples.size() << " unique samples" << std::endl;
+    bam_processor.full_logger() << "BAMs/CRAMs contain unique read group IDs for "
+				<< rg_libs.size()    << " unique libraries and "
+				<< rg_samples.size() << " unique samples" << std::endl;
   }
 
   BamWriter* bam_pass_writer = NULL;
@@ -524,7 +529,7 @@ int main(int argc, char** argv){
     std::set<std::string> samples_with_data(snp_vcf.get_samples().begin(), snp_vcf.get_samples().end());
 
     std::vector<NuclearFamily> families;
-    extract_pedigree_nuclear_families(fam_file, samples_with_data, families, bam_processor.logger());
+    extract_pedigree_nuclear_families(fam_file, samples_with_data, families, bam_processor.full_logger());
     if (families.size() != 0)
       bam_processor.use_pedigree_to_filter_snps(families, snp_vcf_file);
   }
@@ -538,7 +543,7 @@ int main(int argc, char** argv){
 
 
   total_time = (clock() - total_time)/CLOCKS_PER_SEC;
-  bam_processor.logger() << "HipSTR execution finished: Total runtime = " << total_time << " sec" << "\n"
-			 << "-----------------\n\n" << std::endl;
+  bam_processor.full_logger() << "HipSTR execution finished: Total runtime = " << total_time << " sec" << "\n"
+			      << "-----------------\n\n" << std::endl;
   return 0;  
 }

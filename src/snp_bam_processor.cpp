@@ -33,7 +33,7 @@ void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
     std::vector<SNPTree*> snp_trees;
     std::map<std::string, unsigned int> sample_indices;      
     if (create_snp_trees(region_group.chrom(), (region_group.start() > MAX_MATE_DIST ? region_group.start()-MAX_MATE_DIST : 1), region_group.stop()+MAX_MATE_DIST,
-			 skip_regions, SKIP_PADDING, phased_snp_vcf_, haplotype_tracker_, sample_indices, snp_trees, logger())){
+			 skip_regions, SKIP_PADDING, phased_snp_vcf_, haplotype_tracker_, sample_indices, snp_trees, selective_logger())){
       got_snp_info = true;
       std::set<std::string> bad_samples, good_samples;
       for (unsigned int i = 0; i < paired_strs_by_rg.size(); ++i){
@@ -58,10 +58,10 @@ void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 	alignments[i].insert(alignments[i].end(), paired_strs_by_rg[i].begin(),   paired_strs_by_rg[i].end());
 	alignments[i].insert(alignments[i].end(), unpaired_strs_by_rg[i].begin(), unpaired_strs_by_rg[i].end());
       }
-      logger() << "Found VCF info for " << good_samples.size() << " out of " << good_samples.size()+bad_samples.size() << " samples with STR reads" << std::endl;
+      selective_logger() << "Found VCF info for " << good_samples.size() << " out of " << good_samples.size()+bad_samples.size() << " samples with STR reads" << std::endl;
     }
     else 
-      logger() << "Warning: Failed to construct SNP trees for " << region_group.chrom() << ":" << region_group.start() << "-" << region_group.stop() << std::endl;
+      selective_logger() << "Warning: Failed to construct SNP trees for " << region_group.chrom() << ":" << region_group.start() << "-" << region_group.stop() << std::endl;
     destroy_snp_trees(snp_trees);      
   }
   if (!got_snp_info){
@@ -87,8 +87,8 @@ void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
     phased_samples += sample_phased;
   }
 
-  logger() << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads"
-	   << " and " << phased_samples << " out of " << rg_names.size() <<  " samples" << std::endl;
+  selective_logger() << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads"
+		     << " and " << phased_samples << " out of " << rg_names.size() <<  " samples" << std::endl;
 
   locus_snp_phase_info_time_  = (clock() - locus_snp_phase_info_time_)/CLOCKS_PER_SEC;
   total_snp_phase_info_time_ += locus_snp_phase_info_time_;
@@ -169,7 +169,7 @@ void SNPBamProcessor::process_10x_reads(std::vector<BamAlnList>& paired_strs_by_
     }
   }
 
-  logger() << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads" << std::endl;
+  selective_logger() << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads" << std::endl;
   locus_snp_phase_info_time_  = (clock() - locus_snp_phase_info_time_)/CLOCKS_PER_SEC;
   total_snp_phase_info_time_ += locus_snp_phase_info_time_;
 

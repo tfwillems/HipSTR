@@ -55,7 +55,7 @@ class BamProcessor {
 
  bool bams_from_10x_; // True iff BAMs were generated from 10X GEMCODE platform
 
- bool quiet_;
+ bool quiet_, silent_;
  bool log_to_file_;
  NullOstream null_log_;
  std::ofstream log_;
@@ -84,6 +84,7 @@ class BamProcessor {
    MAX_STR_LENGTH           = 100;
    MIN_SUM_QUAL_LOG_PROB    = -10;
    quiet_                   = false;
+   silent_                  = false;
    log_to_file_             = false;
    MAX_TOTAL_READS          = 1000000;
    BASE_QUAL_TRIM           = '5';
@@ -102,7 +103,9 @@ class BamProcessor {
  double locus_read_filter_time() { return locus_read_filter_time_; }
  void use_custom_read_groups()   { use_bam_rgs_ = false;           }
  void allow_pcr_dups()           { rem_pcr_dups_ = false;          }
- void suppress_logging()         { quiet_ = true;                  }
+ void suppress_most_logging()    { quiet_ = true; silent_ = false; }
+ void suppress_all_logging()     { silent_ = true; quiet_ = false; }
+ void use_10x_bam_tags()         { bams_from_10x_ = true;          }
 
  void process_regions(BamCramMultiReader& reader,
 		      const std::string& region_file, const std::string& fasta_file,
@@ -123,21 +126,20 @@ class BamProcessor {
    log_.open(log_file, std::ofstream::out);
    if (!log_.is_open())
      printErrorAndDie("Failed to open the log file: " + log_file);
-   quiet_ = false;
  }
 
- inline std::ostream& logger(){
-   return (quiet_ ? null_log_ : (log_to_file_ ? log_ : std::cerr));
+ inline std::ostream& full_logger(){
+   return (silent_ ? null_log_ : (log_to_file_ ? log_ : std::cerr));
+ }
+
+ inline std::ostream& selective_logger(){
+   return ((silent_ || quiet_) ? null_log_ : (log_to_file_ ? log_ : std::cerr));
  }
 
  void set_sample_set(const std::string& sample_names){
    std::vector<std::string> sample_list;
    split_by_delim(sample_names, ',', sample_list);
    sample_set_ = std::set<std::string>(sample_list.begin(), sample_list.end());
- }
-
- void use_10x_bam_tags(){
-   bams_from_10x_ = true;
  }
 
  static void add_passes_filters_tag(BamAlignment& aln, const std::string& passes);
