@@ -111,7 +111,8 @@ namespace NeedlemanWunsch {
     case 'N':
       return 4;
     default:
-      printErrorAndDie("Invalid character '" + std::string(1, c) + "' in read");
+      std::cerr << "WARNING: Invalid character '" << std::string(1, c) << "' in read" << std::endl;
+      return 4;
     }
     return -1;
   }
