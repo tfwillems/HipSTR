@@ -407,7 +407,7 @@ If you're having trouble getting your analysis up and running:
 
 If you encounter a bug/issue or have a feature request:     
 
-     i.  File an issue on GitHub (https://github.com/HipSTR-Tool/HipSTR)
+     i.  File an issue on GitHub (https://github.com/tfwillems/HipSTR)
 	ii. Email us at hipstrtool@gmail.com
 
 ## Citation
