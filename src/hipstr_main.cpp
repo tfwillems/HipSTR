@@ -29,7 +29,7 @@ bool is_file(const std::string& name){
   return (S_ISREG (st_buf.st_mode));
 }
 
-void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_str_len){
+void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_str_len, int def_max_flank_haps){
   std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <genome.fa> --regions <region_file.bed> --str-vcf <str_gts.vcf.gz> [OPTIONS]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
@@ -100,6 +100,9 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
     //<< "\t" << "--read-qual-trim     <min_qual>       "  << "\t" << "Trim both ends of a read until a base has quality score > MIN_QUAL (Default = 5)"    << "\n"
 	    << "\t" << "--fam <fam_file>                      "  << "\t" << "FAM file containing pedigree information for samples of interest. Use the pedigree"  << "\n"
 	    << "\t" << "                                      "  << "\t" << "  information to filter SNPs prior to phasing STRs (Default = use all SNPs)"         << "\n"
+	    << "\t" << "--max-flank-haps     <max_flanks>     "  << "\t" << "The maximum flanking haplotypes before skiping the locus (Default = " << def_max_flank_haps << "\n"
+	    << "\t" << "--filter-flank-haps                   "  << "\t" << "Filter flanking haplotypes if the maximum has been reached.  Finds the most" << "\n"
+	    << "\t" << "                                      "  << "\t" << " frequent flanking haplotype, and keeps all others tha occur at least half as often" << "\n"
 	    << "\n" << "\n"
 	    << "*** Looking for answers to commonly asked questions or usage examples? ***"                     << "\n"
 	    << "\t i.  An in-depth description of HipSTR is available at https://hipstr-tool.github.io/HipSTR"  << "\n"
@@ -117,12 +120,13 @@ void parse_command_line_args(int argc, char** argv,
 			     int& remove_pcr_dups, int& bams_from_10x,     int& bam_lib_from_samp, int& def_stutter_model, int& skip_genotyping,   int& output_gls,
 			     int& output_pls,      int& output_phased_gls, int& output_all_reads,  int& output_mall_reads, std::string& ref_vcf_file,
 			     GenotyperBamProcessor& bam_processor){
-  int def_mdist       = bam_processor.MAX_MATE_DIST;
-  int def_min_reads   = bam_processor.MIN_TOTAL_READS;
-  int def_max_reads   = bam_processor.MAX_TOTAL_READS;
-  int def_max_str_len = bam_processor.MAX_STR_LENGTH;
+  int def_mdist             = bam_processor.MAX_MATE_DIST;
+  int def_min_reads         = bam_processor.MIN_TOTAL_READS;
+  int def_max_reads         = bam_processor.MAX_TOTAL_READS;
+  int def_max_str_len       = bam_processor.MAX_STR_LENGTH;
+  int def_max_flank_haps    = bam_processor.MAX_FLANK_HAPLOTYPES;
   if (argc == 1 || (argc == 2 && std::string("-h").compare(std::string(argv[1])) == 0)){
-    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_max_flank_haps);
     exit(0);
   }
 
@@ -168,12 +172,14 @@ void parse_command_line_args(int argc, char** argv,
     {"skip-genotyping",    no_argument, &skip_genotyping, 1},
     {"snp-vcf",         required_argument, 0, 'v'},
     {"stutter-in",      required_argument, 0, 'm'},
+    {"max-flank-haps",  required_argument, 0, 'M'},
     {"stutter-out",     required_argument, 0, 's'},
     {"sample-list",     required_argument, 0, 'S'},
     {"haploid-chrs",    required_argument, 0, 't'},
     {"hap-chr-file",    required_argument, 0, 'u'},
     {"pass-bam",        required_argument, 0, 'w'},
     {"max-str-len",     required_argument, 0, 'x'},
+    {"filter-flank-haps", no_argument, &(bam_processor.FILTER_FLANK_HAPLOTYPES), 1},
     {"filt-bam",        required_argument, 0, 'y'},
     {"viz-left-alns",   no_argument, &viz_left_alns, 1},
     {"viz-out",         required_argument, 0, 'z'},
@@ -183,7 +189,7 @@ void parse_command_line_args(int argc, char** argv,
   std::string filename;
   while (true){
     int option_index = 0;
-    int c = getopt_long(argc, argv, "b:B:c:d:D:e:f:F:g:i:j:k:l:m:n:o:p:q:r:s:S:t:u:v:w:x:y:z:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "b:B:c:d:D:e:f:F:g:i:j:k:l:m:M:n:o:p:q:r:s:S:t:u:v:w:x:y:z:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -233,6 +239,9 @@ void parse_command_line_args(int argc, char** argv,
     case 'm':
       filename = std::string(optarg);
       bam_processor.set_input_stutter(filename);
+      break;
+    case 'M':
+      bam_processor.MAX_FLANK_HAPLOTYPES = atoi(optarg);
       break;
     case 'n':
       bam_processor.MAX_TOTAL_READS = atoi(optarg);
@@ -306,7 +315,7 @@ void parse_command_line_args(int argc, char** argv,
     exit(0);
   }
   if (print_help){
-    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_max_flank_haps);
     exit(0);
   }
   if (viz_left_alns)
