@@ -499,7 +499,7 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string
 
     if (region_iter->stop() - region_iter->start() > MAX_STR_LENGTH){
       full_logger() << "Skipping region as the reference allele length exceeds the threshold (" << region_iter->stop()-region_iter->start() << " vs " << MAX_STR_LENGTH << ")" << "\n"
-		    << "You can increase this threshold using the --max-str-length option" << std::endl;
+		    << "You can increase this threshold using the --max-str-len option" << std::endl;
       continue;
     }
     
