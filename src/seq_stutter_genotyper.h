@@ -26,8 +26,9 @@
 class SeqStutterGenotyper : public Genotyper {
  private:
   int MAX_REF_FLANK_LEN;
-  int MAX_FLANK_HAPLOTYPES;
   double STRAND_TOLERANCE;
+  int MAX_FLANK_HAPLOTYPES;    // Maximum flanking haplotypes to genotype locus
+  int FILTER_FLANK_HAPLOTYPES; // Filter flanking haplotypes when the maximum has been exceeded
 
   BaseQuality base_quality_;
   ReadPooler pooler_;
@@ -143,26 +144,28 @@ class SeqStutterGenotyper : public Genotyper {
 
  public:
   SeqStutterGenotyper(const RegionGroup& region_group, bool haploid, bool reassemble_flanks,
+		      int max_flank_haplotypes, int filter_flank_haplotypes,
 		      std::vector<Alignment>& alignments, std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,
 		      const std::vector<std::string>& sample_names, const std::string& chrom_seq,
 		      std::vector<StutterModel*>& stutter_models, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(haploid, sample_names, log_p1, log_p2){
-    region_group_          = region_group.copy();
-    alns_                  = alignments;
-    seed_positions_        = NULL;
-    pool_index_            = NULL;
-    haplotype_             = NULL;
-    second_mate_           = NULL;
-    MAX_REF_FLANK_LEN      = 30;
-    MAX_FLANK_HAPLOTYPES   = 4;
-    MIN_PATH_WEIGHT        = 2;
-    MIN_KMER               = 10;
-    MAX_KMER               = 15;
-    STRAND_TOLERANCE       = 0.1;
-    initialized_           = false;
-    reassemble_flanks_     = reassemble_flanks;
-    total_hap_build_time_  = total_hap_aln_time_  = 0;
-    total_aln_trace_time_  = total_assembly_time_ = 0;
-    ref_vcf_               = ref_vcf;
+    region_group_           = region_group.copy();
+    alns_                   = alignments;
+    seed_positions_         = NULL;
+    pool_index_             = NULL;
+    haplotype_              = NULL;
+    second_mate_            = NULL;
+    MAX_REF_FLANK_LEN       = 30;
+    MIN_PATH_WEIGHT         = 2;
+    MIN_KMER                = 10;
+    MAX_KMER                = 15;
+    STRAND_TOLERANCE        = 0.1;
+    MAX_FLANK_HAPLOTYPES    = max_flank_haplotypes;    
+    FILTER_FLANK_HAPLOTYPES = filter_flank_haplotypes; 
+    initialized_            = false;
+    reassemble_flanks_      = reassemble_flanks;
+    total_hap_build_time_   = total_hap_aln_time_   = 0;
+    total_aln_trace_time_   = total_assembly_time_  = 0;
+    ref_vcf_                = ref_vcf;
     assert(num_reads_ == alns_.size());
     init(stutter_models, chrom_seq, logger);
   }

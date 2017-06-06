@@ -115,8 +115,27 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
     }
 
     if (!haplotype_counts.empty()){
+      if (haplotype_counts.size() > MAX_FLANK_HAPLOTYPES && FILTER_FLANK_HAPLOTYPES) {
+        logger << "Found a locus with too many flanking sequences. Found = " << haplotype_counts.size() << ", MAX = " << MAX_FLANK_HAPLOTYPES << std::endl;
+        int prev_n_flanks = haplotype_counts.size();
+        // find the most frequent haplotype and keep those that are found at least half the same # of times
+        int max_count = 0;
+        for (auto hap_iter = haplotype_counts.begin(); hap_iter != haplotype_counts.end(); hap_iter++){
+          if (max_count < hap_iter->second) max_count = hap_iter->second;
+        }
+        logger << "Filtering flanking sequences with fewer than " << max_count << " occurrences" << std::endl;
+        int min_count = max_count / 2;
+        for (auto hap_iter = haplotype_counts.begin(); hap_iter != haplotype_counts.end(); /* no increment */){
+          if (hap_iter->second < min_count) haplotype_counts.erase(hap_iter++);
+          else ++hap_iter;
+        }
+        logger << "Filtered " << (prev_n_flanks - haplotype_counts.size()) << " flanking sequences." << std::endl;
+      }
       if (haplotype_counts.size() > MAX_FLANK_HAPLOTYPES){
         logger << "Skipping locus with too many flanking sequences. Found = " << haplotype_counts.size() << ", MAX = " << MAX_FLANK_HAPLOTYPES << std::endl;
+		for (auto hap_iter = haplotype_counts.begin(); hap_iter != haplotype_counts.end(); hap_iter++){
+			logger << "\t" << hap_iter->first << "\t" << hap_iter->second << std::endl;
+		}
         return false;
       }
       logger << "Identified " << haplotype_counts.size() << " new flank haplotype(s)" << "\n";
