@@ -63,10 +63,6 @@ void readRegions(const std::string& input_file, uint32_t max_regions, const std:
 
 void orderRegions(std::vector<Region>& regions);
 
-void orderRegions(std::vector<Region>& input_regions, 
-		  std::vector< std::vector<Region> >& output_regions, 
-		  std::map<std::string, int>& chrom_order);
-
 class RegionGroup {
   std::vector<Region> regions_;
   std::string chrom_;
