@@ -62,3 +62,11 @@ void FastaReader::init(const std::string& path){
   }
 }
 
+void FastaReader::write_contigs_to_vcf(const std::vector<std::string>& chroms, std::ostream& out){
+  for (auto chrom_iter = chroms.begin(); chrom_iter != chroms.end(); chrom_iter++){
+    int64_t len = get_sequence_length(*chrom_iter);
+    if (len == -1)
+      printErrorAndDie("Chromosome " + (*chrom_iter) + " not present in FASTA file");
+    out << "##contig=<ID=" << *chrom_iter << ",length=" << len << ">" << "\n";
+  }
+}

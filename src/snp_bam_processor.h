@@ -38,11 +38,12 @@ private:
   void process_10x_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 			 std::vector<BamAlnList>& mate_pairs_by_rg,
 			 std::vector<BamAlnList>& unpaired_strs_by_rg,
-			 const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq,
-			 std::ostream& out);
+			 const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq);
 
   // Extract the haplotype for an alignment based on the HP tag
   int get_haplotype(BamAlignment& aln) const;
+
+  void verify_vcf_chromosomes(const std::vector<std::string>& chroms);
 
   // Private unimplemented copy constructor and assignment operator to prevent operations
   SNPBamProcessor(const SNPBamProcessor& other);
@@ -72,8 +73,7 @@ public:
   void process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 		     std::vector<BamAlnList>& mate_pairs_by_rg,
 		     std::vector<BamAlnList>& unpaired_strs_by_rg,
-		     const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq,
-		     std::ostream& out);
+		     const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq);
 
   virtual void analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
 					 std::vector< std::vector<double> >& log_p1s, 

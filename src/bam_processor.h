@@ -11,6 +11,7 @@
 #include "bam_io.h"
 #include "base_quality.h"
 #include "error.h"
+#include "fasta_reader.h"
 #include "null_ostream.h"
 #include "region.h"
 #include "stringops.h"
@@ -49,6 +50,12 @@ class BamProcessor {
  std::string trim_alignment_name(const BamAlignment& aln) const;
 
  bool spans_a_region(const std::vector<Region>& regions, BamAlignment& alignment) const;
+
+ void verify_chromosomes(const std::vector<std::string>& chroms, const BamHeader* bam_header, FastaReader& fasta_reader);
+
+ virtual void verify_vcf_chromosomes(const std::vector<std::string>& chroms) = 0;
+
+ virtual void init_output_vcf(const std::string& fasta_path, const std::vector<std::string>& chroms, const std::string& full_command) = 0;
 
  protected:
  BaseQuality base_quality_;
@@ -109,15 +116,13 @@ class BamProcessor {
 
  void process_regions(BamCramMultiReader& reader,
 		      const std::string& region_file, const std::string& fasta_file,
-		      const std::map<std::string, std::string>& rg_to_sample, const std::map<std::string, std::string>& rg_to_library,
-		      BamWriter* pass_writer, BamWriter* filt_writer,
-		      std::ostream& out, int32_t max_regions, const std::string& chrom);
+		      const std::map<std::string, std::string>& rg_to_sample, const std::map<std::string, std::string>& rg_to_library, const std::string& full_command,
+		      BamWriter* pass_writer, BamWriter* filt_writer, int32_t max_regions, const std::string& chrom);
   
  virtual void process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 			    std::vector<BamAlnList>& mate_pairs_by_rg,
 			    std::vector<BamAlnList>& unpaired_strs_by_rg,
-			    const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq,
-			    std::ostream& out) = 0;
+			    const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq) = 0;
 
  void set_log(const std::string& log_file){
    if (log_to_file_)

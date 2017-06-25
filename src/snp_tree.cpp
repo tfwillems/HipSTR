@@ -27,11 +27,8 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, co
   logger << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
 
-  if (!snp_vcf->set_region(chrom, start, end)){
-    // Retry setting region if chr is in chromosome name
-    if (chrom.size() <= 3 || chrom.substr(0, 3).compare("chr") != 0 || !snp_vcf->set_region(chrom.substr(3), start, end))
-      return false;
-  }
+  if (!snp_vcf->set_region(chrom, start, end))
+    return false;
 
   // Index samples
   unsigned int sample_count = 0;

@@ -196,11 +196,15 @@ public:
     bcf_destroy(vcf_record_);
   }
 
-  bool has_sample(const std::string& sample) const{
+  bool has_sample(const std::string& sample) const {
     return sample_indices_.find(sample) != sample_indices_.end();
   }
 
-  int get_sample_index(const std::string& sample) const{
+  bool has_chromosome(const std::string& chrom) const {
+    return tbx_name2id(tbx_input_, chrom.c_str()) != -1;
+  }
+
+  int get_sample_index(const std::string& sample) const {
     auto sample_iter = sample_indices_.find(sample);
     if (sample_iter == sample_indices_.end())
       return -1;

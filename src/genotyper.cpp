@@ -8,6 +8,7 @@
 #include <cmath>
 
 #include "genotyper.h"
+#include "fasta_reader.h"
 #include "mathops.h"
 
 // Each genotype has an equal total prior, but heterozygotes have two possible phasings. Therefore,
@@ -224,11 +225,14 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
   }
 }
 
-void Genotyper::write_vcf_header(const std::string& fasta_path, const std::string& full_command, const std::vector<std::string>& sample_names,
+void Genotyper::write_vcf_header(const std::string& fasta_path, const std::string& full_command, const std::vector<std::string>& chroms, const std::vector<std::string>& sample_names,
 				 bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out){
   out << "##fileformat=VCFv4.1" << "\n"
       << "##command="   << full_command << "\n"
       << "##reference=" << fasta_path   << "\n";
+
+  FastaReader fasta_reader(fasta_path);
+  fasta_reader.write_contigs_to_vcf(chroms, out);
 
   // Info field descriptors
   out << "##INFO=<ID=" << "INFRAME_PGEOM"  << ",Number=1,Type=Float,Description=\""   << "Parameter for in-frame geometric step size distribution"                      << "\">\n"

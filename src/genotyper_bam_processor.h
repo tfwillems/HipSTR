@@ -95,6 +95,11 @@ private:
   GenotyperBamProcessor(const GenotyperBamProcessor& other);
   GenotyperBamProcessor& operator=(const GenotyperBamProcessor& other);
 
+  void init_output_vcf(const std::string& fasta_path, const std::vector<std::string>& chroms, const std::string& full_command){
+    // Write VCF header
+    Genotyper::write_vcf_header(fasta_path, full_command, chroms, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, str_vcf_);
+  }
+
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups) : SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
     output_stutter_models_ = false;
@@ -208,9 +213,6 @@ public:
       if (sample_set_.empty() || sample_set_.find(*sample_iter) != sample_set_.end())
 	samples_to_genotype_.push_back(*sample_iter);
     std::sort(samples_to_genotype_.begin(), samples_to_genotype_.end());
-    
-    // Write VCF header
-    Genotyper::write_vcf_header(fasta_path, full_command, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, str_vcf_);
   }
 
   void analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,

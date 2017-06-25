@@ -66,9 +66,6 @@ bool BamCramReader::SetRegion(const std::string& chrom, int32_t start, int32_t e
   std::string region_str = region.str();
   iter_ = sam_itr_querys(idx_, hdr_, region_str.c_str());
 
-  if (iter_ == NULL && region_str.size() > 3 && region_str.substr(0, 3).compare("chr") == 0)
-    iter_ = sam_itr_querys(idx_, hdr_, region_str.substr(3).c_str());
-
   if (iter_ != NULL){
     chrom_ = chrom;
     start_ = start;
@@ -154,8 +151,6 @@ bool BamCramMultiReader::GetNextAlignment(BamAlignment& aln){
   }
   return true;
 }
-
-
 
 
 void compare_bam_headers(const BamHeader* hdr_a, const BamHeader* hdr_b, const std::string& file_a, const std::string& file_b){
