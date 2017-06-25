@@ -73,8 +73,13 @@ class BamProcessor {
  BamProcessor(const BamProcessor& other);
  BamProcessor& operator=(const BamProcessor& other);
 
+ protected:
+ // Counter for number of loci that were skipped b/c they exceeded the maximum length threshold
+ int num_too_long_;
+
   public:
  BamProcessor(bool use_bam_rgs, bool remove_pcr_dups){
+   num_too_long_            = 0;
    use_bam_rgs_             = use_bam_rgs;
    rem_pcr_dups_            = remove_pcr_dups;
    MAX_MATE_DIST            = 1000;
