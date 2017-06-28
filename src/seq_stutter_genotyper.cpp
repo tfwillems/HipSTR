@@ -929,19 +929,23 @@ double SeqStutterGenotyper::compute_allele_bias(int hap_a_read_count, int hap_b_
 void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sample_names, const std::string& chrom_seq,
 					   bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads,
 					   bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
-                                           std::ostream& html_output, std::ostream& out, std::ostream& logger){
+                                           std::ostream& html_output, VCFWriter* vcf_writer, std::ostream& logger){
   int region_index = 0;
   for (int block_index = 0; block_index < haplotype_->num_blocks(); block_index++)
     if (haplotype_->get_block(block_index)->get_repeat_info() != NULL)
       write_vcf_record(sample_names, block_index, region_group_->regions()[region_index++], chrom_seq, output_gls, output_pls, output_phased_gls,
-		       output_allreads, output_mallreads, output_viz, max_flank_indel_frac, viz_left_alns, html_output, out, logger);
+		       output_allreads, output_mallreads, output_viz, max_flank_indel_frac, viz_left_alns, html_output, vcf_writer, logger);
   assert(region_index == region_group_->num_regions());
 }
 
 void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sample_names, int hap_block_index, const Region& region, const std::string& chrom_seq, bool output_gls,
 					   bool output_pls, bool output_phased_gls, bool output_allreads, bool output_mallreads,
 					   bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
-					   std::ostream& html_output, std::ostream& out, std::ostream& logger){
+					   std::ostream& html_output, VCFWriter* vcf_writer, std::ostream& logger){
+  std::stringstream out;
+  out.precision(2);
+  out.setf(std::ios::fixed, std::ios::floatfield);
+
   // Extract the alleles and position for the current haplotype block
   int32_t pos;
   std::vector<std::string> alleles;
@@ -1346,7 +1350,10 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
       }
     }
   }
-  out << "\n";
+
+  // Write out the record
+  std::string record_text = out.str();
+  vcf_writer->add_vcf_record(region.chrom(), pos, record_text);
 
   if (!filter_reasons.empty()){
     int32_t filt_count = 0;

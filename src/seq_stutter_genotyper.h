@@ -17,6 +17,7 @@
 #include "stutter_model.h"
 #include "vcf_input.h"
 #include "vcf_reader.h"
+#include "vcf_writer.h"
 
 #include "SeqAlignment/AlignmentData.h"
 #include "SeqAlignment/AlignmentTraceback.h"
@@ -132,7 +133,7 @@ class SeqStutterGenotyper : public Genotyper {
   void write_vcf_record(const std::vector<std::string>& sample_names, int hap_block_index, const Region& region, const std::string& chrom_seq,
 			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads,
 			bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
-			std::ostream& html_output, std::ostream& out, std::ostream& logger);
+			std::ostream& html_output, VCFWriter* vcf_writer, std::ostream& logger);
 
   RegionGroup* region_group_;
 
@@ -182,7 +183,7 @@ class SeqStutterGenotyper : public Genotyper {
   void write_vcf_record(const std::vector<std::string>& sample_names, const std::string& chrom_seq,
 			bool output_gls, bool output_pls, bool output_phased_gls, bool output_allreads,
 			bool output_mallreads, bool output_viz, float max_flank_indel_frac, bool viz_left_alns,
-			std::ostream& html_output, std::ostream& out, std::ostream& logger);
+			std::ostream& html_output, VCFWriter* vcf_writer, std::ostream& logger);
 
 
   double hap_build_time() { return total_hap_build_time_;  }

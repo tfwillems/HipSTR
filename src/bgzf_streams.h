@@ -26,6 +26,7 @@ TODO:
 ************************************************************************/
 
 #include <err.h>
+#include <iostream>
 #include <ostream>
 #include <stdexcept>
 

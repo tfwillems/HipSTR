@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <sstream>
 
 #include "genotyper.h"
 #include "fasta_reader.h"
@@ -225,8 +226,9 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
   }
 }
 
-void Genotyper::write_vcf_header(const std::string& fasta_path, const std::string& full_command, const std::vector<std::string>& chroms, const std::vector<std::string>& sample_names,
-				 bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out){
+std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::string& full_command, const std::vector<std::string>& chroms, const std::vector<std::string>& sample_names,
+				      bool output_gls, bool output_pls, bool output_phased_gls){
+  std::stringstream out;
   out << "##fileformat=VCFv4.1" << "\n"
       << "##command="   << full_command << "\n"
       << "##reference=" << fasta_path   << "\n";
@@ -290,4 +292,5 @@ void Genotyper::write_vcf_header(const std::string& fasta_path, const std::strin
   for (unsigned int i = 0; i < sample_names.size(); i++)
     out << "\t" << sample_names[i];
   out << "\n";
+  return out.str();
 }

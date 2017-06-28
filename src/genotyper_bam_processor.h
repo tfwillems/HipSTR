@@ -17,6 +17,7 @@
 #include "snp_bam_processor.h"
 #include "stutter_model.h"
 #include "vcf_reader.h"
+#include "vcf_writer.h"
 #include "SeqAlignment/AlignmentData.h"
 #include "SeqAlignment/AlignmentOps.h"
 #include "SeqAlignment/HTMLCreator.h"
@@ -40,8 +41,7 @@ private:
   std::ofstream stutter_model_out_;
 
   // Output file for STR genotypes
-  bool output_str_gts_;
-  bgzfostream str_vcf_;
+  VCFWriter vcf_writer_;
   std::vector<std::string> samples_to_genotype_;
 
   // Counters for genotyping success;
@@ -96,14 +96,16 @@ private:
   GenotyperBamProcessor& operator=(const GenotyperBamProcessor& other);
 
   void init_output_vcf(const std::string& fasta_path, const std::vector<std::string>& chroms, const std::string& full_command){
+    assert(vcf_writer_.is_open());
+
     // Write VCF header
-    Genotyper::write_vcf_header(fasta_path, full_command, chroms, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, str_vcf_);
+    std::string header = Genotyper::get_vcf_header(fasta_path, full_command, chroms, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_);
+    vcf_writer_.write_header(header);
   }
 
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups) : SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
     output_stutter_models_ = false;
-    output_str_gts_        = false;
     output_viz_            = false;
     read_stutter_models_   = false;
     viz_left_alns_         = false;
@@ -200,12 +202,7 @@ public:
   }
 
   void set_output_str_vcf(const std::string& vcf_file, const std::string& fasta_path, const std::string& full_command, const std::set<std::string>& samples_to_output){
-    output_str_gts_ = true;
-    str_vcf_.open(vcf_file.c_str());
-
-    // Print floats with exactly 2 decimal places
-    str_vcf_.precision(2);
-    str_vcf_.setf(std::ios::fixed, std::ios::floatfield);
+    vcf_writer_.open(vcf_file);
     
     // Assemble a list of sample names for genotype output
     samples_to_genotype_.clear();
@@ -221,8 +218,8 @@ public:
 				 const std::vector<std::string>& rg_names, const RegionGroup& region, const std::string& chrom_seq);
   void finish(){
     SNPBamProcessor::finish();
-    if (output_str_gts_)
-      str_vcf_.close();
+    if (vcf_writer_.is_open())
+      vcf_writer_.close();
     if (output_stutter_models_)
       stutter_model_out_.close();
     if (output_viz_)
@@ -249,13 +246,13 @@ public:
 		  << " SNP info extraction = " << total_snp_phase_info_time() << " seconds\n"
 		  << " Stutter estimation  = " << total_stutter_time()        << " seconds\n"
 		  << " Genotyping          = " << total_genotype_time()       << " seconds\n";
-    if (output_str_gts_)
-      full_logger() << "\t" << " Left alignment        = "  << process_timer_.get_total_time("Left alignment")        << " seconds\n"
-		    << "\t" << " Haplotype generation  = "  << process_timer_.get_total_time("Haplotype generation")  << " seconds\n"
-		    << "\t" << " Haplotype alignment   = "  << process_timer_.get_total_time("Haplotype alignment")   << " seconds\n"
-		    << "\t" << " Flank assembly        = "  << process_timer_.get_total_time("Flank assembly")        << " seconds\n"
-		    << "\t" << " Posterior computation = "  << process_timer_.get_total_time("Posterior computation") << " seconds\n"
-		    << "\t" << " Alignment traceback   = "  << process_timer_.get_total_time("Alignment traceback")   << " seconds\n";
+
+    full_logger() << "\t" << " Left alignment        = "  << process_timer_.get_total_time("Left alignment")        << " seconds\n"
+		  << "\t" << " Haplotype generation  = "  << process_timer_.get_total_time("Haplotype generation")  << " seconds\n"
+		  << "\t" << " Haplotype alignment   = "  << process_timer_.get_total_time("Haplotype alignment")   << " seconds\n"
+		  << "\t" << " Flank assembly        = "  << process_timer_.get_total_time("Flank assembly")        << " seconds\n"
+		  << "\t" << " Posterior computation = "  << process_timer_.get_total_time("Posterior computation") << " seconds\n"
+		  << "\t" << " Alignment traceback   = "  << process_timer_.get_total_time("Alignment traceback")   << " seconds\n";
   }
 
   // EM parameters for length-based stutter learning
