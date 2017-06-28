@@ -434,6 +434,7 @@ private:
   int32_t     start_;      // Start pos
   uint64_t    min_offset_; // Offset after first alignment
   BamAlignment first_aln_; // First alignment
+  bool reuse_first_aln_;
 
   // Private unimplemented copy constructor and assignment operator to prevent operations
   BamCramReader(const BamCramReader& other);
@@ -478,9 +479,10 @@ public:
     if (idx_ == NULL) 
       printErrorAndDie("Failed to load the index for file " + path);
 
-    iter_       = NULL;
-    start_      = -1;
-    min_offset_ = 0;
+    iter_            = NULL;
+    start_           = -1;
+    min_offset_      = 0;
+    reuse_first_aln_ = false;
   }
 
   const BamHeader* bam_header() const { return header_; }

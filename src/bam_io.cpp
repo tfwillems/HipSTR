@@ -57,9 +57,7 @@ void BamHeader::parse_read_groups(){
 }
 
 bool BamCramReader::SetRegion(const std::string& chrom, int32_t start, int32_t end){
-  bool reuse_offset = (min_offset_ != 0 && chrom.compare(chrom_) == 0 && start >= start_);
-  if (reuse_offset && first_aln_.GetEndPosition() > start && first_aln_.Position() < end)
-    reuse_offset = false;
+  bool reuse_offset = (!in_->is_cram && min_offset_ != 0 && chrom.compare(chrom_) == 0 && start >= start_);
 
   std::stringstream region;
   region << chrom << ":" << start+1 << "-" << end;
@@ -74,13 +72,22 @@ bool BamCramReader::SetRegion(const std::string& chrom, int32_t start, int32_t e
       if (iter_->n_off == 1 && min_offset_ >= iter_->off[0].u && min_offset_ <= iter_->off[0].v)
 	iter_->off[0].u = min_offset_;
 
-    min_offset_ = 0;
+    if (reuse_offset && first_aln_.GetEndPosition() > start && first_aln_.Position() < end){
+      // NOTE: min_offset_ remains unchanged, as the first valid alignment is the current first alignment
+      reuse_first_aln_ = true;
+    }
+    else {
+      min_offset_      = 0;
+      reuse_first_aln_ = false;
+    }
+
     return true;
   }
   else {
-    chrom_      = "";
-    start_      = -1;
-    min_offset_ = 0;
+    chrom_           = "";
+    start_           = -1;
+    min_offset_      = 0;
+    reuse_first_aln_ = false;
     return false;
   }
 }
@@ -88,15 +95,16 @@ bool BamCramReader::SetRegion(const std::string& chrom, int32_t start, int32_t e
 bool BamCramReader::GetNextAlignment(BamAlignment& aln){
   if (iter_ == NULL) return false;
 
+  if (reuse_first_aln_){
+    reuse_first_aln_ = false;
+    aln = first_aln_;
+    return true;
+  }
+
   if (sam_itr_next(in_, iter_, aln.b_) < 0){
     hts_itr_destroy(iter_);
     iter_ = NULL;
     return false;
-  }
-
-  if (min_offset_ == 0){
-    first_aln_  = aln;
-    min_offset_ = iter_->curr_off;
   }
 
   // Set up alignment instance variables
@@ -105,6 +113,12 @@ bool BamCramReader::GetNextAlignment(BamAlignment& aln){
   aln.length_  = aln.b_->core.l_qseq;
   aln.pos_     = aln.b_->core.pos;
   aln.end_pos_ = bam_endpos(aln.b_);
+
+  if (min_offset_ == 0){
+    first_aln_  = aln;
+    min_offset_ = iter_->curr_off;
+  }
+
   return true;
 }
 
