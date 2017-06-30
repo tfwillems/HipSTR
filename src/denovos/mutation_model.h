@@ -3,7 +3,7 @@
 
 #include <math.h>
 
-#include "vcf_reader.h"
+#include "../vcf_reader.h"
 
 class MutationModel {
   double log_mut_prior_;

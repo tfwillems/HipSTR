@@ -7,9 +7,9 @@
 #include <vector>
 #include <string>
 
-#include "error.h"
-#include "pedigree.h"
-#include "vcf_reader.h"
+#include "../error.h"
+#include "../pedigree.h"
+#include "../vcf_reader.h"
 
 class DiploidGenotypePrior {
  protected:

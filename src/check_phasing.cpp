@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "bgzf_streams.h"
-#include "denovo_scanner.h"
+#include "denovos/denovo_scanner.h"
 #include "error.h"
 #include "haplotype_tracker.h"
 #include "pedigree.h"

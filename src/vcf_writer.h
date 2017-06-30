@@ -45,6 +45,10 @@ class VCFWriter {
     }
   }
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  VCFWriter(const VCFWriter& other);
+  VCFWriter& operator=(const VCFWriter& other);
+
  public:
   VCFWriter(){
     open_          = false;

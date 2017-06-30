@@ -5,10 +5,10 @@
 
 #include "trio_denovo_scanner.h"
 #include "denovo_allele_priors.h"
-#include "error.h"
-#include "mathops.h"
+#include "../error.h"
+#include "../mathops.h"
 #include "mutation_model.h"
-#include "vcf_input.h"
+#include "../vcf_input.h"
 
 std::string TrioDenovoScanner::BPDIFFS_KEY = "BPDIFFS";
 std::string TrioDenovoScanner::START_KEY   = "START";

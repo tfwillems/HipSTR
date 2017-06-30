@@ -9,9 +9,9 @@
 #include <set>
 #include <string>
 
-#include "bgzf_streams.h"
-#include "pedigree.h"
-#include "vcf_reader.h"
+#include "../bgzf_streams.h"
+#include "../pedigree.h"
+#include "../vcf_reader.h"
 
 class DenovoScanner {
  public:

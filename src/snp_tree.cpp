@@ -2,7 +2,7 @@
 
 #include <set>
 
-#include "denovo_scanner.h"
+#include "denovos/denovo_scanner.h"
 #include "error.h"
 #include "snp_tree.h"
 

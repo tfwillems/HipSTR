@@ -5,11 +5,11 @@
 
 #include "denovo_scanner.h"
 #include "denovo_allele_priors.h"
-#include "error.h"
-#include "haplotype_tracker.h"
-#include "mathops.h"
+#include "../error.h"
+#include "../haplotype_tracker.h"
+#include "../mathops.h"
 #include "mutation_model.h"
-#include "vcf_input.h"
+#include "../vcf_input.h"
 
 std::string DenovoScanner::BPDIFFS_KEY = "BPDIFFS";
 std::string DenovoScanner::START_KEY   = "START";
