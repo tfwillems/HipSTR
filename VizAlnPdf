@@ -12,6 +12,18 @@ if [ "$#" -eq 6 ]; then
     python -c "from reportlab.graphics import renderPDF" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the reportlab python package. Please check that it's appropriately installed"; exit 1; }
     python -c "from svglib.svglib import svg2rlg" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the svglib python package. Please check that it's appropriately installed"; exit 1; }
 
+    # Determine whether it's python2 or python3 and make sure the required python packages are installed
+    version=`python -c "import sys; print(sys.version_info[0])"`
+    if [ $version == 2 ]
+    then
+        python -c "import HTMLParser" 2>/dev/null || { echo >&2 "ERROR: VizAln requires the HTMLParser python package. Please check that it's appropriately installed"; exit 1; }
+    elif [ $version == 3 ]
+    then
+        python -c "import html.parser" 2>/dev/null || { echo >&2 "ERROR: VizAln requires the html.parser python package. Please check that it's appropriately installed"; exit 1; }
+    else
+        echo >&2 "ERROR: VizAln only supports python 2 or python 3. Please check that it's appropriately installed"; exit 1;
+    fi
+
     # Make sure the file exists
     if [ ! -e $1 ]
 	then

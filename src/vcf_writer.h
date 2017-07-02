@@ -13,10 +13,7 @@ class RecordTuple {
   std::string text_;
 
  public:  
-  RecordTuple(int32_t pos, const std::string& text){
-    pos_  = pos;
-    text_ = text;
-  }
+ RecordTuple(int32_t pos, const std::string& text) : pos_(pos), text_(text) {}
   
   int32_t pos()            { return pos_;  }
   const std::string& text(){ return text_; }
@@ -60,7 +57,7 @@ class VCFWriter {
     write_all_records();
   }
 
-  bool is_open(){ return open_; }
+  bool is_open() const { return open_; }
 
   void open(const std::string& vcf_file){
     if (open_)

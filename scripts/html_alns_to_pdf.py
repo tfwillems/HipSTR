@@ -6,10 +6,16 @@
 
 import collections
 import sys
-from HTMLParser import HTMLParser
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF
 
+# Import HTMLParser, whose package name changed between python2 and python3
+if sys.version_info[0] == 2:
+    from HTMLParser import HTMLParser
+elif sys.version_info[0] == 3:
+    from html.parser import HTMLParser
+else:
+    exit("Unsupported python version %d"%(sys.version_info[0]))
 
 class HTMLCharCounter(HTMLParser):
     def __init__(self):
@@ -21,7 +27,7 @@ class HTMLCharCounter(HTMLParser):
             self.coord = 0
 
         coord_change = 1
-        for i in xrange(len(attrs)):
+        for i in range(len(attrs)):
             if tag == "td":
                 if attrs[i][0] == "colspan":
                     coord_change = int(attrs[i][1])
@@ -84,7 +90,7 @@ class FilteredPDFOutputter(HTMLParser):
         self.bold_font  = False
         self.spanner    = False
         self.missing_color = False
-        for i in xrange(len(attrs)):
+        for i in range(len(attrs)):
             if attrs[i][0] == "colspan":
                 num_cells = int(attrs[i][1])
                 coord_change = int(attrs[i][1])
@@ -114,7 +120,7 @@ class FilteredPDFOutputter(HTMLParser):
 
     def handle_endtag(self, tag):
         if tag == "td":
-            for i in xrange(1, self.coord_change+1):
+            for i in range(1, self.coord_change+1):
                 self.viz_coord += 1
 
             self.coord += self.coord_change
