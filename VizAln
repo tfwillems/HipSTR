@@ -64,7 +64,7 @@ msg
 	tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | cut -f 1-4 --complement | python ${parent_path}/scripts/generate_aln_html.py > $f
     fi
 
-    open $f
+    open $f 2>/dev/null || { echo >&2 "VizAln successfully generated the alignment visualization file, but failed to open it. Please open $f using a web browser";}
 else
     cat <<usage
 Usage: VizAln alns.html.gz chrom start [sample]
