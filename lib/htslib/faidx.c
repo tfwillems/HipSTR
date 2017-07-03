@@ -31,6 +31,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <stdio.h>
 #include <inttypes.h>
 #include <errno.h>
+#include <limits.h>
 #include <unistd.h>
 #include <assert.h>
 
@@ -62,7 +63,7 @@ struct __faidx_t {
 static inline int fai_insert_index(faidx_t *idx, const char *name, int64_t len, int line_len, int line_blen, uint64_t offset)
 {
     if (!name) {
-        fprintf(stderr, "[fai_build_core] malformed line\n");
+        hts_log_error("Malformed line");
         return -1;
     }
 
@@ -72,7 +73,7 @@ static inline int fai_insert_index(faidx_t *idx, const char *name, int64_t len, 
     faidx1_t *v = &kh_value(idx->hash, k);
 
     if (! absent) {
-        fprintf(stderr, "[fai_build_core] ignoring duplicate sequence \"%s\" at byte offset %"PRIu64"\n", name, offset);
+        hts_log_warning("Ignoring duplicate sequence \"%s\" at byte offset %"PRIu64"", name, offset);
         free(name_key);
         return 0;
     }
@@ -81,7 +82,7 @@ static inline int fai_insert_index(faidx_t *idx, const char *name, int64_t len, 
         char **tmp;
         idx->m = idx->m? idx->m<<1 : 16;
         if (!(tmp = (char**)realloc(idx->name, sizeof(char*) * idx->m))) {
-            fprintf(stderr, "[fai_build_core] out of memory\n");
+            hts_log_error("Out of memory");
             return -1;
         }
         idx->name = tmp;
@@ -129,7 +130,7 @@ faidx_t *fai_build_core(BGZF *bgzf)
             kputsn("", 0, &name);
 
             if ( c<0 ) {
-                fprintf(stderr, "[fai_build_core] the last entry has no sequence\n");
+                hts_log_error("The last entry has no sequence");
                 goto fail;
             }
             if (c != '\n') while ( (c=bgzf_getc(bgzf))>=0 && c != '\n');
@@ -137,7 +138,7 @@ faidx_t *fai_build_core(BGZF *bgzf)
             offset = bgzf_utell(bgzf);
         } else {
             if (state == 3) {
-                fprintf(stderr, "[fai_build_core] inlined empty line is not allowed in sequence '%s'.\n", name.s);
+                hts_log_error("Inlined empty line is not allowed in sequence '%s'", name.s);
                 goto fail;
             }
             if (state == 2) state = 3;
@@ -147,7 +148,7 @@ faidx_t *fai_build_core(BGZF *bgzf)
                 if (isgraph(c)) ++l2;
             } while ( (c=bgzf_getc(bgzf))>=0 && c != '\n');
             if (state == 3 && l2) {
-                fprintf(stderr, "[fai_build_core] different line length in sequence '%s'.\n", name.s);
+                hts_log_error("Different line length in sequence '%s'", name.s);
                 goto fail;
             }
             ++l1; len += l2;
@@ -212,13 +213,13 @@ static faidx_t *fai_read(hFILE *fp, const char *fname)
     if (!buf) goto fail;
 
     while ((l = hgetln(buf, 0x10000, fp)) > 0) {
-        for (p = buf; *p && isgraph_c(*p); ++p);
-        *p = 0; ++p;
+        for (p = buf; *p && !isspace_c(*p); ++p);
+        if (p - buf < l) {
+            *p = 0; ++p;
+        }
         n = sscanf(p, "%"SCNd64"%"SCNu64"%d%d", &len, &offset, &line_blen, &line_len);
         if (n != 4) {
-            if (hts_verbose > 1)
-                fprintf(stderr, "[fai_load] couldn't understand FAI %s line %zd\n",
-                        fname, lnum);
+            hts_log_error("Could not understand FAI %s line %zd", fname, lnum);
             goto fail;
         }
         if (fai_insert_index(fai, buf, len, line_len, line_blen, offset) != 0) {
@@ -228,9 +229,7 @@ static faidx_t *fai_read(hFILE *fp, const char *fname)
     }
 
     if (l < 0) {
-        if (hts_verbose > 1)
-            fprintf(stderr, "[fai_load] error while reading \"%s\": %s\n",
-                    fname, strerror(errno));
+        hts_log_error("Error while reading %s: %s", fname, strerror(errno));
         goto fail;
     }
     free(buf);
@@ -273,57 +272,45 @@ int fai_build3(const char *fn, const char *fnfai, const char *fngzi)
 
     bgzf = bgzf_open(fn, "r");
     if ( !bgzf ) {
-        if (hts_verbose > 1)
-            fprintf(stderr, "[fai_build] fail to open the FASTA file %s\n",fn);
+        hts_log_error("Failed to open the FASTA file %s", fn);
         goto fail;
     }
     if ( bgzf->is_compressed ) {
         if (bgzf_index_build_init(bgzf) != 0) {
-            if (hts_verbose > 1)
-                fprintf(stderr, "[fai_build] fail to allocate bgzf index");
+            hts_log_error("Failed to allocate bgzf index");
             goto fail;
         }
     }
     fai = fai_build_core(bgzf);
-    if ( !fai )
-    {
-        if ( bgzf->is_compressed && bgzf->is_gzip && hts_verbose > 1)
-            fprintf(stderr, "Cannot index files compressed with gzip, please use bgzip\n");
+    if ( !fai ) {
+        if (bgzf->is_compressed && bgzf->is_gzip) {
+            hts_log_error("Cannot index files compressed with gzip, please use bgzip");
+        }
         goto fail;
     }
     if ( bgzf->is_compressed ) {
         if (bgzf_index_dump(bgzf, fngzi, NULL) < 0) {
-            if (hts_verbose > 1)
-                fprintf(stderr, "[fai_build] fail to make bgzf index %s\n",
-                        fngzi);
+            hts_log_error("Failed to make bgzf index %s", fngzi);
             goto fail;
         }
     }
     res = bgzf_close(bgzf);
     bgzf = NULL;
     if (res < 0) {
-        if (hts_verbose > 1)
-            fprintf(stderr, "[fai_build] Error on closing %s : %s\n",
-                    fn, strerror(errno));
+        hts_log_error("Error on closing %s : %s", fn, strerror(errno));
         goto fail;
     }
     fp = hopen(fnfai, "wb");
     if ( !fp ) {
-        if (hts_verbose > 1)
-            fprintf(stderr, "[fai_build] fail to open FASTA index %s : %s\n",
-                    fnfai, strerror(errno));
+        hts_log_error("Failed to open FASTA index %s : %s", fnfai, strerror(errno));
         goto fail;
     }
     if (fai_save(fai, fp) != 0) {
-        if (hts_verbose > 1)
-            fprintf(stderr, "[fai_build] fail to write FASTA index %s : %s\n",
-                    fnfai, strerror(errno));
+        hts_log_error("Failed to write FASTA index %s : %s", fnfai, strerror(errno));
         goto fail;
     }
     if (hclose(fp) != 0) {
-        if (hts_verbose > 1)
-            fprintf(stderr, "[fai_build] fail on closing FASTA index %s : %s\n",
-                    fnfai, strerror(errno));
+        hts_log_error("Failed on closing FASTA index %s : %s", fnfai, strerror(errno));
         goto fail;
     }
 
@@ -371,63 +358,49 @@ faidx_t *fai_load3(const char *fn, const char *fnfai, const char *fngzi,
 
     if (fp == 0) {
         if (!(flags & FAI_CREATE) || errno != ENOENT) {
-            if (hts_verbose >= 1) {
-                fprintf(stderr, "[fai_load] failed to open FASTA index %s: %s\n",
-                        fnfai, strerror(errno));
-            }
+            hts_log_error("Failed to open FASTA index %s: %s", fnfai, strerror(errno));
             goto fail;
         }
 
-        if (hts_verbose >= 1) {
-            fprintf(stderr, "[fai_load] build FASTA index.\n");
-        }
+        hts_log_info("Build FASTA index");
+
         if (fai_build3(fn, fnfai, fngzi) < 0) {
             goto fail;
         }
 
         fp = hopen(fnfai, "rb");
         if (fp == 0) {
-            if (hts_verbose >= 1) {
-                fprintf(stderr, "[fai_load] failed to open FASTA index %s: %s\n",
-                        fnfai, strerror(errno));
-            }
+            hts_log_error("Failed to open FASTA index %s: %s", fnfai, strerror(errno));
             goto fail;
         }
     }
 
     fai = fai_read(fp, fnfai);
     if (fai == NULL) {
-        if (hts_verbose >= 1)
-            fprintf(stderr, "[fai_load] failed to read FASTA index %s\n",
-                    fnfai);
+        hts_log_error("Failed to read FASTA index %s", fnfai);
         goto fail;
     }
 
     res = hclose(fp);
     fp = NULL;
     if (res < 0) {
-        if (hts_verbose >= 1)
-            fprintf(stderr, "[fai_load] fail on closing FASTA index %s : %s\n",
-                    fnfai, strerror(errno));
+        hts_log_error("Failed on closing FASTA index %s : %s", fnfai, strerror(errno));
         goto fail;
     }
 
     fai->bgzf = bgzf_open(fn, "rb");
     if (fai->bgzf == 0) {
-        if (hts_verbose >= 1)
-            fprintf(stderr, "[fai_load] fail to open FASTA file %s.\n", fn);
+        hts_log_error("Failed to open FASTA file %s", fn);
         goto fail;
     }
-    if ( fai->bgzf->is_compressed==1 )
-    {
-        if ( bgzf_index_load(fai->bgzf, fngzi, NULL) < 0 )
-        {
-            if (hts_verbose >= 1)
-                fprintf(stderr, "[fai_load] failed to load .gzi index: %s\n",
-                        fngzi);
+    if ( fai->bgzf->is_compressed==1 ) {
+        if ( bgzf_index_load(fai->bgzf, fngzi, NULL) < 0 ) {
+            hts_log_error("Failed to load .gzi index: %s", fngzi);
             goto fail;
         }
     }
+    free(fai_kstr.s);
+    free(gzi_kstr.s);
     return fai;
 
  fail:
@@ -443,26 +416,70 @@ faidx_t *fai_load(const char *fn)
     return fai_load3(fn, NULL, NULL, FAI_CREATE);
 }
 
+static char *fai_retrieve(const faidx_t *fai, const faidx1_t *val,
+                          long beg, long end, int *len) {
+    char *s;
+    size_t l;
+    int c = 0;
+    int ret = bgzf_useek(fai->bgzf,
+                         val->offset
+                         + beg / val->line_blen * val->line_len
+                         + beg % val->line_blen, SEEK_SET);
+
+    if (ret < 0) {
+        *len = -1;
+        hts_log_error("Failed to retrieve block. (Seeking in a compressed, .gzi unindexed, file?)");
+        return NULL;
+    }
+
+    l = 0;
+    s = (char*)malloc((size_t) end - beg + 2);
+    if (!s) {
+        *len = -1;
+        return NULL;
+    }
+
+    while ( l < end - beg && (c=bgzf_getc(fai->bgzf))>=0 )
+        if (isgraph(c)) s[l++] = c;
+    if (c < 0) {
+        hts_log_error("Failed to retrieve block: %s",
+            c == -1 ? "unexpected end of file" : "error reading file");
+        free(s);
+        *len = -1;
+        return NULL;
+    }
+
+    s[l] = '\0';
+    *len = l < INT_MAX ? l : INT_MAX;
+    return s;
+}
+
 char *fai_fetch(const faidx_t *fai, const char *str, int *len)
 {
-    char *s;
-    int c, i, l, k, name_end;
+    char *s, *ep;
+    size_t i, l, k, name_end;
     khiter_t iter;
     faidx1_t val;
     khash_t(s) *h;
-    int beg, end;
+    long beg, end;
 
     beg = end = -1;
     h = fai->hash;
     name_end = l = strlen(str);
     s = (char*)malloc(l+1);
+    if (!s) {
+        *len = -1;
+        return NULL;
+    }
+
     // remove space
     for (i = k = 0; i < l; ++i)
         if (!isspace_c(str[i])) s[k++] = str[i];
-    s[k] = 0; l = k;
+    s[k] = 0;
+    name_end = l = k;
     // determine the sequence name
-    for (i = l - 1; i >= 0; --i) if (s[i] == ':') break; // look for colon from the end
-    if (i >= 0) name_end = i;
+    for (i = l; i > 0; --i) if (s[i - 1] == ':') break; // look for colon from the end
+    if (i > 0) name_end = i - 1;
     if (name_end < l) { // check if this is really the end
         int n_hyphen = 0;
         for (i = name_end + 1; i < l; ++i) {
@@ -474,28 +491,44 @@ char *fai_fetch(const faidx_t *fai, const char *str, int *len)
         iter = kh_get(s, h, s);
         if (iter == kh_end(h)) { // cannot find the sequence name
             iter = kh_get(s, h, str); // try str as the name
-            if (iter == kh_end(h)) {
-                *len = 0;
-            free(s); return 0;
-            } else s[name_end] = ':', name_end = l;
+            if (iter != kh_end(h)) {
+                s[name_end] = ':';
+                name_end = l;
+            }
         }
     } else iter = kh_get(s, h, str);
     if(iter == kh_end(h)) {
-        fprintf(stderr, "[fai_fetch] Warning - Reference %s not found in FASTA file, returning empty sequence\n", str);
+        hts_log_warning("Reference %s not found in FASTA file, returning empty sequence", str);
         free(s);
         *len = -2;
         return 0;
-    };
+    }
     val = kh_value(h, iter);
     // parse the interval
     if (name_end < l) {
+        int save_errno = errno;
+        errno = 0;
         for (i = k = name_end + 1; i < l; ++i)
             if (s[i] != ',') s[k++] = s[i];
         s[k] = 0;
-        beg = atoi(s + name_end + 1);
-        for (i = name_end + 1; i != k; ++i) if (s[i] == '-') break;
-        end = i < k? atoi(s + i + 1) : val.len;
+        if (s[name_end + 1] == '-') {
+            beg = 0;
+            i = name_end + 2;
+        } else {
+            beg = strtol(s + name_end + 1, &ep, 10);
+            for (i = ep - s; i < k;) if (s[i++] == '-') break;
+        }
+        end = i < k? strtol(s + i, &ep, 10) : val.len;
         if (beg > 0) --beg;
+        // Check for out of range numbers.  Only going to be a problem on
+        // 32-bit platforms with >2Gb sequence length.
+        if (errno == ERANGE && (uint64_t) val.len > LONG_MAX) {
+            hts_log_error("Positions in range %s are too large for this platform", s);
+            free(s);
+            *len = -2;
+            return NULL;
+        }
+        errno = save_errno;
     } else beg = 0, end = val.len;
     if (beg >= val.len) beg = val.len;
     if (end >= val.len) end = val.len;
@@ -503,20 +536,7 @@ char *fai_fetch(const faidx_t *fai, const char *str, int *len)
     free(s);
 
     // now retrieve the sequence
-    int ret = bgzf_useek(fai->bgzf, val.offset + beg / val.line_blen * val.line_len + beg % val.line_blen, SEEK_SET);
-    if ( ret<0 )
-    {
-        *len = -1;
-        fprintf(stderr, "[fai_fetch] Error: fai_fetch failed. (Seeking in a compressed, .gzi unindexed, file?)\n");
-        return NULL;
-    }
-    l = 0;
-    s = (char*)malloc(end - beg + 2);
-    while ( (c=bgzf_getc(fai->bgzf))>=0 && l < end - beg )
-        if (isgraph(c)) s[l++] = c;
-    s[l] = '\0';
-    *len = l;
-    return s;
+    return fai_retrieve(fai, &val, beg, end, len);
 }
 
 int faidx_fetch_nseq(const faidx_t *fai)
@@ -543,17 +563,15 @@ int faidx_seq_len(const faidx_t *fai, const char *seq)
 
 char *faidx_fetch_seq(const faidx_t *fai, const char *c_name, int p_beg_i, int p_end_i, int *len)
 {
-    int l, c;
     khiter_t iter;
     faidx1_t val;
-    char *seq=NULL;
 
     // Adjust position
     iter = kh_get(s, fai->hash, c_name);
     if (iter == kh_end(fai->hash))
     {
         *len = -2;
-        fprintf(stderr, "[fai_fetch_seq] The sequence \"%s\" not found\n", c_name);
+        hts_log_error("The sequence \"%s\" not found", c_name);
         return NULL;
     }
     val = kh_value(fai->hash, iter);
@@ -564,20 +582,7 @@ char *faidx_fetch_seq(const faidx_t *fai, const char *c_name, int p_beg_i, int p
     else if(val.len <= p_end_i) p_end_i = val.len - 1;
 
     // Now retrieve the sequence
-    int ret = bgzf_useek(fai->bgzf, val.offset + p_beg_i / val.line_blen * val.line_len + p_beg_i % val.line_blen, SEEK_SET);
-    if ( ret<0 )
-    {
-        *len = -1;
-        fprintf(stderr, "[fai_fetch_seq] Error: fai_fetch failed. (Seeking in a compressed, .gzi unindexed, file?)\n");
-        return NULL;
-    }
-    l = 0;
-    seq = (char*)malloc(p_end_i - p_beg_i + 2);
-    while ( (c=bgzf_getc(fai->bgzf))>=0 && l < p_end_i - p_beg_i + 1)
-        if (isgraph(c)) seq[l++] = c;
-    seq[l] = '\0';
-    *len = l;
-    return seq;
+    return fai_retrieve(fai, &val, p_beg_i, (long) p_end_i + 1, len);
 }
 
 int faidx_has_seq(const faidx_t *fai, const char *seq)

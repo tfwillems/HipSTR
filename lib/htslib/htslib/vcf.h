@@ -137,6 +137,7 @@ extern uint8_t bcf_type_shift[];
 #define VCF_MNP   2
 #define VCF_INDEL 4
 #define VCF_OTHER 8
+#define VCF_BND   16    // breakend
 
 typedef struct {
     int type, n;    // variant type and the number of bases affected, negative for deletions
@@ -651,10 +652,11 @@ typedef struct {
      *  @dst:       *dst is pointer to a memory location, can point to NULL
      *  @ndst:      pointer to the size of allocated memory
      *
-     *  Returns negative value on error or the number of written values on
-     *  success. bcf_get_info_string() returns on success the number of
-     *  characters written excluding the null-terminating byte. bcf_get_info_flag()
-     *  returns 1 when flag is set or 0 if not.
+     *  Returns negative value on error or the number of written values
+     *  (including missing values) on success. bcf_get_info_string() returns
+     *  on success the number of characters written excluding the null-
+     *  terminating byte. bcf_get_info_flag() returns 1 when flag is set or 0
+     *  if not.
      *
      *  List of return codes:
      *      -1 .. no such INFO tag defined in the header
@@ -809,6 +811,7 @@ typedef struct {
      *      -1 .. indexing failed
      *      -2 .. opening @fn failed
      *      -3 .. format not indexable
+     *      -4 .. failed to create and/or save the index
      */
     int bcf_index_build(const char *fn, int min_shift);
 
@@ -824,6 +827,7 @@ typedef struct {
      *      -1 .. indexing failed
      *      -2 .. opening @fn failed
      *      -3 .. format not indexable
+     *      -4 .. failed to create and/or save the index
      */
     int bcf_index_build2(const char *fn, const char *fnidx, int min_shift);
 
@@ -840,6 +844,7 @@ typedef struct {
      *      -1 .. indexing failed
      *      -2 .. opening @fn failed
      *      -3 .. format not indexable
+     *      -4 .. failed to create and/or save the index
      */
      int bcf_index_build3(const char *fn, const char *fnidx, int min_shift, int n_threads);
 
@@ -909,7 +914,7 @@ static inline void bcf_format_gt(bcf_fmt_t *fmt, int isample, kstring_t *str)
         case BCF_BT_INT16: BRANCH(int16_t, bcf_int16_missing, bcf_int16_vector_end); break;
         case BCF_BT_INT32: BRANCH(int32_t, bcf_int32_missing, bcf_int32_vector_end); break;
         case BCF_BT_NULL:  kputc('.', str); break;
-        default: fprintf(stderr,"FIXME: type %d in bcf_format_gt?\n", fmt->type); abort(); break;
+        default: hts_log_error("Unexpected type %d", fmt->type); abort(); break;
     }
     #undef BRANCH
 }

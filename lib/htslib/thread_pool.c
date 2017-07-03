@@ -26,9 +26,6 @@ DEALINGS IN THE SOFTWARE.  */
 #include <config.h>
 #endif
 
-// Needed on some platforms to make PTHREAD_MUTEX_RECURSIVE available
-#define _XOPEN_SOURCE 700
-
 #include <stdlib.h>
 #include <inttypes.h>
 #include <signal.h>
@@ -459,9 +456,6 @@ void hts_tpool_process_detach(hts_tpool *p, hts_tpool_process *q) {
  */
 
 #define TDIFF(t2,t1) ((t2.tv_sec-t1.tv_sec)*1000000 + t2.tv_usec-t1.tv_usec)
-
-#include <sys/syscall.h>
-#define TID (int)syscall(SYS_gettid)
 
 /*
  * A worker thread.

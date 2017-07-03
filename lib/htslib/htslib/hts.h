@@ -32,6 +32,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <stdint.h>
 
 #include "hts_defs.h"
+#include "hts_log.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -234,6 +235,7 @@ enum hts_fmt_option {
     HTS_OPT_NTHREADS,
     HTS_OPT_THREAD_POOL,
     HTS_OPT_CACHE_SIZE,
+    HTS_OPT_BLOCK_SIZE,
 };
 
 // For backwards compatibility
@@ -298,8 +300,6 @@ int hts_parse_format(htsFormat *opt, const char *str);
  *        -1 on failure.
  */
 int hts_parse_opt_list(htsFormat *opt, const char *str);
-
-extern int hts_verbose;
 
 /*! @abstract Table for converting a nucleotide character to 4-bit encoding.
 The input character may be either an IUPAC ambiguity code, '=' for 0, or
@@ -568,8 +568,33 @@ hts_idx_t *hts_idx_load(const char *fn, int fmt);
 */
 hts_idx_t *hts_idx_load2(const char *fn, const char *fnidx);
 
-    uint8_t *hts_idx_get_meta(hts_idx_t *idx, int *l_meta);
-    void hts_idx_set_meta(hts_idx_t *idx, int l_meta, uint8_t *meta, int is_copy);
+
+/// Get extra index meta-data
+/** @param idx    The index
+    @param l_meta Pointer to where the length of the extra data is stored
+    @return Pointer to the extra data if present; NULL otherwise
+
+    Indexes (both .tbi and .csi) made by tabix include extra data about
+    the indexed file.  The returns a pointer to this data.  Note that the
+    data is stored exactly as it is in the index.  Callers need to interpret
+    the results themselves, including knowing what sort of data to expect;
+    byte swapping etc.
+*/
+uint8_t *hts_idx_get_meta(hts_idx_t *idx, uint32_t *l_meta);
+
+/// Set extra index meta-data
+/** @param idx     The index
+    @param l_meta  Length of data
+    @param meta    Pointer to the extra data
+    @param is_copy If not zero, a copy of the data is taken
+    @return 0 on success; -1 on failure (out of memory).
+
+    Sets the data that is returned by hts_idx_get_meta().
+
+    If is_copy != 0, a copy of the input data is taken.  If not, ownership of
+    the data pointed to by *meta passes to the index.
+*/
+int hts_idx_set_meta(hts_idx_t *idx, uint32_t l_meta, uint8_t *meta, int is_copy);
 
     int hts_idx_get_stat(const hts_idx_t* idx, int tid, uint64_t* mapped, uint64_t* unmapped);
     uint64_t hts_idx_get_n_no_coor(const hts_idx_t* idx);
@@ -586,7 +611,7 @@ hts_idx_t *hts_idx_load2(const char *fn, const char *fnidx);
     @param flags   Or'ed-together combination of HTS_PARSE_* flags
     @return  Converted value of the parsed number.
 
-    When @a strend is NULL, a warning will be printed (if hts_verbose is 2
+    When @a strend is NULL, a warning will be printed (if hts_verbose is HTS_LOG_WARNING
     or more) if there are any trailing characters after the number.
 */
 long long hts_parse_decimal(const char *str, char **strend, int flags);

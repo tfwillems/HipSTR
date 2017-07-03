@@ -1,7 +1,46 @@
-Noteworthy changes in release 1.4
+Noteworthy changes in release a.b (Equinox)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Noteworthy changes in release 1.5 (21st June 2017)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Added a new logging API: hts_log(), along with hts_log_error(),
+  hts_log_warn() etc. convenience macros.  Thanks go to Anders Kaplan
+  for the implementation. (#499, #543, #551)
+
+* Added a new file I/O option "block_size" (HTS_OPT_BLOCK_SIZE) to
+  alter the hFILE buffer size.
+
+* Fixed various bugs, including compilation issues samtools/bcftools#610,
+  samtools/bcftools#611 and robustness to corrupted data #537, #538,
+  #541, #546, #548, #549, #554.
+
+
+Noteworthy changes in release 1.4.1  (8th May 2017)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This is primarily a security bug fix update.
+
+* Fixed SECURITY issue with buffer overruns with malicious data. (#514).
+
+* S3 support for non Amazon AWS endpoints. (#506)
+
+* Support for variant breakpoints in bcftools. (#516)
+
+* Improved handling of BCF NaNs. (#485)
+
+* Compilation / portability improvements. (#255, #423, #498, #488)
+
+* Miscellaneous bug fixes (#482, #521, #522, #523, #524).
+
+* Sanitise headers (#509)
+
+
+Release 1.4 (13 March 2017)
 
 * Incompatible changes: several functions and data types have been changed
   in this release, and the shared library soversion has been bumped to 2.
+
   - bam_pileup1_t has an additional field (which holds user data)
   - bam1_core_t has been modified to allow for >64K CIGAR operations
     and (along with bam1_t) so that CIGAR entries are aligned in memory
@@ -9,8 +48,21 @@ Noteworthy changes in release 1.4
   - the various tbx_conf_* presets are now const
   - auxiliary fields in bam1_t are now always stored in little-endian byte
     order (previously this depended on if you read a bam, sam or cram file)
+  - index metadata (accessible via hts_idx_get_meta()) is now always
+    stored in little-endian byte order (previously this depended on if
+    the index was in tbi or csi format)
   - bam_aux2i() now returns an int64_t value
   - fai_load() will no longer save local copies of remote fasta indexes
+  - hts_idx_get_meta() now takes a uint32_t * for l_meta (was int32_t *)
+
+* HTSlib now links against libbz2 and liblzma by default.  To remove these
+  dependencies, run configure with options --disable-bz2 and --disable-lzma,
+  but note that this may make some CRAM files produced elsewhere unreadable. 
+
+* Added a thread pool interface and replaced the bgzf multi-threading
+  code to use this pool.  BAM and CRAM decoding is now multi-threaded
+  too, using the pool to automatically balance the number of threads
+  between decode, encode and any data processing jobs.
 
 * New errmod_cal(), probaln_glocal(), sam_cap_mapq(), and sam_prob_realn()
   functions, previously internal to SAMtools, have been added to HTSlib.
@@ -60,6 +112,18 @@ Noteworthy changes in release 1.4
   to index chromosomes longer than 2^29 bases with a .bai or .tbi index
   will report an error instead of apparantly working but creating an invalid
   index entry.
+
+* VCF formatting is now approximately 4x faster.  (Whether this is
+  noticable depends on what was creating the VCF.)
+
+* CRAM lossy_names mode now works with TLEN of 0 or TLEN within +/- 1
+  of the computed value.  Note in these situations TLEN will be
+  generated / fixed during CRAM decode.
+
+* CRAM now supports bzip2 and lzma codecs.  Within htslib these are
+  disabled by default, but can be enabled by specifying "use_bzip2" or
+  "use_lzma" in an hts_opt_add() call or via the mode string of the
+  hts_open_format() function.
 
 Noteworthy changes in release 1.3.2  (13 September 2016)
 

@@ -30,7 +30,7 @@ OBJ_DENOVO  := $(SRC_DENOVO:.cpp=.o)
 CEPHES_ROOT=lib/cephes
 HTSLIB_ROOT=lib/htslib
 
-LIBS              = -L./ -lm -L$(HTSLIB_ROOT)/ -lz -L$(CEPHES_ROOT)/
+LIBS              = -L./ -lm -L$(HTSLIB_ROOT)/ -lz -L$(CEPHES_ROOT)/ -llzma -lbz2
 INCLUDE           = -Ilib -Ilib/htslib
 CEPHES_LIB        = lib/cephes/libprob.a
 HTSLIB_LIB        = $(HTSLIB_ROOT)/libhts.a
