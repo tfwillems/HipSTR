@@ -488,16 +488,7 @@ public:
   const BamHeader* bam_header() const { return header_; }
   const std::string& path()     const { return path_;   }
   
-  ~BamCramReader(){
-    bam_hdr_destroy(hdr_);
-    delete header_;
-    sam_close(in_);
-
-    hts_idx_destroy(idx_);
-
-    if (iter_ != NULL)
-      hts_itr_destroy(iter_);
-  }
+  ~BamCramReader();
 
   bool GetNextAlignment(BamAlignment& aln);
   

@@ -56,6 +56,17 @@ void BamHeader::parse_read_groups(){
   }
 }
 
+BamCramReader::~BamCramReader(){
+  bam_hdr_destroy(hdr_);
+  delete header_;
+  hts_idx_destroy(idx_);
+  sam_close(in_);
+
+  if (iter_ != NULL)
+    hts_itr_destroy(iter_);
+}
+
+
 bool BamCramReader::SetRegion(const std::string& chrom, int32_t start, int32_t end){
   bool reuse_offset = (!in_->is_cram && min_offset_ != 0 && chrom.compare(chrom_) == 0 && start >= start_);
 
