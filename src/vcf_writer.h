@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <string>
+#include <vector>
 
 #include "bgzf_streams.h"
 #include "error.h"
