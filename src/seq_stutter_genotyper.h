@@ -27,7 +27,6 @@
 class SeqStutterGenotyper : public Genotyper {
  private:
   int MAX_REF_FLANK_LEN;
-  int MAX_FLANK_HAPLOTYPES;
   double STRAND_TOLERANCE;
 
   BaseQuality base_quality_;
@@ -108,7 +107,7 @@ class SeqStutterGenotyper : public Genotyper {
   void analyze_flank_snps(std::ostream& logger);
 
   // Exploratory function related to using local assembly to identify variants in the flanking sequences
-  bool assemble_flanks(std::ostream& logger);
+  bool assemble_flanks(int max_flank_haplotypes, double min_flank_freq, std::ostream& logger);
 
   // Determines the allele index in the given haplotype block that is associated with each haplotype configuration
   // Stores the results in the provided vector
@@ -154,7 +153,6 @@ class SeqStutterGenotyper : public Genotyper {
     haplotype_             = NULL;
     second_mate_           = NULL;
     MAX_REF_FLANK_LEN      = 30;
-    MAX_FLANK_HAPLOTYPES   = 4;
     MIN_PATH_WEIGHT        = 2;
     MIN_KMER               = 10;
     MAX_KMER               = 15;
@@ -191,13 +189,14 @@ class SeqStutterGenotyper : public Genotyper {
   double aln_trace_time() { return total_aln_trace_time_;  }
   double assembly_time()  { return total_assembly_time_;   }
 
-  bool genotype(std::ostream& logger);
+  bool genotype(int max_flank_haplotypes, double min_flank_freq, std::ostream& logger);
 
   /*
    * Recompute the stutter model(s) using the PCR artifacts obtained from the ML alignments
    * and regenotype the samples using this new model
   */
-  bool recompute_stutter_models(std::ostream& logger, int max_em_iter, double abs_ll_converge, double frac_ll_converge);
+  bool recompute_stutter_models(std::ostream& logger, int max_flank_haplotypes, double min_flank_freq,
+				int max_em_iter, double abs_ll_converge, double frac_ll_converge);
 };
 
 #endif

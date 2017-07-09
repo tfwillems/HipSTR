@@ -37,7 +37,7 @@ int max_index(double* vals, unsigned int num_vals){
   return best_index;
 }
 
-bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
+bool SeqStutterGenotyper::assemble_flanks(int max_flank_haplotypes, double min_flank_freq, std::ostream& logger){
   std::vector<AlignmentTrace*> traced_alns;
   retrace_alignments(traced_alns);
 
@@ -47,17 +47,28 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
   std::vector<bool> realign_sample(num_samples_, false);
 
   for (int flank = 0; flank < 2; flank++){
-    int block_index     = (flank == 0 ? 0 : haplotype_->num_blocks()-1);
-    std::string ref_seq = hap_blocks_[block_index]->get_seq(0);
-    int max_k           = std::min(MAX_KMER, ref_seq.size() == 0 ? -1 : (int)ref_seq.size()-1);
+    std::string flank_dir = (flank == 0 ? "left" : "right");
+    int block_index       = (flank == 0 ? 0 : haplotype_->num_blocks()-1);
+    std::string ref_seq   = hap_blocks_[block_index]->get_seq(0);
+    int max_k             = std::min(MAX_KMER, ref_seq.size() == 0 ? -1 : (int)ref_seq.size()-1);
     int kmer_length;
     if (!DebruijnGraph::calc_kmer_length(ref_seq, MIN_KMER, max_k, kmer_length))
       return false;
 
-    std::map<std::string, int> haplotype_counts;
+    std::map<std::string, int> haplotype_indexes;        // Index associated with each alterate flank
+    std::vector< std::vector<int> > haplotype_to_sample; // List of samples supporting each alternate flank
     std::vector< std::pair<std::string,int> > assembly_data;
     int min_read_index = 0, read_index = -1;
     for (int sample_index = 0; sample_index < num_samples_; sample_index++){
+      if (!call_sample_[sample_index].empty()){
+	for (read_index = min_read_index; read_index < num_reads_; read_index++){
+	  if (sample_label_[read_index] != sample_index)
+	    break;
+	}
+	min_read_index = read_index;
+	continue;
+      }
+
       assembly_data.clear();
       bool acyclic = false;
       for (int k = kmer_length; k <= max_k; k++){
@@ -102,8 +113,14 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 		}
 		else {
 		  //logger << sample_names_[sample_index] << " " << total_depth << " " << assembly_data[i].second << std::endl;
+		  if (haplotype_indexes.find(assembly_data[i].first) == haplotype_indexes.end()){
+		    int index = haplotype_indexes.size();
+		    haplotype_indexes[assembly_data[i].first] = index;
+		    haplotype_to_sample.push_back(std::vector<int>());
+		  }
+
 		  realign_sample[sample_index] = true;
-		  haplotype_counts[assembly_data[i].first]++;
+		  haplotype_to_sample[haplotype_indexes[assembly_data[i].first]].push_back(sample_index);
 		}
 	      }
 	    }
@@ -114,14 +131,34 @@ bool SeqStutterGenotyper::assemble_flanks(std::ostream& logger){
 	call_sample_[sample_index] = "FLANK_ASSEMBLY_CYCLIC";
     }
 
-    if (!haplotype_counts.empty()){
-      if (haplotype_counts.size() > MAX_FLANK_HAPLOTYPES){
-        logger << "Skipping locus with too many flanking sequences. Found = " << haplotype_counts.size() << ", MAX = " << MAX_FLANK_HAPLOTYPES << std::endl;
+    // Prune low-frequency flanks and flag the associated samples to avoid genotyping them
+    for (auto hap_iter = haplotype_indexes.begin(); hap_iter != haplotype_indexes.end(); ){
+      const std::vector<int>& hap_samples = haplotype_to_sample[hap_iter->second];
+      if (hap_samples.size() < min_flank_freq*num_samples_){
+	// Mark all samples associated with the candidate flank
+	for (auto sample_iter = hap_samples.begin(); sample_iter != hap_samples.end(); sample_iter++){
+	  if (call_sample_[*sample_iter].empty()){
+	    call_sample_[*sample_iter]    = "LOW_FREQUENCY_ALT_FLANK";
+	    realign_sample[*sample_iter] = false;
+	  }
+	}
+
+	// Remove flank from flank candidates
+	logger << "\t" << "Pruning low frequency " << flank_dir << " flank" << "\t" << hap_iter->first << "\t" << hap_samples.size() << "\n";
+	haplotype_indexes.erase(hap_iter++);
+      }
+      else
+	hap_iter++;
+    }
+
+    if (!haplotype_indexes.empty()){
+      if (haplotype_indexes.size() > max_flank_haplotypes){
+        logger << "Skipping locus with too many " << flank_dir << " alternate flanking sequences. Found = " << haplotype_indexes.size() << ", MAX = " << max_flank_haplotypes << std::endl;
         return false;
       }
-      logger << "Identified " << haplotype_counts.size() << " new flank haplotype(s)" << "\n";
-      for (auto hap_iter = haplotype_counts.begin(); hap_iter != haplotype_counts.end(); hap_iter++){
-	logger << "\t" << hap_iter->first << "\t" << hap_iter->second << "\n";
+      logger << "Identified " << haplotype_indexes.size() << " new " << flank_dir << " flank haplotype(s)" << "\n";
+      for (auto hap_iter = haplotype_indexes.begin(); hap_iter != haplotype_indexes.end(); hap_iter++){
+	logger << "\t" << hap_iter->first << "\t" << haplotype_to_sample[hap_iter->second].size() << "\n";
 	alleles_to_add[block_index].push_back(hap_iter->first);
       }
       logger << "\t" << ref_seq << "\t" << "REF_SEQ" << "\n" << std::endl;
@@ -545,7 +582,7 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::ostream& logger){
   return true;
 }
 
-bool SeqStutterGenotyper::genotype(std::ostream& logger){
+bool SeqStutterGenotyper::genotype(int max_flank_haplotypes, double min_flank_freq, std::ostream& logger){
   // Unsuccessful initialization. May be due to
   // 1) Failing to find the corresponding alleles in the VCF (if one has been provided)
   // 2) Large deletion extending past STR
@@ -614,7 +651,7 @@ bool SeqStutterGenotyper::genotype(std::ostream& logger){
   }
 
   if (reassemble_flanks_)
-    if (!assemble_flanks(logger))
+    if (!assemble_flanks(max_flank_haplotypes, min_flank_freq, logger))
       return false;
 
   return true;
@@ -1387,7 +1424,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   }
 }
 
-bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger,
+bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max_flank_haplotypes, double min_flank_freq,
 						  int max_em_iter, double abs_ll_converge, double frac_ll_converge){
   logger << "Retraining EM stutter genotyper using maximum likelihood alignments" << std::endl;
   std::vector<AlignmentTrace*> traced_alns;
@@ -1425,5 +1462,5 @@ bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger,
     block->get_repeat_info()->set_stutter_model(length_genotyper.get_stutter_model());
   }
   trace_cache_.clear();
-  return genotype(logger);
+  return genotype(max_flank_haplotypes, min_flank_freq, logger);
 }

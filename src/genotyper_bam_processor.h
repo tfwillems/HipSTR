@@ -120,6 +120,8 @@ public:
     ABS_LL_CONVERGE        = 0.01;
     FRAC_LL_CONVERGE       = 0.001;
     MIN_TOTAL_READS        = 100;
+    MAX_FLANK_HAPLOTYPES   = 4;
+    MIN_FLANK_FREQ         = 0.01;
     output_gls_            = false;
     output_pls_            = false;
     output_phased_gls_     = false;
@@ -257,9 +259,13 @@ public:
 
   // EM parameters for length-based stutter learning
   int MAX_EM_ITER;
-  double ABS_LL_CONVERGE;  // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
-  double FRAC_LL_CONVERGE; // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
-  int32_t MIN_TOTAL_READS; // Minimum total reads required to genotype locus
+  double ABS_LL_CONVERGE;   // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
+  double FRAC_LL_CONVERGE;  // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
+  int32_t MIN_TOTAL_READS;  // Minimum total reads required to genotype locus
+
+  int MAX_FLANK_HAPLOTYPES;
+  double MIN_FLANK_FREQ;    // Minimum fraction of samples that must have an alternate flank to consider it
+                            // Samples with flanks below this frequency will not be genotyped
 };
 
 #endif

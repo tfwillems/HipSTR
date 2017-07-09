@@ -29,7 +29,7 @@ bool is_file(const std::string& name){
   return (S_ISREG (st_buf.st_mode));
 }
 
-void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_str_len){
+void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_str_len, int def_max_flanks, double def_min_flank_freq){
   std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <genome.fa> --regions <region_file.bed> --str-vcf <str_gts.vcf.gz> [OPTIONS]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
@@ -81,6 +81,11 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--lib-from-samp                       "  << "\t" << " Assign each read the library corresponding to its sample name. By default,  "       << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG tag and the library is determined from the LB field"     << "\n" << "\n"
 
+	    << "Optional haplotype filtering parameters:" << "\n"
+	    << "\t" << "--max-hap-flanks <max_flanks>         "  << "\t" << "Maximum allowable non-reference flanking sequences for an STR (Default = " << def_max_flanks << ")" << "\n"
+	    << "\t" << "                                      "  << "\t" << " Loci with more candidate flanks will not be genotyped"                              << "\n"
+	    << "\t" << "--min-flank-freq <min_freq>           "  << "\t" << "Filter a flank if its fraction of supporting samples < MIN_FREQ (Default = " << def_min_flank_freq  << ")" << "\n" << "\n"
+
 	    << "Other optional parameters:" << "\n"
 	    << "\t" << "--help                                "  << "\t" << "Print this help message and exit"                                                     << "\n"
 	    << "\t" << "--version                             "  << "\t" << "Print HipSTR version and exit"                                                        << "\n"
@@ -117,12 +122,14 @@ void parse_command_line_args(int argc, char** argv,
 			     int& remove_pcr_dups, int& bams_from_10x,     int& bam_lib_from_samp, int& def_stutter_model, int& skip_genotyping,   int& output_gls,
 			     int& output_pls,      int& output_phased_gls, int& output_all_reads,  int& output_mall_reads, std::string& ref_vcf_file,
 			     GenotyperBamProcessor& bam_processor){
-  int def_mdist       = bam_processor.MAX_MATE_DIST;
-  int def_min_reads   = bam_processor.MIN_TOTAL_READS;
-  int def_max_reads   = bam_processor.MAX_TOTAL_READS;
-  int def_max_str_len = bam_processor.MAX_STR_LENGTH;
+  int def_mdist             = bam_processor.MAX_MATE_DIST;
+  int def_min_reads         = bam_processor.MIN_TOTAL_READS;
+  int def_max_reads         = bam_processor.MAX_TOTAL_READS;
+  int def_max_str_len       = bam_processor.MAX_STR_LENGTH;
+  int def_max_flanks        = bam_processor.MAX_FLANK_HAPLOTYPES;
+  double def_min_flank_freq = bam_processor.MIN_FLANK_FREQ;
   if (argc == 1 || (argc == 2 && std::string("-h").compare(std::string(argv[1])) == 0)){
-    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_max_flanks, def_min_flank_freq);
     exit(0);
   }
 
@@ -141,9 +148,11 @@ void parse_command_line_args(int argc, char** argv,
     {"fam",             required_argument, 0, 'D'},
     {"fasta",           required_argument, 0, 'f'},
     {"bam-samps",       required_argument, 0, 'g'},
+    {"max-hap-flanks",  required_argument, 0, 'G'},
     {"bam-libs",        required_argument, 0, 'q'},
     {"lib-from-samp",   no_argument, &bam_lib_from_samp,    1},
     {"min-reads",       required_argument, 0, 'i'},
+    {"min-flank-freq",  required_argument, 0, 'I'},
     {"read-qual-trim",  required_argument, 0, 'j'},
     {"log",             required_argument, 0, 'l'},
     {"max-reads",       required_argument, 0, 'n'},
@@ -183,7 +192,7 @@ void parse_command_line_args(int argc, char** argv,
   std::string filename;
   while (true){
     int option_index = 0;
-    int c = getopt_long(argc, argv, "b:B:c:d:D:e:f:F:g:i:j:k:l:m:n:o:p:q:r:s:S:t:u:v:w:x:y:z:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "b:B:c:d:D:e:f:F:g:G:i:I:j:k:l:m:n:o:p:q:r:s:S:t:u:v:w:x:y:z:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -217,10 +226,20 @@ void parse_command_line_args(int argc, char** argv,
     case 'g':
       rg_sample_string = std::string(optarg);
       break;
+    case 'G':
+      bam_processor.MAX_FLANK_HAPLOTYPES = atoi(optarg);
+      if (bam_processor.MAX_FLANK_HAPLOTYPES < 1)
+	printErrorAndDie("--max-hap-flanks must be greater than 0");
+      break;
     case 'i':
       bam_processor.MIN_TOTAL_READS = atoi(optarg);
-      if (bam_processor.MIN_TOTAL_READS < 1)
-	printErrorAndDie("--min-total-reads must be greater than 0");
+      if (bam_processor.MIN_TOTAL_READS < 0)
+	printErrorAndDie("--min-total-reads must be >= 0");
+      break;
+    case 'I':
+      bam_processor.MIN_FLANK_FREQ = atof(optarg);
+      if (bam_processor.MIN_FLANK_FREQ < 0 || bam_processor.MIN_FLANK_FREQ > 1)
+	printErrorAndDie("--min-flank-freq must be between 0 and 1");
       break;
     case 'j':
       if (std::string(optarg).size() != 1)
@@ -306,7 +325,7 @@ void parse_command_line_args(int argc, char** argv,
     exit(0);
   }
   if (print_help){
-    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_max_flanks, def_min_flank_freq);
     exit(0);
   }
   if (viz_left_alns)
