@@ -234,7 +234,7 @@ std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::
       << "##reference=" << fasta_path   << "\n";
 
   FastaReader fasta_reader(fasta_path);
-  fasta_reader.write_contigs_to_vcf(chroms, out);
+  fasta_reader.write_all_contigs_to_vcf(out);
 
   // Info field descriptors
   out << "##INFO=<ID=" << "INFRAME_PGEOM"  << ",Number=1,Type=Float,Description=\""   << "Parameter for in-frame geometric step size distribution"                      << "\">\n"

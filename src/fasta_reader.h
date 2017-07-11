@@ -102,6 +102,8 @@ class FastaReader {
     return faidx_seq_len(index_iter->second, chrom.c_str());
   }
 
+  void write_all_contigs_to_vcf(std::ostream& out);
+
   void write_contigs_to_vcf(const std::vector<std::string>& chroms, std::ostream& out);
 };
 
