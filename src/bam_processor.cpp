@@ -426,11 +426,12 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
   potential_strs.clear(); potential_mates.clear();
   
   selective_logger() << read_count << " reads overlapped region, of which "
-		     << "\n\t" << hard_clip        << " were hard clipped"
-		     << "\n\t" << read_has_N       << " had an 'N' base call"
-		     << "\n\t" << low_qual_score   << " had low base quality scores"
-		     << "\n\t" << not_spanning     << " did not span the STR"
-		     << "\n\t" << unique_mapping   << " did not have a unique mapping";
+		     << "\n\t" << hard_clip      << " were hard clipped"
+		     << "\n\t" << read_has_N     << " had an 'N' base call"
+		     << "\n\t" << low_qual_score << " had low base quality scores";
+  if (REQUIRE_SPANNING)
+    selective_logger() << "\n\t" << not_spanning << " did not span the STR";
+  selective_logger() << "\n\t" << unique_mapping << " did not have a unique mapping";
   if (REQUIRE_PAIRED_READS)
     selective_logger() << "\n\t" << num_filt_unpaired_reads << " did not have a mate pair";
   selective_logger() << "\n\t" << (paired_str_alns.size()+unpaired_str_alns.size()) << " PASSED ALL FILTERS" << "\n"
