@@ -224,7 +224,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
     left_align_reads(region_group, chrom_seq, alignments, log_p1s, log_p2s, filt_log_p1s,
 		     filt_log_p2s, left_alignments);
 
-    bool run_assembly = !REQUIRE_SPANNING;
+    bool run_assembly = (REQUIRE_SPANNING == 0);
     seq_genotyper = new SeqStutterGenotyper(region_group, haploid, run_assembly, left_alignments, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq,
 					    stutter_models, ref_vcf_, selective_logger());
 
@@ -238,9 +238,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
 
       if (pass){
 	num_genotype_success_++;
-	seq_genotyper->write_vcf_record(samples_to_genotype_, chrom_seq, output_gls_, output_pls_, output_phased_gls_,
-					output_all_reads_, output_mall_reads_, output_viz_, max_flank_indel_frac_,
-					viz_left_alns_, viz_out_, &vcf_writer_, selective_logger());
+	seq_genotyper->write_vcf_record(samples_to_genotype_, chrom_seq, output_viz_, (VIZ_LEFT_ALNS == 1), viz_out_, &vcf_writer_, selective_logger());
       }
       else
 	num_genotype_fail_++;

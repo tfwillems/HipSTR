@@ -131,8 +131,7 @@ class Genotyper {
 
   double posterior_time() const { return total_posterior_time_;  }
 
-  static std::string get_vcf_header(const std::string& fasta_path, const std::string& full_command, const std::vector<std::string>& chroms, const std::vector<std::string>& sample_names,
-				    bool output_gls, bool output_pls, bool output_phased_gls);
+  static std::string get_vcf_header(const std::string& fasta_path, const std::string& full_command, const std::vector<std::string>& chroms, const std::vector<std::string>& sample_names);
 
   void calc_PLs(const std::vector<double>& gls, std::vector<int>& pls) const;
 
@@ -145,6 +144,15 @@ class Genotyper {
 					 bool calc_gls,        std::vector< std::vector<double> >& gls, std::vector<double>& gl_diffs,
 					 bool calc_pls,        std::vector< std::vector<int> >& pls,
 					 bool calc_phased_gls, std::vector< std::vector<double> >& phased_gls);
+
+  // Parameters that control what is output to the VCF
+  static int OUTPUT_GLS;              // Output the GL FORMAT field
+  static int OUTPUT_PLS;              // Output the PL FORMAT field
+  static int OUTPUT_PHASED_GLS;       // Output the PHASEDGL FORMAT field
+  static int OUTPUT_ALLREADS;         // Output the ALLREADS  FORMAT field
+  static int OUTPUT_MALLREADS;        // Output the MALLREADS FORMAT field
+  static float MAX_FLANK_INDEL_FRAC;  // Only output genotypes if the fraction of a sample's reads with
+                                      // indels in the flank is less than this threshold
 };
 
 #endif

@@ -52,15 +52,6 @@ private:
 
   bool output_viz_;
   bgzfostream viz_out_;
-
-  bool output_gls_;             // Output the GL FORMAT field to the VCF
-  bool output_pls_;             // Output the PL FORMAT field to the VCF
-  bool output_phased_gls_;      // Ooutput the PHASEDGL FORMAT field to the VCF
-  bool output_all_reads_;       // Output the ALLREADS  FORMAT field to the VCF
-  bool output_mall_reads_;      // Output the MALLREADS FORMAT field to the VCF
-  float max_flank_indel_frac_;  // Only output genotypes if the fraction of a sample's reads with
-                                // indels in the flank is less than this threshold
-
   std::set<std::string> haploid_chroms_;
 
   // Timing statistics (in seconds)
@@ -72,9 +63,6 @@ private:
   // The idea is that the haplotype-based alignments should be far more accurate, and reperforming
   // the stutter analysis will result in a better stutter model
   bool recalc_stutter_model_;
-
-  // If this flag is set, HTML alignments are written for both the haplotype alignments and Needleman-Wunsch left alignments
-  bool viz_left_alns_;
 
   // Simple object to track total times consumed by various processes
   ProcessTimer process_timer_;
@@ -99,7 +87,7 @@ private:
     assert(vcf_writer_.is_open());
 
     // Write VCF header
-    std::string header = Genotyper::get_vcf_header(fasta_path, full_command, chroms, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_);
+    std::string header = Genotyper::get_vcf_header(fasta_path, full_command, chroms, samples_to_genotype_);
     vcf_writer_.write_header(header);
   }
 
@@ -108,7 +96,6 @@ public:
     output_stutter_models_ = false;
     output_viz_            = false;
     read_stutter_models_   = false;
-    viz_left_alns_         = false;
     too_few_reads_         = 0;
     too_many_reads_        = 0;
     num_em_converge_       = 0;
@@ -122,18 +109,13 @@ public:
     MIN_TOTAL_READS        = 100;
     MAX_FLANK_HAPLOTYPES   = 4;
     MIN_FLANK_FREQ         = 0.01;
-    output_gls_            = false;
-    output_pls_            = false;
-    output_phased_gls_     = false;
-    output_all_reads_      = true;
-    output_mall_reads_     = true;
+    VIZ_LEFT_ALNS          = 0;
     total_stutter_time_    = 0;
     locus_stutter_time_    = -1;
     total_left_aln_time_   = 0;
     locus_left_aln_time_   = -1;
     total_genotype_time_   = 0;
     locus_genotype_time_   = -1;
-    max_flank_indel_frac_  = 1.0;
     recalc_stutter_model_  = false;
     def_stutter_model_     = NULL;
     ref_vcf_               = NULL;
@@ -156,15 +138,7 @@ public:
   double total_genotype_time() const { return total_genotype_time_; }
   double locus_genotype_time() const { return locus_genotype_time_; }
 
-  void output_gls()         { output_gls_        = true;  }
-  void output_pls()         { output_pls_        = true;  }
-  void output_phased_gls()  { output_phased_gls_ = true;  }
-  void hide_all_reads()     { output_all_reads_  = false; }
-  void hide_mall_reads()    { output_mall_reads_ = false; }
-  void visualize_left_alns(){ viz_left_alns_     = true;  }
-
   void add_haploid_chrom(std::string chrom){ haploid_chroms_.insert(chrom); }
-  void set_max_flank_indel_frac(float frac){  max_flank_indel_frac_ = frac; }
   bool has_default_stutter_model() const   { return def_stutter_model_ != NULL; }
   void set_default_stutter_model(double inframe_geom,  double inframe_up,  double inframe_down,
 				 double outframe_geom, double outframe_up, double outframe_down){
@@ -266,6 +240,9 @@ public:
   int MAX_FLANK_HAPLOTYPES;
   double MIN_FLANK_FREQ;    // Minimum fraction of samples that must have an alternate flank to consider it
                             // Samples with flanks below this frequency will not be genotyped
+
+  // If this flag is set, HTML alignments are written for both the haplotype alignments and Needleman-Wunsch left alignments
+  int VIZ_LEFT_ALNS;
 };
 
 #endif

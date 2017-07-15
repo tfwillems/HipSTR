@@ -22,7 +22,6 @@ class BamProcessor {
 
  private:
   bool use_bam_rgs_;
-  bool rem_pcr_dups_;
 
   // Timing statistics (in seconds)
   double total_bam_seek_time_;
@@ -81,13 +80,13 @@ class BamProcessor {
  BamProcessor(bool use_bam_rgs, bool remove_pcr_dups){
    num_too_long_            = 0;
    use_bam_rgs_             = use_bam_rgs;
-   rem_pcr_dups_            = remove_pcr_dups;
+   REMOVE_PCR_DUPS          = (remove_pcr_dups ? 1 : 0);
    MAX_MATE_DIST            = 1000;
    MIN_BP_BEFORE_INDEL      = 7;
    MIN_FLANK                = 5;
    MIN_READ_END_MATCH       = 10;
    MAXIMAL_END_MATCH_WINDOW = 15;
-   REQUIRE_SPANNING         = true;
+   REQUIRE_SPANNING         = 0;
    REQUIRE_PAIRED_READS     = 1;
    total_bam_seek_time_     = 0;
    locus_bam_seek_time_     = -1;
@@ -114,7 +113,6 @@ class BamProcessor {
  double total_read_filter_time() { return total_read_filter_time_; }
  double locus_read_filter_time() { return locus_read_filter_time_; }
  void use_custom_read_groups()   { use_bam_rgs_ = false;           }
- void allow_pcr_dups()           { rem_pcr_dups_ = false;          }
  void suppress_most_logging()    { quiet_ = true; silent_ = false; }
  void suppress_all_logging()     { silent_ = true; quiet_ = false; }
  void use_10x_bam_tags()         { bams_from_10x_ = true;          }
@@ -162,8 +160,11 @@ class BamProcessor {
  int32_t MIN_READ_END_MATCH;
  int32_t MAXIMAL_END_MATCH_WINDOW;
  int32_t MAX_STR_LENGTH;
- bool    REQUIRE_SPANNING;
+
+ int     REMOVE_PCR_DUPS;
+ int     REQUIRE_SPANNING;
  int     REQUIRE_PAIRED_READS;  // Only utilize paired STR reads to genotype individuals
+
  double  MIN_SUM_QUAL_LOG_PROB;
  int32_t MAX_TOTAL_READS;       // Skip loci where the number of STR reads passing all filters exceeds this limit
  char    BASE_QUAL_TRIM;        // Trim boths ends of the read until encountering a base with quality greater than this threshold

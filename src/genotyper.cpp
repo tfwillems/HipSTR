@@ -226,8 +226,7 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
   }
 }
 
-std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::string& full_command, const std::vector<std::string>& chroms, const std::vector<std::string>& sample_names,
-				      bool output_gls, bool output_pls, bool output_phased_gls){
+std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::string& full_command, const std::vector<std::string>& chroms, const std::vector<std::string>& sample_names){
   std::stringstream out;
   out << "##fileformat=VCFv4.1" << "\n"
       << "##command="   << full_command << "\n"
@@ -273,16 +272,18 @@ std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::
       << "log10 of the allele bias pvalue, where 0 is no bias and more negative values are increasingly biased. 0 for all homozygous genotypes"  << "\">" << "\n"
       << "##FORMAT=<ID=" << "FS"          << ",Number=1,Type=Float,Description=\""   << "log10 of the strand bias pvalue from Fisher's exact test, "
       << "where 0 is no bias and more negative values are increasingly biased. 0 for all homozygous genotypes" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DAB"         << ",Number=1,Type=Integer,Description=\"" << "Number of reads used in the AB and FS calculations"            << "\">" << "\n"
-      << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=1,Type=String,Description=\""  << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "MALLREADS"   << ",Number=1,Type=String,Description=\""
-      << "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs"         << "\">" << "\n";
+      << "##FORMAT=<ID=" << "DAB"         << ",Number=1,Type=Integer,Description=\"" << "Number of reads used in the AB and FS calculations" << "\">" << "\n";
 
-  if (output_gls)
-    out << "##FORMAT=<ID=" << "GL"       << ",Number=G,Type=Float,Description=\""   << "log10 genotype likelihoods" << "\">" << "\n";
-  if (output_pls)
-    out << "##FORMAT=<ID=" << "PL"       << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
-  if (output_phased_gls)
+  if (OUTPUT_ALLREADS == 1)
+    out << "##FORMAT=<ID=" << "ALLREADS" << ",Number=1,Type=String,Description=\"" << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n";
+  if (OUTPUT_MALLREADS == 1)
+    out << "##FORMAT=<ID=" << "MALLREADS" << ",Number=1,Type=String,Description=\""
+	<< "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs" << "\">" << "\n";
+  if (OUTPUT_GLS == 1)
+    out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "log10 genotype likelihoods" << "\">" << "\n";
+  if (OUTPUT_PLS == 1)
+    out << "##FORMAT=<ID=" << "PL" << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
+  if (OUTPUT_PHASED_GLS == 1)
     out << "##FORMAT=<ID=" << "PHASEDGL" << ",Number=.,Type=Float,Description=\""
 	<< "log10 genotype likelihood for each phased genotype. Value for phased genotype X|Y is stored at a 0-based index of X*A + Y, where A is the number of alleles. Not applicable to haploid genotypes"
 	<< "\">" << "\n";
@@ -293,4 +294,13 @@ std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::
     out << "\t" << sample_names[i];
   out << "\n";
   return out.str();
+
 }
+
+// Default settings for VCF output
+int Genotyper::OUTPUT_GLS             = 0;
+int Genotyper::OUTPUT_PLS             = 0;
+int Genotyper::OUTPUT_PHASED_GLS      = 0;
+int Genotyper::OUTPUT_ALLREADS        = 1;
+int Genotyper::OUTPUT_MALLREADS       = 1;
+float Genotyper::MAX_FLANK_INDEL_FRAC = 0.15;

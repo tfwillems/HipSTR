@@ -264,7 +264,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 	low_qual_score++;
 	filter.append("LOW_BASE_QUALS");
       }
-      else if (REQUIRE_SPANNING && !spans_a_region(regions, alignment)){
+      else if ((REQUIRE_SPANNING == 1) && !spans_a_region(regions, alignment)){
 	not_spanning++;
 	filter.append("NOT_SPANNING");
       }
@@ -429,7 +429,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 		     << "\n\t" << hard_clip      << " were hard clipped"
 		     << "\n\t" << read_has_N     << " had an 'N' base call"
 		     << "\n\t" << low_qual_score << " had low base quality scores";
-  if (REQUIRE_SPANNING)
+  if (REQUIRE_SPANNING == 1)
     selective_logger() << "\n\t" << not_spanning << " did not span the STR";
   selective_logger() << "\n\t" << unique_mapping << " did not have a unique mapping";
   if (REQUIRE_PAIRED_READS)
@@ -611,7 +611,7 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string
       }
     }
 
-    if (rem_pcr_dups_)
+    if (REMOVE_PCR_DUPS == 1)
       remove_pcr_duplicates(base_quality_, use_bam_rgs_, rg_to_library, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, selective_logger());
 
     process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, region_group, chrom_seq);

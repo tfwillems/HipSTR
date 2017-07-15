@@ -117,11 +117,9 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 void parse_command_line_args(int argc, char** argv, 
 			     std::string& bamfile_string,     std::string& bamlist_string,    std::string& rg_sample_string,  std::string& rg_lib_string,
 			     std::string& haploid_chr_string, std::string& hap_chr_file,      std::string& fasta_file,        std::string& region_file,   std::string& snp_vcf_file,
-			     std::string& chrom,              std::string& bam_pass_out_file, std::string& bam_filt_out_file,
-			     std::string& str_vcf_out_file,   std::string& fam_file,          std::string& log_file,       int& use_all_reads,
-			     int& remove_pcr_dups, int& bams_from_10x,     int& bam_lib_from_samp, int& def_stutter_model, int& skip_genotyping,   int& output_gls,
-			     int& output_pls,      int& output_phased_gls, int& output_all_reads,  int& output_mall_reads, std::string& ref_vcf_file,
-			     GenotyperBamProcessor& bam_processor){
+			     std::string& chrom,              std::string& bam_pass_out_file, std::string& bam_filt_out_file, std::string& ref_vcf_file,
+			     std::string& str_vcf_out_file,   std::string& fam_file,          std::string& log_file,
+			     int& bam_lib_from_samp, int& skip_genotyping, GenotyperBamProcessor& bam_processor){
   int def_mdist             = bam_processor.MAX_MATE_DIST;
   int def_min_reads         = bam_processor.MIN_TOTAL_READS;
   int def_max_reads         = bam_processor.MAX_TOTAL_READS;
@@ -133,14 +131,9 @@ void parse_command_line_args(int argc, char** argv,
     exit(0);
   }
 
-  int print_help    = 0;
-  int viz_left_alns = 0;
-  int print_version = 0;
-  int quiet_log     = 0;
-  int silent_log    = 0;
+  int print_help = 0, print_version = 0, quiet_log = 0, silent_log = 0, def_stutter_model = 0, bams_from_10x = 0;
 
   static struct option long_options[] = {
-    {"10x-bams",        no_argument, &bams_from_10x, 1},
     {"bams",            required_argument, 0, 'b'},
     {"bam-files",       required_argument, 0, 'B'},
     {"chrom",           required_argument, 0, 'c'},
@@ -150,31 +143,15 @@ void parse_command_line_args(int argc, char** argv,
     {"bam-samps",       required_argument, 0, 'g'},
     {"max-hap-flanks",  required_argument, 0, 'G'},
     {"bam-libs",        required_argument, 0, 'q'},
-    {"lib-from-samp",   no_argument, &bam_lib_from_samp,    1},
     {"min-reads",       required_argument, 0, 'i'},
     {"min-flank-freq",  required_argument, 0, 'I'},
     {"read-qual-trim",  required_argument, 0, 'j'},
     {"log",             required_argument, 0, 'l'},
     {"max-reads",       required_argument, 0, 'n'},
-    {"h",               no_argument, &print_help, 1},
-    {"help",            no_argument, &print_help, 1},
-    {"hide-allreads",   no_argument, &output_all_reads,   0},
-    {"hide-mallreads",  no_argument, &output_mall_reads,  0},
-    {"no-rmdup",        no_argument, &remove_pcr_dups,    0},
-    {"output-gls",      no_argument, &output_gls, 1},
-    {"output-pls",      no_argument, &output_pls, 1},
-    {"output-phased-gls", no_argument, &output_phased_gls, 1},
-    {"version",         no_argument, &print_version, 1},
     {"max-flank-indel", required_argument, 0, 'F'},
     {"str-vcf",         required_argument, 0, 'o'},
     {"ref-vcf",         required_argument, 0, 'p'},
     {"regions",         required_argument, 0, 'r'},
-    {"use-unpaired",       no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 0},
-    {"dont-use-all-reads", no_argument, &use_all_reads, 0},
-    {"def-stutter-model",  no_argument, &def_stutter_model, 1},
-    {"quiet",              no_argument, &quiet_log, 1},
-    {"silent",             no_argument, &silent_log, 1},
-    {"skip-genotyping",    no_argument, &skip_genotyping, 1},
     {"snp-vcf",         required_argument, 0, 'v'},
     {"stutter-in",      required_argument, 0, 'm'},
     {"stutter-out",     required_argument, 0, 's'},
@@ -184,8 +161,25 @@ void parse_command_line_args(int argc, char** argv,
     {"pass-bam",        required_argument, 0, 'w'},
     {"max-str-len",     required_argument, 0, 'x'},
     {"filt-bam",        required_argument, 0, 'y'},
-    {"viz-left-alns",   no_argument, &viz_left_alns, 1},
     {"viz-out",         required_argument, 0, 'z'},
+    {"10x-bams",           no_argument, &bams_from_10x, 1},
+    {"h",                  no_argument, &print_help, 1},
+    {"help",               no_argument, &print_help, 1},
+    {"lib-from-samp",      no_argument, &bam_lib_from_samp, 1},
+    {"hide-allreads",      no_argument, &(Genotyper::OUTPUT_ALLREADS),      0},
+    {"hide-mallreads",     no_argument, &(Genotyper::OUTPUT_MALLREADS),     0},
+    {"output-gls",         no_argument, &(Genotyper::OUTPUT_GLS),           1},
+    {"output-pls",         no_argument, &(Genotyper::OUTPUT_PLS),           1},
+    {"output-phased-gls",  no_argument, &(Genotyper::OUTPUT_PHASED_GLS),    1},
+    {"no-rmdup",           no_argument, &(bam_processor.REMOVE_PCR_DUPS),      0},
+    {"use-unpaired",       no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 0},
+    {"dont-use-all-reads", no_argument, &(bam_processor.REQUIRE_SPANNING),     1},
+    {"viz-left-alns",      no_argument, &(bam_processor.VIZ_LEFT_ALNS),        1},
+    {"def-stutter-model",  no_argument, &def_stutter_model, 1},
+    {"version",            no_argument, &print_version, 1},
+    {"quiet",              no_argument, &quiet_log, 1},
+    {"silent",             no_argument, &silent_log, 1},
+    {"skip-genotyping",    no_argument, &skip_genotyping, 1},
     {0, 0, 0, 0}
   };
 
@@ -300,7 +294,7 @@ void parse_command_line_args(int argc, char** argv,
       bam_processor.set_output_viz(filename);
       break;
     case 'F':
-      bam_processor.set_max_flank_indel_frac(atof(optarg));
+      Genotyper::MAX_FLANK_INDEL_FRAC = atof(optarg);
       break;
     case '?':
       printErrorAndDie("Unrecognized command line option");
@@ -328,12 +322,16 @@ void parse_command_line_args(int argc, char** argv,
     print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_max_flanks, def_min_flank_freq);
     exit(0);
   }
-  if (viz_left_alns)
-    bam_processor.visualize_left_alns();
   if (quiet_log)
     bam_processor.suppress_most_logging();
   if (silent_log)
     bam_processor.suppress_all_logging();
+  if (def_stutter_model == 1)
+    bam_processor.set_default_stutter_model(0.95, 0.05, 0.05, 0.95, 0.01, 0.01);
+  if (bams_from_10x){
+    bam_processor.use_10x_bam_tags();
+    bam_processor.full_logger() << "Using 10X BAM tags to genotype and phase STRs (WARNING: Any arguments provided to --snp-vcf will be ignored)" << std::endl;
+  }
 }
 
 int main(int argc, char** argv){
@@ -347,33 +345,18 @@ int main(int argc, char** argv){
   std::string full_command = full_command_ss.str();
 
   GenotyperBamProcessor bam_processor(true, true);
-  bam_processor.set_max_flank_indel_frac(0.15);
 
-  int use_all_reads = 1, remove_pcr_dups = 1, bams_from_10x = 0, bam_lib_from_samp = 0, def_stutter_model = 0, skip_genotyping = 0;
+  int bam_lib_from_samp = 0, skip_genotyping = 0;
   std::string bamfile_string="", bamlist_string="", rg_sample_string="", rg_lib_string="", hap_chr_string="", hap_chr_file="";
   std::string region_file="", fasta_file="", chrom="", snp_vcf_file="";
-  std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", fam_file = "", log_file = "";
-  int output_gls = 0, output_pls = 0, output_phased_gls = 0, output_all_reads = 1, output_mall_reads = 1;
-  std::string ref_vcf_file="";
-  parse_command_line_args(argc, argv, bamfile_string, bamlist_string, rg_sample_string, rg_lib_string, hap_chr_string, hap_chr_file, fasta_file, region_file, snp_vcf_file, chrom,
-			  bam_pass_out_file, bam_filt_out_file, str_vcf_out_file, fam_file, log_file, use_all_reads, remove_pcr_dups, bams_from_10x,
-			  bam_lib_from_samp, def_stutter_model, skip_genotyping, output_gls, output_pls, output_phased_gls, output_all_reads, output_mall_reads,
-			  ref_vcf_file, bam_processor);
+  std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", fam_file = "", log_file = "", ref_vcf_file="";
+
+  parse_command_line_args(argc, argv,
+			  bamfile_string, bamlist_string, rg_sample_string, rg_lib_string, hap_chr_string, hap_chr_file, fasta_file, region_file, snp_vcf_file,
+			  chrom, bam_pass_out_file, bam_filt_out_file, ref_vcf_file, str_vcf_out_file, fam_file, log_file, bam_lib_from_samp, skip_genotyping, bam_processor);
 
   if (!log_file.empty())
     bam_processor.set_log(log_file);
-  if (bams_from_10x){
-    bam_processor.use_10x_bam_tags();
-    bam_processor.full_logger() << "Using 10X BAM tags to genotype and phase STRs (WARNING: Any arguments provided to --snp-vcf will be ignored)" << std::endl;
-  }
-  if (use_all_reads == 1)     bam_processor.REQUIRE_SPANNING = false;
-  if (output_gls)             bam_processor.output_gls();
-  if (output_pls)             bam_processor.output_pls();
-  if (output_phased_gls)      bam_processor.output_phased_gls();
-  if (output_all_reads == 0)  bam_processor.hide_all_reads();
-  if (output_mall_reads == 0) bam_processor.hide_mall_reads();
-  if (remove_pcr_dups == 0)   bam_processor.allow_pcr_dups();
-  if (def_stutter_model == 1) bam_processor.set_default_stutter_model(0.95, 0.05, 0.05, 0.95, 0.01, 0.01);
 
   if (bamfile_string.empty() && bamlist_string.empty())
     printErrorAndDie("You must specify either the --bams or --bam-files option");
