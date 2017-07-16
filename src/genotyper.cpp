@@ -287,6 +287,8 @@ std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::
     out << "##FORMAT=<ID=" << "PHASEDGL" << ",Number=.,Type=Float,Description=\""
 	<< "log10 genotype likelihood for each phased genotype. Value for phased genotype X|Y is stored at a 0-based index of X*A + Y, where A is the number of alleles. Not applicable to haploid genotypes"
 	<< "\">" << "\n";
+  if (OUTPUT_FILTERS == 1)
+    out << "##FORMAT=<ID=" << "FILTER" << ",Number=1,Type=String,Description=\"" << "Reason for filtering the current call, or PASS if the call was not filtered" << "\">" << "\n";
 
   // Sample names
   out << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
@@ -303,4 +305,5 @@ int Genotyper::OUTPUT_PLS             = 0;
 int Genotyper::OUTPUT_PHASED_GLS      = 0;
 int Genotyper::OUTPUT_ALLREADS        = 1;
 int Genotyper::OUTPUT_MALLREADS       = 1;
+int Genotyper::OUTPUT_FILTERS         = 0;
 float Genotyper::MAX_FLANK_INDEL_FRAC = 0.15;

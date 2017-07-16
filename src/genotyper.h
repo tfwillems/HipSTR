@@ -151,6 +151,7 @@ class Genotyper {
   static int OUTPUT_PHASED_GLS;       // Output the PHASEDGL FORMAT field
   static int OUTPUT_ALLREADS;         // Output the ALLREADS  FORMAT field
   static int OUTPUT_MALLREADS;        // Output the MALLREADS FORMAT field
+  static int OUTPUT_FILTERS;          // Output the FILTERS FORMAT field
   static float MAX_FLANK_INDEL_FRAC;  // Only output genotypes if the fraction of a sample's reads with
                                       // indels in the flank is less than this threshold
 };

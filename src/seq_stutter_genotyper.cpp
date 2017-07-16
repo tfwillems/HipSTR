@@ -1212,14 +1212,33 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   bool output_strand_bias = (!haploid_ && reassemble_flanks_);
 
   // Add FORMAT field
-  out << (!haploid_ ? "\tGT:GB:Q:PQ:DP:DSNP:DSTUTTER:DFLANKINDEL:PDP:PSNP:GLDIFF" : "\tGT:GB:Q:DP:DSTUTTER:DFLANKINDEL:GLDIFF");
-  if (output_allele_bias)         out << ":AB:DAB";
-  if (output_strand_bias)         out << ":FS";
-  if (OUTPUT_ALLREADS == 1)       out << ":ALLREADS";
-  if (OUTPUT_MALLREADS == 1)      out << ":MALLREADS";
-  if (OUTPUT_GLS == 1)            out << ":GL";
-  if (OUTPUT_PLS == 1)            out << ":PL";
-  if (!haploid_ && (OUTPUT_PHASED_GLS == 1)) out << ":PHASEDGL";
+  int num_fields;
+  if (!haploid_){
+    out << "\tGT:GB:Q:PQ:DP:DSNP:DSTUTTER:DFLANKINDEL:PDP:PSNP:GLDIFF";
+    num_fields = 11;
+  }
+  else {
+    out << "\tGT:GB:Q:DP:DSTUTTER:DFLANKINDEL:GLDIFF";
+    num_fields = 7;
+  }
+  if (output_allele_bias)    out << ":AB:DAB";
+  if (output_strand_bias)    out << ":FS";
+  if (OUTPUT_ALLREADS == 1)  out << ":ALLREADS";
+  if (OUTPUT_MALLREADS == 1) out << ":MALLREADS";
+  if (OUTPUT_GLS == 1)       out << ":GL";
+  if (OUTPUT_PLS == 1)       out << ":PL";
+  if (!haploid_ && (OUTPUT_PHASED_GLS == 1))
+    out << ":PHASEDGL";
+  if (OUTPUT_FILTERS == 1)   out << ":FILTER";
+
+  // Build the missing genotype string
+  // Exclude OUTPUT_FILTERS, as we won't use that to build the missing genotype string
+  num_fields += ((output_allele_bias ? 2 : 0) + (output_strand_bias ? 1 : 0)) + (!haploid_ && (OUTPUT_PHASED_GLS == 1) ? 1 : 0);
+  num_fields += (OUTPUT_ALLREADS + OUTPUT_MALLREADS + OUTPUT_GLS + OUTPUT_PLS);
+  std::stringstream empty_gt;
+  for (int n = 0; n < num_fields; n++)
+    empty_gt << ".:";
+  std::string empty_str = empty_gt.str();
 
   std::map<std::string, std::string> sample_results;
   std::map<std::string, int> filter_reasons;
@@ -1227,21 +1246,21 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     out << "\t";
     auto sample_iter = sample_indices_.find(sample_names[i]);
     if (sample_iter == sample_indices_.end()){
-      out << ".";
+      out << (OUTPUT_FILTERS == 0 ? "." : empty_str + "NO_READS");
       continue;
     }
     
     // Don't report information for a sample if none of its reads were successfully realigned
     if (num_aligned_reads[sample_iter->second] == 0){
       filter_reasons["NO_READS"]++;
-      out << ".";
+      out << (OUTPUT_FILTERS == 0 ? "." : empty_str + "NO_READS");
       continue;
     }
 
     // Don't report information for a sample if flag has been set to false
     if (!call_sample_[sample_iter->second].empty()){
       filter_reasons[call_sample_[sample_iter->second]]++;
-      out << ".";
+      out << (OUTPUT_FILTERS == 0 ? "." : empty_str + call_sample_[sample_iter->second]);
       continue;
     }
 
@@ -1250,7 +1269,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
 	(num_reads_with_flank_indels[sample_iter->second] > num_aligned_reads[sample_iter->second]*MAX_FLANK_INDEL_FRAC)){
       call_sample_[sample_iter->second] = "FLANK_INDEL_FRAC";
       filter_reasons["FLANK_INDEL_FRAC"]++;
-      out << ".";
+      out << (OUTPUT_FILTERS == 0 ? "." : empty_str + "FLANK_INDEL_FRAC");
       continue;
     }
 
@@ -1383,6 +1402,10 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
 	}
       }
     }
+
+    // Reason for filtering the call, which is none if we made it here
+    if (OUTPUT_FILTERS == 1)
+      out << ":PASS";
   }
 
   // Write out the record
