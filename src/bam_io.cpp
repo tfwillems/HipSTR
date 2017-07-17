@@ -33,9 +33,9 @@ void BamAlignment::ExtractSequenceFields(){
 }
 
 
-void BamHeader::parse_read_groups(){
+void BamHeader::parse_read_groups(const char *text){
   assert(read_groups_.empty());
-  std::stringstream ss; ss << header_->text;
+  std::stringstream ss; ss << text;
   std::string line;
   std::vector<std::string> tokens;
   while (std::getline(ss, line)){
@@ -56,9 +56,55 @@ void BamHeader::parse_read_groups(){
   }
 }
 
+
+BamCramReader::BamCramReader(const std::string& path, std::string fasta_path)
+  : path_(path), chrom_(""){
+
+  // Open the file itself
+  if (!file_exists(path))
+    printErrorAndDie("File " + path + " doest not exist");
+  in_ = sam_open(path.c_str(), "r");
+  if (in_ == NULL)
+    printErrorAndDie("Failed to open file " + path);
+
+  if (in_->is_cram){
+    if (fasta_path.empty())
+      printErrorAndDie("Must specify a FASTA reference file path for CRAM file " + path);
+
+    // Open the FASTA reference file for the CRAM
+    char* fasta = new char[fasta_path.size()+1];
+    for (size_t i = 0; i < fasta_path.size(); ++i)
+      fasta[i] = fasta_path[i];
+    fasta[fasta_path.size()] = '\0';
+
+    if (cram_load_reference(in_->fp.cram, fasta) < 0)
+      printErrorAndDie("Failed to open FASTA reference file for CRAM file");
+    delete [] fasta;
+  }
+
+  // Read the header
+  if ((hdr_ = sam_hdr_read(in_)) == 0)
+    printErrorAndDie("Failed to read the header for file " + path);
+  header_        = new BamHeader(hdr_);
+  shared_header_ = false;
+
+  // Open the index
+  idx_ = sam_index_load(in_, path.c_str());
+  if (idx_ == NULL)
+    printErrorAndDie("Failed to load the index for file " + path);
+
+  iter_            = NULL;
+  start_           = -1;
+  min_offset_      = 0;
+  reuse_first_aln_ = false;
+}
+
 BamCramReader::~BamCramReader(){
-  bam_hdr_destroy(hdr_);
-  delete header_;
+  if (!shared_header_){
+    bam_hdr_destroy(hdr_);
+    delete header_;
+  }
+
   hts_idx_destroy(idx_);
   sam_close(in_);
 
@@ -137,18 +183,28 @@ bool BamCramReader::GetNextAlignment(BamAlignment& aln){
 
 bool BamCramMultiReader::SetRegion(const std::string& chrom, int32_t start, int32_t end){
   aln_heap_.clear();
-  for (int32_t reader_index = 0; reader_index < bam_readers_.size(); reader_index++){
-    if (!bam_readers_[reader_index]->SetRegion(chrom, start, end))
-      return false;
-    if (bam_readers_[reader_index]->GetNextAlignment(cached_alns_[reader_index])){
-      if (merge_type_ == ORDER_ALNS_BY_POSITION)
+  chrom_ = chrom;
+  start_ = start;
+  end_   = end;
+  if (merge_type_ == ORDER_ALNS_BY_POSITION){
+    for (int32_t reader_index = 0; reader_index < bam_readers_.size(); reader_index++){
+      if (!bam_readers_[reader_index]->SetRegion(chrom, start, end))
+	return false;
+      if (bam_readers_[reader_index]->GetNextAlignment(cached_alns_[reader_index]))
 	aln_heap_.push_back(std::pair<int32_t, int32_t>(-cached_alns_[reader_index].Position(), reader_index));
-      else if (merge_type_ == ORDER_ALNS_BY_FILE)
-	aln_heap_.push_back(std::pair<int32_t, int32_t>(-reader_index, reader_index));
-      else
-	printErrorAndDie("Invalid merge order in SetRegion()");
     }
+    reader_unset_ = std::vector<bool>(bam_readers_.size(), false);
   }
+  else if (merge_type_ == ORDER_ALNS_BY_FILE){
+    for (int32_t reader_index = 0; reader_index < bam_readers_.size(); reader_index++){
+      // We avoid doing any region setting here and instead will set it when the first call to GetNextAlignment() requires the reader's data
+      // For CRAMs, setting the region for all files will load all of their containers into memory
+      aln_heap_.push_back(std::pair<int32_t, int32_t>(-reader_index, reader_index));
+    }
+    reader_unset_ = std::vector<bool>(bam_readers_.size(), true);
+  }
+  else
+    printErrorAndDie("Invalid merge order in SetRegion()");
   std::make_heap(aln_heap_.begin(), aln_heap_.end());
   return true;
 }
@@ -159,6 +215,15 @@ bool BamCramMultiReader::GetNextAlignment(BamAlignment& aln){
   std::pop_heap(aln_heap_.begin(), aln_heap_.end());
   int32_t reader_index = aln_heap_.back().second;
   aln_heap_.pop_back();
+
+  // Sometimes we don't set a reader's region until invoking GetNextAlignment() to reduce memory usage
+  if (reader_unset_[reader_index]){
+    reader_unset_[reader_index] = false;
+    if (!bam_readers_[reader_index]->SetRegion(chrom_, start_, end_))
+      return false;
+    if (!bam_readers_[reader_index]->GetNextAlignment(cached_alns_[reader_index]))
+      return GetNextAlignment(aln);
+  }
 
   // Assign optimal alignment to provided reference
   aln = cached_alns_[reader_index];

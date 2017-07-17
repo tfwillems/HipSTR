@@ -429,7 +429,7 @@ int main(int argc, char** argv){
   }
   else {
     for (unsigned int i = 0; i < bam_files.size(); i++){
-      const std::vector<ReadGroup>& read_groups = reader.bam_header(i)->read_groups();
+      const std::vector<ReadGroup>& read_groups = reader.bam_header()->read_groups(i);
       if (read_groups.empty())
 	printErrorAndDie("Provided BAM/CRAM files don't contain read groups in the header and the --bam-samps flag was not specified");
 
