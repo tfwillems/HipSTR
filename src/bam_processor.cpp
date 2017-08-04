@@ -63,6 +63,7 @@ void BamProcessor::extract_mappings(BamAlignment& aln, const BamHeader* bam_head
     return;
   assert(aln.RefID() < bam_header->num_seqs());
   chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(bam_header->ref_name(aln.RefID()), aln.Position()));
+  std::string aln_cigar_string = "";
 
   for (unsigned int i = 0; i < 2; i++){
     std::string tag = (i == 0 ? "XA" : "SA");
@@ -77,8 +78,18 @@ void BamProcessor::extract_mappings(BamAlignment& aln, const BamHeader* bam_head
       std::vector<std::string> tokens;
       split_by_delim(alts[j], ',', tokens);
       int32_t pos = std::abs(std::stol(tokens[1]));
-      if (tokens[0].compare(chrom_pos_pairs[0].first) != 0 || std::abs(pos - chrom_pos_pairs[0].second) > 200)
+      if (tokens[0].compare(chrom_pos_pairs[0].first) != 0 || std::abs(pos - chrom_pos_pairs[0].second) > 200){
+	// Appropriately handle alt contigs in GRCh38
+	// Don't count alternate mappings if they i) are from an alt contig that matches the alignment's chromosome and ii) have the same CIGAR string
+	if (i == 0 && string_ends_with(tokens[0], "_alt") && string_starts_with(tokens[0], chrom_pos_pairs[0].first + "_")){
+	  if (aln_cigar_string.empty())
+	    aln_cigar_string = BuildCigarString(aln.CigarData());
+	  if (tokens[2].compare(aln_cigar_string) == 0)
+	    continue;
+	}
+
 	chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(tokens[0], pos));
+      }
     }
   }
 }

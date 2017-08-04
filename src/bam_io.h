@@ -309,9 +309,7 @@ public:
 };
 
 
-
-
-
+std::string BuildCigarString(const std::vector<CigarOp>& cigar_data);
 
 
 class ReadGroup {
@@ -458,6 +456,9 @@ public:
   ~BamCramReader();
 
   bool GetNextAlignment(BamAlignment& aln);
+
+  // Prepare the BAM/CRAM for reading the entire chromosome
+  bool SetChromosome(const std::string& chrom);
   
   bool SetRegion(const std::string& chrom, int32_t start, int32_t end);
 

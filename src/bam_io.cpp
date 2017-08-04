@@ -4,6 +4,13 @@
 #include "error.h"
 #include "stringops.h"
 
+std::string BuildCigarString(const std::vector<CigarOp>& cigar_data){
+  std::stringstream cigar_string;
+  for (auto cigar_iter = cigar_data.begin(); cigar_iter != cigar_data.end(); cigar_iter++)
+    cigar_string << cigar_iter->Length << cigar_iter->Type;
+  return cigar_string.str();
+}
+
 void BamAlignment::ExtractSequenceFields(){
   int32_t length = b_->core.l_qseq;
   bases_         = std::string(length, ' ');
@@ -112,6 +119,21 @@ BamCramReader::~BamCramReader(){
     hts_itr_destroy(iter_);
 }
 
+bool BamCramReader::SetChromosome(const std::string& chrom){
+  iter_            = sam_itr_querys(idx_, hdr_, chrom.c_str());
+  chrom_           = chrom;
+  min_offset_      = 0;
+  reuse_first_aln_ = false;
+
+  if (iter_ != NULL){
+    start_ = 0;
+    return true;
+  }
+  else {
+    start_ = -1;
+    return false;
+  }
+}
 
 bool BamCramReader::SetRegion(const std::string& chrom, int32_t start, int32_t end){
   bool reuse_offset = (!in_->is_cram && min_offset_ != 0 && chrom.compare(chrom_) == 0 && start >= start_);
