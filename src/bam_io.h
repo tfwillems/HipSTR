@@ -49,6 +49,7 @@ private:
 public:
   bam1_t *b_;
   std::string file_;
+  std::string ref_, mate_ref_;
   bool built_;
   int32_t length_;
   int32_t pos_, end_pos_;
@@ -62,7 +63,7 @@ public:
   }
 
   BamAlignment(const BamAlignment &aln)
-    : bases_(aln.bases_), qualities_(aln.qualities_), cigar_ops_(aln.cigar_ops_), file_(aln.file_){
+    : bases_(aln.bases_), qualities_(aln.qualities_), cigar_ops_(aln.cigar_ops_), file_(aln.file_), ref_(aln.ref_), mate_ref_(aln.mate_ref_){
     b_ = bam_init1();
     bam_copy1(b_, aln.b_);
     built_     = aln.built_;
@@ -74,6 +75,8 @@ public:
   BamAlignment& operator=(const BamAlignment& aln){
     bam_copy1(b_, aln.b_);
     file_      = aln.file_;
+    ref_       = aln.ref_;
+    mate_ref_  = aln.mate_ref_;
     built_     = aln.built_;
     length_    = aln.length_;
     pos_       = aln.pos_;
@@ -100,14 +103,13 @@ public:
   /* Name of the read */
   std::string Name()            const { return std::string(bam_get_qname(b_)); }
 
-  /* ID number for reference sequence */
-  int32_t RefID()               const { return b_->core.tid;      }
+  /* Name of the read's reference sequence */
+  const std::string& Ref()      const { return ref_;              }
 
   /* Mapping quality score*/
   uint16_t MapQuality()         const { return b_->core.qual;     }
 
-  /* ID number for mate's reference sequence */
-  int32_t MateRefID()           const { return b_->core.mtid;     }
+  const std::string& MateRef()  const { return mate_ref_;         }
 
   /* 0-based position where mate's alignment starts */
   int32_t MatePosition()        const { return b_->core.mpos;     }
@@ -366,7 +368,11 @@ class BamHeader {
 
   const std::vector<uint32_t>& seq_lengths()  const { return seq_lengths_; }
   const std::vector<std::string>& seq_names() const { return seq_names_;   }
-  virtual const std::vector<ReadGroup>& read_groups() const { return read_groups_; }
+  virtual const std::vector<ReadGroup>& read_groups(int file_index) const {
+    assert(file_index == 0);
+    return read_groups_;
+  }
+
 
   int32_t num_seqs() const { return header_->n_targets; }
   int32_t ref_id(const std::string& ref) const {
@@ -501,7 +507,7 @@ class BamCramMultiReader {
   const static int ORDER_ALNS_BY_POSITION = 0;
   const static int ORDER_ALNS_BY_FILE     = 1;
 
-  BamCramMultiReader(const std::vector<std::string>& paths, std::string fasta_path = "", int merge_type = ORDER_ALNS_BY_POSITION){
+  BamCramMultiReader(const std::vector<std::string>& paths, std::string fasta_path = "", int merge_type = ORDER_ALNS_BY_POSITION, bool share_headers = true){
     if (paths.empty())
       printErrorAndDie("Must provide at least one file to BamCramMultiReader constructor");
     if (merge_type != ORDER_ALNS_BY_POSITION && merge_type != ORDER_ALNS_BY_FILE)
@@ -513,7 +519,8 @@ class BamCramMultiReader {
 	multi_header_ = new BamMultiHeader(bam_readers_[i]->bam_header(), paths[i]);
       else {
 	multi_header_->add_header(bam_readers_[i]->bam_header(), paths[i]);
-	bam_readers_[i]->use_shared_header(multi_header_);
+	if (share_headers)
+	  bam_readers_[i]->use_shared_header(multi_header_);
       }
     }
     merge_type_   = merge_type;
@@ -530,7 +537,7 @@ class BamCramMultiReader {
   }
 
   int get_merge_type() const { return merge_type_; }
-  const BamMultiHeader* bam_header() const { return multi_header_; }
+  const BamHeader* bam_header() const { return multi_header_; }
 
   bool SetRegion(const std::string& chrom, int32_t start, int32_t end);
 

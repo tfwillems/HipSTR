@@ -187,11 +187,13 @@ bool BamCramReader::GetNextAlignment(BamAlignment& aln){
   }
 
   // Set up alignment instance variables
-  aln.built_   = false;
-  aln.file_    = path_;
-  aln.length_  = aln.b_->core.l_qseq;
-  aln.pos_     = aln.b_->core.pos;
-  aln.end_pos_ = bam_endpos(aln.b_);
+  aln.built_    = false;
+  aln.file_     = path_;
+  aln.ref_      = header_->ref_name(aln.b_->core.tid);
+  aln.mate_ref_ = header_->ref_name(aln.b_->core.mtid);
+  aln.length_   = aln.b_->core.l_qseq;
+  aln.pos_      = aln.b_->core.pos;
+  aln.end_pos_  = bam_endpos(aln.b_);
 
   if (min_offset_ == 0){
     first_aln_  = aln;

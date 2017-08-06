@@ -33,10 +33,10 @@ class BamProcessor {
   void  write_passing_alignment(BamAlignment& aln, BamWriter* writer);
   void write_filtered_alignment(BamAlignment& aln, std::string filter, BamWriter* writer);
 
-  void extract_mappings(BamAlignment& aln, const BamHeader* bam_header,
+  void extract_mappings(BamAlignment& aln,
 			std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs) const;
 
-  void get_valid_pairings(BamAlignment& aln_1, BamAlignment& aln_2, const BamHeader* bam_header,
+  void get_valid_pairings(BamAlignment& aln_1, BamAlignment& aln_2,
 			  std::vector< std::pair<std::string, int32_t> >& p1, std::vector< std::pair<std::string, int32_t> >& p2) const;
 
   void read_and_filter_reads(BamCramMultiReader& reader, const std::string& chrom_seq, const RegionGroup& region,

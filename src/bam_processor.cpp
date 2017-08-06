@@ -56,13 +56,12 @@ void BamProcessor::write_filtered_alignment(BamAlignment& aln, std::string filte
     printErrorAndDie("Failed to save alignment");
 }
 
-void BamProcessor::extract_mappings(BamAlignment& aln, const BamHeader* bam_header,
+void BamProcessor::extract_mappings(BamAlignment& aln,
 				    std::vector< std::pair<std::string, int32_t> >& chrom_pos_pairs) const {
   assert(chrom_pos_pairs.size() == 0);
-  if (aln.RefID() == -1 || aln.CigarData().size() == 0)
+  if (aln.Ref().compare("*") == 0 || aln.CigarData().size() == 0)
     return;
-  assert(aln.RefID() < bam_header->num_seqs());
-  chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(bam_header->ref_name(aln.RefID()), aln.Position()));
+  chrom_pos_pairs.push_back(std::pair<std::string, int32_t>(aln.Ref(), aln.Position()));
   std::string aln_cigar_string = "";
 
   for (unsigned int i = 0; i < 2; i++){
@@ -94,10 +93,10 @@ void BamProcessor::extract_mappings(BamAlignment& aln, const BamHeader* bam_head
   }
 }
 
-void BamProcessor::get_valid_pairings(BamAlignment& aln_1, BamAlignment& aln_2, const BamHeader* bam_header,
+void BamProcessor::get_valid_pairings(BamAlignment& aln_1, BamAlignment& aln_2,
 				      std::vector< std::pair<std::string, int32_t> >& p1, std::vector< std::pair<std::string, int32_t> >& p2) const {
   assert(p1.size() == 0 && p2.size() == 0);
-  if (aln_1.RefID() == -1 || aln_2.RefID() == -1)
+  if (aln_1.Ref().compare("*") == 0 || aln_2.Ref().compare("*") == 0)
     return;
 
   // BWA-MEM sometimes doesn't report the alternate alignment tag if there are too many alternate mappings
@@ -128,8 +127,8 @@ void BamProcessor::get_valid_pairings(BamAlignment& aln_1, BamAlignment& aln_2, 
   }
 
   std::vector< std::pair<std::string, int32_t> > pairs_1, pairs_2;
-  extract_mappings(aln_1, bam_header, pairs_1);
-  extract_mappings(aln_2, bam_header, pairs_2);
+  extract_mappings(aln_1, pairs_1);
+  extract_mappings(aln_2, pairs_2);
   std::sort(pairs_1.begin(), pairs_1.end());
   std::sort(pairs_2.begin(), pairs_2.end());
 
@@ -195,7 +194,6 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 
   int32_t read_count = 0, not_spanning = 0, unique_mapping = 0, read_has_N = 0, hard_clip = 0, low_qual_score = 0, num_filt_unpaired_reads = 0;
   BamAlignment alignment;
-  const BamHeader* bam_header = reader.bam_header();
   BamAlnList paired_str_alns, mate_alns, unpaired_str_alns;
   std::map<std::string, BamAlignment> potential_strs, potential_mates;
   TOO_MANY_READS = false;
@@ -224,7 +222,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 
     if (!alignment.IsMapped() || alignment.Position() == 0 || alignment.CigarData().size() == 0 || alignment.Length() == 0)
 	continue;
-    assert(alignment.CigarData().size() > 0 && alignment.RefID() != -1);
+    assert(alignment.CigarData().size() > 0 && alignment.Ref().compare("*") != 0);
 
     // If requested, trim any reads that potentially overlap the STR regions
     if (alignment.Position() < region_group.stop() && alignment.GetEndPosition() >= region_group.start()){
@@ -329,7 +327,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 	  }
 
 	  std::vector< std::pair<std::string, int32_t> > p_1, p_2;
-	  get_valid_pairings(alignment, aln_iter->second, bam_header, p_1, p_2);
+	  get_valid_pairings(alignment, aln_iter->second, p_1, p_2);
 	  if (p_1.size() == 1 && p_1[0].second == alignment.Position()){
 	    paired_str_alns.push_back(alignment);
 	    mate_alns.push_back(aln_iter->second);
@@ -353,7 +351,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 	    }
 
 	    std::vector< std::pair<std::string, int32_t> > p_1, p_2;
-	    get_valid_pairings(alignment, str_iter->second, bam_header, p_1, p_2);
+	    get_valid_pairings(alignment, str_iter->second, p_1, p_2);
 	    if (p_1.size() == 1 && p_1[0].second == alignment.Position()){
 	      paired_str_alns.push_back(alignment);
 	      mate_alns.push_back(str_iter->second);
@@ -389,7 +387,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 	  continue;
 
 	std::vector< std::pair<std::string, int32_t> > p_1, p_2;
-	get_valid_pairings(aln_iter->second, alignment, bam_header, p_1, p_2);
+	get_valid_pairings(aln_iter->second, alignment, p_1, p_2);
 	if (p_1.size() == 1 && p_1[0].second == aln_iter->second.Position()){
 	  paired_str_alns.push_back(aln_iter->second);
 	  mate_alns.push_back(alignment);
@@ -558,11 +556,9 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string
   // Add the chromosome information to the VCF
   init_output_vcf(fasta_file, chroms, full_command);
 
-  int cur_chrom_id = -1; std::string chrom_seq;
+  std::string cur_chrom = "", chrom_seq = "";
   for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
     full_logger() << "" << "Processing region " << region_iter->chrom() << " " << region_iter->start() << " " << region_iter->stop() << std::endl;
-    int chrom_id = bam_header->ref_id(region_iter->chrom());
-    assert(chrom_id != -1);
 
     if (region_iter->stop() - region_iter->start() > MAX_STR_LENGTH){
       num_too_long_++;
@@ -572,10 +568,9 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string
     }
     
     // Read FASTA sequence for chromosome 
-    if (cur_chrom_id != chrom_id){
-      cur_chrom_id      = chrom_id;
-      std::string chrom = region_iter->chrom();
-      fasta_reader.get_sequence(chrom, chrom_seq);
+    if (region_iter->chrom().compare(cur_chrom) != 0){
+      cur_chrom = region_iter->chrom();
+      fasta_reader.get_sequence(cur_chrom, chrom_seq);
       assert(chrom_seq.size() != 0);
     }
 
@@ -585,7 +580,7 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string
     }
 
     locus_bam_seek_time_ = clock();
-    if (!reader.SetRegion(bam_header->ref_name(chrom_id), (region_iter->start() < MAX_MATE_DIST ? 0: region_iter->start()-MAX_MATE_DIST),
+    if (!reader.SetRegion(cur_chrom, (region_iter->start() < MAX_MATE_DIST ? 0: region_iter->start()-MAX_MATE_DIST),
 			  region_iter->stop() + MAX_MATE_DIST))
       printErrorAndDie("One or more BAM files failed to set the region properly");
 
