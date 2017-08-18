@@ -436,12 +436,15 @@ private:
   std::string path_;
   BamHeader*  header_;
   bool shared_header_;
+  bool cram_done_;
 
   // Instance variables for the most recently set region
   hts_itr_t *iter_;        // Iterator
   std::string chrom_;      // Chromosome
-  int32_t     start_;      // Start pos
-  uint64_t    min_offset_; // Offset after first alignment
+  int32_t     start_;      // Start position
+  int32_t     end_;        // End position
+  uint64_t    min_offset_; // Offset after first alignment. For BAMs, this is a memory offset, while for CRAMs its
+                           // the index of the first alignment in the CRAM slice
   BamAlignment first_aln_; // First alignment
   bool reuse_first_aln_;
 
@@ -452,6 +455,8 @@ private:
   bool file_exists(const std::string& path){
     return (access(path.c_str(), F_OK) != -1);
   }
+
+  void clear_cram_data_structures();
 
 public:
   BamCramReader(const std::string& path, std::string fasta_path = "");
@@ -466,6 +471,7 @@ public:
   // Prepare the BAM/CRAM for reading the entire chromosome
   bool SetChromosome(const std::string& chrom);
   
+  // Prepare the BAM/CRAM for reading all alignments overlapping the provided region
   bool SetRegion(const std::string& chrom, int32_t start, int32_t end);
 
   void use_shared_header(BamHeader* header){
@@ -496,8 +502,8 @@ class BamCramMultiReader {
 
   // Instance variables for the most recently set region
   std::string chrom_;      // Chromosome
-  int32_t     start_;      // Start pos
-  int32_t     end_;        // End pos
+  int32_t     start_;      // Start position
+  int32_t     end_;        // End position
 
   // Private unimplemented copy constructor and assignment operator to prevent operations
   BamCramMultiReader(const BamCramMultiReader& other);

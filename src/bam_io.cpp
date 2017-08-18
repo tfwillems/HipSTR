@@ -63,6 +63,22 @@ void BamHeader::parse_read_groups(const char *text){
   }
 }
 
+void BamCramReader::clear_cram_data_structures(){
+  if (iter_ != NULL && in_->is_cram){
+    // Change the region for the CRAM file to be a single position and iterate through all of the records
+    // We use this to deallocate the memory created during CRAM IO, as deallocation only
+    // appears to happen once the iterator reads all of the associated records for the region
+    bam1_t *b = bam_init1();
+    cram_range cur_range = in_->fp.cram->range;
+    cram_range new_range = {cur_range.refid, cur_range.start, cur_range.start+1};
+    in_->fp.cram->range  = new_range;
+    while (sam_itr_next(in_, iter_, b) >= 0){}
+    bam_destroy1(b);
+
+    hts_itr_destroy(iter_);
+    iter_ = NULL;
+  }
+}
 
 BamCramReader::BamCramReader(const std::string& path, std::string fasta_path)
   : path_(path), chrom_(""){
@@ -102,8 +118,10 @@ BamCramReader::BamCramReader(const std::string& path, std::string fasta_path)
 
   iter_            = NULL;
   start_           = -1;
+  end_             = -1;
   min_offset_      = 0;
   reuse_first_aln_ = false;
+  cram_done_       = false;
 }
 
 BamCramReader::~BamCramReader(){
@@ -112,6 +130,7 @@ BamCramReader::~BamCramReader(){
     delete header_;
   }
 
+  clear_cram_data_structures();
   hts_idx_destroy(idx_);
   sam_close(in_);
 
@@ -126,27 +145,78 @@ bool BamCramReader::SetChromosome(const std::string& chrom){
   reuse_first_aln_ = false;
 
   if (iter_ != NULL){
-    start_ = 0;
+    start_     = 0;
+    end_       = INT32_MAX;
+    cram_done_ = false;
     return true;
   }
   else {
-    start_ = -1;
+    start_     = -1;
+    end_       = -1;
+    cram_done_ = true;
     return false;
   }
 }
 
 bool BamCramReader::SetRegion(const std::string& chrom, int32_t start, int32_t end){
-  bool reuse_offset = (!in_->is_cram && min_offset_ != 0 && chrom.compare(chrom_) == 0 && start >= start_);
+  if (in_->is_cram && iter_ != NULL && chrom.compare(chrom_) == 0 && start >= start_){
+    // Determine if we can reuse the CRAM iterator from the previous region
+    // and if so, modify the iterator accordingly
+    bool can_reuse = false;
+    if (min_offset_ != 0 && in_->fp.cram != NULL && in_->fp.cram->ctr != NULL){
+      cram_container *ctr = in_->fp.cram->ctr;
+      if (ctr->slice != NULL){
+	cram_slice *slice = ctr->slice;
+	if (slice->ref_start+1 < first_aln_.Position() && slice->ref_end > start){
+	  can_reuse     = true;
+	  // When the min_offset_ is 0, we set it to 1 as 0 is the unset value. We therefore undo that change here
+	  // If the offset really was 1, we'll simply consider 1 more alignment that won't overlap the region
+	  ctr->curr_rec = (min_offset_ == 1 ? 0 : min_offset_);
 
-  std::stringstream region;
-  region << chrom << ":" << start+1 << "-" << end;
-  std::string region_str = region.str();
-  iter_ = sam_itr_querys(idx_, hdr_, region_str.c_str());
+	  // Modify the iterator's start coordinate to reflect the current region
+	  cram_range cur_range = in_->fp.cram->range;
+	  cram_range new_range = {cur_range.refid, start+1, cur_range.end};
+	  in_->fp.cram->range  = new_range;
+	}
+      }
+    }
+
+    if (can_reuse){
+      chrom_           = chrom;
+      start_           = start;
+      end_             = end;
+      cram_done_       = false;
+      min_offset_      = 0;
+      reuse_first_aln_ = false;
+      return true;
+    }
+
+    // If we can't reuse the CRAM iterator, we'll set the region as in all other cases by proceeding to the rest of the function
+  }
 
   if (iter_ != NULL){
-    chrom_ = chrom;
-    start_ = start;
+    clear_cram_data_structures();
+    hts_itr_destroy(iter_);
+    iter_ = NULL;
+  }
 
+  // For CRAM files, as we try to reuse the iterator for future regions, we cannot set an end coordinate
+  // Otherwise, the CRAM container will be freed after reading the last alignment in the current region
+  std::stringstream region;
+  if (in_->is_cram)
+    region << chrom << ":" << start+1;
+  else
+    region << chrom << ":" << start+1 << "-" << end;
+
+  std::string region_str = region.str();
+  iter_ = sam_itr_querys(idx_, hdr_, region_str.c_str());
+  if (iter_ != NULL){
+    chrom_     = chrom;
+    start_     = start;
+    end_       = end;
+    cram_done_ = false;
+
+    bool reuse_offset = (!in_->is_cram && min_offset_ != 0 && chrom.compare(chrom_) == 0 && start >= start_);
     if (reuse_offset)
       if (iter_->n_off == 1 && min_offset_ >= iter_->off[0].u && min_offset_ <= iter_->off[0].v)
 	iter_->off[0].u = min_offset_;
@@ -159,20 +229,22 @@ bool BamCramReader::SetRegion(const std::string& chrom, int32_t start, int32_t e
       min_offset_      = 0;
       reuse_first_aln_ = false;
     }
-
     return true;
   }
   else {
     chrom_           = "";
     start_           = -1;
+    end_             = -1;
     min_offset_      = 0;
     reuse_first_aln_ = false;
+    cram_done_       = true;
     return false;
   }
 }
 
 bool BamCramReader::GetNextAlignment(BamAlignment& aln){
   if (iter_ == NULL) return false;
+  if (cram_done_)    return false;
 
   if (reuse_first_aln_){
     reuse_first_aln_ = false;
@@ -180,10 +252,17 @@ bool BamCramReader::GetNextAlignment(BamAlignment& aln){
     return true;
   }
 
-  if (sam_itr_next(in_, iter_, aln.b_) < 0){
-    hts_itr_destroy(iter_);
-    iter_ = NULL;
-    return false;
+  if (sam_itr_next(in_, iter_, aln.b_) < 0 || aln.b_->core.pos > end_+1){
+    if (in_->is_cram){
+      // Don't destroy the iterator, as we may want to reuse it later
+      cram_done_ = true;
+      return false;
+    }
+    else {
+      hts_itr_destroy(iter_);
+      iter_ = NULL;
+      return false;
+    }
   }
 
   // Set up alignment instance variables
@@ -196,8 +275,17 @@ bool BamCramReader::GetNextAlignment(BamAlignment& aln){
   aln.end_pos_  = bam_endpos(aln.b_);
 
   if (min_offset_ == 0){
-    first_aln_  = aln;
-    min_offset_ = iter_->curr_off;
+    if (in_->is_cram){
+      assert(in_->fp.cram != NULL && in_->fp.cram->ctr != NULL && in_->fp.cram->ctr->curr_rec > 0);
+      first_aln_  = aln;
+      min_offset_ = in_->fp.cram->ctr->curr_rec - 1;
+      if (min_offset_ == 0)
+	min_offset_++;
+    }
+    else {
+      first_aln_  = aln;
+      min_offset_ = iter_->curr_off;
+    }
   }
 
   return true;
