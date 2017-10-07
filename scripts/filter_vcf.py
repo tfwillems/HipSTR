@@ -110,16 +110,21 @@ def main():
           samp_fmt = vcf.model.make_calldata_tuple(record.FORMAT.split(':'))
           for fmt in samp_fmt._fields:
                entry_type = vcf_reader.formats[fmt].type
-               entry_num = vcf_reader.formats[fmt].num
+               entry_num  = vcf_reader.formats[fmt].num
                samp_fmt._types.append(entry_type)
                samp_fmt._nums.append(entry_num)
+
+          # Determine if we can remove alleles with 0 counts based on whether any genotype-likelhood associated
+          # format fields are present
+          fmt_tokens         = record.FORMAT.split(":")
+          can_remove_alleles = not ("GL" in fmt_tokens or "PL" in fmt_tokens or "PHASEDGL" in fmt_tokens)
                
           nfields       = len(samp_fmt._fields)
           num_filt      = 0
           allele_counts = len(record.alleles)*[0]
 
           for sample in record:
-               if sample['GT'] is None or sample['GT'] == "./.":
+               if sample['GT'] is None or sample['GT'] == "./." or sample['GT'] == ".":
                     continue
 
                filter_reason = filter_call(sample, args)
@@ -135,7 +140,7 @@ def main():
           allele_indices   = {0:0}
           filt_num_alleles = 1
           for i in range(1, len(allele_counts)):
-              if allele_counts[i] != 0:
+              if allele_counts[i] != 0 or not can_remove_alleles:
                   allele_indices[i] = filt_num_alleles
                   filt_num_alleles += 1
 
@@ -146,11 +151,12 @@ def main():
           total_dstutter    = 0
           total_dflankindel = 0
           for sample in record:
-               if sample['GT'] is None or sample['GT'] == "./.":
+               if sample['GT'] is None or sample['GT'] == "./." or sample['GT'] == ".":
                     new_samples.append(sample)
                     continue
 
-               if filter_call(sample, args) is not None:
+               filter_reason = filter_call(sample, args)
+               if filter_reason is not None:
                     num_filt += 1
                     sampdat   = []
                     for i in range(len(samp_fmt._fields)):
@@ -158,7 +164,10 @@ def main():
                          if key == "GT":
                               sampdat.append("./.")
                          else:
-                              sampdat.append(None)
+                              if key == "FILTER":
+                                   sampdat.append(filter_reason.replace(" ", "_").upper())
+                              else:
+                                   sampdat.append(None)
                else:
                     num_kept    += 1
                     gt_a, gt_b   = map(int, sample['GT'].split('|'))
@@ -186,7 +195,7 @@ def main():
           # Fix set of alleles
           new_alleles = [record.alleles[0]]
           for i in range(1, len(record.alleles)):
-              if allele_counts[i] != 0:
+              if allele_counts[i] != 0 or not can_remove_alleles:
                   new_alleles.append(record.alleles[i])
 
           record.alleles = new_alleles
@@ -211,7 +220,10 @@ def main():
               if len(new_alleles) == 1:
                   record.INFO.pop("AC", None)
               else:
-                  record.INFO['AC'] = list(filter(lambda x: x != 0, allele_counts[1:]))
+                   if not can_remove_alleles:
+                        record.INFO['AC'] = allele_counts[1:]
+                   else:
+                        record.INFO['AC'] = list(filter(lambda x: x != 0, allele_counts[1:]))
           if 'AN' in record.INFO:
                record.INFO['AN'] = sum(allele_counts)
                   
