@@ -79,12 +79,6 @@ class StutterAlignerClass {
     delete [] del_probs_;
     delete [] match_probs_;
   }
-  
-  int block_len()         const { return block_len_;  }
-  int period()            const { return period_;     }
-  bool left_align()       const { return left_align_; }
-  const char* block_seq() const { return block_seq_;  }
-
 
   void load_read(const int base_seq_len,       const char* base_seq,
 		 const double* base_log_wrong, const double* base_log_correct,
