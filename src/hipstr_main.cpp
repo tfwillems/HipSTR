@@ -29,7 +29,7 @@ bool is_file(const std::string& name){
   return (S_ISREG (st_buf.st_mode));
 }
 
-void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_str_len, int def_max_flanks, double def_min_flank_freq){
+void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_str_len, double def_min_qual_sum_log_prob, int def_max_flanks, double def_min_flank_freq){
   std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <genome.fa> --regions <region_file.bed> --str-vcf <str_gts.vcf.gz> [OPTIONS]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
@@ -100,6 +100,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--min-reads          <num_reads>      "  << "\t" << "Minimum total reads required to genotype a locus (Default = " << def_min_reads << ")" << "\n"
 	    << "\t" << "--max-reads          <num_reads>      "  << "\t" << "Skip a locus if it has more than NUM_READS reads (Default = " << def_max_reads << ")" << "\n"
 	    << "\t" << "--max-str-len        <max_bp>         "  << "\t" << "Only genotype STRs in the provided BED file with length < MAX_BP (Default = " << def_max_str_len << ")" << "\n"
+	    << "\t" << "--min-qual-sum-log-prob <prob>        "  << "\t" << "Filter reads who have the sum of their qualities less than this log-probability (Default = " << def_min_qual_sum_log_prob << "\n"
     //<< "\t" << "--skip-genotyping                     "  << "\t" << "Don't perform any STR genotyping and merely compute the stutter model for each STR"  << "\n"
     //<< "\t" << "--dont-use-all-reads                  "  << "\t" << "Only utilize the reads HipSTR thinks will be informative for genotyping"   << "\n"
     //<< "\t" << "                                      "  << "\t" << " Enabling this option usually slightly decreases accuracy but shortens runtimes (~2x)"      << "\n"
@@ -125,10 +126,11 @@ void parse_command_line_args(int argc, char** argv,
   int def_min_reads         = bam_processor.MIN_TOTAL_READS;
   int def_max_reads         = bam_processor.MAX_TOTAL_READS;
   int def_max_str_len       = bam_processor.MAX_STR_LENGTH;
+  double def_min_qual_sum_log_prob = bam_processor.MIN_SUM_QUAL_LOG_PROB;
   int def_max_flanks        = bam_processor.MAX_FLANK_HAPLOTYPES;
   double def_min_flank_freq = bam_processor.MIN_FLANK_FREQ;
   if (argc == 1 || (argc == 2 && std::string("-h").compare(std::string(argv[1])) == 0)){
-    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_max_flanks, def_min_flank_freq);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_min_qual_sum_log_prob, def_max_flanks, def_min_flank_freq);
     exit(0);
   }
 
@@ -161,6 +163,7 @@ void parse_command_line_args(int argc, char** argv,
     {"hap-chr-file",    required_argument, 0, 'u'},
     {"pass-bam",        required_argument, 0, 'w'},
     {"max-str-len",     required_argument, 0, 'x'},
+    {"min-qual-sum-log-prob", required_argument, 0, 'Q'},
     {"filt-bam",        required_argument, 0, 'y'},
     {"viz-out",         required_argument, 0, 'z'},
     {"10x-bams",           no_argument, &bams_from_10x, 1},
@@ -261,6 +264,9 @@ void parse_command_line_args(int argc, char** argv,
     case 'q':
       rg_lib_string = std::string(optarg);
       break;
+    case 'Q':
+      bam_processor.MIN_SUM_QUAL_LOG_PROB = atof(optarg);
+      break;
     case 'r':
       region_file = std::string(optarg);
       break;
@@ -321,7 +327,7 @@ void parse_command_line_args(int argc, char** argv,
     exit(0);
   }
   if (print_help){
-    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_max_flanks, def_min_flank_freq);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_min_qual_sum_log_prob, def_max_flanks, def_min_flank_freq);
     exit(0);
   }
   if (quiet_log)
