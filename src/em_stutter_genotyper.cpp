@@ -123,7 +123,6 @@ void EMStutterGenotyper::recalc_stutter_model(){
   double out_pdown_hat       = exp(out_log_total_down - log_total);
 
   // Update stutter model
-  delete stutter_model_;
   stutter_model_ = new StutterModel(in_pgeom_hat, in_pup_hat, in_pdown_hat, out_pgeom_hat, out_pup_hat, out_pdown_hat, motif_len_);
 }
 
@@ -169,6 +168,8 @@ void EMStutterGenotyper::recalc_log_read_phase_posteriors(){
 }
 
 bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double min_LL_frac_change, bool disp_stats, std::ostream& logger){
+  double max_param_diff = 0.0001;
+
   // Initialization
   init_log_gt_priors();
   init_stutter_model();
@@ -199,13 +200,23 @@ bool EMStutterGenotyper::train(int max_iter, double min_LL_abs_change, double mi
 
     // M-step
     recalc_log_gt_priors();
+
+    StutterModel* prev_model = stutter_model_;
     recalc_stutter_model();
     
     double abs_change  = new_LL - LL;
     double frac_change = -(new_LL - LL)/LL;
     if (disp_stats)
       logger << abs_change << " " << min_LL_abs_change << " " << frac_change << " " << min_LL_frac_change << std::endl;
+
+    bool converged = false;
     if (abs_change < min_LL_abs_change && frac_change < min_LL_frac_change)
+      converged = true;
+    else if (stutter_model_->parameters_within_threshold(*prev_model, max_param_diff))
+      converged = true;
+
+    delete prev_model;
+    if (converged)
       return true;
 
     LL = new_LL;
