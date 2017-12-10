@@ -565,9 +565,6 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::ostream& logger){
       HapBlock* block = haplotype_->get_block(i);
       if (block->get_repeat_info() != NULL){
 	get_stutter_candidate_alleles(i, logger, stutter_seqs[i]);
-	for (auto allele_iter = stutter_seqs[i].begin(); allele_iter != stutter_seqs[i].end(); allele_iter++)
-	  if (allele_iter->size() < std::abs(block->get_repeat_info()->max_deletion()))
-	    return false;
 	added_alleles |= !stutter_seqs[i].empty();
 	std::sort(stutter_seqs[i].begin(), stutter_seqs[i].end(), orderByLengthAndSequence);
       }
@@ -587,17 +584,6 @@ bool SeqStutterGenotyper::genotype(int max_flank_haplotypes, double min_flank_fr
   // 2) Large deletion extending past STR
   if (!initialized_)
     return false;
-
-  // If the smallest stutter block sequence is smaller than the maximum deletion size, the stutter aligner will fail
-  // We could extend the stutter block to prevent this, but if this happens, the locus is probably not very high quality
-  // As a result, for now, just abort the genotyping for this locus
-  for (int i = 0; i < haplotype_->num_blocks(); ++i){
-    HapBlock* hap_block = haplotype_->get_block(i);
-    if (hap_block->get_repeat_info() == NULL)
-      continue;
-    if (hap_block->min_size() < std::abs(hap_block->get_repeat_info()->max_deletion()))
-      return false;
-  }
 
   // Check if we can assemble the sequences flanking the STR
   // If not, it's likely that the flanks are too repetitive and will introduce genotyping errors
@@ -729,7 +715,7 @@ void SeqStutterGenotyper::get_alleles(const Region& region, int block_index, con
   if (left_flank.empty()){
     bool pad_left = false;
     for (unsigned int i = 1; i < alleles.size(); ++i){
-      if (alleles[i][0] != alleles[0][0]){
+      if (alleles[i].empty() || alleles[i][0] != alleles[0][0]){
 	pad_left = true;
 	break;
       }

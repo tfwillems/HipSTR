@@ -105,12 +105,12 @@ class HapBlock {
 
   inline unsigned int left_homopolymer_len(unsigned int seq_index, int base_index) const {
     assert(seq_index < l_homopolymer_lens_.size());
-    return l_homopolymer_lens_[seq_index][base_index];
+    return (l_homopolymer_lens_[seq_index] == NULL ? 0 : l_homopolymer_lens_[seq_index][base_index]);
   }
 
   inline unsigned int right_homopolymer_len(unsigned int seq_index, int base_index) const {
     assert(seq_index < r_homopolymer_lens_.size());
-    return r_homopolymer_lens_[seq_index][base_index];
+    return (r_homopolymer_lens_[seq_index] == NULL ? 0 : r_homopolymer_lens_[seq_index][base_index]);
   }
   
   virtual HapBlock* reverse(){

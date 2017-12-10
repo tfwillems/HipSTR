@@ -10,24 +10,27 @@
 #include "StutterAlignerClass.h"
 
 void StutterAlignerClass::load_read(const int base_seq_len,       const char* base_seq,
-				    const double* base_log_wrong, const double* base_log_correct,
-				    int max_deletion,             int max_insertion){
+				    const double* base_log_wrong, const double* base_log_correct){
   delete [] ins_probs_;
   delete [] del_probs_;
   delete [] match_probs_;
-  ins_probs_   = new double[base_seq_len*num_artifacts_];
-  del_probs_   = new double[base_seq_len*num_artifacts_];
+  ins_probs_   = new double[base_seq_len*num_insertions_];
   match_probs_ = new double[base_seq_len];
+  if (num_deletions_ != 0)
+    del_probs_ = new double[base_seq_len*num_deletions_];
+  else
+    del_probs_ = NULL;
+
   int ins_index = 0, del_index = 0, match_index = 0;
   for (int i = 0; i < base_seq_len; i++){
     int j;
     double log_prob = 0.0;
-    for (j = 0; j < std::min(base_seq_len-i, -max_deletion); j++){
+    for (j = 0; j < std::min(base_seq_len-i, -max_deletion_); j++){
       log_prob += (base_seq[-i-j] == block_seq_[-j] ? base_log_correct[-i-j] : base_log_wrong[-i-j]);
       if ((j+1) % period_ == 0)
 	del_probs_[del_index++] = log_prob;
     }
-    for (; j < -max_deletion; j++)
+    for (; j < -max_deletion_; j++)
       if ((j+1) % period_ == 0)
 	del_index++;
     for (; j < std::min(base_seq_len-i, block_len_); j++)
@@ -35,14 +38,17 @@ void StutterAlignerClass::load_read(const int base_seq_len,       const char* ba
     match_probs_[match_index++] = log_prob;
 
     double log_ins_prob = 0.0;
-    for (j = 0; j < std::min(max_insertion, base_seq_len-i); j++){
-      log_ins_prob += (base_seq[-i-j] == block_seq_[-(j%period_)] ? base_log_correct[-i-j] : base_log_wrong[-i-j]);
+    for (j = 0; j < std::min(max_insertion_, base_seq_len-i); j++){
+      if (j % period_ < block_len_)
+	log_ins_prob += (base_seq[-i-j] == block_seq_[-(j%period_)] ? base_log_correct[-i-j] : base_log_wrong[-i-j]);
+      else
+	log_ins_prob += base_log_correct[-i-j]; // No base to match to, so assume observed without error. We could potentially match to upstream flank?
       if ((j+1) % period_ == 0)
 	ins_probs_[ins_index++] = log_ins_prob;
     }
-    for (; j < max_insertion; j++)
+    for (; j < max_insertion_; j++)
       if ((j+1) % period_ == 0)
-        ins_probs_[ins_index++] = log_ins_prob;
+	ins_probs_[ins_index++] = log_ins_prob;
   }
 }
 
@@ -55,11 +61,11 @@ double StutterAlignerClass::align_pcr_insertion_reverse(const int base_seq_len, 
 							int& best_ins_pos){
   assert(D > 0 && base_seq_len <= block_len_+D && D%period_ == 0);
   log_probs_.clear();
-  double log_prior = -int_log(block_len_+1);
+  double log_prior      = -int_log(block_len_+1);
   int* upstream_matches = upstream_match_lengths_[0] + block_len_ - 1;
 
   // Compute probability for i = 0
-  double log_prob = log_prior + ins_probs_[num_artifacts_*offset + D/period_ - 1] + (base_seq_len > D ? match_probs_[offset+D] : 0);
+  double log_prob = log_prior + ins_probs_[num_insertions_*offset + D/period_ - 1] + (base_seq_len > D ? match_probs_[offset+D] : 0);
   best_ins_pos    = 0;
   double best_LL  = log_prob;
   log_probs_.push_back(log_prob);
@@ -108,7 +114,7 @@ double StutterAlignerClass::align_pcr_deletion_reverse(const int base_seq_len,  
 
   // Compute probability for i = 0
   if (offset+D >= 0)
-    log_prob += match_probs_[offset+D] - del_probs_[(offset+D)*num_artifacts_ - D/period_ - 1];
+    log_prob += match_probs_[offset+D] - del_probs_[(offset+D)*num_deletions_ - D/period_ - 1];
   else
     for (int j = 0; j > -base_seq_len; j--)
       log_prob += (block_seq_[j+D] == base_seq[j] ? base_log_correct[j] : base_log_wrong[j]);

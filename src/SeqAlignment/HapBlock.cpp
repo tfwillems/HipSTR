@@ -5,6 +5,12 @@
 #include "../stringops.h"
 
 void HapBlock::calc_homopolymer_lengths(const std::string& seq, std::vector<int*>& llen_vec, std::vector<int*>& rlen_vec){
+  if (seq.empty()){
+    llen_vec.push_back(NULL);
+    rlen_vec.push_back(NULL);
+    return;
+  }
+
   int* llens = new int[seq.size()];
   int* rlens = new int[seq.size()];
   llens[0]   = 0;
