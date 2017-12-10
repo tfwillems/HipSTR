@@ -155,6 +155,16 @@ HipSTR doesn't currently have multi-threaded support, but there are several opti
 1. Analyze each chromosome in parallel using the **--chrom** option. For example, **--chrom chr2** will only genotype BED regions on chr2
 2. Split your BED file into *N* files and analyze each of the *N* files in parallel. This allows you to parallelize analyses in a manner similar to option 1 but can be used for increased speed if *N* is much greater than the number of chromosomes.
 
+## Sample Filtering
+**HipSTR** may filter samples during genotyping, emitting the reason(s) in the log message.   Below are common filters applied to each sample:
+
+| Filter | Explanation |
+| --- | --- |
+| `FLANK_ASSEMBLY_CYCLIC` | The assembly graph of the reads had cycles |
+| `FLANK_ASSEMBLY_INDEL` |  Mask a sample if it supports a flank that contains an indel |
+| `FLANK_INDEL_FRAC` | Too many reads have flanking indels | 
+| `LOW_FREQUENCY_ALT_FLANK` | Sample supports a low-frequency alternative flanking sequence |
+
 ## Call Filtering
 Although **HipSTR** mitigates many of the most common sources of STR genotyping errors, it's still extremely important to filter the resulting VCFs to discard low quality calls. To facilitate this process, the VCF output contains various FORMAT and INFO fields that are usually indicators of problematic calls. The INFO fields indicate the aggregate data for a locus and, if certain flags are raised, may suggest that the entire locus should be discarded. In contrast, FORMAT fields are available on a per-sample basis for each locus and, if certain flags are raised, suggest that some samples' genotypes should be discarded. The list below includes some of these fields and how they can be informative:
 
