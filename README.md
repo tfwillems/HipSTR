@@ -12,6 +12,7 @@
 [Data Requirements](#data-requirements)  
 [Phasing](#phasing)     
 [Speed](#speed)  
+[Default Filtering](#default-filtering)  
 [Call Filtering](#call-filtering)  
 [Additional Usage Options](#additional-usage-options)		  
 [File Formats](#file-formats)     
@@ -155,6 +156,21 @@ HipSTR doesn't currently have multi-threaded support, but there are several opti
 1. Analyze each chromosome in parallel using the **--chrom** option. For example, **--chrom chr2** will only genotype BED regions on chr2
 2. Split your BED file into *N* files and analyze each of the *N* files in parallel. This allows you to parallelize analyses in a manner similar to option 1 but can be used for increased speed if *N* is much greater than the number of chromosomes.
 
+## Default Filtering
+HipSTR sometimes automatically filters genotypes on a per-sample basis and will report a missing value in the VCF file. These filters are applied when a sample's data suggests that HipSTR will not be able to produce a reliable genotype. For each locus, a summary of the number of filtered samples is output in the **log** file. If you specify the **--output-filters** command line option, a FORMAT field called **FILTER** will be reported in the VCF for each sample, where *PASS* designates ok samples and other values indicate the reason for filtering. 
+
+**Samples with a PASS value should still undergo additional variant filtering (see below), as this merely indicates that no catastrophic issues were encountered during the genotyping process**. The table below summarizes the potential filtering reasons:  
+
+| Filter | Explanation 
+| :----- | :---------
+| NO_READS                | No alignments were available for the sample at the current STR. If reads overlap the STR in the BAM/CRAM, they may have been filtered due to read quality issues, mapping uniqueness or other reasons
+| FLANK_ASSEMBLY_CYCLIC   | During the genotyping process, HipSTR attempts to assemble the sequences upstream and downstream of the STR (*flank*) to identify any potential SNPs it should consider. This assembly process fails if the resulting assembly graph contains a cycle, resulting in this filter
+| FLANK_ASSEMBLY_INDEL    |This filter is triggered if the assembly process identifies an insertion or deletion in the *flanks*. These indels are problematic for HipSTR's model and thus it does not attempt to genotype the sample
+| FLANK_INDEL_FRAC        | When genotyping is complete, HipSTR determines the maximum-likelihood alignment of each read relative to its sample's called alleles. If a large fraction of the resulting alignments have indels in the *flanks*, it's a strong indicator that they're misaligned and the sample's genotype is therefore ignored
+| LOW_FREQUENCY_ALT_FLANK | Flanking sequences identified by the assembly process in each sample are pooled together to generate all candidate haplotypes. As the number of haplotypes grows exponentially with the number of such sequences, HipSTR conserves time by discarding flanks that are only present in a few samples. If a sample's data supports a low-frequency flank, it is not genotyped. To adjust this frequency cutoff, use the **--min-flank-freq** option 
+
+
+
 ## Call Filtering
 Although **HipSTR** mitigates many of the most common sources of STR genotyping errors, it's still extremely important to filter the resulting VCFs to discard low quality calls. To facilitate this process, the VCF output contains various FORMAT and INFO fields that are usually indicators of problematic calls. The INFO fields indicate the aggregate data for a locus and, if certain flags are raised, may suggest that the entire locus should be discarded. In contrast, FORMAT fields are available on a per-sample basis for each locus and, if certain flags are raised, suggest that some samples' genotypes should be discarded. The list below includes some of these fields and how they can be informative:
 
@@ -164,7 +180,7 @@ Although **HipSTR** mitigates many of the most common sources of STR genotyping 
 3. **DFLANKINDEL**: Reports the total number of reads for which the maximum likelihood alignment contains an indel in the regions flanking the STR. A high fraction of reads with this artifact (DFLANKINDEL/DP) can be caused by an actual indel in a region neighboring the STR. However, it can also arise if HipSTR fails to identify sufficient candidate alleles. When these alleles are very different in size from the candidate alleles or are non-unit multiples, they're frequently aligned as indels in the flanking sequences.
 
 #### FORMAT fields:  
-1. **Q**: Reports the posterior probability of the genotype. We've found that this is the best indicator of quality of an individual sample's genotype and nearly always utilize it to filter calls.   
+1. **Q**: Reports the posterior probability of the genotype. We've found that this is the best indicator of quality of an individual sample's genotype and almost always use it to filter calls.   
 2. **DP**, **DSTUTTER** and **DFLANKINDEL**: Identical to the INFO field case, these fields are also available for each sample and can be used in the same way to identify problematic individual calls.  
 
 **So what thresholds do we suggest for each of these fields?** The answer really depends on the quality of the sequencing data, the ploidy of the chromosome and the downstream applications. However, we typically apply the following filters usings scripts we've provided in the **scripts** subdirectory of the HipSTR folder:
