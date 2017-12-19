@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <math.h>
+#include <stdlib.h>
 #include <iostream>
 #include <map>
 #include <vector>
@@ -60,8 +61,8 @@ class StutterModel {
  }
 
   bool parameters_within_threshold(StutterModel& other, double max_diff){
-    return (std::abs(other.in_geom_  -  in_geom_) < max_diff && std::abs(other.in_up_  -  in_up_) < max_diff && std::abs(other.in_down_  -  in_down_) < max_diff &&
-	    std::abs(other.out_geom_ - out_geom_) < max_diff && std::abs(other.out_up_ - out_up_) < max_diff && std::abs(other.out_down_ - out_down_) < max_diff);
+    return (abs(other.in_geom_  -  in_geom_) < max_diff && abs(other.in_up_  -  in_up_) < max_diff && abs(other.in_down_  -  in_down_) < max_diff &&
+	    abs(other.out_geom_ - out_geom_) < max_diff && abs(other.out_up_ - out_up_) < max_diff && abs(other.out_down_ - out_down_) < max_diff);
   }
 
   friend std::ostream& operator<< (std::ostream &out, StutterModel& model);
