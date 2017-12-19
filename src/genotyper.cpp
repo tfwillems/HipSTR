@@ -123,7 +123,7 @@ double Genotyper::calc_gl_diff(const std::vector<double>& gls, int gt_a, int gt_
     int max_gt = std::max(gt_a, gt_b);
     gl_index   = max_gt*(max_gt+1)/2 + min_gt;
   }
-  return ((std::abs(max_gl-gls[gl_index]) < TOLERANCE) ? (max_gl-second_gl) : gls[gl_index]-max_gl);
+  return ((std::fabs(max_gl-gls[gl_index]) < TOLERANCE) ? (max_gl-second_gl) : gls[gl_index]-max_gl);
 }
 
 void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<int>& hap_to_allele,
