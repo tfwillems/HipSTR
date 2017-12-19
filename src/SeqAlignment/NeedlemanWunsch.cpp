@@ -70,10 +70,6 @@ public:
     return val_ < other.val_;
   }
 
-  bool greater_than(IndelTracker& other){
-    return val_ > other.val_;
-  }
-  
   static unsigned int max_indels(){
     return MAX_BITS/BITS_PER_INDEL;
   }
@@ -115,7 +111,8 @@ namespace NeedlemanWunsch {
     case 'N':
       return 4;
     default:
-      printErrorAndDie("Invalid character '" + std::string(1, c) + "' in read");
+      std::cerr << "WARNING: Invalid character '" << std::string(1, c) << "' in read" << std::endl;
+      return 4;
     }
     return -1;
   }
@@ -462,7 +459,7 @@ namespace NeedlemanWunsch {
    void left_align_helper(std::vector<float>& M,     std::vector<float>& Iref,    std::vector<float>& Iread, 
 			  std::vector<int>& traceM,  std::vector<int>& traceIref, std::vector<int>& traceIread,
 			  const std::string& refseq, const std::string& readseq,
-			  int start_col, int end_col, int max_indels){
+			  int start_col, int end_col){
     int L1 = refseq.length();
     int L2 = readseq.length();
 
@@ -636,7 +633,7 @@ namespace NeedlemanWunsch {
       // Recalculate portion of matrices corresponding to optimal alignment
       // using dynamic programming that tracks indel locations
       left_align_helper(M, Iref, Iread, traceM, traceIref, traceIread,
-			ref_seq, read_seq, start_col, best_col, num_indels);
+			ref_seq, read_seq, start_col, best_col);
 
       // Construct the alignment strings and CIGAR string using the fixed matrices
       traceAlignment(best_col, best_type, L1, L2, traceM, traceIref, traceIread,

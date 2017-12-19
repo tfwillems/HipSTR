@@ -56,8 +56,6 @@ class DiploidEditDistance {
       }
     }
   }
-
-  friend std::ostream& operator<< (std::ostream &out, DiploidEditDistance& distances);
 };
 
 class DiploidHaplotype {
@@ -135,6 +133,10 @@ class HaplotypeTracker {
   std::deque<int32_t> positions_;
   int32_t prev_window_start_, prev_window_end_;
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  HaplotypeTracker(const HaplotypeTracker& other);
+  HaplotypeTracker& operator=(const HaplotypeTracker& other);
+
   int32_t next_snp_position() const {
     if (num_snps_ == 0)
       return -1;
@@ -200,7 +202,7 @@ class HaplotypeTracker {
     return snp_haplotypes_[index_1].edit_distances(snp_haplotypes_[index_2]);
   }
 
-  void advance(const std::string& chrom, int32_t pos, const std::set<std::string>& sites_to_skip, std::ostream& logger);
+  void advance(const std::string& chrom, int32_t pos, const std::set<std::string>& sites_to_skip);
 
   bool infer_haplotype_inheritance(const NuclearFamily& family, int max_best_score, int min_second_best_score,
 				   std::vector<int>& maternal_indices, std::vector<int>& paternal_indices, std::set<int32_t>& bad_sites);

@@ -22,12 +22,8 @@ bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector
     assert(alleles.size() == 0 && ref_vcf != NULL);
     int32_t pad_start = (region.start() < pad ? 0 : region.start()-pad);
     if (!ref_vcf->set_region(region.chrom(), pad_start, region.stop()+pad)){
-      // Retry setting region if chr is in chromosome name
-      if (region.chrom().size() <= 3 || region.chrom().substr(0, 3).compare("chr") != 0
-	  || !ref_vcf->set_region(region.chrom().substr(3), pad_start, region.stop()+pad)){
 	pos     = -1;
 	return false;
-      }
     }
    
     // Extract STR and ensure the coordinates match

@@ -39,6 +39,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <assert.h>
 #include <limits.h>
+#include <stdint.h>
+#include <errno.h>
 
 #include "cram/cram.h"
 
@@ -420,8 +422,7 @@ cram_codec *cram_external_decode_init(char *data, int size,
     return c;
 
  malformed:
-    if (hts_verbose >= 1)
-        fprintf(stderr, "Malformed external header stream\n");
+    hts_log_error("Malformed external header stream");
     free(c);
     return NULL;
 }
@@ -569,10 +570,9 @@ cram_codec *cram_beta_decode_init(char *data, int size,
 
     if (cp - data != size
         || c->beta.nbits < 0 || c->beta.nbits > 8 * sizeof(int)) {
-        if (hts_verbose >= 1)
-            fprintf(stderr, "Malformed beta header stream\n");
-	free(c);
-	return NULL;
+        hts_log_error("Malformed beta header stream");
+        free(c);
+        return NULL;
     }
 
     c->reset = cram_nop_decode_reset;
@@ -747,8 +747,8 @@ cram_codec *cram_subexp_decode_init(char *data, int size,
     cram_codec *c;
     char *cp = data;
 
-    if (option == E_BYTE_ARRAY_BLOCK) {
-	fprintf(stderr, "BYTE_ARRAYs not supported by this codec\n");
+    if (option != E_INT) {
+	fprintf(stderr, "This codec only supports INT encodings\n");
 	return NULL;
     }
 
@@ -813,8 +813,8 @@ cram_codec *cram_gamma_decode_init(char *data, int size,
     cram_codec *c = NULL;
     char *cp = data;
 
-    if (option == E_BYTE_ARRAY_BLOCK) {
-	fprintf(stderr, "BYTE_ARRAYs not supported by this codec\n");
+    if (option != E_INT) {
+	fprintf(stderr, "This codec only supports INT encodings\n");
 	return NULL;
     }
 
@@ -838,8 +838,7 @@ cram_codec *cram_gamma_decode_init(char *data, int size,
     return c;
 
  malformed:
-    if (hts_verbose >= 1)
-        fprintf(stderr, "Malformed gamma header stream\n");
+    hts_log_error("Malformed gamma header stream");
     free(c);
     return NULL;
 }
@@ -913,7 +912,7 @@ int cram_huffman_decode_char(cram_slice *slice, cram_codec *c,
 		return -1;
 
 	    if (codes[idx].code == val && codes[idx].len == len) {
-		out[i] = codes[idx].symbol;
+		if (out) out[i] = codes[idx].symbol;
 		break;
 	    }
 	}
@@ -991,6 +990,15 @@ cram_codec *cram_huffman_decode_init(char *data, int size,
     }
 
     cp += safe_itf8_get(cp, data_end, &ncodes);
+    if (ncodes < 0) {
+        fprintf(stderr, "Invalid number of symbols in huffman stream\n");
+        return NULL;
+    }
+    if (ncodes >= SIZE_MAX / sizeof(*codes)) {
+        errno = ENOMEM;
+        return NULL;
+    }
+
     h = calloc(1, sizeof(*h));
     if (!h)
 	return NULL;
@@ -999,10 +1007,14 @@ cram_codec *cram_huffman_decode_init(char *data, int size,
     h->free   = cram_huffman_decode_free;
 
     h->huffman.ncodes = ncodes;
-    codes = h->huffman.codes = malloc(ncodes * sizeof(*codes));
-    if (!codes) {
-	free(h);
-	return NULL;
+    if (ncodes) {
+        codes = h->huffman.codes = malloc(ncodes * sizeof(*codes));
+        if (!codes) {
+            free(h);
+            return NULL;
+        }
+    } else {
+        codes = h->huffman.codes = NULL;
     }
 
     /* Read symbols and bit-lengths */
@@ -1704,8 +1716,7 @@ cram_codec *cram_byte_array_stop_decode_init(char *data, int size,
         c->decode = cram_byte_array_stop_decode_char;
 	break;
     default:
-        if (hts_verbose >= 1)
-            fprintf(stderr, "byte_array_stop codec only supports BYTE_ARRAYs.\n");
+        hts_log_error("The byte_array_stop codec only supports BYTE_ARRAYs");
         free(c);
         return NULL;
     }
@@ -1730,8 +1741,7 @@ cram_codec *cram_byte_array_stop_decode_init(char *data, int size,
     return c;
 
  malformed:
-    if (hts_verbose >= 1)
-        fprintf(stderr, "Malformed byte_array_stop header stream\n");
+    hts_log_error("Malformed byte_array_stop header stream");
     free(c);
     return NULL;
 }

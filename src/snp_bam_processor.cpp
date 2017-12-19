@@ -5,14 +5,40 @@
 #include "snp_phasing_quality.h"
 #include "snp_tree.h"
 
+void SNPBamProcessor::verify_vcf_chromosomes(const std::vector<std::string>& chroms){
+  if (phased_snp_vcf_ == NULL)
+    return;
+
+  for (auto chrom_iter = chroms.begin(); chrom_iter != chroms.end(); chrom_iter++){
+    std::string chrom = (*chrom_iter);
+    if (!(phased_snp_vcf_->has_chromosome(chrom))){
+      std::stringstream err_msg;
+      err_msg << "No entries for chromosome " << chrom << " found in the SNP VCF file" << "\n"
+	      << "\t" << "Please ensure that the chromosome names in your BED file match those in your SNP VCF file";
+      full_logger() << "\n" << "ERROR: " << err_msg.str() << std::endl;
+
+      std::vector<std::string> alt_names(1, "chr" + chrom);
+      if (chrom.size() > 3 && chrom.substr(0, 3).compare("chr") == 0)
+	alt_names.push_back(chrom.substr(3));
+
+      // Prompt if simple changes to the chromosome name would solve the issue
+      for (auto alt_iter = alt_names.begin(); alt_iter != alt_names.end(); alt_iter++)
+	if (phased_snp_vcf_->has_chromosome(*alt_iter))
+	  full_logger() << "\t" << "NOTE: Found chromosome " << (*alt_iter) << " in the VCF, but not chromosome " << chrom << std::endl;
+
+      // Abort execution
+      printErrorAndDie("Terminating HipSTR as chromosomes in the region file are missing from the SNP VCF file. Please see the log for details");
+    }
+  }
+}
+
 void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 				    std::vector<BamAlnList>& mate_pairs_by_rg,
 				    std::vector<BamAlnList>& unpaired_strs_by_rg,
-				    const std::vector<std::string>& rg_names, const RegionGroup& region_group,
-				    const std::string& chrom_seq, std::ostream& out){
+				    const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq){
   // Only use specialized function for 10X genomics BAMs if flag has been set
   if (bams_from_10x_){
-    process_10x_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, region_group, chrom_seq, out);
+    process_10x_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, region_group, chrom_seq);
     return;
   }
 
@@ -22,19 +48,18 @@ void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
   std::vector<BamAlnList> alignments(paired_strs_by_rg.size());
   std::vector< std::vector<double> > log_p1s, log_p2s;
   const std::vector<Region>& skip_regions = region_group.regions();
-  int32_t skip_padding = 15;
   bool got_snp_info = false;
   if (phased_snp_vcf_ != NULL){
     // If we are tracking SNP haplotypes for pedigree-based filtering, we need to update the haplotypes to the current position
     if (haplotype_tracker_ != NULL){
       std::set<std::string> sites_to_skip;
-      haplotype_tracker_->advance(region_group.chrom(), region_group.start(), sites_to_skip, logger());
+      haplotype_tracker_->advance(region_group.chrom(), region_group.start(), sites_to_skip);
     }
 
     std::vector<SNPTree*> snp_trees;
     std::map<std::string, unsigned int> sample_indices;      
     if (create_snp_trees(region_group.chrom(), (region_group.start() > MAX_MATE_DIST ? region_group.start()-MAX_MATE_DIST : 1), region_group.stop()+MAX_MATE_DIST,
-			 skip_regions, skip_padding, phased_snp_vcf_, haplotype_tracker_, sample_indices, snp_trees, logger())){
+			 skip_regions, SKIP_PADDING, phased_snp_vcf_, haplotype_tracker_, sample_indices, snp_trees, selective_logger())){
       got_snp_info = true;
       std::set<std::string> bad_samples, good_samples;
       for (unsigned int i = 0; i < paired_strs_by_rg.size(); ++i){
@@ -59,10 +84,10 @@ void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 	alignments[i].insert(alignments[i].end(), paired_strs_by_rg[i].begin(),   paired_strs_by_rg[i].end());
 	alignments[i].insert(alignments[i].end(), unpaired_strs_by_rg[i].begin(), unpaired_strs_by_rg[i].end());
       }
-      logger() << "Found VCF info for " << good_samples.size() << " out of " << good_samples.size()+bad_samples.size() << " samples with STR reads" << std::endl;
+      selective_logger() << "Found VCF info for " << good_samples.size() << " out of " << good_samples.size()+bad_samples.size() << " samples with STR reads" << std::endl;
     }
     else 
-      logger() << "Warning: Failed to construct SNP trees for " << region_group.chrom() << ":" << region_group.start() << "-" << region_group.stop() << std::endl;
+      selective_logger() << "Warning: Failed to construct SNP trees for " << region_group.chrom() << ":" << region_group.start() << "-" << region_group.stop() << std::endl;
     destroy_snp_trees(snp_trees);      
   }
   if (!got_snp_info){
@@ -88,8 +113,8 @@ void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
     phased_samples += sample_phased;
   }
 
-  logger() << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads"
-	   << " and " << phased_samples << " out of " << rg_names.size() <<  " samples" << std::endl;
+  selective_logger() << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads"
+		     << " and " << phased_samples << " out of " << rg_names.size() <<  " samples" << std::endl;
 
   locus_snp_phase_info_time_  = (clock() - locus_snp_phase_info_time_)/CLOCKS_PER_SEC;
   total_snp_phase_info_time_ += locus_snp_phase_info_time_;
@@ -117,7 +142,7 @@ void SNPBamProcessor::process_10x_reads(std::vector<BamAlnList>& paired_strs_by_
 					std::vector<BamAlnList>& mate_pairs_by_rg,
 					std::vector<BamAlnList>& unpaired_strs_by_rg,
 					const std::vector<std::string>& rg_names, const RegionGroup& region_group,
-					const std::string& chrom_seq, std::ostream& out){
+					const std::string& chrom_seq){
   locus_snp_phase_info_time_ = clock();
   assert(paired_strs_by_rg.size() == mate_pairs_by_rg.size() && paired_strs_by_rg.size() == unpaired_strs_by_rg.size());
 
@@ -170,7 +195,7 @@ void SNPBamProcessor::process_10x_reads(std::vector<BamAlnList>& paired_strs_by_
     }
   }
 
-  logger() << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads" << std::endl;
+  selective_logger() << "Phased SNPs add info for " << phased_reads << " out of " << total_reads << " reads" << std::endl;
   locus_snp_phase_info_time_  = (clock() - locus_snp_phase_info_time_)/CLOCKS_PER_SEC;
   total_snp_phase_info_time_ += locus_snp_phase_info_time_;
 

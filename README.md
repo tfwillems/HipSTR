@@ -12,6 +12,7 @@
 [Data Requirements](#data-requirements)  
 [Phasing](#phasing)     
 [Speed](#speed)  
+[Default Filtering](#default-filtering)  
 [Call Filtering](#call-filtering)  
 [Additional Usage Options](#additional-usage-options)		  
 [File Formats](#file-formats)     
@@ -155,6 +156,21 @@ HipSTR doesn't currently have multi-threaded support, but there are several opti
 1. Analyze each chromosome in parallel using the **--chrom** option. For example, **--chrom chr2** will only genotype BED regions on chr2
 2. Split your BED file into *N* files and analyze each of the *N* files in parallel. This allows you to parallelize analyses in a manner similar to option 1 but can be used for increased speed if *N* is much greater than the number of chromosomes.
 
+## Default Filtering
+HipSTR sometimes automatically filters genotypes on a per-sample basis and will report a missing value in the VCF file. These filters are applied when a sample's data suggests that HipSTR will not be able to produce a reliable genotype. For each locus, a summary of the number of filtered samples is output in the **log** file. If you specify the **--output-filters** command line option, a FORMAT field called **FILTER** will be reported in the VCF for each sample, where *PASS* designates ok samples and other values indicate the reason for filtering. 
+
+**Samples with a PASS value should still undergo additional variant filtering (see below), as this merely indicates that no catastrophic issues were encountered during the genotyping process**. The table below summarizes the potential filtering reasons:  
+
+| Filter | Explanation 
+| :----- | :---------
+| NO_READS                | No alignments were available for the sample at the current STR. If reads overlap the STR in the BAM/CRAM, they may have been filtered due to read quality issues, mapping uniqueness or other reasons
+| FLANK_ASSEMBLY_CYCLIC   | During the genotyping process, HipSTR attempts to assemble the sequences upstream and downstream of the STR (*flank*) to identify any potential SNPs it should consider. This assembly process fails if the resulting assembly graph contains a cycle, resulting in this filter
+| FLANK_ASSEMBLY_INDEL    |This filter is triggered if the assembly process identifies an insertion or deletion in the *flanks*. These indels are problematic for HipSTR's model and thus it does not attempt to genotype the sample
+| FLANK_INDEL_FRAC        | When genotyping is complete, HipSTR determines the maximum-likelihood alignment of each read relative to its sample's called alleles. If a large fraction of the resulting alignments have indels in the *flanks*, it's a strong indicator that they're misaligned and the sample's genotype is therefore ignored
+| LOW_FREQUENCY_ALT_FLANK | Flanking sequences identified by the assembly process in each sample are pooled together to generate all candidate haplotypes. As the number of haplotypes grows exponentially with the number of such sequences, HipSTR conserves time by discarding flanks that are only present in a few samples. If a sample's data supports a low-frequency flank, it is not genotyped. To adjust this frequency cutoff, use the **--min-flank-freq** option 
+
+
+
 ## Call Filtering
 Although **HipSTR** mitigates many of the most common sources of STR genotyping errors, it's still extremely important to filter the resulting VCFs to discard low quality calls. To facilitate this process, the VCF output contains various FORMAT and INFO fields that are usually indicators of problematic calls. The INFO fields indicate the aggregate data for a locus and, if certain flags are raised, may suggest that the entire locus should be discarded. In contrast, FORMAT fields are available on a per-sample basis for each locus and, if certain flags are raised, suggest that some samples' genotypes should be discarded. The list below includes some of these fields and how they can be informative:
 
@@ -164,7 +180,7 @@ Although **HipSTR** mitigates many of the most common sources of STR genotyping 
 3. **DFLANKINDEL**: Reports the total number of reads for which the maximum likelihood alignment contains an indel in the regions flanking the STR. A high fraction of reads with this artifact (DFLANKINDEL/DP) can be caused by an actual indel in a region neighboring the STR. However, it can also arise if HipSTR fails to identify sufficient candidate alleles. When these alleles are very different in size from the candidate alleles or are non-unit multiples, they're frequently aligned as indels in the flanking sequences.
 
 #### FORMAT fields:  
-1. **Q**: Reports the posterior probability of the genotype. We've found that this is the best indicator of quality of an individual sample's genotype and nearly always utilize it to filter calls.   
+1. **Q**: Reports the posterior probability of the genotype. We've found that this is the best indicator of quality of an individual sample's genotype and almost always use it to filter calls.   
 2. **DP**, **DSTUTTER** and **DFLANKINDEL**: Identical to the INFO field case, these fields are also available for each sample and can be used in the same way to identify problematic individual calls.  
 
 **So what thresholds do we suggest for each of these fields?** The answer really depends on the quality of the sequencing data, the ploidy of the chromosome and the downstream applications. However, we typically apply the following filters usings scripts we've provided in the **scripts** subdirectory of the HipSTR folder:
@@ -201,7 +217,8 @@ python scripts/filter_haploid_vcf.py -h
 | **bam-samps**     list_of_read_groups | Comma separated list of samples in same order as BAM files. <br> Assign each read the sample corresponding to its file. By default, <br> each read must have an RG tag and and the sample is determined from the SM field <br> **Why? Your BAM file RG tags don't have an SM field**  
 | **bam-libs**      list_of_read_groups | Comma separated list of libraries in same order as BAM files. <br> Assign each read the library corresponding to its file. By default, <br> each read must have an RG tag and and the library is determined from the LB field <br> NOTE: This option is required when --bam-samps has been specified <br> **Why? Your BAM file RG tags don't have an LB tag**  
 | **def-stutter-model**                   | For each locus, use a stutter model with PGEOM=0.9 and UP=DOWN=0.05 for in-frame artifacts and PGEOM=0.9 and UP=DOWN=0.01 for out-of-frame artifacts <br> **Why? You have too few samples for stutter estimation and don't have stutter models**  
-| **min-reads** num_reads                           | 	Minimum total reads required to genotype a locus (Default = 100) <br> **Why? Refer to the discussion [above](#data-requirements)**
+| **min-reads** num_reads                           | 	Minimum total reads required to genotype a locus (Default = 100) <br> **Why? Refer to the discussion [above](#data-requirements)**  
+|**output-filters**                        | Write why individual calls were filtered to the VCF (Default = False)
 
 
 This list is comprised of the most useful and frequently used additional options, but is not all encompassing. For a complete list of options, please type
@@ -344,7 +361,8 @@ DSNP      | Total number of reads with SNP information
 PSNP      | Number of reads with SNPs supporting each haploid genotype
 DSTUTTER  | Number of reads with a stutter indel in the STR region
 DFLANKINDEL | Number of reads with an indel in the regions flanking the STR
-AB        | log10 of the allele bias pvalue, where 0 is no bias and more negative values are increasingly biased. Not applicable to homozygous genotypes
+AB        | log10 of the allele bias pvalue, where 0 is no bias and more negative values are increasingly biased. 0 for all homozygous genotypes
+FS        | log10 of the strand bias pvalue from Fisher's exact test, where 0 is no bias and more negative values are increasingly biased. 0 for all homozygous genotypes
 DAB       | Number of reads used in the allele bias calculation
 ALLREADS  | Base pair difference observed in each read's Needleman-Wunsch alignment
 MALLREADS | Maximum likelihood bp diff in each read based on haplotype alignments
@@ -406,7 +424,7 @@ If you're having trouble getting your analysis up and running:
 
 If you encounter a bug/issue or have a feature request:     
 
-     i.  File an issue on GitHub (https://github.com/HipSTR-Tool/HipSTR)
+     i.  File an issue on GitHub (https://github.com/tfwillems/HipSTR)
 	ii. Email us at hipstrtool@gmail.com
 
 ## Citation

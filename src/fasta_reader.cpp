@@ -62,3 +62,22 @@ void FastaReader::init(const std::string& path){
   }
 }
 
+void FastaReader::write_all_contigs_to_vcf(std::ostream& out){
+  for (auto index_iter = fasta_indices_.begin(); index_iter != fasta_indices_.end(); index_iter++){
+    int num_seqs = faidx_nseq(*index_iter);
+    for (int i = 0; i < num_seqs; i++){
+      std::string seq_name = faidx_iseq(*index_iter, i);
+      int64_t seq_length   = faidx_seq_len(*index_iter, seq_name.c_str());
+      out << "##contig=<ID=" << seq_name << ",length=" << seq_length << ">" << "\n";
+    }
+  }
+}
+
+void FastaReader::write_contigs_to_vcf(const std::vector<std::string>& chroms, std::ostream& out){
+  for (auto chrom_iter = chroms.begin(); chrom_iter != chroms.end(); chrom_iter++){
+    int64_t len = get_sequence_length(*chrom_iter);
+    if (len == -1)
+      printErrorAndDie("Chromosome " + (*chrom_iter) + " not present in FASTA file");
+    out << "##contig=<ID=" << *chrom_iter << ",length=" << len << ">" << "\n";
+  }
+}

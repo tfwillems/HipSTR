@@ -95,6 +95,11 @@ class Node {
 
 
 class DirectedGraph {
+ private:
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  DirectedGraph(const DirectedGraph& other);
+  DirectedGraph& operator=(const DirectedGraph& other);
+
 protected:
   std::vector<Node*> nodes_;
   std::vector<Edge*> edges_;
@@ -107,6 +112,8 @@ public:
   bool has_cycles() const {
     return !can_sort_topologically();
   }
+
+  DirectedGraph(){}
 
   ~DirectedGraph(){
     for (unsigned int i = 0; i < nodes_.size(); i++)

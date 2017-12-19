@@ -17,6 +17,10 @@ class ReadPooler {
   std::map<std::string, int32_t> seq_to_pool_;
   bool pooled_;         // True iff pool() function has been invoked
   int32_t pool_index_;
+
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  ReadPooler(const ReadPooler& other);
+  ReadPooler& operator=(const ReadPooler& other);
   
  public:
   ReadPooler(){

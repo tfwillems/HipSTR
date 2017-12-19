@@ -5,37 +5,6 @@
 #include "Haplotype.h"
 #include "NeedlemanWunsch.h"
 
-bool Haplotype::position_to_haplotype_index(int32_t pos, int& haplotype_index) const {
-  haplotype_index = 0;
-  if (inc_rev_){
-    assert(pos > blocks_.back()->end() && pos <= blocks_.front()->start());
-    for (int i = 0; i < blocks_.size(); i++){
-      if (pos > blocks_[i]->end()){
-	if (counts_[i] != 0)
-	  return false;
-	haplotype_index += blocks_[i]->start()-pos;
-	return true;
-      }
-      else
-	haplotype_index += get_seq(i).size();
-    }
-  }
-  else {
-    assert(pos >= blocks_.front()->start() && pos < blocks_.back()->end());
-    for (int i = 0; i < blocks_.size(); i++){
-      if (pos < blocks_[i]->end()){
-	if (counts_[i] != 0)
-	  return false;
-	haplotype_index += pos-blocks_[i]->start();
-	return true;
-      }
-      else
-	haplotype_index += get_seq(i).size();
-    }
-  }
-  assert(false);
-}
-
 void Haplotype::adjust_indels(std::string& ref_hap_al, std::string& alt_hap_al){
   assert(blocks_.size() == 3);
   int32_t ref_pos = blocks_[0]->start(), str_pos = blocks_[1]->start();
@@ -271,14 +240,16 @@ unsigned int Haplotype::left_homopolymer_len(char c, int block_index) const {
   unsigned int total = 0;
   while (block_index >= 0){
     const std::string& seq = get_seq(block_index);
-    if (*seq.rbegin() == c){
-      unsigned int llen = blocks_[block_index]->left_homopolymer_len(counts_[block_index], seq.size()-1);
-      total += (1 + llen);
-      if (llen != seq.size())
+    if (!seq.empty()){
+      if (*seq.rbegin() == c){
+	unsigned int llen = blocks_[block_index]->left_homopolymer_len(counts_[block_index], seq.size()-1);
+	total += (1 + llen);
+	if (llen != seq.size())
+	  break;
+      }
+      else
 	break;
     }
-    else
-      break;
     block_index--;
   }
   return total;
@@ -288,14 +259,16 @@ unsigned int Haplotype::right_homopolymer_len(char c, int block_index) const {
   unsigned int total = 0;
   while (block_index < blocks_.size()){
     const std::string& seq = get_seq(block_index);
-    if (seq[0] == c){
-      unsigned int rlen = blocks_[block_index]->right_homopolymer_len(counts_[block_index], 0);
-      total   += (1 + rlen); 
-      if (rlen != seq.size())
+    if (!seq.empty()){
+      if (seq[0] == c){
+	unsigned int rlen = blocks_[block_index]->right_homopolymer_len(counts_[block_index], 0);
+	total += (1 + rlen);
+	if (rlen != seq.size())
+	  break;
+      }
+      else
 	break;
     }
-    else
-      break;
     block_index++;
   }
   return total;

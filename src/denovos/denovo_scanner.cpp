@@ -5,11 +5,11 @@
 
 #include "denovo_scanner.h"
 #include "denovo_allele_priors.h"
-#include "error.h"
-#include "haplotype_tracker.h"
-#include "mathops.h"
+#include "../error.h"
+#include "../haplotype_tracker.h"
+#include "../mathops.h"
 #include "mutation_model.h"
-#include "vcf_input.h"
+#include "../vcf_input.h"
 
 std::string DenovoScanner::BPDIFFS_KEY = "BPDIFFS";
 std::string DenovoScanner::START_KEY   = "START";
@@ -124,7 +124,7 @@ void DenovoScanner::scan(const std::string& snp_vcf_file, VCF::VCFReader& str_vc
 
     PhasedGL phased_gls(str_variant);
     logger << "\t";
-    haplotype_tracker.advance(str_variant.get_chromosome(), str_variant.get_position(), sites_to_skip, logger);
+    haplotype_tracker.advance(str_variant.get_chromosome(), str_variant.get_position(), sites_to_skip);
 
     MutationModel mut_model(str_variant);
     DiploidGenotypePrior* dip_gt_priors;
@@ -152,8 +152,8 @@ void DenovoScanner::scan(const std::string& snp_vcf_file, VCF::VCFReader& str_vc
       if (!scan_for_denovo)
 	denovo_vcf_ << "\t" << ".";
       else {
-	// To accelerate computations, we will ignore configurations that make a neglible contribution (< 0.01%) to the total LL
-	// For mutational scenarios, we aggregate A^5*2*NUM_CHILDREN values. Therefore, to ignore a configuration with LL=X:
+	// To accelerate computations, we will ignore configurations that make a neglible contribution (< 0.01%) to the total likelihood
+	// For mutational scenarios, we aggregate A^5*2*NUM_CHILDREN values. Therefore, to ignore a configuration with likelihood=X:
 	// X*A^5*2*NUM_CHILDREN < TOTAL/10000;
 	// logX < log(TOTAL) - log(10000*A^5*2*NUM_CHILDREN) = log(TOTAL) - [log(10000) + 5log(A) + log(2) + log(NUM_CHILDREN)];
 	float MIN_CONTRIBUTION = 4 + 5*log10(num_alleles) + log10(2) + log10(family_iter->get_children().size());

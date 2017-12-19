@@ -95,7 +95,7 @@ def main():
      filt_stats        = open(args.STATS if args.STATS is not None else os.devnull, "w")
      total_filt_counts = numpy.zeros(8)
      filter_labels     = ["PASS", "SPANNING", "DEPTH", "QUAL", "FLANK_INDEL", "STUTTER", "OUT_OF_FRAME", "DUE_TO_SEX"]
-     filt_stats.write("\t".join(["CHROM", "POS", "FRAC_FILT"] + filter_labels ) + "\n")
+     filt_stats.write("\t".join(["CHROM", "POS", "FRAC_FILT"] + filter_labels + ["LOCUS_STATUS"]) + "\n")
 
      for record in vcf_reader:
           samp_fmt = vcf.model.make_calldata_tuple(record.FORMAT.split(':'))
@@ -274,7 +274,7 @@ def main():
           filt_stats.write("%s\t%d\t%f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n"%(record.CHROM, record.POS, 1.0 - 1.0*filt_counts[0]/sum(filt_counts),
                                                                                filt_counts[0], filt_counts[1], filt_counts[2], filt_counts[3],
                                                                                filt_counts[4], filt_counts[5], filt_counts[6], filt_counts[7], "PASS"))
-     filt_stats.write("\t".join(map(lambda x: str(int(x)), total_filt_counts)) + "\n")
+     filt_stats.write("\t".join([".", ".", "."] + map(lambda x: str(int(x)), total_filt_counts) + ["."]) + "\n")
      filt_stats.close()
 
 if __name__ == "__main__":

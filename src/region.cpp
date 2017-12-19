@@ -54,21 +54,3 @@ void readRegions(const std::string& input_file, uint32_t max_regions, const std:
 void orderRegions(std::vector<Region>& regions){
   std::sort(regions.begin(), regions.end());
 }
-
-void orderRegions(std::vector<Region>& input_regions, std::vector< std::vector<Region> >& output_regions, std::map<std::string, int>& chrom_order){
-  output_regions.clear();
-  chrom_order.clear();
-  int chrom_count = 0;
-  for (auto iter = input_regions.begin(); iter != input_regions.end(); iter++){
-    if (chrom_order.find(iter->chrom()) == chrom_order.end()){
-      chrom_order[iter->chrom()] = chrom_count++;
-      output_regions.push_back(std::vector<Region>());
-    }
-    output_regions[chrom_order[iter->chrom()]].push_back(*iter);
-  }
-  for (unsigned int i = 0; i < output_regions.size(); i++)
-    std::sort(output_regions[i].begin(), output_regions[i].end());
-} 
-
-
-

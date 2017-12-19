@@ -42,6 +42,10 @@ class EMStutterGenotyper: public Genotyper {
   // Functions for the E step of the EM algorithm
   void recalc_log_read_phase_posteriors();
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  EMStutterGenotyper(const EMStutterGenotyper& other);
+  EMStutterGenotyper& operator=(const EMStutterGenotyper& other);
+
  public:
  EMStutterGenotyper(bool haploid, int motif_length,
 		    const std::vector< std::vector<int> >& num_bps,

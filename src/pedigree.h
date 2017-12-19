@@ -44,10 +44,10 @@ class NuclearFamily {
   const std::string& get_family_id() const { return family_id_; }
   const std::string& get_mother()    const { return mother_; }
   const std::string& get_father()    const { return father_; }
-  const int size()                   const { return 2 + children_.size(); }
-  const int num_children()           const { return children_.size();      }
   const std::vector<std::string>& get_children() const { return children_; }
   const std::vector<std::string>& get_samples()  const { return samples_; }
+  int size()         const { return 2 + children_.size(); }
+  int num_children() const { return children_.size();     }
 
   bool is_missing_sample(const std::set<std::string>& samples) const {
     for (auto sample_iter = samples_.begin(); sample_iter != samples_.end(); sample_iter++)
@@ -143,6 +143,10 @@ class PedigreeGraph {
   void init_no_ancestors();
   void init_no_descendants();
   bool build_subgraph(std::vector<PedigreeNode*>& sorted_nodes);
+
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  PedigreeGraph(const PedigreeGraph& other);
+  PedigreeGraph& operator=(const PedigreeGraph& other);
     
  public:
   PedigreeGraph(){}
@@ -158,37 +162,6 @@ class PedigreeGraph {
   explicit PedigreeGraph(std::vector<PedigreeNode*>& subgraph_nodes){
     if (!build_subgraph(subgraph_nodes))
       printErrorAndDie("Subgraph in pedigree contains a cycle");
-    init_no_ancestors();
-    init_no_descendants();
-  }
-
-  PedigreeGraph(const PedigreeGraph& other){
-    // Create new nodes with identical names
-    std::map<std::string, int> indices;
-    for (int i = 0; i < other.nodes_.size(); i++){
-      indices[other.nodes_[i]->get_name()] = i;
-      nodes_.push_back(new PedigreeNode(other.nodes_[i]->get_name(), other.nodes_[i]->get_family()));
-    }
-
-    // Restore links between cloned nodes
-    for (int i = 0; i < nodes_.size(); i++){
-      if (other.nodes_[i]->has_mother()){
-	std::string mother = other.nodes_[i]->get_mother()->get_name();
-	nodes_[i]->set_mother(nodes_[indices[mother]]);
-      }
-
-      if (other.nodes_[i]->has_father()){
-	std::string father = other.nodes_[i]->get_father()->get_name();
-	nodes_[i]->set_father(nodes_[indices[father]]);
-      }
-
-      const std::vector<PedigreeNode*> children = other.nodes_[i]->get_children();
-      for (auto child_iter = children.begin(); child_iter != children.end(); child_iter++){
-	std::string child = (*child_iter)->get_name();
-	nodes_[i]->add_child(nodes_[indices[child]]);
-      }
-    }
-
     init_no_ancestors();
     init_no_descendants();
   }
@@ -209,14 +182,12 @@ class PedigreeGraph {
 
   void prune(const std::set<std::string>& sample_set);
 
-  void split_into_connected_components(std::vector<PedigreeGraph>& components);
+  void split_into_connected_components(std::vector<PedigreeGraph*>& components);
 
   bool is_nuclear_family() const;
 
   NuclearFamily convert_to_nuclear_family() const;
 };
-
-void read_sample_list(const std::string& input_file, std::set<std::string>& sample_set);
 
 void extract_pedigree_nuclear_families(const std::string& pedigree_fam_file, const std::set<std::string>& samples_with_data,
                                        std::vector<NuclearFamily>& nuclear_families, std::ostream& logger);

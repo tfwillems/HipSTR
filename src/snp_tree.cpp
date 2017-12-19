@@ -2,14 +2,9 @@
 
 #include <set>
 
-#include "denovo_scanner.h"
+#include "denovos/denovo_scanner.h"
 #include "error.h"
 #include "snp_tree.h"
-
-std::ostream& operator<<(std::ostream& out, SNP& snp) {
-  out << "SNP: (" << snp.pos() << ", " << snp.base_one() << "|" << snp.base_two() << ")";
-  return out;
-}
 
 bool in_any_region(const VCF::Variant& variant, const std::vector<Region>& skip_regions, int32_t skip_padding){
   for (auto region_iter = skip_regions.begin(); region_iter != skip_regions.end(); region_iter++)
@@ -32,11 +27,8 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, co
   logger << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
 
-  if (!snp_vcf->set_region(chrom, start, end)){
-    // Retry setting region if chr is in chromosome name
-    if (chrom.size() <= 3 || chrom.substr(0, 3).compare("chr") != 0 || !snp_vcf->set_region(chrom.substr(3), start, end))
-      return false;
-  }
+  if (!snp_vcf->set_region(chrom, start, end))
+    return false;
 
   // Index samples
   unsigned int sample_count = 0;

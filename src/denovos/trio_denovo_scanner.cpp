@@ -5,10 +5,10 @@
 
 #include "trio_denovo_scanner.h"
 #include "denovo_allele_priors.h"
-#include "error.h"
-#include "mathops.h"
+#include "../error.h"
+#include "../mathops.h"
 #include "mutation_model.h"
-#include "vcf_input.h"
+#include "../vcf_input.h"
 
 std::string TrioDenovoScanner::BPDIFFS_KEY = "BPDIFFS";
 std::string TrioDenovoScanner::START_KEY   = "START";
@@ -111,8 +111,8 @@ void TrioDenovoScanner::scan(VCF::VCFReader& str_vcf, std::ostream& logger){
 	  continue;
 	}
 
-	// To accelerate computations, we will ignore configurations that make a neglible contribution (< 0.01%) to the total LL
-	// For mutational scenarios, we aggregate 1/4*A^2*(A+1)^2*4*2*A values. Therefore, to ignore a configuration with LL=X:
+	// To accelerate computations, we will ignore configurations that make a neglible contribution (< 0.01%) to the total likelihood
+	// For mutational scenarios, we aggregate 1/4*A^2*(A+1)^2*4*2*A values. Therefore, to ignore a configuration with likelihood=X:
 	// X*A^3*(A+1)^2*2 < TOTAL/10000;
 	// logX < log(TOTAL) - log(10000*A^3*(A+1)^2*2) = log(TOTAL) - [log(10000) + 3log(A) + 2log(A+1) + log(2)];
 	double MIN_CONTRIBUTION   = 4 + 3*log10(num_alleles) + 2*log(num_alleles+1) + LOG_TWO;

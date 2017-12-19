@@ -31,6 +31,10 @@ class HapBlock {
   // Compute the homopolymer lengths and store them in the resulting vectors
   void calc_homopolymer_lengths(const std::string& seq, std::vector<int*>& llen_vec, std::vector<int*>& rlen_vec);
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  HapBlock(const HapBlock& other);
+  HapBlock& operator=(const HapBlock& other);
+
  public:
   HapBlock(int32_t start, int32_t end, const std::string& ref_seq)
     : ref_seq_(ref_seq){
@@ -101,12 +105,12 @@ class HapBlock {
 
   inline unsigned int left_homopolymer_len(unsigned int seq_index, int base_index) const {
     assert(seq_index < l_homopolymer_lens_.size());
-    return l_homopolymer_lens_[seq_index][base_index];
+    return (l_homopolymer_lens_[seq_index] == NULL ? 0 : l_homopolymer_lens_[seq_index][base_index]);
   }
 
   inline unsigned int right_homopolymer_len(unsigned int seq_index, int base_index) const {
     assert(seq_index < r_homopolymer_lens_.size());
-    return r_homopolymer_lens_[seq_index][base_index];
+    return (r_homopolymer_lens_[seq_index] == NULL ? 0 : r_homopolymer_lens_[seq_index][base_index]);
   }
   
   virtual HapBlock* reverse(){

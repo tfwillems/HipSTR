@@ -1211,8 +1211,8 @@ static int cram_decode_seq(cram_fd *fd, cram_container *c, cram_slice *s,
     uint32_t nm = 0;
     int32_t md_dist = 0;
     int orig_aux = 0;
-    int decode_md = fd->decode_md && s->ref && !has_MD;
-    int decode_nm = fd->decode_md && s->ref && !has_NM;
+    int decode_md = fd->decode_md && s->ref && !has_MD && cr->ref_id >= 0;
+    int decode_nm = fd->decode_md && s->ref && !has_NM && cr->ref_id >= 0;
     uint32_t ds = c->comp_hdr->data_series;
 
     if ((ds & CRAM_QS) && !(cf & CRAM_FLAG_PRESERVE_QUAL_SCORES)) {
@@ -1431,7 +1431,7 @@ static int cram_decode_seq(cram_fd *fd, cram_container *c, cram_slice *s,
 		                ->decode(s, c->comp_hdr->codecs[DS_BS], blk,
 					 (char *)&base, &out_sz);
 		if (r) return -1;
-		if (ref_pos >= bfd->ref[cr->ref_id].len || !s->ref) {
+		if (cr->ref_id < 0 || ref_pos >= bfd->ref[cr->ref_id].len || !s->ref) {
 		    if (pos-1 < cr->len)
 			seq[pos-1] = c->comp_hdr->
 			    substitution_matrix[fd->L1['N']][base];
@@ -1753,7 +1753,7 @@ static int cram_decode_seq(cram_fd *fd, cram_container *c, cram_slice *s,
 
     /* An implicit match op for any unaccounted for bases */
     if ((ds & CRAM_FN) && cr->len >= seq_pos) {
-	if (s->ref) {
+	if (s->ref && cr->ref_id >= 0) {
 	    if (ref_pos + cr->len - seq_pos + 1 > bfd->ref[cr->ref_id].len) {
 		static int whinged = 0;
 		int rlen;
@@ -2279,6 +2279,10 @@ int cram_decode_slice(cram_fd *fd, cram_container *c, cram_slice *s,
 	    s->ref = (char *)BLOCK_DATA(b);
 	    s->ref_start = s->hdr->ref_seq_start;
 	    s->ref_end   = s->hdr->ref_seq_start + s->hdr->ref_seq_span-1;
+	    if (s->ref_end - s->ref_start > b->uncomp_size) {
+		fprintf(stderr, "Embedded reference is too small.\n");
+		return -1;
+	    }
 	} else if (!fd->no_ref) {
 	    //// Avoid Java cramtools bug by loading entire reference seq 
 	    //s->ref = cram_get_ref(fd, s->hdr->ref_seq_id, 1, 0);
@@ -2463,7 +2467,7 @@ int cram_decode_slice(cram_fd *fd, cram_container *c, cram_slice *s,
 	} else {
 	    cr->ref_id = ref_id; // Forced constant in CRAM 1.0
 	}
-	if (cr->ref_id >= bfd->nref) {
+	if (cr->ref_id < -1 || cr->ref_id >= bfd->nref) {
 	    fprintf(stderr, "Requested unknown reference ID %d\n", cr->ref_id);
             return -1;
 	}

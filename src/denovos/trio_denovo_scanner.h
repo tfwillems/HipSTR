@@ -7,9 +7,9 @@
 #include <vector>
 #include <string>
 
-#include "bgzf_streams.h"
-#include "pedigree.h"
-#include "vcf_reader.h"
+#include "../bgzf_streams.h"
+#include "../pedigree.h"
+#include "../vcf_reader.h"
 
 class TrioDenovoScanner {
  private:
@@ -22,6 +22,10 @@ class TrioDenovoScanner {
   void write_vcf_header(const std::string& full_command);
   void initialize_vcf_record(const VCF::Variant& str_variant);
   void add_child_to_record(double total_ll_no_denovo, double total_ll_one_denovo, double total_ll_one_other);
+
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  TrioDenovoScanner(const TrioDenovoScanner& other);
+  TrioDenovoScanner& operator=(const TrioDenovoScanner& other);
 
  public:
   TrioDenovoScanner(const std::vector<NuclearFamily>& families, const std::string& output_file, const std::string& full_command, bool use_pop_priors)

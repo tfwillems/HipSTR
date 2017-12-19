@@ -12,6 +12,18 @@ if [ "$#" -eq 6 ]; then
     python -c "from reportlab.graphics import renderPDF" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the reportlab python package. Please check that it's appropriately installed"; exit 1; }
     python -c "from svglib.svglib import svg2rlg" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the svglib python package. Please check that it's appropriately installed"; exit 1; }
 
+    # Determine whether it's python2 or python3 and make sure the required python packages are installed
+    version=`python -c "import sys; print(sys.version_info[0])"`
+    if [ $version == 2 ]
+    then
+        python -c "import HTMLParser" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the HTMLParser python package. Please check that it's appropriately installed"; exit 1; }
+    elif [ $version == 3 ]
+    then
+        python -c "import html.parser" 2>/dev/null || { echo >&2 "ERROR: VizAlnPdf requires the html.parser python package. Please check that it's appropriately installed"; exit 1; }
+    else
+        echo >&2 "ERROR: VizAlnPdf only supports python 2 or python 3. Please check that it's appropriately installed"; exit 1;
+    fi
+
     # Make sure the file exists
     if [ ! -e $1 ]
 	then
@@ -48,7 +60,7 @@ msg
     f=$5
     tabix $1 $chrom:$start-$stop -h | awk -v START=$start '$2 == START || $2 == "#"' | awk -v SAMPLE=$4 '$4 == SAMPLE || $4 == "ALL"' | awk -v N=$6 'NR%N == 0 || $7 == "class=\"samplename\"" || $4 == "ALL"' | cut -f 1-4 --complement | python ${parent_path}/scripts/generate_aln_html.py | python ${parent_path}/scripts/html_alns_to_pdf.py $f
     rm $f.svg
-    open $f.pdf
+    open $f.pdf 2>/dev/null || { echo >&2 "VizAlnPdf successfully generated the alignment visualization file, but failed to open it. Please open $f.pdf using a PDF viewer";}
 else
     cat <<usage
 Usage: VizAlnPdf alns.html.gz chrom start sample out n

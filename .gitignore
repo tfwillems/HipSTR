@@ -21,4 +21,7 @@ src/*~
 src/SeqAlignment/*.o
 src/SeqAlignment/*.d
 src/SeqAlignment/*~
+src/denovos/*.o
+src/denovos/*.d
+src/denovos/*~
 *.dSYM

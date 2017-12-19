@@ -140,29 +140,22 @@ void overlayAlignments(const std::vector<Alignment>& alignments, std::map<int32_
 }
 
 std::string arrangeReferenceString(const std::string& chrom_seq, std::map<int32_t,int>& max_insertions,
-				   const std::string& locus_id, int32_t str_start, int32_t str_stop,
+				   const std::string& locus_id,
 				   int32_t min_start, int32_t max_stop, bool draw_locus_id,
 				   std::ostream& output){
-  // Hack to deal with lobSTR VCF off by 1
-  int offset = 1;
-
   std::stringstream ref_result;
-  std::vector<bool> within_locus;
   std::map<int32_t,int>::iterator insertion_iter = max_insertions.begin();
   for (int32_t i = min_start; i <= max_stop; i++){
     if (i == insertion_iter->first){
-      for (int j = 0; j < insertion_iter->second; j++){
+      for (int j = 0; j < insertion_iter->second; j++)
 	ref_result << NOT_APP_CHAR;
-	within_locus.push_back(false);
-      }
       ++insertion_iter;
     }
     ref_result << chrom_seq[i];
-    within_locus.push_back((i>=str_start-offset && i <= str_stop-offset));
   } 
   
   std::string ref_alignment = ref_result.str();
-  writeReferenceString(ref_alignment, output, locus_id, within_locus, draw_locus_id);
+  writeReferenceString(ref_alignment, output, locus_id, draw_locus_id);
   return ref_alignment;
 }
 
@@ -210,8 +203,7 @@ void visualizeAlignments(const std::vector< std::vector<Alignment> >& alns, cons
 
   // Arrange reference sequence
   std::string ref_alignment = arrangeReferenceString(chrom_seq, max_insertions, locus_id, 
-						     hap_blocks[1]->start(), hap_blocks[1]->end(), min_start, max_stop,
-						     draw_locus_id, output);
+						     min_start, max_stop, draw_locus_id, output);
 
   // Write to HTML
   writeAlignmentStrings(ref_alignment, output, locus_id, align_results, alignment_samples, sample_info, true);

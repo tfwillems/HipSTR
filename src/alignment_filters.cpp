@@ -35,13 +35,6 @@ namespace AlignmentFilters {
     return -1;
   }
 
-  std::string GetCigarString(const std::vector<CigarOp>& cigar_ops){
-    std::stringstream ss;
-    for (auto iter = cigar_ops.begin(); iter != cigar_ops.end(); iter++)
-      ss << iter->Length << iter->Type;
-    return ss.str();
-  }
-  
   pair<int,int> GetEndDistToIndel(BamAlignment& aln){
     int head_dist = GetDistToIndel(aln.CigarData().begin(),  aln.CigarData().end());
     int tail_dist = GetDistToIndel(aln.CigarData().rbegin(), aln.CigarData().rend());
@@ -220,22 +213,5 @@ namespace AlignmentFilters {
       }
     }       
     return true;
-  }
-
-  void GetNumClippedBases(BamAlignment& aln, int& num_hard_clips, int& num_soft_clips){
-    num_hard_clips = 0;
-    num_soft_clips = 0;
-    for (auto cigar_iter = aln.CigarData().begin(); cigar_iter != aln.CigarData().end(); cigar_iter++){
-      switch(cigar_iter->Type){
-      case 'H':
-	num_hard_clips += cigar_iter->Length;
-	break;
-      case 'S':
-	num_soft_clips += cigar_iter->Length;
-	break;
-      default:
-	break;
-      }
-    }
   }
 }

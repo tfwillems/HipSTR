@@ -17,6 +17,7 @@
 #include "snp_bam_processor.h"
 #include "stutter_model.h"
 #include "vcf_reader.h"
+#include "vcf_writer.h"
 #include "SeqAlignment/AlignmentData.h"
 #include "SeqAlignment/AlignmentOps.h"
 #include "SeqAlignment/HTMLCreator.h"
@@ -40,8 +41,7 @@ private:
   std::ofstream stutter_model_out_;
 
   // Output file for STR genotypes
-  bool output_str_gts_;
-  bgzfostream str_vcf_;
+  VCFWriter vcf_writer_;
   std::vector<std::string> samples_to_genotype_;
 
   // Counters for genotyping success;
@@ -52,15 +52,6 @@ private:
 
   bool output_viz_;
   bgzfostream viz_out_;
-
-  bool output_gls_;             // Output the GL FORMAT field to the VCF
-  bool output_pls_;             // Output the PL FORMAT field to the VCF
-  bool output_phased_gls_;      // Ooutput the PHASEDGL FORMAT field to the VCF
-  bool output_all_reads_;       // Output the ALLREADS  FORMAT field to the VCF
-  bool output_mall_reads_;      // Output the MALLREADS FORMAT field to the VCF
-  float max_flank_indel_frac_;  // Only output genotypes if the fraction of a sample's reads with
-                                // indels in the flank is less than this threshold
-
   std::set<std::string> haploid_chroms_;
 
   // Timing statistics (in seconds)
@@ -72,9 +63,6 @@ private:
   // The idea is that the haplotype-based alignments should be far more accurate, and reperforming
   // the stutter analysis will result in a better stutter model
   bool recalc_stutter_model_;
-
-  // If this flag is set, HTML alignments are written for both the haplotype alignments and Needleman-Wunsch left alignments
-  bool viz_left_alns_;
 
   // Simple object to track total times consumed by various processes
   ProcessTimer process_timer_;
@@ -91,13 +79,23 @@ private:
 				    const std::vector< std::vector<double> >& log_p1s, const std::vector< std::vector<double> >& log_p2s,
 				    bool haploid, const std::vector<std::string>& rg_names, const Region& region);
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  GenotyperBamProcessor(const GenotyperBamProcessor& other);
+  GenotyperBamProcessor& operator=(const GenotyperBamProcessor& other);
+
+  void init_output_vcf(const std::string& fasta_path, const std::vector<std::string>& chroms, const std::string& full_command){
+    assert(vcf_writer_.is_open());
+
+    // Write VCF header
+    std::string header = Genotyper::get_vcf_header(fasta_path, full_command, chroms, samples_to_genotype_);
+    vcf_writer_.write_header(header);
+  }
+
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups) : SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
     output_stutter_models_ = false;
-    output_str_gts_        = false;
     output_viz_            = false;
     read_stutter_models_   = false;
-    viz_left_alns_         = false;
     too_few_reads_         = 0;
     too_many_reads_        = 0;
     num_em_converge_       = 0;
@@ -109,18 +107,15 @@ public:
     ABS_LL_CONVERGE        = 0.01;
     FRAC_LL_CONVERGE       = 0.001;
     MIN_TOTAL_READS        = 100;
-    output_gls_            = false;
-    output_pls_            = false;
-    output_phased_gls_     = false;
-    output_all_reads_      = true;
-    output_mall_reads_     = true;
+    MAX_FLANK_HAPLOTYPES   = 4;
+    MIN_FLANK_FREQ         = 0.01;
+    VIZ_LEFT_ALNS          = 0;
     total_stutter_time_    = 0;
     locus_stutter_time_    = -1;
     total_left_aln_time_   = 0;
     locus_left_aln_time_   = -1;
     total_genotype_time_   = 0;
     locus_genotype_time_   = -1;
-    max_flank_indel_frac_  = 1.0;
     recalc_stutter_model_  = false;
     def_stutter_model_     = NULL;
     ref_vcf_               = NULL;
@@ -143,15 +138,7 @@ public:
   double total_genotype_time() const { return total_genotype_time_; }
   double locus_genotype_time() const { return locus_genotype_time_; }
 
-  void output_gls()         { output_gls_        = true;  }
-  void output_pls()         { output_pls_        = true;  }
-  void output_phased_gls()  { output_phased_gls_ = true;  }
-  void hide_all_reads()     { output_all_reads_  = false; }
-  void hide_mall_reads()    { output_mall_reads_ = false; }
-  void visualize_left_alns(){ viz_left_alns_     = true;  }
-
   void add_haploid_chrom(std::string chrom){ haploid_chroms_.insert(chrom); }
-  void set_max_flank_indel_frac(float frac){  max_flank_indel_frac_ = frac; }
   bool has_default_stutter_model() const   { return def_stutter_model_ != NULL; }
   void set_default_stutter_model(double inframe_geom,  double inframe_up,  double inframe_down,
 				 double outframe_geom, double outframe_up, double outframe_down){
@@ -190,13 +177,8 @@ public:
       printErrorAndDie("Failed to open output file for stutter models");
   }
 
-  void set_output_str_vcf(const std::string& vcf_file, const std::string& full_command, const std::set<std::string>& samples_to_output){
-    output_str_gts_ = true;
-    str_vcf_.open(vcf_file.c_str());
-
-    // Print floats with exactly 2 decimal places
-    str_vcf_.precision(2);
-    str_vcf_.setf(std::ios::fixed, std::ios::floatfield);
+  void set_output_str_vcf(const std::string& vcf_file, const std::string& fasta_path, const std::string& full_command, const std::set<std::string>& samples_to_output){
+    vcf_writer_.open(vcf_file);
     
     // Assemble a list of sample names for genotype output
     samples_to_genotype_.clear();
@@ -204,9 +186,6 @@ public:
       if (sample_set_.empty() || sample_set_.find(*sample_iter) != sample_set_.end())
 	samples_to_genotype_.push_back(*sample_iter);
     std::sort(samples_to_genotype_.begin(), samples_to_genotype_.end());
-    
-    // Write VCF header
-    Genotyper::write_vcf_header(full_command, samples_to_genotype_, output_gls_, output_pls_, output_phased_gls_, str_vcf_);
   }
 
   void analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
@@ -215,45 +194,55 @@ public:
 				 const std::vector<std::string>& rg_names, const RegionGroup& region, const std::string& chrom_seq);
   void finish(){
     SNPBamProcessor::finish();
-    if (output_str_gts_)
-      str_vcf_.close();
+    if (vcf_writer_.is_open())
+      vcf_writer_.close();
     if (output_stutter_models_)
       stutter_model_out_.close();
     if (output_viz_)
       viz_out_.close();
 
-    log("\n\n\n------HipSTR Execution Summary------");
+    full_logger() << "\n\n\n------HipSTR Execution Summary------\n";
+    if (num_too_long_ != 0)
+      full_logger() << "Skipped " << num_too_long_   << " loci whose lengths were above the maximum threshold.\n"
+		    << "\t If this is a sizeable portion of your loci, see the --max-str-len command line option\n";
     if (too_many_reads_ != 0)
-      logger() << "Skipped " << too_many_reads_ << " loci with too many reads.\n\t If this comprises a sizeable portion of your loci, see the --max-reads command line option\n";
+      full_logger() << "Skipped " << too_many_reads_ << " loci with too many reads.\n\t If this comprises a sizeable portion of your loci, see the --max-reads command line option\n";
     if (too_few_reads_ != 0)
-      logger() << "Skipped " << too_few_reads_  << " loci with too few reads for stutter model model training or genotyping.\n"
-	       << "\t If this comprises a sizeable portion of your loci, see the --min-reads command line option\n";
+      full_logger() << "Skipped " << too_few_reads_  << " loci with too few reads for stutter model model training or genotyping.\n"
+		    << "\t If this is a sizeable portion of your loci, see the --min-reads command line option\n";
     if (num_missing_models_ != 0)
-      logger() << "Skipped " << num_missing_models_ << " loci that did not have a stutter model in the file provided to --stutter-in\n";
+      full_logger() << "Skipped " << num_missing_models_ << " loci that did not have a stutter model in the file provided to --stutter-in\n";
     if (num_em_converge_+num_em_fail_ != 0)
-      logger() << "Stutter model training succeeded for " << num_em_converge_ << " out of " << num_em_converge_+num_em_fail_ << " loci\n";
-    logger() << "Genotyping succeeded for " << num_genotype_success_ << " out of " << num_genotype_success_+num_genotype_fail_ << " loci\n";
+      full_logger() << "Stutter model training succeeded for " << num_em_converge_ << "/" << num_em_converge_+num_em_fail_ << " loci\n";
+    full_logger() << "Genotyping succeeded for " << num_genotype_success_ << "/" << num_genotype_success_+num_genotype_fail_ << " loci\n";
 
-    logger() << "\nApproximate timing breakdown" << "\n"
-             << " BAM seek time       = " << total_bam_seek_time()       << " seconds\n"
-             << " Read filtering      = " << total_read_filter_time()    << " seconds\n"
-             << " SNP info extraction = " << total_snp_phase_info_time() << " seconds\n"
-             << " Stutter estimation  = " << total_stutter_time()        << " seconds\n"
-             << " Genotyping          = " << total_genotype_time()       << " seconds\n";
-    if (output_str_gts_)
-      logger() << "\t" << " Left alignment        = "  << process_timer_.get_total_time("Left alignment")        << " seconds\n"
-               << "\t" << " Haplotype generation  = "  << process_timer_.get_total_time("Haplotype generation")  << " seconds\n"
-               << "\t" << " Haplotype alignment   = "  << process_timer_.get_total_time("Haplotype alignment")   << " seconds\n"
-	       << "\t" << " Flank assembly        = "  << process_timer_.get_total_time("Flank assembly")        << " seconds\n"
-	       << "\t" << " Posterior computation = "  << process_timer_.get_total_time("Posterior computation") << " seconds\n"
-               << "\t" << " Alignment traceback   = "  << process_timer_.get_total_time("Alignment traceback")   << " seconds\n";
+    full_logger() << "\nApproximate timing breakdown" << "\n"
+		  << " BAM seek time       = " << total_bam_seek_time()       << " seconds\n"
+		  << " Read filtering      = " << total_read_filter_time()    << " seconds\n"
+		  << " SNP info extraction = " << total_snp_phase_info_time() << " seconds\n"
+		  << " Stutter estimation  = " << total_stutter_time()        << " seconds\n"
+		  << " Genotyping          = " << total_genotype_time()       << " seconds\n";
+
+    full_logger() << "\t" << " Left alignment        = "  << process_timer_.get_total_time("Left alignment")        << " seconds\n"
+		  << "\t" << " Haplotype generation  = "  << process_timer_.get_total_time("Haplotype generation")  << " seconds\n"
+		  << "\t" << " Haplotype alignment   = "  << process_timer_.get_total_time("Haplotype alignment")   << " seconds\n"
+		  << "\t" << " Flank assembly        = "  << process_timer_.get_total_time("Flank assembly")        << " seconds\n"
+		  << "\t" << " Posterior computation = "  << process_timer_.get_total_time("Posterior computation") << " seconds\n"
+		  << "\t" << " Alignment traceback   = "  << process_timer_.get_total_time("Alignment traceback")   << " seconds\n";
   }
 
   // EM parameters for length-based stutter learning
   int MAX_EM_ITER;
-  double ABS_LL_CONVERGE;  // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
-  double FRAC_LL_CONVERGE; // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
-  int32_t MIN_TOTAL_READS; // Minimum total reads required to genotype locus
+  double ABS_LL_CONVERGE;   // For EM convergence, new_LL - prev_LL < ABS_LL_CONVERGE
+  double FRAC_LL_CONVERGE;  // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
+  int32_t MIN_TOTAL_READS;  // Minimum total reads required to genotype locus
+
+  int MAX_FLANK_HAPLOTYPES;
+  double MIN_FLANK_FREQ;    // Minimum fraction of samples that must have an alternate flank to consider it
+                            // Samples with flanks below this frequency will not be genotyped
+
+  // If this flag is set, HTML alignments are written for both the haplotype alignments and Needleman-Wunsch left alignments
+  int VIZ_LEFT_ALNS;
 };
 
 #endif

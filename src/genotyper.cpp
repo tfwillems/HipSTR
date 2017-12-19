@@ -6,8 +6,10 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <sstream>
 
 #include "genotyper.h"
+#include "fasta_reader.h"
 #include "mathops.h"
 
 // Each genotype has an equal total prior, but heterozygotes have two possible phasings. Therefore,
@@ -224,10 +226,14 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
   }
 }
 
-void Genotyper::write_vcf_header(const std::string& full_command, const std::vector<std::string>& sample_names,
-				 bool output_gls, bool output_pls, bool output_phased_gls, std::ostream& out){
+std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::string& full_command, const std::vector<std::string>& chroms, const std::vector<std::string>& sample_names){
+  std::stringstream out;
   out << "##fileformat=VCFv4.1" << "\n"
-      << "##command=" << full_command << "\n";
+      << "##command="   << full_command << "\n"
+      << "##reference=" << fasta_path   << "\n";
+
+  FastaReader fasta_reader(fasta_path);
+  fasta_reader.write_all_contigs_to_vcf(out);
 
   // Info field descriptors
   out << "##INFO=<ID=" << "INFRAME_PGEOM"  << ",Number=1,Type=Float,Description=\""   << "Parameter for in-frame geometric step size distribution"                      << "\">\n"
@@ -263,24 +269,41 @@ void Genotyper::write_vcf_header(const std::string& full_command, const std::vec
       << "##FORMAT=<ID=" << "DSTUTTER"    << ",Number=1,Type=Integer,Description=\"" << "Number of reads with a stutter indel in the STR region"        << "\">" << "\n"
       << "##FORMAT=<ID=" << "DFLANKINDEL" << ",Number=1,Type=Integer,Description=\"" << "Number of reads with an indel in the regions flanking the STR" << "\">" << "\n"
       << "##FORMAT=<ID=" << "AB"          << ",Number=1,Type=Float,Description=\""
-      << "log10 of the allele bias pvalue, where 0 is no bias and more negative values are increasingly biased. Not applicable to homozygous genotypes" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DAB"         << ",Number=1,Type=Integer,Description=\"" << "Number of reads used in the allele bias calculation"           << "\">" << "\n"
-      << "##FORMAT=<ID=" << "ALLREADS"    << ",Number=1,Type=String,Description=\""  << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "MALLREADS"   << ",Number=1,Type=String,Description=\""
-      << "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs"            << "\">" << "\n";
+      << "log10 of the allele bias pvalue, where 0 is no bias and more negative values are increasingly biased. 0 for all homozygous genotypes"  << "\">" << "\n"
+      << "##FORMAT=<ID=" << "FS"          << ",Number=1,Type=Float,Description=\""   << "log10 of the strand bias pvalue from Fisher's exact test, "
+      << "where 0 is no bias and more negative values are increasingly biased. 0 for all homozygous genotypes" << "\">" << "\n"
+      << "##FORMAT=<ID=" << "DAB"         << ",Number=1,Type=Integer,Description=\"" << "Number of reads used in the AB and FS calculations" << "\">" << "\n";
 
-  if (output_gls)
-    out << "##FORMAT=<ID=" << "GL"       << ",Number=G,Type=Float,Description=\""   << "log-10 genotype likelihoods" << "\">" << "\n";
-  if (output_pls)
-    out << "##FORMAT=<ID=" << "PL"       << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
-  if (output_phased_gls)
+  if (OUTPUT_ALLREADS == 1)
+    out << "##FORMAT=<ID=" << "ALLREADS" << ",Number=1,Type=String,Description=\"" << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n";
+  if (OUTPUT_MALLREADS == 1)
+    out << "##FORMAT=<ID=" << "MALLREADS" << ",Number=1,Type=String,Description=\""
+	<< "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs" << "\">" << "\n";
+  if (OUTPUT_GLS == 1)
+    out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "log10 genotype likelihoods" << "\">" << "\n";
+  if (OUTPUT_PLS == 1)
+    out << "##FORMAT=<ID=" << "PL" << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
+  if (OUTPUT_PHASED_GLS == 1)
     out << "##FORMAT=<ID=" << "PHASEDGL" << ",Number=.,Type=Float,Description=\""
-	<< "log-10 genotype likelihood for each phased genotype. Value for phased genotype X|Y is stored at a 0-based index of X*A + Y, where A is the number of alleles. Not applicable to haploid genotypes"
+	<< "log10 genotype likelihood for each phased genotype. Value for phased genotype X|Y is stored at a 0-based index of X*A + Y, where A is the number of alleles. Not applicable to haploid genotypes"
 	<< "\">" << "\n";
+  if (OUTPUT_FILTERS == 1)
+    out << "##FORMAT=<ID=" << "FILTER" << ",Number=1,Type=String,Description=\"" << "Reason for filtering the current call, or PASS if the call was not filtered" << "\">" << "\n";
 
   // Sample names
   out << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
   for (unsigned int i = 0; i < sample_names.size(); i++)
     out << "\t" << sample_names[i];
   out << "\n";
+  return out.str();
+
 }
+
+// Default settings for VCF output
+int Genotyper::OUTPUT_GLS             = 0;
+int Genotyper::OUTPUT_PLS             = 0;
+int Genotyper::OUTPUT_PHASED_GLS      = 0;
+int Genotyper::OUTPUT_ALLREADS        = 1;
+int Genotyper::OUTPUT_MALLREADS       = 1;
+int Genotyper::OUTPUT_FILTERS         = 0;
+float Genotyper::MAX_FLANK_INDEL_FRAC = 0.15;

@@ -6,7 +6,14 @@
 
 import collections
 import sys
-from HTMLParser import HTMLParser
+
+# Import HTMLParser, whose package name changed between python2 and python3
+if sys.version_info[0] == 2:
+    from HTMLParser import HTMLParser
+elif sys.version_info[0] == 3:
+    from html.parser import HTMLParser
+else:
+    exit("Unsupported python version %d"%(sys.version_info[0]))
 
 class HTMLCharCounter(HTMLParser):
     def __init__(self):
@@ -16,7 +23,7 @@ class HTMLCharCounter(HTMLParser):
     def handle_data(self, data):
         offset, bases = data.split(" ")
         offset = int(offset)
-        for i in xrange(len(bases)):
+        for i in range(len(bases)):
             if offset not in self.counts:
                 self.counts[offset] = collections.defaultdict(int)
             self.counts[offset][bases[i].upper()] += 1
@@ -54,13 +61,13 @@ class FilteredHTMLOutputter(HTMLParser):
     def handle_data(self, data):
         offset, bases = data.split(" ")
         offset        = int(offset)
-        lt            = len(filter(lambda x: x < offset, self.skip_columns))
+        lt            = len(list(filter(lambda x: x < offset, self.skip_columns)))
         new_offset    = offset - self.left_trim - lt
         if new_offset > 0:
             sys.stdout.write("<td colspan=%d> </td>"%(new_offset))
         coord = offset
 
-        for i in xrange(len(bases)):
+        for i in range(len(bases)):
             if self.reference:
                 if bases[i] == "*":
                     output="<td class=\"%sreftd\">%s</td>"%("v", bases[i])
@@ -206,13 +213,13 @@ def main():
             bad_cols.add(key)
 
     if nlines != 1:
-        fixed_points = map(lambda x: x[0], sorted(filter(lambda x: len(x[1]) == 1 and (x[1].values()[0] == 1), parser.counts.items())))
+        fixed_points = list(map(lambda x: x[0], sorted(filter(lambda x: len(x[1]) == 1 and (list(x[1].values())[0] == 1), list(parser.counts.items())))))
         if len(fixed_points) >= 1 and fixed_points[0] == 1:
             trim_index = 1
             while trim_index < len(fixed_points) and fixed_points[trim_index] == fixed_points[trim_index-1]+1:
                 trim_index += 1
             trim_index = max(0, trim_index-10)
-            for i in xrange(0, trim_index):
+            for i in range(0, trim_index):
                 if parser.counts[trim_index][0] != "*":
                     bad_cols.add(fixed_points[i])
         left_trim = 0
@@ -222,7 +229,7 @@ def main():
             while trim_index >= 0 and fixed_points[trim_index]+1 == fixed_points[trim_index+1]:
                 trim_index -= 1
             trim_index = min(len(fixed_points), trim_index+10)
-            for i in xrange(trim_index, len(fixed_points)):
+            for i in range(trim_index, len(fixed_points)):
                 bad_cols.add(fixed_points[i])
     else:
         left_trim = 0

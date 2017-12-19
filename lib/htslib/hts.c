@@ -28,6 +28,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <zlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <fcntl.h>
@@ -39,8 +40,10 @@ DEALINGS IN THE SOFTWARE.  */
 #include "htslib/bgzf.h"
 #include "cram/cram.h"
 #include "htslib/hfile.h"
+#include "htslib/hts_endian.h"
 #include "version.h"
 #include "hts_internal.h"
+#include "hfile_internal.h"
 
 #include "htslib/khash.h"
 #include "htslib/kseq.h"
@@ -48,7 +51,7 @@ DEALINGS IN THE SOFTWARE.  */
 
 KHASH_INIT2(s2i,, kh_cstr_t, int64_t, 1, kh_str_hash_func, kh_str_hash_equal)
 
-int hts_verbose = 3;
+int hts_verbose = HTS_LOG_WARNING;
 
 const char *hts_version()
 {
@@ -429,8 +432,7 @@ htsFile *hts_open_format(const char *fn, const char *mode, const htsFormat *fmt)
     return fp;
 
 error:
-    if (hts_verbose >= 2)
-        fprintf(stderr, "[E::%s] fail to open file '%s'\n", __func__, fn);
+    hts_log_error("Failed to open file %s", fn);
 
     if (hfile)
         hclose_abruptly(hfile);
@@ -567,7 +569,7 @@ int hts_opt_add(hts_opt **opts, const char *c_arg) {
         case 'k': case 'K': o->val.i *= 1024; break;
         case '\0': break;
         default:
-            fprintf(stderr, "Unrecognised cache size suffix '%c'\n", *endp);
+            hts_log_error("Unrecognised cache size suffix '%c'", *endp);
             free(o->arg);
             free(o);
             return -1;
@@ -586,8 +588,12 @@ int hts_opt_add(hts_opt **opts, const char *c_arg) {
              strcmp(o->arg, "NAME_PREFIX") == 0)
         o->opt = CRAM_OPT_PREFIX, o->val.s = val;
 
+    else if (strcmp(o->arg, "block_size") == 0 ||
+             strcmp(o->arg, "BLOCK_SIZE") == 0)
+        o->opt = HTS_OPT_BLOCK_SIZE, o->val.i = strtol(val, NULL, 0);
+
     else {
-        fprintf(stderr, "Unknown option '%s'\n", o->arg);
+        hts_log_error("Unknown option '%s'", o->arg);
         free(o->arg);
         free(o);
         return -1;
@@ -873,8 +879,7 @@ htsFile *hts_hopen(hFILE *hfile, const char *fn, const char *mode)
     return fp;
 
 error:
-    if (hts_verbose >= 2)
-        fprintf(stderr, "[E::%s] fail to open file '%s'\n", __func__, fn);
+    hts_log_error("Failed to open file %s", fn);
 
     // If redirecting, close the failed redirection hFILE that we have opened
     if (hfile != hfile_orig) hclose_abruptly(hfile);
@@ -902,7 +907,7 @@ int hts_close(htsFile *fp)
         if (!fp->is_write) {
             switch (cram_eof(fp->fp.cram)) {
             case 2:
-                fprintf(stderr, "[W::%s] EOF marker is absent. The input is probably truncated.\n", __func__);
+                hts_log_warning("EOF marker is absent. The input is probably truncated");
                 break;
             case 0:  /* not at EOF, but may not have wanted all seqs */
             default: /* case 1, expected EOF */
@@ -960,6 +965,17 @@ const char *hts_format_file_extension(const htsFormat *format) {
     }
 }
 
+static hFILE *hts_hfile(htsFile *fp) {
+    switch (fp->format.format) {
+    case binary_format: // fall through; still valid if bcf?
+    case bam:          return bgzf_hfile(fp->fp.bgzf);
+    case cram:         return cram_hfile(fp->fp.cram);
+    case text_format:  return fp->fp.hfile;
+    case sam:          return fp->fp.hfile;
+    default:           return NULL;
+    }
+}
+
 int hts_set_opt(htsFile *fp, enum hts_fmt_option opt, ...) {
     int r;
     va_list args;
@@ -970,6 +986,22 @@ int hts_set_opt(htsFile *fp, enum hts_fmt_option opt, ...) {
         int nthreads = va_arg(args, int);
         va_end(args);
         return hts_set_threads(fp, nthreads);
+    }
+
+    case HTS_OPT_BLOCK_SIZE: {
+        hFILE *hf = hts_hfile(fp);
+
+        if (hf) {
+            va_start(args, opt);
+            if (hfile_set_blksize(hf, va_arg(args, int)) != 0 && hts_verbose >= 2)
+                fprintf(stderr, "[W::%s] Failed to change block size\n", __func__);
+            va_end(args);
+        } else if (hts_verbose >= 2)
+            // To do - implement for vcf/bcf.
+            fprintf(stderr, "[W::%s] cannot change block size for this format\n", __func__);
+
+
+        return 0;
     }
 
     case HTS_OPT_THREAD_POOL: {
@@ -1072,7 +1104,7 @@ int hts_getline(htsFile *fp, int delimiter, kstring_t *str)
 {
     int ret;
     if (! (delimiter == KS_SEP_LINE || delimiter == '\n')) {
-        fprintf(stderr, "[hts_getline] unexpected delimiter %d\n", delimiter);
+        hts_log_error("Unexpected delimiter %d", delimiter);
         abort();
     }
 
@@ -1248,7 +1280,7 @@ struct __hts_idx_t {
     uint64_t n_no_coor;
     bidx_t **bidx;
     lidx_t *lidx;
-    uint8_t *meta;
+    uint8_t *meta; // MUST have a terminating NUL on the end
     struct {
         uint32_t last_bin, save_bin;
         int last_coor, last_tid, save_tid, finished;
@@ -1471,18 +1503,18 @@ int hts_idx_push(hts_idx_t *idx, int tid, int beg, int end, uint64_t offset, int
     if (idx->z.last_tid != tid || (idx->z.last_tid >= 0 && tid < 0)) { // change of chromosome
         if ( tid>=0 && idx->n_no_coor )
         {
-            if (hts_verbose >= 1) fprintf(stderr,"[E::%s] NO_COOR reads not in a single block at the end %d %d\n", __func__, tid,idx->z.last_tid);
+            hts_log_error("NO_COOR reads not in a single block at the end %d %d", tid, idx->z.last_tid);
             return -1;
         }
         if (tid>=0 && idx->bidx[tid] != 0)
         {
-            if (hts_verbose >= 1) fprintf(stderr, "[E::%s] chromosome blocks not continuous\n", __func__);
+            hts_log_error("Chromosome blocks not continuous");
             return -1;
         }
         idx->z.last_tid = tid;
         idx->z.last_bin = 0xffffffffu;
     } else if (tid >= 0 && idx->z.last_coor > beg) { // test if positions are out of order
-        if (hts_verbose >= 1) fprintf(stderr, "[E::%s] unsorted positions on sequence #%d: %d followed by %d\n", __func__, tid+1, idx->z.last_coor+1, beg+1);
+        hts_log_error("Unsorted positions on sequence #%d: %d followed by %d", tid+1, idx->z.last_coor+1, beg+1);
         return -1;
     }
     if ( tid>=0 )
@@ -1531,21 +1563,19 @@ int hts_idx_push(hts_idx_t *idx, int tid, int beg, int end, uint64_t offset, int
             s <<= 3;
         }
 
-        if (hts_verbose >= 1) {
-            if (idx->fmt == HTS_FMT_CSI) {
-                fprintf(stderr,
-                        "[E::%s] Region %d..%d cannot be stored in a csi index "
-                        "with min_shift = %d, n_lvls = %d.  Try using "
-                        " min_shift = 14, n_lvls >= %d\n",
-                        __func__, beg, end,
-                        idx->min_shift, idx->n_lvls, n_lvls);
-            } else {
-                fprintf(stderr,
-                        "[E::%s] Region %d..%d cannot be stored in a %s index. "
-                        "Try using a csi index with min_shift = 14, "
-                        "n_lvls >= %d\n",
-                        __func__, beg, end, idx_format_name(idx->fmt), n_lvls);
-            }
+        if (idx->fmt == HTS_FMT_CSI) {
+            hts_log_error("Region %d..%d cannot be stored in a csi index "
+                "with min_shift = %d, n_lvls = %d. Try using "
+                "min_shift = 14, n_lvls >= %d",
+                beg, end,
+                idx->min_shift, idx->n_lvls,
+                n_lvls);
+        } else {
+            hts_log_error("Region %d..%d cannot be stored in a %s index. "
+                "Try using a csi index with min_shift = 14, "
+                "n_lvls >= %d",
+                beg, end, idx_format_name(idx->fmt),
+                n_lvls);
         }
         errno = ERANGE;
         return -1;
@@ -1774,8 +1804,11 @@ static hts_idx_t *hts_idx_load_local(const char *fn)
         if (bgzf_read(fp, x, 12) != 12) goto fail;
         if (is_be) for (i = 0; i < 3; ++i) ed_swap_4p(&x[i]);
         if (x[2]) {
-            if ((meta = (uint8_t*)malloc(x[2])) == NULL) goto fail;
+            if (SIZE_MAX - x[2] < 1) goto fail; // Prevent possible overflow
+            if ((meta = (uint8_t*)malloc((size_t) x[2] + 1)) == NULL) goto fail;
             if (bgzf_read(fp, meta, x[2]) != x[2]) goto fail;
+            // Prevent possible strlen past the end in tbx_index_load2
+            meta[x[2]] = '\0';
         }
         if (bgzf_read(fp, &n, 4) != 4) goto fail;
         if (is_be) ed_swap_4p(&n);
@@ -1786,14 +1819,23 @@ static hts_idx_t *hts_idx_load_local(const char *fn)
         if (hts_idx_load_core(idx, fp, HTS_FMT_CSI) < 0) goto fail;
     }
     else if (memcmp(magic, "TBI\1", 4) == 0) {
-        uint32_t x[8];
-        if (bgzf_read(fp, x, 32) != 32) goto fail;
-        if (is_be) for (i = 0; i < 8; ++i) ed_swap_4p(&x[i]);
-        if ((idx = hts_idx_init(x[0], HTS_FMT_TBI, 0, 14, 5)) == NULL) goto fail;
-        idx->l_meta = 28 + x[7];
-        if ((idx->meta = (uint8_t*)malloc(idx->l_meta)) == NULL) goto fail;
-        memcpy(idx->meta, &x[1], 28);
-        if (bgzf_read(fp, idx->meta + 28, x[7]) != x[7]) goto fail;
+        uint8_t x[8 * 4];
+        uint32_t n;
+        // Read file header
+        if (bgzf_read(fp, x, sizeof(x)) != sizeof(x)) goto fail;
+        n = le_to_u32(&x[0]); // location of n_ref
+        if ((idx = hts_idx_init(n, HTS_FMT_TBI, 0, 14, 5)) == NULL) goto fail;
+        n = le_to_u32(&x[7*4]); // location of l_nm
+        if (n > UINT32_MAX - 29) goto fail; // Prevent possible overflow
+        idx->l_meta = 28 + n;
+        if ((idx->meta = (uint8_t*)malloc(idx->l_meta + 1)) == NULL) goto fail;
+        // copy format, col_seq, col_beg, col_end, meta, skip, l_nm
+        // N.B. left in little-endian byte order.
+        memcpy(idx->meta, &x[1*4], 28);
+        // Read in sequence names.
+        if (bgzf_read(fp, idx->meta + 28, n) != n) goto fail;
+        // Prevent possible strlen past the end in tbx_index_load2
+        idx->meta[idx->l_meta] = '\0';
         if (hts_idx_load_core(idx, fp, HTS_FMT_TBI) < 0) goto fail;
     }
     else if (memcmp(magic, "BAI\1", 4) == 0) {
@@ -1815,17 +1857,29 @@ fail:
     return NULL;
 }
 
-void hts_idx_set_meta(hts_idx_t *idx, int l_meta, uint8_t *meta, int is_copy)
+int hts_idx_set_meta(hts_idx_t *idx, uint32_t l_meta, uint8_t *meta,
+                      int is_copy)
 {
+    uint8_t *new_meta = meta;
+    if (is_copy) {
+        size_t l = l_meta;
+        if (l > SIZE_MAX - 1) {
+            errno = ENOMEM;
+            return -1;
+        }
+        new_meta = malloc(l + 1);
+        if (!new_meta) return -1;
+        memcpy(new_meta, meta, l);
+        // Prevent possible strlen past the end in tbx_index_load2
+        meta[l + 1] = '\0';
+    }
     if (idx->meta) free(idx->meta);
     idx->l_meta = l_meta;
-    if (is_copy) {
-        idx->meta = (uint8_t*)malloc(l_meta);
-        memcpy(idx->meta, meta, l_meta);
-    } else idx->meta = meta;
+    idx->meta = new_meta;
+    return 0;
 }
 
-uint8_t *hts_idx_get_meta(hts_idx_t *idx, int *l_meta)
+uint8_t *hts_idx_get_meta(hts_idx_t *idx, uint32_t *l_meta)
 {
     *l_meta = idx->l_meta;
     return idx->meta;
@@ -1971,6 +2025,8 @@ hts_itr_t *hts_itr_query(const hts_idx_t *idx, int tid, int beg, int end, hts_re
     iter->tid = tid, iter->beg = beg, iter->end = end; iter->i = -1;
     iter->readrec = readrec;
 
+    if ( !kh_size(bidx) ) { iter->finished = 1; return iter; }
+
     // compute min_off
     bin = hts_bin_first(idx->n_lvls) + (beg>>idx->min_shift);
     do {
@@ -2085,14 +2141,15 @@ long long hts_parse_decimal(const char *str, char **strend, int flags)
     while (e > 0) n *= 10, e--;
     while (e < 0) lost += n % 10, n /= 10, e++;
 
-    if (lost > 0 && hts_verbose >= 3)
-        fprintf(stderr, "[W::%s] discarding fractional part of %.*s\n",
-                __func__, (int)(s - str), str);
+    if (lost > 0) {
+        hts_log_warning("Discarding fractional part of %.*s", (int)(s - str), str);
+    }
 
-    if (strend) *strend = (char *) s;
-    else if (*s && hts_verbose >= 2)
-        fprintf(stderr, "[W::%s] ignoring unknown characters after %.*s[%s]\n",
-                __func__, (int)(s - str), str, s);
+    if (strend) {
+        *strend = (char *)s;
+    } else if (*s) {
+        hts_log_warning("Ignoring unknown characters after %.*s[%s]", (int)(s - str), str, s);
+    }
 
     return (sign == '+')? n : -n;
 }
@@ -2129,10 +2186,15 @@ hts_itr_t *hts_itr_querys(const hts_idx_t *idx, const char *reg, hts_name2id_f g
 
     q = hts_parse_reg(reg, &beg, &end);
     if (q) {
-        char *tmp = (char*)alloca(q - reg + 1);
+        char tmp_a[1024], *tmp = tmp_a;
+        if (q - reg + 1 > 1024)
+            if (!(tmp = malloc(q - reg + 1)))
+                return NULL;
         strncpy(tmp, reg, q - reg);
         tmp[q - reg] = 0;
         tid = getid(hdr, tmp);
+        if (tmp != tmp_a)
+            free(tmp);
     }
     else {
         // not parsable as a region, but possibly a sequence named "foo:a"
@@ -2212,16 +2274,18 @@ static char *test_and_fetch(const char *fn)
         // Attempt to open remote file. Stay quiet on failure, it is OK to fail when trying first .csi then .tbi index.
         if ((fp_remote = hopen(fn, "r")) == 0) return 0;
         if ((fp = fopen(p, "w")) == 0) {
-            if (hts_verbose >= 1) fprintf(stderr, "[E::%s] fail to create file '%s' in the working directory\n", __func__, p);
+            hts_log_error("Failed to create file %s in the working directory", p);
             hclose_abruptly(fp_remote);
             return 0;
         }
-        if (hts_verbose >= 3) fprintf(stderr, "[M::%s] downloading file '%s' to local directory\n", __func__, fn);
+        hts_log_info("Downloading file %s to local directory", fn);
         buf = (uint8_t*)calloc(buf_size, 1);
         while ((l = hread(fp_remote, buf, buf_size)) > 0) fwrite(buf, 1, l, fp);
         free(buf);
         fclose(fp);
-        if (hclose(fp_remote) != 0) fprintf(stderr, "[E::%s] fail to close remote file '%s'\n", __func__, fn);
+        if (hclose(fp_remote) != 0) {
+            hts_log_error("Failed to close remote file %s", fn);
+        }
         return (char*)p;
     } else {
         hFILE *fp;
@@ -2272,8 +2336,8 @@ hts_idx_t *hts_idx_load2(const char *fn, const char *fnidx)
     struct stat stat_idx,stat_main;
     if ( !stat(fn, &stat_main) && !stat(fnidx, &stat_idx) )
     {
-        if ( hts_verbose >= 1 && stat_idx.st_mtime < stat_main.st_mtime )
-            fprintf(stderr, "Warning: The index file is older than the data file: %s\n", fnidx);
+        if ( stat_idx.st_mtime < stat_main.st_mtime )
+            hts_log_warning("The index file is older than the data file: %s", fnidx);
     }
 
     return hts_idx_load_local(fnidx);
@@ -2323,7 +2387,53 @@ size_t hts_realloc_or_die(size_t n, size_t m, size_t m_sz, size_t size,
     return new_m;
 
  die:
-    if (hts_verbose > 1)
-        fprintf(stderr, "[E::%s] %s\n", func, strerror(errno));
+    hts_log_error("%s", strerror(errno));
     exit(1);
+}
+
+void hts_set_log_level(enum htsLogLevel level)
+{
+    hts_verbose = level;
+}
+
+enum htsLogLevel hts_get_log_level()
+{
+    return hts_verbose;
+}
+
+static char get_severity_tag(enum htsLogLevel severity)
+{
+    switch (severity) {
+    case HTS_LOG_ERROR:
+        return 'E';
+    case HTS_LOG_WARNING:
+        return 'W';
+    case HTS_LOG_INFO:
+        return 'I';
+    case HTS_LOG_DEBUG:
+        return 'D';
+    case HTS_LOG_TRACE:
+        return 'T';
+    default:
+        break;
+    }
+
+    return '*';
+}
+
+void hts_log(enum htsLogLevel severity, const char *context, const char *format, ...)
+{
+    int save_errno = errno;
+    if (severity <= hts_verbose) {
+        va_list argptr;
+
+        fprintf(stderr, "[%c::%s] ", get_severity_tag(severity), context);
+
+        va_start(argptr, format);
+        vfprintf(stderr, format, argptr);
+        va_end(argptr);
+
+        fprintf(stderr, "\n");
+    }
+    errno = save_errno;
 }

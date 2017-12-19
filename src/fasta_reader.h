@@ -2,6 +2,7 @@
 #define FASTA_READER_H_
 
 #include <assert.h>
+#include <iostream>
 #include <map>
 #include <stdlib.h>
 #include <string>
@@ -40,6 +41,10 @@ class FastaReader {
   void add_index(const std::string& path);
   void init(const std::string& path);
 
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  FastaReader(const FastaReader& other);
+  FastaReader& operator=(const FastaReader& other);
+
  public:
   /*
    * PATH is either (i)  a single indexed FASTA file, containing one or more chromosomes
@@ -61,14 +66,8 @@ class FastaReader {
   void get_sequence(const std::string& chrom, std::string& seq){
     std::string chrom_key = chrom;
     auto index_iter = chrom_to_index_.find(chrom);
-    if (index_iter == chrom_to_index_.end()){
-      if (chrom.size() > 3 && string_starts_with(chrom, "chr")){
-	chrom_key  = chrom.substr(3);
-	index_iter = chrom_to_index_.find(chrom_key);
-      }
-      if (index_iter == chrom_to_index_.end())
-	printErrorAndDie("No entry for chromosome " + chrom + " found in FASTA files"); 
-    }
+    if (index_iter == chrom_to_index_.end())
+      printErrorAndDie("No entry for chromosome " + chrom + " found in FASTA files");
 
     int length;
     char* result = fai_fetch(index_iter->second, chrom_key.c_str(), &length);
@@ -84,14 +83,8 @@ class FastaReader {
   void get_sequence(const std::string& chrom, int32_t start, int32_t end, std::string& seq){
     std::string chrom_key = chrom;
     auto index_iter = chrom_to_index_.find(chrom);
-    if (index_iter == chrom_to_index_.end()){
-      if (chrom.size() > 3 && string_starts_with(chrom, "chr")){
-	chrom_key  = chrom.substr(3);
-	index_iter = chrom_to_index_.find(chrom_key);
-      }
-      if (index_iter == chrom_to_index_.end())
+    if (index_iter == chrom_to_index_.end())
       printErrorAndDie("No entry for chromosome " + chrom + " found in FASTA files");
-    }
       
     int length;
     char* result = faidx_fetch_seq(index_iter->second, chrom_key.c_str(), start, end, &length);
@@ -99,6 +92,19 @@ class FastaReader {
     seq.assign(result, length);
     free((void *)result);
   }
+
+  /* Returns the length of the sequence with name CHROM or -1 if no such sequence exists */
+  int64_t get_sequence_length(const std::string& chrom){
+    auto index_iter = chrom_to_index_.find(chrom);
+    if (index_iter == chrom_to_index_.end())
+      return -1;
+
+    return faidx_seq_len(index_iter->second, chrom.c_str());
+  }
+
+  void write_all_contigs_to_vcf(std::ostream& out);
+
+  void write_contigs_to_vcf(const std::vector<std::string>& chroms, std::ostream& out);
 };
 
 #endif

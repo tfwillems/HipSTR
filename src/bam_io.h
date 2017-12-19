@@ -49,6 +49,7 @@ private:
 public:
   bam1_t *b_;
   std::string file_;
+  std::string ref_, mate_ref_;
   bool built_;
   int32_t length_;
   int32_t pos_, end_pos_;
@@ -62,7 +63,7 @@ public:
   }
 
   BamAlignment(const BamAlignment &aln)
-    : bases_(aln.bases_), qualities_(aln.qualities_), cigar_ops_(aln.cigar_ops_), file_(aln.file_){
+    : bases_(aln.bases_), qualities_(aln.qualities_), cigar_ops_(aln.cigar_ops_), file_(aln.file_), ref_(aln.ref_), mate_ref_(aln.mate_ref_){
     b_ = bam_init1();
     bam_copy1(b_, aln.b_);
     built_     = aln.built_;
@@ -74,6 +75,8 @@ public:
   BamAlignment& operator=(const BamAlignment& aln){
     bam_copy1(b_, aln.b_);
     file_      = aln.file_;
+    ref_       = aln.ref_;
+    mate_ref_  = aln.mate_ref_;
     built_     = aln.built_;
     length_    = aln.length_;
     pos_       = aln.pos_;
@@ -100,14 +103,13 @@ public:
   /* Name of the read */
   std::string Name()            const { return std::string(bam_get_qname(b_)); }
 
-  /* ID number for reference sequence */
-  int32_t RefID()               const { return b_->core.tid;      }
+  /* Name of the read's reference sequence */
+  const std::string& Ref()      const { return ref_;              }
 
   /* Mapping quality score*/
   uint16_t MapQuality()         const { return b_->core.qual;     }
 
-  /* ID number for mate's reference sequence */
-  int32_t MateRefID()           const { return b_->core.mtid;     }
+  const std::string& MateRef()  const { return mate_ref_;         }
 
   /* 0-based position where mate's alignment starts */
   int32_t MatePosition()        const { return b_->core.mpos;     }
@@ -309,9 +311,7 @@ public:
 };
 
 
-
-
-
+std::string BuildCigarString(const std::vector<CigarOp>& cigar_data);
 
 
 class ReadGroup {
@@ -345,30 +345,34 @@ class ReadGroup {
 
 
 class BamHeader {
- private:
+ protected:
   std::map<std::string, int32_t> seq_indices_;
   std::vector<std::string> seq_names_;
   std::vector<uint32_t> seq_lengths_;
   std::vector<ReadGroup> read_groups_;
 
-  void parse_read_groups();
+  void parse_read_groups(const char *text);
 
  public:
   bam_hdr_t *header_;
 
   explicit BamHeader(bam_hdr_t *header){
-    header_ = bam_hdr_dup(header);
+    header_ = header;
     for (int32_t i = 0; i < header_->n_targets; i++){
       seq_names_.push_back(std::string(header_->target_name[i]));
       seq_lengths_.push_back(header_->target_len[i]);
       seq_indices_.insert(std::pair<std::string, int32_t>(seq_names_.back(), i));
     }
-    parse_read_groups();
+    parse_read_groups(header_->text);
   }
 
   const std::vector<uint32_t>& seq_lengths()  const { return seq_lengths_; }
   const std::vector<std::string>& seq_names() const { return seq_names_;   }
-  const std::vector<ReadGroup>& read_groups() const { return read_groups_; }
+  virtual const std::vector<ReadGroup>& read_groups(int file_index) const {
+    assert(file_index == 0);
+    return read_groups_;
+  }
+
 
   int32_t num_seqs() const { return header_->n_targets; }
   int32_t ref_id(const std::string& ref) const {
@@ -391,13 +395,35 @@ class BamHeader {
       return seq_lengths_[ref_id];
     printErrorAndDie("Invalid reference ID provided to ref_length() function");
   }
-
-  ~BamHeader(){
-    bam_hdr_destroy(header_);
-  }
 };
 
+void compare_bam_headers(const BamHeader* hdr_a, const BamHeader* hdr_b, const std::string& file_a, const std::string& file_b);
 
+
+class BamMultiHeader : public BamHeader {
+ private:
+  std::string base_file_name_;
+  std::vector< std::vector<ReadGroup> > read_groups_by_file_;
+
+ public:
+ BamMultiHeader(const BamHeader* header, const std::string& filename) : BamHeader(header->header_){
+    base_file_name_ = filename;
+    read_groups_by_file_.push_back(read_groups_);
+    read_groups_.clear();
+  }
+
+  void add_header(const BamHeader* header, const std::string& file_name){
+    // Ensure that the header sequences are consistent
+    compare_bam_headers(this, header, base_file_name_, file_name);
+
+    // Add the read groups
+    parse_read_groups(header->header_->text);
+    read_groups_by_file_.push_back(read_groups_);
+    read_groups_.clear();
+  }
+
+  const std::vector<ReadGroup>& read_groups(int file_index) const { return read_groups_by_file_[file_index]; }
+};
 
 
 
@@ -409,79 +435,56 @@ private:
   hts_idx_t *idx_;
   std::string path_;
   BamHeader*  header_;
+  bool shared_header_;
+  bool cram_done_;
 
   // Instance variables for the most recently set region
   hts_itr_t *iter_;        // Iterator
   std::string chrom_;      // Chromosome
-  int32_t     start_;      // Start pos
-  uint64_t    min_offset_; // Offset after first alignment
+  int32_t     start_;      // Start position
+  int32_t     end_;        // End position
+  uint64_t    min_offset_; // Offset after first alignment. For BAMs, this is a memory offset, while for CRAMs its
+                           // the index of the first alignment in the CRAM slice
   BamAlignment first_aln_; // First alignment
+  bool reuse_first_aln_;
+
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  BamCramReader(const BamCramReader& other);
+  BamCramReader& operator=(const BamCramReader& other);
 
   bool file_exists(const std::string& path){
     return (access(path.c_str(), F_OK) != -1);
   }
 
+  void clear_cram_data_structures();
+
 public:
-  BamCramReader(const std::string& path, std::string fasta_path = "")
-    : path_(path), chrom_(""){
-
-    // Open the file itself
-    if (!file_exists(path))
-      printErrorAndDie("File " + path + " doest not exist");
-    in_ = sam_open(path.c_str(), "r");
-    if (in_ == NULL)
-      printErrorAndDie("Failed to open file " + path);
-
-    if (in_->is_cram){
-      if (fasta_path.empty())
-	printErrorAndDie("Must specify a FASTA reference file path for CRAM file " + path);
-      
-      // Open the FASTA reference file for the CRAM
-      char* fasta = new char[fasta_path.size()+1];
-      for (size_t i = 0; i < fasta_path.size(); ++i)
-	fasta[i] = fasta_path[i];
-      fasta[fasta_path.size()] = '\0';
-      if (cram_load_reference(in_->fp.cram, fasta) < 0)
-	printErrorAndDie("Failed to open FASTA reference file for CRAM file");
-      delete [] fasta;
-    }
-
-    // Read the header
-    if ((hdr_ = sam_hdr_read(in_)) == 0)
-      printErrorAndDie("Failed to read the header for file " + path);
-    header_ = new BamHeader(hdr_);
-
-    // Open the index
-    idx_ = sam_index_load(in_, path.c_str());
-    if (idx_ == NULL) 
-      printErrorAndDie("Failed to load the index for file " + path);
-
-    iter_       = NULL;
-    start_      = -1;
-    min_offset_ = 0;
-  }
+  BamCramReader(const std::string& path, std::string fasta_path = "");
 
   const BamHeader* bam_header() const { return header_; }
   const std::string& path()     const { return path_;   }
   
-  ~BamCramReader(){
-    bam_hdr_destroy(hdr_);
-    delete header_;
-    sam_close(in_);
-
-    hts_idx_destroy(idx_);
-
-    if (iter_ != NULL)
-      hts_itr_destroy(iter_);
-  }
+  ~BamCramReader();
 
   bool GetNextAlignment(BamAlignment& aln);
+
+  // Prepare the BAM/CRAM for reading the entire chromosome
+  bool SetChromosome(const std::string& chrom);
   
+  // Prepare the BAM/CRAM for reading all alignments overlapping the provided region
   bool SetRegion(const std::string& chrom, int32_t start, int32_t end);
+
+  void use_shared_header(BamHeader* header){
+    if (!shared_header_){
+      bam_hdr_destroy(hdr_);
+      delete header_;
+    }
+
+    shared_header_ = true;
+    header_        = header;
+    hdr_           = header_->header_;
+  }
 };
-
-
-void compare_bam_headers(const BamHeader* hdr_a, const BamHeader* hdr_b, const std::string& file_a, const std::string& file_b);
 
 
 
@@ -491,15 +494,26 @@ void compare_bam_headers(const BamHeader* hdr_a, const BamHeader* hdr_b, const s
 class BamCramMultiReader {
  private:
   std::vector<BamCramReader*> bam_readers_;
+  std::vector<bool> reader_unset_;
   std::vector<BamAlignment> cached_alns_;
   std::vector<std::pair<int32_t, int32_t> > aln_heap_;
   int merge_type_;
+  BamMultiHeader* multi_header_;
+
+  // Instance variables for the most recently set region
+  std::string chrom_;      // Chromosome
+  int32_t     start_;      // Start position
+  int32_t     end_;        // End position
+
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  BamCramMultiReader(const BamCramMultiReader& other);
+  BamCramMultiReader& operator=(const BamCramMultiReader& other);
 
  public:
   const static int ORDER_ALNS_BY_POSITION = 0;
   const static int ORDER_ALNS_BY_FILE     = 1;
 
-  BamCramMultiReader(const std::vector<std::string>& paths, std::string fasta_path = "", int merge_type = ORDER_ALNS_BY_POSITION){
+  BamCramMultiReader(const std::vector<std::string>& paths, std::string fasta_path = "", int merge_type = ORDER_ALNS_BY_POSITION, bool share_headers = true){
     if (paths.empty())
       printErrorAndDie("Must provide at least one file to BamCramMultiReader constructor");
     if (merge_type != ORDER_ALNS_BY_POSITION && merge_type != ORDER_ALNS_BY_FILE)
@@ -507,27 +521,29 @@ class BamCramMultiReader {
     for (size_t i = 0; i < paths.size(); i++){
       cached_alns_.push_back(BamAlignment());
       bam_readers_.push_back(new BamCramReader(paths[i], fasta_path));
-      compare_bam_headers(bam_readers_[0]->bam_header(), bam_readers_[i]->bam_header(), paths[0], paths[i]);
+      if (i == 0)
+	multi_header_ = new BamMultiHeader(bam_readers_[i]->bam_header(), paths[i]);
+      else {
+	multi_header_->add_header(bam_readers_[i]->bam_header(), paths[i]);
+	if (share_headers)
+	  bam_readers_[i]->use_shared_header(multi_header_);
+      }
     }
-    merge_type_ = merge_type;
+    merge_type_   = merge_type;
+    reader_unset_ = std::vector<bool>(bam_readers_.size(), false);
+    chrom_        = "";
+    start_        = -1;
+    end_          = -1;
   }
 
   ~BamCramMultiReader(){
+    delete multi_header_;
     for (size_t i = 0; i < bam_readers_.size(); i++)
       delete bam_readers_[i];
   }
 
   int get_merge_type() const { return merge_type_; }
-
-  const BamHeader* bam_header() const {
-    return bam_readers_[0]->bam_header();
-  }
-
-  const BamHeader* bam_header(int file_index) const {
-    if (file_index >= 0 && file_index < bam_readers_.size())
-      return bam_readers_[file_index]->bam_header(); 
-    printErrorAndDie("Invalid file index provided to bam_header() function");
-  }
+  const BamHeader* bam_header() const { return multi_header_; }
 
   bool SetRegion(const std::string& chrom, int32_t start, int32_t end);
 
@@ -544,6 +560,10 @@ class BamCramMultiReader {
 class BamWriter {
  private:
   BGZF* output_;
+
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  BamWriter(const BamWriter& other);
+  BamWriter& operator=(const BamWriter& other);
 
  public:
   BamWriter(const std::string& path, const BamHeader* bam_header){

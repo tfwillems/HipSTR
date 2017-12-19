@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "bgzf_streams.h"
-#include "denovo_scanner.h"
+#include "denovos/denovo_scanner.h"
 #include "error.h"
 #include "haplotype_tracker.h"
 #include "pedigree.h"
@@ -174,7 +174,7 @@ int main(int argc, char** argv){
     }
 
     output << region_iter->chrom() << "\t" << region_iter->start();
-    haplotype_tracker.advance(region_iter->chrom(), region_iter->start(), sites_to_skip, logger);
+    haplotype_tracker.advance(region_iter->chrom(), region_iter->start(), sites_to_skip);
     for (auto family_iter = families.begin(); family_iter != families.end(); ++family_iter){
       std::string mother = family_iter->get_mother();
       std::string father = family_iter->get_father();

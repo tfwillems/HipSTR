@@ -94,8 +94,6 @@ class Haplotype {
     assert(false);
   }
 
-  bool position_to_haplotype_index(int32_t pos, int& haplotype_index) const;
-
   std::string get_seq() const {
     std::stringstream ss;
     for (int i = 0; i < num_blocks(); i++)
