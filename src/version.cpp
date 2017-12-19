@@ -1,2 +1,2 @@
 #include "version.h"
-const std::string VERSION = "v0.6";
+const std::string VERSION = "v0.6.1";
