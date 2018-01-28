@@ -95,13 +95,13 @@ char *bcf_sr_strerror(int errnum)
 int bcf_sr_set_opt(bcf_srs_t *readers, bcf_sr_opt_t opt, ...)
 {
     va_list args;
-    switch (opt) 
+    switch (opt)
     {
         case BCF_SR_REQUIRE_IDX:
             readers->require_index = 1;
             return 0;
 
-        case BCF_SR_PAIR_LOGIC: 
+        case BCF_SR_PAIR_LOGIC:
             va_start(args, opt);
             BCF_SR_AUX(readers)->sort.pair = va_arg(args, int);
             return 0;
@@ -598,7 +598,10 @@ int _reader_next_line(bcf_srs_t *files)
             {
                 min_pos = files->readers[i].buffer[1]->pos;
                 chr = bcf_seqname(files->readers[i].header, files->readers[i].buffer[1]);
+                bcf_sr_sort_set_active(&BCF_SR_AUX(files)->sort, i);
             }
+            else if ( min_pos==files->readers[i].buffer[1]->pos )
+                bcf_sr_sort_add_active(&BCF_SR_AUX(files)->sort, i);
         }
         if ( min_pos==INT_MAX )
         {
