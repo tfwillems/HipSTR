@@ -252,7 +252,11 @@ bool BamCramReader::GetNextAlignment(BamAlignment& aln){
     return true;
   }
 
-  if (sam_itr_next(in_, iter_, aln.b_) < 0 || aln.b_->core.pos > end_+1){
+  int ret = sam_itr_next(in_, iter_, aln.b_);
+  if ((ret < 0) || aln.b_->core.pos > end_+1){
+    if (ret < -1)
+      printErrorAndDie("Invalid record encountered in " + path_ + ". Please ensure the BAM/CRAM is not truncated and is properly formatted");
+
     if (in_->is_cram){
       // Don't destroy the iterator, as we may want to reuse it later
       cram_done_ = true;
