@@ -65,6 +65,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Use our own drand48() symbol (used by ks_shuffle) to avoid portability
+// problems on Windows.  Don't include htslib/hts_os.h for this as it
+// may not get on with older attempts to fix this in code that includes
+// this file.
+extern double hts_drand48(void);
+
 typedef struct {
 	void *left, *right;
 	int depth;
@@ -261,7 +271,7 @@ typedef struct {
 		int i, j;														\
 		for (i = n; i > 1; --i) {										\
 			type_t tmp;													\
-			j = (int)(drand48() * i);									\
+			j = (int)(hts_drand48() * i);								\
 			tmp = a[j]; a[j] = a[i-1]; a[i-1] = tmp;					\
 		}																\
 	}
@@ -282,5 +292,9 @@ typedef const char *ksstr_t;
 
 #define KSORT_INIT_GENERIC(type_t) KSORT_INIT(type_t, type_t, ks_lt_generic)
 #define KSORT_INIT_STR KSORT_INIT(str, ksstr_t, ks_lt_str)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

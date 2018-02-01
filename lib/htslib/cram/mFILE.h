@@ -48,6 +48,11 @@ typedef struct {
     size_t flush_pos;
 } mFILE;
 
+// Work around a clash with winuser.h
+#ifdef MF_APPEND
+#  undef MF_APPEND
+#endif
+
 #define MF_READ    1
 #define MF_WRITE   2
 #define MF_APPEND  4
@@ -76,7 +81,6 @@ void mfrecreate(mFILE *mf, char *data, int size);
 void *mfsteal(mFILE *mf, size_t *size_out);
 char *mfgets(char *s, int size, mFILE *mf);
 int mfflush(mFILE *mf);
-int mfprintf(mFILE *mf, char *fmt, ...);
 mFILE *mstdin(void);
 mFILE *mstdout(void);
 mFILE *mstderr(void);
