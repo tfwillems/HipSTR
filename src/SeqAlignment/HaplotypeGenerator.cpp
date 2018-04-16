@@ -330,14 +330,6 @@ bool HaplotypeGenerator::add_haplotype_block(const Region& region, const std::st
   int ideal_min_length = 3*region.period(); // Would ideally have at least 3 repeat units in each allele after trimming
   gen_candidate_seqs(ref_seq, ideal_min_length, alignments, padded_vcf_alleles, region_start, region_end, sequences);
 
-  // Ensure that the shortest allele is large enough for the maximum stutter deletion
-  for (unsigned int i = 0; i < sequences.size(); i++){
-    if (sequences[i].size() < -1*MAX_STUTTER_REPEAT_DEL*stutter_model->period()){
-      failure_msg_ = "Shortest allele is too short for the stutter model";
-      return false;
-    }
-  }
-
   // Ensure that the new haplotype block won't overlap with previous blocks
   if (!hap_blocks_.empty() && (region_start < hap_blocks_.back()->end() + MIN_BLOCK_SPACING)){
     failure_msg_ = "Haplotype blocks are too near to one another";
