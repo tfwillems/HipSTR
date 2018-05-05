@@ -172,7 +172,7 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
     if (gt_a == gt_b)
       log_unphased_posteriors.push_back(log_phased_prob);
     else {
-      double alt_log_phased_prob =  total_log_phased_posteriors[sample_index][num_variants*gt_b + gt_a];
+      double alt_log_phased_prob = total_log_phased_posteriors[sample_index][num_variants*gt_b + gt_a];
       log_unphased_posteriors.push_back(log_sum_exp(log_phased_prob, alt_log_phased_prob));
     }
   }
@@ -182,30 +182,39 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
   // Compute GLs and phased GLs if necessary
   if (calc_gls || calc_phased_gls || calc_pls){
     // The genotype likelihoods should not contain the priors we used during the posterior calculation
-    // To obtain the true likelihoods, we subtract out the priors from the posteriors using these values.
+    // To obtain the true likelihoods, we subtract out the priors from the posteriors using these values
     gls = std::vector< std::vector<double> >(num_samples_);
     if (calc_phased_gls)
       phased_gls = std::vector< std::vector<double> >(num_samples_);
     double hom_ll_correction  = log_homozygous_prior();
-    double het_ll_correction  = (haploid_ ? 0 : log_heterozygous_prior());                    // If haploid, don't correct hetz genotypes as they're impossible
-    double nconfig_correction = int_log(2) + 2*(int_log(num_alleles_)-int_log(num_variants)); // Need to correct for the number of haplotypes whose GL's we're averaging
+    double het_ll_correction  = (haploid_ ? 0 : log_heterozygous_prior()); // If haploid, don't correct hetz genotypes as they're impossible
+
+    // Precompute corrections for the number of haplotypes we will average for the GLs or PHASEDGLs
+    double gl_nconfig_corr, pgl_nconfig_corr;
+    if (haploid_){
+      gl_nconfig_corr  = int_log(2) + int_log(num_alleles_) - int_log(num_variants);
+      pgl_nconfig_corr = int_log(num_alleles_) - int_log(num_variants);
+    }
+    else {
+      gl_nconfig_corr  = int_log(2) + 2*(int_log(num_alleles_) - int_log(num_variants));
+      pgl_nconfig_corr = 2*(int_log(num_alleles_) - int_log(num_variants));
+    }
+
+    // Average the GLs and PHASEDGLs across all haplotype configurations
     int gt_index = 0;
     for (int index_1 = 0; index_1 < num_variants; ++index_1){
       for (int index_2 = 0; index_2 < num_variants; ++index_2, ++gt_index){
-	int alt_gt_index              = index_2*num_variants + index_1;
-	double gl_ll_correction       = (index_1 == index_2 ? hom_ll_correction : het_ll_correction) + nconfig_correction;
-	double phasedgl_ll_correction = (index_1 == index_2 ? hom_ll_correction : het_ll_correction);
+	int alt_gt_index   = index_2*num_variants + index_1;
+	double gl_ll_corr  = (index_1 == index_2 ? hom_ll_correction : het_ll_correction) + gl_nconfig_corr;
+	double pgl_ll_corr = (index_1 == index_2 ? hom_ll_correction : het_ll_correction) + pgl_nconfig_corr;
 	for (int sample_index = 0; sample_index < num_samples_; sample_index++){
-	  if (index_2 <= index_1){
-	    if (!haploid_ || (index_1 == index_2)){
-	      double gl_base_e = sample_total_LLs_[sample_index] - gl_ll_correction + fast_log_sum_exp(total_log_phased_posteriors[sample_index][gt_index],
-												       total_log_phased_posteriors[sample_index][alt_gt_index]);
-	      gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
-	    }
+	  if ((index_2 <= index_1) && (!haploid_ || (index_1 == index_2))){
+	    double gl_base_e = sample_total_LLs_[sample_index] - gl_ll_corr + fast_log_sum_exp(total_log_phased_posteriors[sample_index][gt_index],
+											       total_log_phased_posteriors[sample_index][alt_gt_index]);
+	    gls[sample_index].push_back(gl_base_e*LOG_E_BASE_10); // Convert from ln to log10
 	  }
-	  if (calc_phased_gls)
-	    if (!haploid_ || (index_1 == index_2))
-	      phased_gls[sample_index].push_back((total_log_phased_posteriors[sample_index][gt_index] + sample_total_LLs_[sample_index] - phasedgl_ll_correction)*LOG_E_BASE_10);
+	  if (calc_phased_gls && (!haploid_ || (index_1 == index_2)))
+	    phased_gls[sample_index].push_back((sample_total_LLs_[sample_index] - pgl_ll_corr + total_log_phased_posteriors[sample_index][gt_index])*LOG_E_BASE_10);
 	}
       }
     }
