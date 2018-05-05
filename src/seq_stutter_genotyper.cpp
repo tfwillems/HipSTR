@@ -37,7 +37,7 @@ int max_index(double* vals, unsigned int num_vals){
   return best_index;
 }
 
-bool SeqStutterGenotyper::assemble_flanks(int max_flank_haplotypes, double min_flank_freq, std::ostream& logger){
+bool SeqStutterGenotyper::assemble_flanks(int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq, std::ostream& logger){
   std::vector<AlignmentTrace*> traced_alns;
   retrace_alignments(traced_alns);
 
@@ -45,12 +45,15 @@ bool SeqStutterGenotyper::assemble_flanks(int max_flank_haplotypes, double min_f
   logger << "Reassembling flanking sequences" << std::endl;
   std::vector< std::vector<std::string> > alleles_to_add (haplotype_->num_blocks());
   std::vector<bool> realign_sample(num_samples_, false);
+  int new_total_haps = haplotype_->num_combs();
 
   for (int flank = 0; flank < 2; flank++){
     std::string flank_dir = (flank == 0 ? "left" : "right");
     int block_index       = (flank == 0 ? 0 : haplotype_->num_blocks()-1);
     std::string ref_seq   = hap_blocks_[block_index]->get_seq(0);
     int max_k             = std::min(MAX_KMER, ref_seq.size() == 0 ? -1 : (int)ref_seq.size()-1);
+    new_total_haps       /= haplotype_->num_options(block_index);
+
     int kmer_length;
     if (!DebruijnGraph::calc_kmer_length(ref_seq, MIN_KMER, max_k, kmer_length))
       return false;
@@ -162,10 +165,18 @@ bool SeqStutterGenotyper::assemble_flanks(int max_flank_haplotypes, double min_f
 	alleles_to_add[block_index].push_back(hap_iter->first);
       }
       logger << "\t" << ref_seq << "\t" << "REF_SEQ" << "\n" << std::endl;
+      new_total_haps *= (1 + haplotype_indexes.size());
     }
   }
   locus_assembly_time   = (clock() - locus_assembly_time)/CLOCKS_PER_SEC;
   total_assembly_time_ += locus_assembly_time;
+
+  // Verify that the new flanks won't result in too many candidate haplotypes
+  if (new_total_haps > max_total_haplotypes){
+    logger << "Aborting genotyping of the locus as too many candidate haplotypes were found (# Found = " << new_total_haps <<  ", MAX = " << max_total_haplotypes << ")\n"
+           << " See the --max-haps option " << "\n";
+    return false;
+  }
 
   // Determine which read pools we need to realign and which read's probabilities we should update
   // We need to realign a pool if any of its associated reads has a sample with a new candidate flank
@@ -555,8 +566,9 @@ void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplo
   total_hap_aln_time_ += locus_hap_aln_time;
 }
 
-bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::ostream& logger){
+bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(int max_total_haplotypes, std::ostream& logger){
   std::vector< std::vector<int> > alleles_to_remove(haplotype_->num_blocks());
+  int new_total_haps = haplotype_->num_combs();
   while (true){
     // Look for candidate alleles present in stutter artifacts
     bool added_alleles = false;
@@ -567,10 +579,19 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::ostream& logger){
 	get_stutter_candidate_alleles(i, logger, stutter_seqs[i]);
 	added_alleles |= !stutter_seqs[i].empty();
 	std::sort(stutter_seqs[i].begin(), stutter_seqs[i].end(), orderByLengthAndSequence);
+	new_total_haps /= haplotype_->num_options(i);
+	new_total_haps *= (haplotype_->num_options(i) + stutter_seqs[i].size());
       }
     }
     // Terminate if no new alleles identified in any of the blocks
     if (!added_alleles) break;
+
+    // Quit if the haplotype now has too many candidates
+    if (new_total_haps > max_total_haplotypes){
+      logger << "Aborting genotyping of the locus as too many candidate haplotypes were found (# Found = " << new_total_haps <<  ", MAX = " << max_total_haplotypes << ")\n"
+	     << " See the --max-haps option " << "\n";
+      return false;
+    }
 
     // Otherwise, add the new alleles to the haplotype and recompute the relevant values
     add_and_remove_alleles(alleles_to_remove, stutter_seqs);
@@ -578,12 +599,18 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(std::ostream& logger){
   return true;
 }
 
-bool SeqStutterGenotyper::genotype(int max_flank_haplotypes, double min_flank_freq, std::ostream& logger){
+bool SeqStutterGenotyper::genotype(int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq, std::ostream& logger){
   // Unsuccessful initialization. May be due to
   // 1) Failing to find the corresponding alleles in the VCF (if one has been provided)
   // 2) Large deletion extending past STR
   if (!initialized_)
     return false;
+
+  if (haplotype_->num_combs() > max_total_haplotypes){
+    logger << "Aborting genotyping of the locus as too many candidate haplotypes were found (# Found = " << haplotype_->num_combs() <<  ", MAX = " << max_total_haplotypes << ")\n"
+	   << " See the --max-haps option " << "\n";
+    return false;
+  }
 
   // Check if we can assemble the sequences flanking the STR
   // If not, it's likely that the flanks are too repetitive and will introduce genotyping errors
@@ -612,7 +639,7 @@ bool SeqStutterGenotyper::genotype(int max_flank_haplotypes, double min_flank_fr
 
   if (ref_vcf_ == NULL){
     // Look for additional alleles in stutter artifacts and align to them (if necessary)
-    if (!id_and_align_to_stutter_alleles(logger))
+    if (!id_and_align_to_stutter_alleles(max_total_haplotypes, logger))
       return false;
 
     // Remove alleles with no MAP genotype calls and recompute the posteriors
@@ -636,7 +663,7 @@ bool SeqStutterGenotyper::genotype(int max_flank_haplotypes, double min_flank_fr
   }
 
   if (reassemble_flanks_)
-    if (!assemble_flanks(max_flank_haplotypes, min_flank_freq, logger))
+    if (!assemble_flanks(max_total_haplotypes, max_flank_haplotypes, min_flank_freq, logger))
       return false;
 
   return true;
@@ -1430,7 +1457,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   }
 }
 
-bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max_flank_haplotypes, double min_flank_freq,
+bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq,
 						  int max_em_iter, double abs_ll_converge, double frac_ll_converge){
   logger << "Retraining EM stutter genotyper using maximum likelihood alignments" << std::endl;
   std::vector<AlignmentTrace*> traced_alns;
@@ -1468,5 +1495,5 @@ bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max
     block->get_repeat_info()->set_stutter_model(length_genotyper.get_stutter_model());
   }
   trace_cache_.clear();
-  return genotype(max_flank_haplotypes, min_flank_freq, logger);
+  return genotype(max_total_haplotypes, max_flank_haplotypes, min_flank_freq, logger);
 }

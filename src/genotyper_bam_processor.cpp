@@ -228,13 +228,13 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
     seq_genotyper = new SeqStutterGenotyper(region_group, haploid, run_assembly, left_alignments, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq,
 					    stutter_models, ref_vcf_, selective_logger());
 
-    if (seq_genotyper->genotype(MAX_FLANK_HAPLOTYPES, MIN_FLANK_FREQ, selective_logger())) {
+    if (seq_genotyper->genotype(MAX_TOTAL_HAPLOTYPES, MAX_FLANK_HAPLOTYPES, MIN_FLANK_FREQ, selective_logger())) {
       bool pass = true;
 
       // If appropriate, recalculate the stutter model using the haplotype ML alignments,
       // realign the reads and regenotype the samples
       if (recalc_stutter_model_)
-	pass = seq_genotyper->recompute_stutter_models(selective_logger(), MAX_FLANK_HAPLOTYPES, MIN_FLANK_FREQ, MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
+	pass = seq_genotyper->recompute_stutter_models(selective_logger(), MAX_TOTAL_HAPLOTYPES, MAX_FLANK_HAPLOTYPES, MIN_FLANK_FREQ, MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
 
       if (pass){
 	num_genotype_success_++;

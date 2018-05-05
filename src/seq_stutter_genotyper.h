@@ -96,9 +96,8 @@ class SeqStutterGenotyper : public Genotyper {
   void calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype, std::vector<bool>& realign_pool, std::vector<bool>& copy_read);
 
   // Identify alleles present in stutter artifacts. Align each read to the new haplotypes
-  // containing these alleles and incorporate these alignment probabilities
-  // into the relevant data structures
-  bool id_and_align_to_stutter_alleles(std::ostream& logger);
+  // containing these alleles and incorporate these alignment probabilities into the relevant data structures
+  bool id_and_align_to_stutter_alleles(int max_total_haplotypes, std::ostream& logger);
 
   // Exploratory function related to identifying indels in the flanking sequences
   void analyze_flank_indels(std::ostream& logger);
@@ -106,8 +105,8 @@ class SeqStutterGenotyper : public Genotyper {
   // Exploratory function related to identifying SNPs in the flanking sequences
   void analyze_flank_snps(std::ostream& logger);
 
-  // Exploratory function related to using local assembly to identify variants in the flanking sequences
-  bool assemble_flanks(int max_flank_haplotypes, double min_flank_freq, std::ostream& logger);
+  // Use local assembly to identify variants in the flanking sequences, generate new haplotypes and realign reads
+  bool assemble_flanks(int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq, std::ostream& logger);
 
   // Determines the allele index in the given haplotype block that is associated with each haplotype configuration
   // Stores the results in the provided vector
@@ -187,13 +186,13 @@ class SeqStutterGenotyper : public Genotyper {
   double aln_trace_time() { return total_aln_trace_time_;  }
   double assembly_time()  { return total_assembly_time_;   }
 
-  bool genotype(int max_flank_haplotypes, double min_flank_freq, std::ostream& logger);
+  bool genotype(int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq, std::ostream& logger);
 
   /*
    * Recompute the stutter model(s) using the PCR artifacts obtained from the ML alignments
    * and regenotype the samples using this new model
   */
-  bool recompute_stutter_models(std::ostream& logger, int max_flank_haplotypes, double min_flank_freq,
+  bool recompute_stutter_models(std::ostream& logger, int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq,
 				int max_em_iter, double abs_ll_converge, double frac_ll_converge);
 };
 

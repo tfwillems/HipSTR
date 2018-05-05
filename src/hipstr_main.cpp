@@ -29,7 +29,7 @@ bool is_file(const std::string& name){
   return (S_ISREG (st_buf.st_mode));
 }
 
-void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_str_len, int def_max_flanks, double def_min_flank_freq){
+void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_max_str_len, int def_max_haplotypes, int def_max_flanks, double def_min_flank_freq){
   std::cerr << "Usage: HipSTR --bams <list_of_bams> --fasta <genome.fa> --regions <region_file.bed> --str-vcf <str_gts.vcf.gz> [OPTIONS]" << "\n" << "\n"
     
 	    << "Required parameters:" << "\n"
@@ -83,6 +83,8 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG tag and the library is determined from the LB field"     << "\n" << "\n"
 
 	    << "Optional haplotype filtering parameters:" << "\n"
+	    << "\t" << "--max-haps <max_haplotypes>           "  << "\t" << "Maximum allowable candidate haplotypes for an STR (Default = " << def_max_haplotypes << ")" << "\n"
+	    << "\t" << "                                      "  << "\t" << " Loci with more candidate haplotypes will not be genotyped" << "\n"
 	    << "\t" << "--max-hap-flanks <max_flanks>         "  << "\t" << "Maximum allowable non-reference flanking sequences for an STR (Default = " << def_max_flanks << ")" << "\n"
 	    << "\t" << "                                      "  << "\t" << " Loci with more candidate flanks will not be genotyped"                              << "\n"
 	    << "\t" << "--min-flank-freq <min_freq>           "  << "\t" << "Filter a flank if its fraction of supporting samples < MIN_FREQ (Default = " << def_min_flank_freq  << ")" << "\n" << "\n"
@@ -126,9 +128,10 @@ void parse_command_line_args(int argc, char** argv,
   int def_max_reads         = bam_processor.MAX_TOTAL_READS;
   int def_max_str_len       = bam_processor.MAX_STR_LENGTH;
   int def_max_flanks        = bam_processor.MAX_FLANK_HAPLOTYPES;
+  int def_max_haplotypes    = bam_processor.MAX_TOTAL_HAPLOTYPES;
   double def_min_flank_freq = bam_processor.MIN_FLANK_FREQ;
   if (argc == 1 || (argc == 2 && std::string("-h").compare(std::string(argv[1])) == 0)){
-    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_max_flanks, def_min_flank_freq);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_max_haplotypes, def_max_flanks, def_min_flank_freq);
     exit(0);
   }
 
@@ -143,6 +146,7 @@ void parse_command_line_args(int argc, char** argv,
     {"fasta",           required_argument, 0, 'f'},
     {"bam-samps",       required_argument, 0, 'g'},
     {"max-hap-flanks",  required_argument, 0, 'G'},
+    {"max-haps",        required_argument, 0, 'J'},
     {"bam-libs",        required_argument, 0, 'q'},
     {"min-reads",       required_argument, 0, 'i'},
     {"min-flank-freq",  required_argument, 0, 'I'},
@@ -242,6 +246,11 @@ void parse_command_line_args(int argc, char** argv,
 	printErrorAndDie("--read-qual-trim requires a single character argument");
       bam_processor.BASE_QUAL_TRIM = std::string(optarg)[0];
       break;
+    case 'J':
+      bam_processor.MAX_TOTAL_HAPLOTYPES = atoi(optarg);
+      if (bam_processor.MAX_TOTAL_HAPLOTYPES <= 1)
+	printErrorAndDie("--max-haps must be greater than 1");
+      break;
     case 'l':
       log_file = std::string(optarg);
       break;
@@ -321,7 +330,7 @@ void parse_command_line_args(int argc, char** argv,
     exit(0);
   }
   if (print_help){
-    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_max_flanks, def_min_flank_freq);
+    print_usage(def_mdist, def_min_reads, def_max_reads, def_max_str_len, def_max_haplotypes, def_max_flanks, def_min_flank_freq);
     exit(0);
   }
   if (quiet_log)
