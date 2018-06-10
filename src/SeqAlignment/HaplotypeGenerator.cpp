@@ -262,14 +262,6 @@ bool HaplotypeGenerator::add_vcf_haplotype_block(int32_t pos, const std::string&
   int32_t region_end   = region_start + vcf_alleles[0].size();
   assert(uppercase(vcf_alleles[0]).compare(uppercase(chrom_seq.substr(region_start, region_end-region_start))) == 0);
 
-  // Ensure that the shortest allele is large enough for the maximum stutter deletion
-  for (unsigned int i = 0; i < vcf_alleles.size(); i++){
-    if (vcf_alleles[i].size() < -1*MAX_STUTTER_REPEAT_DEL*stutter_model->period()){
-      failure_msg_ = "Shortest allele is too short for the stutter model";
-      return false;
-    }
-  }
-
   // Ensure that we don't exceed the chromosome bounds
   if (region_start < REF_FLANK_LEN || region_end + REF_FLANK_LEN >= chrom_seq.size()){
     failure_msg_ = "Haplotype blocks are too near to the chromosome ends";
