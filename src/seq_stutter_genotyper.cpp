@@ -1010,12 +1010,14 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   // Extract the optimal genotypes and their associated likelihoods
   std::vector< std::pair<int,int> > haplotypes, gts;
   std::vector<double> log_phased_posteriors, log_unphased_posteriors, gl_diffs;
+  std::vector<double> hap_log_phased_posteriors, hap_log_unphased_posteriors;
   std::vector< std::vector<double> > gls, phased_gls;
   std::vector< std::vector<int> > pls;
   std::vector<int> hap_to_allele;
   haps_to_alleles(hap_block_index, hap_to_allele);
   int num_variants = haplotype_->get_block(hap_block_index)->num_options();
   extract_genotypes_and_likelihoods(num_variants, hap_to_allele, haplotypes, gts, log_phased_posteriors, log_unphased_posteriors,
+				    hap_log_phased_posteriors, hap_log_unphased_posteriors,
 				    true, gls, gl_diffs, (OUTPUT_PLS == 1), pls, (OUTPUT_PHASED_GLS == 1), phased_gls);
 
   // Extract information about each read and group by sample
@@ -1242,12 +1244,13 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   if (OUTPUT_PLS == 1)       out << ":PL";
   if (!haploid_ && (OUTPUT_PHASED_GLS == 1))
     out << ":PHASEDGL";
+  if (OUTPUT_HAPLOTYPE_DATA) out << ":HQ:PHQ";
   if (OUTPUT_FILTERS == 1)   out << ":FILTER";
 
   // Build the missing genotype string
   // Exclude OUTPUT_FILTERS, as we won't use that to build the missing genotype string
   num_fields += ((output_allele_bias ? 2 : 0) + (output_strand_bias ? 1 : 0)) + (!haploid_ && (OUTPUT_PHASED_GLS == 1) ? 1 : 0);
-  num_fields += (OUTPUT_ALLREADS + OUTPUT_MALLREADS + OUTPUT_GLS + OUTPUT_PLS);
+  num_fields += (OUTPUT_ALLREADS + OUTPUT_MALLREADS + OUTPUT_GLS + OUTPUT_PLS + 2*OUTPUT_HAPLOTYPE_DATA);
   std::stringstream empty_gt;
   for (int n = 0; n < num_fields; n++)
     empty_gt << ".:";
@@ -1415,6 +1418,9 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
 	}
       }
     }
+
+    if (OUTPUT_HAPLOTYPE_DATA)
+      out << ":" << exp(hap_log_unphased_posteriors[sample_index]) << ":" << exp(hap_log_phased_posteriors[sample_index]);
 
     // Reason for filtering the call, which is none if we made it here
     if (OUTPUT_FILTERS == 1)

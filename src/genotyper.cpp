@@ -129,11 +129,13 @@ double Genotyper::calc_gl_diff(const std::vector<double>& gls, int gt_a, int gt_
 void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<int>& hap_to_allele,
 						  std::vector< std::pair<int,int>  >& best_haplotypes,
 						  std::vector< std::pair<int,int>  >& best_gts,
-						  std::vector<double>& log_phased_posteriors, std::vector<double>& log_unphased_posteriors,
+						  std::vector<double>& log_phased_posteriors,     std::vector<double>& log_unphased_posteriors,
+						  std::vector<double>& hap_log_phased_posteriors, std::vector<double>& hap_log_unphased_posteriors,
 						  bool calc_gls,        std::vector< std::vector<double> >& gls, std::vector<double>& gl_diffs,
 						  bool calc_pls,        std::vector< std::vector<int> >& pls,
 						  bool calc_phased_gls, std::vector< std::vector<double> >& phased_gls){
   assert(log_phased_posteriors.empty() && log_unphased_posteriors.empty() && gl_diffs.empty());
+  assert(hap_log_phased_posteriors.empty() && hap_log_unphased_posteriors.empty());
   assert(best_haplotypes.empty() && best_gts.empty() && gls.empty() && pls.empty() && phased_gls.empty());
 
   // Use the standard genotyper approach to find the ML combination of haplotypes
@@ -162,6 +164,19 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
 	total_log_phased_posteriors[sample_index][gt_index] = total;
       }
     }
+  }
+
+  // Extract the posteriors for the optimal phased and unphased haplotypes
+  log_posterior_ptr = log_sample_posteriors_;
+  for (int sample_index = 0; sample_index < num_samples_; sample_index++){
+    int hap_index_a = best_haplotypes[sample_index].first*num_alleles_  + best_haplotypes[sample_index].second;
+    int hap_index_b = best_haplotypes[sample_index].second*num_alleles_ + best_haplotypes[sample_index].first;
+    hap_log_phased_posteriors.push_back(log_posterior_ptr[hap_index_a]);
+    if (hap_index_a != hap_index_b)
+      hap_log_unphased_posteriors.push_back(fast_log_sum_exp(log_posterior_ptr[hap_index_a], log_posterior_ptr[hap_index_b]));
+    else
+      hap_log_unphased_posteriors.push_back(log_posterior_ptr[hap_index_a]);
+    log_posterior_ptr += num_alleles_*num_alleles_;
   }
 
   // Store the aggregated posterior values in the provided vectors
@@ -283,6 +298,9 @@ std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::
       << "where 0 is no bias and more negative values are increasingly biased. 0 for all homozygous genotypes" << "\">" << "\n"
       << "##FORMAT=<ID=" << "DAB"         << ",Number=1,Type=Integer,Description=\"" << "Number of reads used in the AB and FS calculations" << "\">" << "\n";
 
+  if (OUTPUT_HAPLOTYPE_DATA == 1)
+    out << "##FORMAT=<ID=" << "HQ"  << ",Number=1,Type=Float,Description=\"" << "Posterior probability of unphased haplotypes" << "\">" << "\n"
+	<< "##FORMAT=<ID=" << "PHQ" << ",Number=1,Type=Float,Description=\"" << "Posterior probability of phased haplotypes"   << "\">" << "\n";
   if (OUTPUT_ALLREADS == 1)
     out << "##FORMAT=<ID=" << "ALLREADS" << ",Number=1,Type=String,Description=\"" << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n";
   if (OUTPUT_MALLREADS == 1)
@@ -315,4 +333,5 @@ int Genotyper::OUTPUT_PHASED_GLS      = 0;
 int Genotyper::OUTPUT_ALLREADS        = 1;
 int Genotyper::OUTPUT_MALLREADS       = 1;
 int Genotyper::OUTPUT_FILTERS         = 0;
+int Genotyper::OUTPUT_HAPLOTYPE_DATA  = 0;
 float Genotyper::MAX_FLANK_INDEL_FRAC = 0.15;
