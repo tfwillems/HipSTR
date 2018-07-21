@@ -171,7 +171,7 @@ bool BamCramReader::SetRegion(const std::string& chrom, int32_t start, int32_t e
 	  can_reuse     = true;
 	  // When the min_offset_ is 0, we set it to 1 as 0 is the unset value. We therefore undo that change here
 	  // If the offset really was 1, we'll simply consider 1 more alignment that won't overlap the region
-	  ctr->curr_rec = (min_offset_ == 1 ? 0 : min_offset_);
+	  slice->curr_rec = (min_offset_ == 1 ? 0 : min_offset_);
 
 	  // Modify the iterator's start coordinate to reflect the current region
 	  cram_range cur_range = in_->fp.cram->range;
@@ -280,9 +280,11 @@ bool BamCramReader::GetNextAlignment(BamAlignment& aln){
 
   if (min_offset_ == 0){
     if (in_->is_cram){
-      assert(in_->fp.cram != NULL && in_->fp.cram->ctr != NULL && in_->fp.cram->ctr->curr_rec > 0);
+      assert(in_->fp.cram != NULL && in_->fp.cram->ctr != NULL);
+      cram_container *ctr = in_->fp.cram->ctr;
+      assert(ctr->slice != NULL and ctr->slice->curr_rec > 0);
       first_aln_  = aln;
-      min_offset_ = in_->fp.cram->ctr->curr_rec - 1;
+      min_offset_ = ctr->slice->curr_rec - 1;
       if (min_offset_ == 0)
 	min_offset_++;
     }

@@ -140,7 +140,8 @@ class Genotyper {
   void extract_genotypes_and_likelihoods(int num_variants, std::vector<int>& hap_to_allele,
 					 std::vector< std::pair<int,int>  >& best_haplotypes,
 					 std::vector< std::pair<int,int>  >& best_gts,
-					 std::vector<double>& log_phased_posteriors, std::vector<double>& log_unphased_posteriors,
+					 std::vector<double>& log_phased_posteriors,     std::vector<double>& log_unphased_posteriors,
+					 std::vector<double>& hap_log_phased_posteriors, std::vector<double>& hap_log_unphased_posteriors,
 					 bool calc_gls,        std::vector< std::vector<double> >& gls, std::vector<double>& gl_diffs,
 					 bool calc_pls,        std::vector< std::vector<int> >& pls,
 					 bool calc_phased_gls, std::vector< std::vector<double> >& phased_gls);
@@ -154,6 +155,7 @@ class Genotyper {
   static int OUTPUT_FILTERS;          // Output the FILTERS FORMAT field
   static float MAX_FLANK_INDEL_FRAC;  // Only output genotypes if the fraction of a sample's reads with
                                       // indels in the flank is less than this threshold
+  static int OUTPUT_HAPLOTYPE_DATA;   // Output information about the haplotypes (in addition to the genotypes)
 };
 
 #endif

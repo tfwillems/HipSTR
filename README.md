@@ -95,7 +95,7 @@ To demonstrate how you can quickly apply HipSTR to whole-genome sequencing datas
 <a id="mode-1"></a>
 
 #### Mode 1: De novo stutter estimation + STR calling with de novo allele generation
-This mode is identical to the one suggested in the **Quick Start** section as it suits most applications. HipSTR will output the learned stutter models to *stutter_models.txt* and the STR genotypes in bgzipped VCF format to *str_calls.vcf.gz* 
+This mode is identical to the one suggested in the **Quick Start** section as it suits most applications. HipSTR will output the STR genotypes in bgzipped VCF format to *str_calls.vcf.gz* 
 
 ```
 ./HipSTR --bams             run1.bam,run2.bam,run3.bam,run4.bam
@@ -182,6 +182,7 @@ Although **HipSTR** mitigates many of the most common sources of STR genotyping 
 #### FORMAT fields:  
 1. **Q**: Reports the posterior probability of the genotype. We've found that this is the best indicator of quality of an individual sample's genotype and almost always use it to filter calls.   
 2. **DP**, **DSTUTTER** and **DFLANKINDEL**: Identical to the INFO field case, these fields are also available for each sample and can be used in the same way to identify problematic individual calls.  
+3. **AB** and **FS**: Quantify the log10 p-value of the allele bias and the Fisher strand bias, respectively. Large negative values indicate that the degree of bias observed is very unlikely to occur by random chance. In the case of **AB**, this indicates that the number of reads observed per allele is unlikely given the predicted genotype. In the case of **FS**, this indicates that there is a non-random association between sequencing strand and the allele each read is assigned to, suggesting that sequencing errors may be causing one of the reported alleles. Note that these fields are only applicable to diploid genotypes.   
 
 **So what thresholds do we suggest for each of these fields?** The answer really depends on the quality of the sequencing data, the ploidy of the chromosome and the downstream applications. However, we typically apply the following filters usings scripts we've provided in the **scripts** subdirectory of the HipSTR folder:
 
@@ -190,6 +191,8 @@ python scripts/filter_vcf.py  --vcf                   diploid_calls.vcf.gz
                               --min-call-qual         0.9
                               --max-call-flank-indel  0.15
                               --max-call-stutter      0.15
+			      --min-call-allele-bias  -2
+			      --min-call-strand-bias  -2
     
 python scripts/filter_haploid_vcf.py  --vcf                   haploid_calls.vcf.gz
                                       --min-call-qual         0.9
@@ -197,7 +200,7 @@ python scripts/filter_haploid_vcf.py  --vcf                   haploid_calls.vcf.
                                       --max-call-stutter      0.15
 ```
 
-The resulting VCF, which is printed to the standard output stream, will omit calls on a sample-by-sample basis in which any of the following conditions are met: i) the posterior < 90%, ii) more than 15% of reads have a flank indel or iii) more than 15% of reads have a stutter artifact. Calls for samples failing these criteria will be replaced with a "." missing symbol as per the VCF specification. For more filtering options, type either
+The resulting VCF, which is printed to the standard output stream, will omit calls on a sample-by-sample basis in which any of the following conditions are met: i) the posterior < 90%, ii) more than 15% of reads have a flank indel or iii) more than 15% of reads have a stutter artifact. For the diploid VCF, these filters will also remove genotypes with an allele bias or Fisher strand bias p-value less than 0.01 (10^-2). Calls for samples failing these criteria will be replaced with a "." missing symbol as per the VCF specification. For more filtering options, type either
 
 ```
 python scripts/filter_vcf.py -h

@@ -7,8 +7,8 @@
 #include "../stutter_model.h"
 
 // Maximum number of repeats that PCR stutter can add or remove from block's sequence
-const int    MAX_STUTTER_REPEAT_INS = 3;
-const int    MAX_STUTTER_REPEAT_DEL = -3;
+const int    MAX_STUTTER_REPEAT_INS = 6;
+const int    MAX_STUTTER_REPEAT_DEL = -6;
 const double LARGE_NEGATIVE         = -10e6;
 
 class RepeatStutterInfo {
