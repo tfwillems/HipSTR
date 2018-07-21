@@ -95,7 +95,7 @@ To demonstrate how you can quickly apply HipSTR to whole-genome sequencing datas
 <a id="mode-1"></a>
 
 #### Mode 1: De novo stutter estimation + STR calling with de novo allele generation
-This mode is identical to the one suggested in the **Quick Start** section as it suits most applications. HipSTR will output the learned stutter models to *stutter_models.txt* and the STR genotypes in bgzipped VCF format to *str_calls.vcf.gz* 
+This mode is identical to the one suggested in the **Quick Start** section as it suits most applications. HipSTR will output the STR genotypes in bgzipped VCF format to *str_calls.vcf.gz* 
 
 ```
 ./HipSTR --bams             run1.bam,run2.bam,run3.bam,run4.bam
