@@ -107,6 +107,7 @@ public:
     ABS_LL_CONVERGE        = 0.01;
     FRAC_LL_CONVERGE       = 0.001;
     MIN_TOTAL_READS        = 100;
+    MAX_TOTAL_HAPLOTYPES   = 1000;
     MAX_FLANK_HAPLOTYPES   = 4;
     MIN_FLANK_FREQ         = 0.01;
     VIZ_LEFT_ALNS          = 0;
@@ -237,6 +238,7 @@ public:
   double FRAC_LL_CONVERGE;  // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
   int32_t MIN_TOTAL_READS;  // Minimum total reads required to genotype locus
 
+  int MAX_TOTAL_HAPLOTYPES;
   int MAX_FLANK_HAPLOTYPES;
   double MIN_FLANK_FREQ;    // Minimum fraction of samples that must have an alternate flank to consider it
                             // Samples with flanks below this frequency will not be genotyped

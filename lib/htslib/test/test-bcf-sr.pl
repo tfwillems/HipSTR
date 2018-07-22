@@ -25,7 +25,7 @@ sub error
 {
     my (@msg) = @_;
     if ( scalar @msg ) { confess @msg; }
-    print 
+    print
         "Usage: test-bcf-sr.pl [OPTIONS]\n",
         "Options:\n",
         "   -s, --seed <int>        Random seed\n",
@@ -156,6 +156,7 @@ sub check_outputs
     {
         my ($pos,@vals) = split(/\t/,$line);
         chomp($vals[-1]);
+        $vals[-1] =~ s/\r$//;
         push @{$out{$pos}},join("\t",@vals);
     }
     close($fh) or error("close failed: $fname_bin");
@@ -173,6 +174,7 @@ sub check_outputs
     while (my $line=<$fh>)
     {
         chomp($line);
+        $line =~ s/\r$//;
         push @plines,$line;
     }
     close($fh) or error("close failed: $fname_perl");
@@ -181,10 +183,10 @@ sub check_outputs
     @plines = sort @plines;
     for (my $i=0; $i<@plines; $i++)
     {
-        if ( $blines[$i] ne $plines[$i] ) 
-        { 
-            #error("Different lines in $fname_bin vs $fname_perl:\n\t$blines[$i].\nvs\n\t$plines[$i].\n"); 
-            error("Different lines in $fname_bin vs $fname_perl:\n\t".join("\n\t",@blines)."\nvs\n\t".join("\n\t",@plines)."\n"); 
+        if ( $blines[$i] ne $plines[$i] )
+        {
+            #error("Different lines in $fname_bin vs $fname_perl:\n\t$blines[$i].\nvs\n\t$plines[$i].\n");
+            error("Different lines in $fname_bin vs $fname_perl:\n\t".join("\n\t",@blines)."\nvs\n\t".join("\n\t",@plines)."\n");
         }
     }
 }
@@ -210,7 +212,7 @@ sub run_test
                 my $alt2 = random_alt($ref,$snp);
                 if ( $alt2 ne '.' && $alt ne $alt2 )
                 {
-                    $var .= ",$ref>$alt2"; 
+                    $var .= ",$ref>$alt2";
                 }
             }
             $vars{$var} = 1;
@@ -290,7 +292,7 @@ sub pair_lines
     #     my $igrp = $vars[$i][0]{igrp};
     #     my $jvar = $vars[$i][0]{ivar};
     #     my $var  = $$groups[$igrp]{vars}[$jvar];
-    #     print STDERR "$i: $var\n"; 
+    #     print STDERR "$i: $var\n";
     # }
 
     # initialize variant sets - combinations of compatible variants across multiple reader groups
@@ -474,14 +476,14 @@ sub pairing_score
     my ($opts,$grps,$vars,$avset,$bvset) = @_;
 
     my $score = {};
-    if ( $$opts{logic}=~/both/ or $$opts{logic}=~/snps/ or $$opts{logic}=~/all/ ) 
-    { 
+    if ( $$opts{logic}=~/both/ or $$opts{logic}=~/snps/ or $$opts{logic}=~/all/ )
+    {
         $$score{snp}{snp} = 3;
         if ( $$opts{logic}=~/ref/ or $$opts{logic}=~/all/ ) { $$score{snp}{ref} = 2; }
     }
-    if ( $$opts{logic}=~/both/ or $$opts{logic}=~/indels/ or $$opts{logic}=~/all/ ) 
+    if ( $$opts{logic}=~/both/ or $$opts{logic}=~/indels/ or $$opts{logic}=~/all/ )
     {
-        $$score{indel}{indel} = 3; 
+        $$score{indel}{indel} = 3;
         if ( $$opts{logic}=~/ref/ or $$opts{logic}=~/all/ ) { $$score{indel}{ref} = 2; }
     }
     if ( $$opts{logic}=~/all/ )

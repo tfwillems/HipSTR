@@ -74,10 +74,6 @@ namespace VCF {
 
 void VCFReader::open(const std::string& filename){
   const char* cfilename = filename.c_str();
-    
-  if (bgzf_is_bgzf(cfilename) != 1)
-    printErrorAndDie("VCF file is not in a valid bgzipped file. Please ensure that bgzip was used to compress it");
-  
   char *fnidx = (char*) calloc(strlen(cfilename) + 5, 1);
   strcat(strcpy(fnidx, cfilename), ".tbi");
   struct stat stat_tbi, stat_vcf;
@@ -89,6 +85,10 @@ void VCFReader::open(const std::string& filename){
   
   if ((vcf_input_ = hts_open(cfilename, "r")) == NULL)
     printErrorAndDie("Failed to open the VCF file");
+  if (vcf_input_->format.format != vcf)
+    printErrorAndDie("Provided VCF file is improperly formatted");
+  if (vcf_input_->format.compression != bgzf)
+    printErrorAndDie("VCF file is not bgzipped. Please ensure bgzip was used to compress it");
   if ((tbx_input_ = tbx_index_load(cfilename)) == NULL)
     printErrorAndDie("Failed to open the VCF file's tabix index");
   
