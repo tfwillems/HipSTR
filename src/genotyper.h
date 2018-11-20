@@ -131,7 +131,8 @@ class Genotyper {
 
   double posterior_time() const { return total_posterior_time_;  }
 
-  static std::string get_vcf_header(const std::string& fasta_path, const std::string& full_command, const std::vector<std::string>& chroms, const std::vector<std::string>& sample_names);
+  static std::string get_vcf_header(const std::string& fasta_path, const std::string& full_command,
+				    const std::vector<std::string>& chroms, const std::vector<std::string>& sample_names);
 
   void calc_PLs(const std::vector<double>& gls, std::vector<int>& pls) const;
 
