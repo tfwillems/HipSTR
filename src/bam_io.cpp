@@ -50,12 +50,12 @@ void BamHeader::parse_read_groups(const char *text){
       split_by_delim(line, '\t', tokens);
       ReadGroup rg;
       for (int i = 1; i < tokens.size(); i++){
-	if (string_starts_with(tokens[i], "ID:"))
-	  rg.SetID(tokens[i].substr(3));
-	else if (string_starts_with(tokens[i], "SM:"))
-	  rg.SetSample(tokens[i].substr(3));
-	else if (string_starts_with(tokens[i], "LB:"))
-	  rg.SetLibrary(tokens[i].substr(3));
+	size_t colon_index = tokens[i].find_first_of(':');
+	if (colon_index != std::string::npos){
+	  std::string tag   = tokens[i].substr(0, colon_index);
+	  std::string value = tokens[i].substr(colon_index+1);
+	  rg.SetTag(tag, value);
+	}
       }
       tokens.clear();
       read_groups_.push_back(rg);
