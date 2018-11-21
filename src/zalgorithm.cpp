@@ -1,7 +1,3 @@
-/*
-Copyright (C) 2014 Thomas Willems <twillems@mit.edu>
-*/
-
 #include <iostream>
 #include <sstream>
 
