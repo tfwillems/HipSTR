@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "adapter_trimmer.h"
 #include "bam_io.h"
 #include "base_quality.h"
 #include "error.h"
@@ -57,15 +58,13 @@ class BamProcessor {
  virtual void init_output_vcf(const std::string& fasta_path, const std::vector<std::string>& chroms, const std::string& full_command) = 0;
 
  protected:
+ AdapterTrimmer adapter_trimmer_;
  BaseQuality base_quality_;
-
  bool bams_from_10x_; // True iff BAMs were generated from 10X GEMCODE platform
-
  bool quiet_, silent_;
  bool log_to_file_;
  NullOstream null_log_;
  std::ofstream log_;
-
  std::set<std::string> sample_set_;
 
  // Private unimplemented copy constructor and assignment operator to prevent operations
