@@ -42,6 +42,10 @@ class AdapterTrimmer {
      Right-side overhangs are not penalized as mismatches
      Returns the number of trimmed bases or 0 if no bases were trimmed */
   int64_t trim_three_prime(BamAlignment& aln, const std::vector<std::string>& adapters);
+
+  // Private unimplemented copy constructor and assignment operator to prevent operations
+  AdapterTrimmer(const AdapterTrimmer& other);
+  AdapterTrimmer& operator=(const AdapterTrimmer& other);
   
  public:
   // Minimum overlap between the adapter sequence and the read sequence for trimming to be considered
