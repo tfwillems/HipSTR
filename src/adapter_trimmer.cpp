@@ -50,19 +50,33 @@ int64_t AdapterTrimmer::trim_five_prime(BamAlignment& aln, const std::vector<std
 
   // Identify the rightmost trimming index across all adapters
   int trim_index = -1;
-  std::vector<int> prefix_matches, suffix_matches;
+  std::vector<int> prefix_matches_internal, prefix_matches_external, suffix_matches_internal;
   for (auto adapter_iter = adapters.begin(); adapter_iter != adapters.end(); ++adapter_iter){
     const int adapter_length = adapter_iter->size();
-    std::string query        = std::string(adapter_length, '*') + bases;
-    ZAlgorithm::GetPrefixMatchCounts(*adapter_iter, query, prefix_matches);
-    ZAlgorithm::GetSuffixMatchCounts(*adapter_iter, query, suffix_matches);
-    for (int index = read_length - 1 + adapter_length; index >= MIN_OVERLAP - 1 + adapter_length; --index){
+
+    // Adapter is pattern while bases are what we're searching in
+    ZAlgorithm::GetPrefixMatchCounts(*adapter_iter, bases, prefix_matches_internal);
+    ZAlgorithm::GetSuffixMatchCounts(*adapter_iter, bases, suffix_matches_internal);
+
+    // Head of bases is the pattern while adapter is what we're searching in
+    int req_bases = (bases.size() < adapter_length ? bases.size() : adapter_length);
+    ZAlgorithm::GetPrefixMatchCounts(bases.substr(0, req_bases), *adapter_iter, prefix_matches_external);
+
+    for (int index = read_length - 1; index >= MIN_OVERLAP - 1; --index){
+      int max_match = std::min(adapter_length, index+1);
+
       // Check if a full match or 1 mismatch configuration exists      
-      bool valid = (suffix_matches[index] == adapter_length);
-      valid     |= ((suffix_matches[index] + 1 + prefix_matches[index-adapter_length+1]) == adapter_length);
+      bool valid = (suffix_matches_internal[index] == max_match);
+      if (!valid){
+	if (max_match < adapter_length) // Adapter left-side overhang
+	  valid = ((suffix_matches_internal[index] + 1 + prefix_matches_external[adapter_length-max_match]) == max_match);
+	else // Adapter fully inside of read sequence
+	  valid = ((suffix_matches_internal[index] + 1 + prefix_matches_internal[index-adapter_length+1]) == adapter_length);
+      }
+
       if (valid){
-	if (index-adapter_length > trim_index)
-	  trim_index = index-adapter_length;
+	if (index > trim_index)
+	  trim_index = index;
 	break;
       }
     }
@@ -81,16 +95,30 @@ int64_t AdapterTrimmer::trim_three_prime(BamAlignment& aln, const std::vector<st
 
   // Identify the leftmost trimming index across all adapters
   int trim_index = read_length;
-  std::vector<int> prefix_matches, suffix_matches;
+  std::vector<int> prefix_matches_internal, suffix_matches_internal, suffix_matches_external;
   for (auto adapter_iter = adapters.begin(); adapter_iter != adapters.end(); ++adapter_iter){
     const int adapter_length = adapter_iter->size();
-    std::string query        = bases + std::string(adapter_length, '*');
-    ZAlgorithm::GetPrefixMatchCounts(*adapter_iter, query, prefix_matches);
-    ZAlgorithm::GetSuffixMatchCounts(*adapter_iter, query, suffix_matches);
+
+    // Adapter is pattern while bases are what we're searching in
+    ZAlgorithm::GetPrefixMatchCounts(*adapter_iter, bases, prefix_matches_internal);
+    ZAlgorithm::GetSuffixMatchCounts(*adapter_iter, bases, suffix_matches_internal);
+
+    // Tail end of bases is the pattern while adapter is what we're searching in
+    int req_bases = (bases.size() < adapter_length ? bases.size() : adapter_length);
+    ZAlgorithm::GetSuffixMatchCounts(bases.substr(bases.size()-req_bases), *adapter_iter, suffix_matches_external);
+
     for (int index = 0; index <= read_length-MIN_OVERLAP; ++index){
+      int max_match = std::min(adapter_length, read_length-index);
+
       // Check if a full match or 1 mismatch configuration exists
-      bool valid = (prefix_matches[index] == adapter_length);
-      valid     |= ((prefix_matches[index] + 1 + suffix_matches[index+adapter_length-1]) == adapter_length);
+      bool valid = (prefix_matches_internal[index] == max_match);
+      if (!valid){
+	if (max_match < adapter_length) // Adapter right-side overhang
+	  valid = ((prefix_matches_internal[index] + 1 + suffix_matches_external[max_match-1]) == max_match);
+	else // Adapter fully inside of read sequence
+	  valid = ((prefix_matches_internal[index] + 1 + suffix_matches_internal[index+adapter_length-1]) == adapter_length);
+      }
+
       if (valid){
 	if (index < trim_index)
 	  trim_index = index;
