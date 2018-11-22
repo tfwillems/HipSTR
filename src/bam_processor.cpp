@@ -245,8 +245,9 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 
       // Apply adapter trimming
       adapter_trimmer_.trim_adapters(alignment);
-      if (alignment.Length() == 0)
-	continue;
+
+      if (alignment.CigarData().size() == 0 || alignment.Length() == 0)
+        continue;
     }
 
     // Clear out mate alignment cache if we've switched to a new file to reduce memory usage
