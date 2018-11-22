@@ -144,6 +144,8 @@ void AdapterTrimmer::trim_adapters(BamAlignment& aln){
   // In case trimming isn't actually desired, do nothing
   if (!trim_) return;
 
+  if (aln.Length() == 0) return;
+
   double start_time = clock(); // Start the clock
   int64_t num_trim;
   if (aln.IsFirstMate()){
