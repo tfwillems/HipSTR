@@ -177,9 +177,9 @@ std::string AdapterTrimmer::get_trimming_stats_msg(){
   std::stringstream msg;
   msg << std::setprecision(2) << "Adapter trimming removed" << "\n"
       << "\t" << locus_r1_trimmed_bases_ << " likely adapter bases from "
-      << locus_r1_trimmed_reads_ << "/" << locus_r1_total_reads_ << " R1 reads (" << 100.0*locus_r1_trimmed_reads_/locus_r1_total_reads_ << "%)" << "\n"
+      << locus_r1_trimmed_reads_ << "/" << locus_r1_total_reads_ << " R1 reads (" << (locus_r1_total_reads_ == 0 ? 0 : 100.0*locus_r1_trimmed_reads_/locus_r1_total_reads_) << "%)" << "\n"
       << "\t" << locus_r2_trimmed_bases_ << " likely adapter bases from "
-      << locus_r2_trimmed_reads_ << "/" << locus_r2_total_reads_ << " R2 reads (" << 100.0*locus_r2_trimmed_reads_/locus_r2_total_reads_ << "%)";;
+      << locus_r2_trimmed_reads_ << "/" << locus_r2_total_reads_ << " R2 reads (" << (locus_r2_total_reads_ == 0 ? 0 : 100.0*locus_r2_trimmed_reads_/locus_r2_total_reads_) << "%)";
   return msg.str();
 }
 
