@@ -6,7 +6,6 @@
 #include <time.h>
 
 #include "bam_processor.h"
-#include "adapter_trimmer.h"
 #include "alignment_filters.h"
 #include "error.h"
 #include "fasta_reader.h"
@@ -242,11 +241,6 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 	  if ((alignment.Length() == 0) || (alignment.Length() < length/2))
 	    continue;
       }
-
-      // Apply adapter trimming
-      adapter_trimmer_.trim_adapters(alignment);
-      if (alignment.Length() == 0)
-	continue;
     }
 
     // Clear out mate alignment cache if we've switched to a new file to reduce memory usage
@@ -568,8 +562,7 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string
 
     if (region_iter->stop() - region_iter->start() > MAX_STR_LENGTH){
       num_too_long_++;
-      full_logger() << "Skipping region as the reference allele length exceeds the threshold (" 
-		    << region_iter->stop()-region_iter->start() << " vs " << MAX_STR_LENGTH << ")" << "\n"
+      full_logger() << "Skipping region as the reference allele length exceeds the threshold (" << region_iter->stop()-region_iter->start() << " vs " << MAX_STR_LENGTH << ")" << "\n"
 		    << "You can increase this threshold using the --max-str-len option" << std::endl;
       continue;
     }
@@ -628,7 +621,5 @@ void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string
       remove_pcr_duplicates(base_quality_, use_bam_rgs_, rg_to_library, paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, selective_logger());
 
     process_reads(paired_strs_by_rg, mate_pairs_by_rg, unpaired_strs_by_rg, rg_names, region_group, chrom_seq);
-
-    adapter_trimmer_.mark_new_locus(); // Inform the trimmer that future alignments will be for a new STR
   }
 }
