@@ -241,6 +241,12 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 	  if ((alignment.Length() == 0) || (alignment.Length() < length/2))
 	    continue;
       }
+
+      // Apply adapter trimming
+      adapter_trimmer_.trim_adapters(alignment);
+
+      if (alignment.CigarData().size() == 0 || alignment.Length() == 0)
+        continue;
     }
 
     // Clear out mate alignment cache if we've switched to a new file to reduce memory usage
@@ -257,7 +263,7 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
     // Only apply tests to putative STR reads that overlap the STR region
     if (alignment.Position() < region_group.stop() && alignment.GetEndPosition() >= region_group.start()){
       bool pass_one = false; // Denotes if read passed first set of simpler filters
-      std::string pass_two(regions.size(), '0'); // Denotes if read passed sceond set of additional filters for each region
+      std::string pass_two(regions.size(), '0'); // Denotes if read passed second set of additional filters for each region
                                                  // Meant to signify if reads that pass first set should be used to generate haplotypes
       std::string filter = "";
       read_count++;
@@ -433,8 +439,9 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
       write_filtered_alignment(aln_iter->second, filter, filt_writer);
   }
   potential_strs.clear(); potential_mates.clear();
-  
-  selective_logger() << read_count << " reads overlapped region, of which "
+
+  selective_logger() << adapter_trimmer_.get_trimming_stats_msg() << "\n"
+		     << read_count << " reads overlapped region, of which "
 		     << "\n\t" << hard_clip      << " were hard clipped"
 		     << "\n\t" << read_has_N     << " had an 'N' base call"
 		     << "\n\t" << low_qual_score << " had low base quality scores";
