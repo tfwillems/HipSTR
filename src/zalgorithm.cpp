@@ -10,6 +10,7 @@ Copyright (C) 2014 Thomas Willems <twillems@mit.edu>
 #include "error.h"
 #include "zalgorithm.h"
 
+
 namespace ZAlgorithm{
   static void suffix_helper(const std::string& s1, const std::string& s2, int s2_left, int s2_right,
 			    std::vector<int>& s1_matches, std::vector<int>& num_matches){
@@ -86,6 +87,7 @@ namespace ZAlgorithm{
       }
     }
   }
+
 
   void GetPrefixMatchCounts(const std::string& s1, const std::string& s2, std::vector<int>& num_matches) {
     std::vector<int> s1_matches;
