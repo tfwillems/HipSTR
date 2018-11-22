@@ -17,32 +17,14 @@ class AdapterTrimmer {
   int64_t r1_trimmed_reads_, r2_trimmed_reads_;
   int64_t r1_total_reads_,   r2_total_reads_;
 
-  // Variables to track trimming timing
+  // Variables to track timing
   double locus_trimming_time_;
   double total_trimming_time_;
 
   std::string reverse_complement(const std::string& pattern);
+
   void init();
 
-  /* Identifies the rightmost index in the alignment's sequence that matches any adapter sequence with at most 1 mismatch
-     Bases in and to the left of the index are then discarded
-     Configurations are only considered if both
-     i)  the adapter is fully within the alignment sequence or has a left-side overhang
-     ii) the adapter and alignment sequence overlap by at least MIN_OVERLAP bases
-     Left-side overhangs are not penalized as mismatches
-     Returns the number of trimmed bases or 0 if no bases were trimmed */
-  int64_t trim_five_prime(BamAlignment& aln, const std::vector<std::string>& adapters);
-
-  
-  /* Identifies the leftmost index in the alignment's sequence that matches any adapter sequence with at most 1 mismatch
-     Bases in and to the right of the index are then discarded
-     Configurations are only considered if both
-     i)  the adapter is fully within the alignment sequence or has a right-side overhang
-     ii) the adapter and alignment sequence overlap by at least MIN_OVERLAP bases
-     Right-side overhangs are not penalized as mismatches
-     Returns the number of trimmed bases or 0 if no bases were trimmed */
-  int64_t trim_three_prime(BamAlignment& aln, const std::vector<std::string>& adapters);
-  
  public:
   // Minimum overlap between the adapter sequence and the read sequence for trimming to be considered
   const static int MIN_OVERLAP;
@@ -72,7 +54,6 @@ class AdapterTrimmer {
     init();
   }
   
-  /* Save the current locus' timing info and make room for the next locus */
   void mark_new_locus(){
     total_trimming_time_ += locus_trimming_time_;
     locus_trimming_time_  = 0;
@@ -81,10 +62,6 @@ class AdapterTrimmer {
   double locus_trimming_time(){ return locus_trimming_time_; }
   double total_trimming_time(){ return total_trimming_time_; }
 
-  /* Identify any exact or 1 mismatch adapter sequences present in the alignment's sequence
-     Uses information about the alignment's orientation to check for 5' or 3' adapters (as reverse alignments have already been reverse complemented)
-     Removes the adapter sequence from the alignment's bases and modifies the alignment properties accordingly
-  */
   void trim_adapters(BamAlignment& aln);
 };
 
