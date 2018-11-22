@@ -43,7 +43,7 @@ std::string AdapterTrimmer::reverse_complement(const std::string& pattern){
       res << 'A';
       break;
     default:
-      printErrorAndDie("Invalid character in pattern argument to reverse_complement(): " + *iter);
+      printErrorAndDie("Invalid character in pattern argument to reverse_complement(): " + std::string(1, *iter));
       break;
     }
   }
