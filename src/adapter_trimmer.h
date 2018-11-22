@@ -49,7 +49,8 @@ class AdapterTrimmer {
   
  public:
   // Minimum overlap between the adapter sequence and the read sequence for trimming to be considered
-  const static int MIN_OVERLAP;
+  const static int    MIN_OVERLAP;
+  const static double MAX_ERROR_RATE;
 
   // Commonly used Illumina adapter pairs (see https://support.illumina.com/bulletins/2016/12/what-sequences-do-i-use-for-adapter-trimming.html)
   // i)  Applicable to most WGS experiments

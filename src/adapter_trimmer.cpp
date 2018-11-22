@@ -67,7 +67,7 @@ int64_t AdapterTrimmer::trim_five_prime(BamAlignment& aln, const std::vector<std
 
       // Check if a full match or 1 mismatch configuration exists      
       bool valid = (suffix_matches_internal[index] == max_match);
-      if (!valid){
+      if (!valid && 1.0/max_match < MAX_ERROR_RATE){
 	if (max_match < adapter_length) // Adapter left-side overhang
 	  valid = ((suffix_matches_internal[index] + 1 + prefix_matches_external[adapter_length-max_match]) == max_match);
 	else // Adapter fully inside of read sequence
@@ -112,7 +112,7 @@ int64_t AdapterTrimmer::trim_three_prime(BamAlignment& aln, const std::vector<st
 
       // Check if a full match or 1 mismatch configuration exists
       bool valid = (prefix_matches_internal[index] == max_match);
-      if (!valid){
+      if (!valid && 1.0/max_match < MAX_ERROR_RATE){
 	if (max_match < adapter_length) // Adapter right-side overhang
 	  valid = ((prefix_matches_internal[index] + 1 + suffix_matches_external[max_match-1]) == max_match);
 	else // Adapter fully inside of read sequence
@@ -165,8 +165,8 @@ void AdapterTrimmer::trim_adapters(BamAlignment& aln){
   locus_trimming_time_ += (clock() - start_time)/CLOCKS_PER_SEC; // Turn off the clock
 }
 
-// Minimum overlap between the alignment sequence and adapter sequence
-const int AdapterTrimmer::MIN_OVERLAP = 5;
+const int AdapterTrimmer::MIN_OVERLAP = 5;          // Minimum overlap between the alignment sequence and adapter sequence
+const double AdapterTrimmer::MAX_ERROR_RATE = 0.15; // Only trim if # mismatches/#overlapping bases is below this fraction
 
 // Initialize various commonly used adapter sequences. 
 // Don't use the full sequences as we only allow for 1 mismatch
