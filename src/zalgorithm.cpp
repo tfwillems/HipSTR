@@ -1,3 +1,7 @@
+/*
+Copyright (C) 2014 Thomas Willems <twillems@mit.edu>
+*/
+
 #include <iostream>
 #include <sstream>
 
@@ -5,6 +9,7 @@
 
 #include "error.h"
 #include "zalgorithm.h"
+
 
 namespace ZAlgorithm{
   static void suffix_helper(const std::string& s1, const std::string& s2, int s2_left, int s2_right,
@@ -49,12 +54,10 @@ namespace ZAlgorithm{
 			    std::vector<int>& s1_matches, std::vector<int>& num_matches, int offset){
     num_matches = std::vector<int>(s2_right-s2_left+1+offset, -1);
     int rightmost = -1, left_index = -1;
-    const int s1_size = static_cast<int>(s1.size());
-    const int s2_size = static_cast<int>(s2.size());
     for (int i = s2_left; i <= s2_right; i++){
       if (i >= rightmost){
 	int index_a = 0, index_b = i;
-	while (index_a < s1_size && index_b < s2_size && (char)tolower(s1[index_a]) == (char)tolower(s2[index_b])){
+	while (index_a < static_cast<int>(s1.size()) && index_b < static_cast<int>(s2.size()) && (char)tolower(s1[index_a]) == (char)tolower(s2[index_b])){
 	  index_a++;
 	  index_b++;
 	}
@@ -73,7 +76,7 @@ namespace ZAlgorithm{
 	  num_matches[i-s2_left+offset] = rightmost-i+1;
 	else {
 	  int index_a = rightmost+1-i, index_b = rightmost+1;
-	  while (index_a < s1_size && index_b < s2_size && (char)tolower(s1[index_a]) == (char)tolower(s2[index_b])){
+	  while (index_a < static_cast<int>(s1.size()) && index_b < static_cast<int>(s2.size()) && (char)tolower(s1[index_a]) == (char)tolower(s2[index_b])){
 	    index_a++;
 	    index_b++;
 	  }
@@ -84,6 +87,7 @@ namespace ZAlgorithm{
       }
     }
   }
+
 
   void GetPrefixMatchCounts(const std::string& s1, const std::string& s2, std::vector<int>& num_matches) {
     std::vector<int> s1_matches;

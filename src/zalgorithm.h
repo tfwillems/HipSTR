@@ -1,5 +1,10 @@
+/*
+Copyright (C) 2015 Thomas Willems <twillems@mit.edu>
+*/
+
 #include <string>
 #include <vector>
+
 
 namespace ZAlgorithm{
   /* 

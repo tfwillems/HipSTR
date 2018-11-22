@@ -308,8 +308,6 @@ public:
   void TrimAlignment(int32_t min_read_start, int32_t max_read_stop, char min_base_qual='~');
 
   void TrimLowQualityEnds(char min_base_qual);
-
-  void TrimNumBases(int left_trim, int right_trim);
 };
 
 
