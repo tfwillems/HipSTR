@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <time.h>
+#include <iomanip>
 #include <sstream>
 
 #include "adapter_trimmer.h"
@@ -13,11 +14,16 @@ void AdapterTrimmer::init(){
   for (auto iter = r2_fw_adapters_.begin(); iter != r2_fw_adapters_.end(); ++iter)
     r2_rc_adapters_.push_back(reverse_complement(*iter));
 
-  r1_trimmed_bases_    = r2_trimmed_bases_ = 0;
-  r1_trimmed_reads_    = r2_trimmed_reads_ = 0;
-  r1_total_reads_      = r2_total_reads_   = 0;
-  locus_trimming_time_ = 0;
-  total_trimming_time_ = 0;
+  locus_r1_trimmed_bases_ = locus_r2_trimmed_bases_ = 0;
+  locus_r1_trimmed_reads_ = locus_r2_trimmed_reads_ = 0;
+  locus_r1_total_reads_   = locus_r2_total_reads_   = 0;
+
+  total_r1_trimmed_bases_ = total_r2_trimmed_bases_ = 0;
+  total_r1_trimmed_reads_ = total_r2_trimmed_reads_ = 0;
+  total_r1_total_reads_   = total_r2_total_reads_   = 0;
+
+  locus_trimming_time_    = 0;
+  total_trimming_time_    = 0;
 }
 
 std::string AdapterTrimmer::reverse_complement(const std::string& pattern){
@@ -146,9 +152,9 @@ void AdapterTrimmer::trim_adapters(BamAlignment& aln){
     else
       num_trim = trim_three_prime(aln, r1_fw_adapters_);
 
-    r1_trimmed_bases_ += num_trim;
-    r1_trimmed_reads_ += (num_trim > 0 ? 1 : 0);
-    r1_total_reads_++;
+    locus_r1_trimmed_bases_ += num_trim;
+    locus_r1_trimmed_reads_ += (num_trim > 0 ? 1 : 0);
+    locus_r1_total_reads_++;
   }
   else if (aln.IsSecondMate()){
     if (aln.IsReverseStrand())
@@ -156,21 +162,32 @@ void AdapterTrimmer::trim_adapters(BamAlignment& aln){
     else
       num_trim = trim_three_prime(aln, r2_fw_adapters_);
 
-    r2_trimmed_bases_ += num_trim;
-    r2_trimmed_reads_ += (num_trim > 0 ? 1 : 0);
-    r2_total_reads_++;
+    locus_r2_trimmed_bases_ += num_trim;
+    locus_r2_trimmed_reads_ += (num_trim > 0 ? 1 : 0);
+    locus_r2_total_reads_++;
   }
   else
     assert(false);
   locus_trimming_time_ += (clock() - start_time)/CLOCKS_PER_SEC; // Turn off the clock
 }
 
-const int AdapterTrimmer::MIN_OVERLAP = 5;          // Minimum overlap between the alignment sequence and adapter sequence
-const double AdapterTrimmer::MAX_ERROR_RATE = 0.15; // Only trim if # mismatches/#overlapping bases is below this fraction
+std::string AdapterTrimmer::get_trimming_stats_msg(){
+  std::stringstream msg;
+  msg << std::setprecision(2) << "Adapter trimming removed" << "\n"
+      << "\t" << locus_r1_trimmed_bases_ << " likely adapter bases from "
+      << locus_r1_trimmed_reads_ << "/" << locus_r1_total_reads_ << " R1 reads (" << 100.0*locus_r1_trimmed_reads_/locus_r1_total_reads_ << "%)" << "\n"
+      << "\t" << locus_r2_trimmed_bases_ << " likely adapter bases from "
+      << locus_r2_trimmed_reads_ << "/" << locus_r2_total_reads_ << " R2 reads (" << 100.0*locus_r2_trimmed_reads_/locus_r2_total_reads_ << "%)";;
+  return msg.str();
+}
 
-// Initialize various commonly used adapter sequences. 
+
+const int AdapterTrimmer::MIN_OVERLAP = 5;          // Minimum overlap between the alignment sequence and adapter sequence
+const double AdapterTrimmer::MAX_ERROR_RATE = 0.15; // Only trim if # mismatches/# overlapping bases is below this fraction
+
+// Initialize various commonly used adapter sequences.
 // Don't use the full sequences as we only allow for 1 mismatch
-// Checking for full matches might decrease sensitivity but should have little effect on specificity
+// Checking for longer matches might decrease sensitivity but should have little effect on specificity
 const std::string AdapterTrimmer::TRUSEQ_R1_ADAPTER  = "AGATCGGAAGAGCAC";
 const std::string AdapterTrimmer::TRUSEQ_R2_ADAPTER  = "AGATCGGAAGAGCGT";
 const std::string AdapterTrimmer::NEXTERA_R1_ADAPTER = "CTGTCTCTTATACAC";

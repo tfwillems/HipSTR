@@ -13,9 +13,13 @@ class AdapterTrimmer {
   bool trim_; // True iff trimming should even be performed
 
   // Counters to track trimming statistics
-  int64_t r1_trimmed_bases_, r2_trimmed_bases_;
-  int64_t r1_trimmed_reads_, r2_trimmed_reads_;
-  int64_t r1_total_reads_,   r2_total_reads_;
+  int64_t locus_r1_trimmed_bases_, locus_r2_trimmed_bases_;
+  int64_t locus_r1_trimmed_reads_, locus_r2_trimmed_reads_;
+  int64_t locus_r1_total_reads_,   locus_r2_total_reads_;
+
+  int64_t total_r1_trimmed_bases_, total_r2_trimmed_bases_;
+  int64_t total_r1_trimmed_reads_, total_r2_trimmed_reads_;
+  int64_t total_r1_total_reads_,   total_r2_total_reads_;
 
   // Variables to track trimming timing
   double locus_trimming_time_;
@@ -77,11 +81,23 @@ class AdapterTrimmer {
     init();
   }
   
-  /* Save the current locus' timing info and make room for the next locus */
+  /* Save the current locus' statistics and make room for the next locus */
   void mark_new_locus(){
-    total_trimming_time_ += locus_trimming_time_;
-    locus_trimming_time_  = 0;
+    total_r1_trimmed_bases_ += locus_r1_trimmed_bases_;
+    total_r2_trimmed_bases_ += locus_r2_trimmed_bases_;
+    total_r1_trimmed_reads_ += locus_r1_trimmed_reads_;
+    total_r2_trimmed_reads_ += locus_r2_trimmed_reads_;
+    total_r1_total_reads_   += locus_r1_total_reads_;
+    total_r2_total_reads_   += locus_r2_total_reads_;
+    locus_r1_trimmed_bases_  = locus_r2_trimmed_bases_ = 0;
+    locus_r1_trimmed_reads_  = locus_r2_trimmed_reads_ = 0;
+    locus_r1_total_reads_    = locus_r2_total_reads_   = 0;
+
+    total_trimming_time_    += locus_trimming_time_;
+    locus_trimming_time_     = 0;
   }
+
+  std::string get_trimming_stats_msg();
 
   double locus_trimming_time(){ return locus_trimming_time_; }
   double total_trimming_time(){ return total_trimming_time_; }
