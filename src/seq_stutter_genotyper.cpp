@@ -156,7 +156,8 @@ bool SeqStutterGenotyper::assemble_flanks(int max_total_haplotypes, int max_flan
 
     if (!haplotype_indexes.empty()){
       if (haplotype_indexes.size() > max_flank_haplotypes){
-        logger << "Skipping locus with too many " << flank_dir << " alternate flanking sequences. Found = " << haplotype_indexes.size() << ", MAX = " << max_flank_haplotypes << std::endl;
+        logger << "Skipping locus with too many " << flank_dir << " alternate flanking sequences. Found = " << haplotype_indexes.size()
+	       << ", MAX = " << max_flank_haplotypes << std::endl;
         return false;
       }
       logger << "Identified " << haplotype_indexes.size() << " new " << flank_dir << " flank haplotype(s)" << "\n";
@@ -588,8 +589,8 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(int max_total_haplotyp
 
     // Quit if the haplotype now has too many candidates
     if (new_total_haps > max_total_haplotypes){
-      logger << "Aborting genotyping of the locus as too many candidate haplotypes were found (# Found = " << new_total_haps <<  ", MAX = " << max_total_haplotypes << ")\n"
-	     << " See the --max-haps option " << "\n";
+      logger << "Aborting genotyping of the locus as too many candidate haplotypes were found (# Found = "
+	     << new_total_haps <<  ", MAX = " << max_total_haplotypes << ")\n" << " See the --max-haps option " << "\n";
       return false;
     }
 
@@ -607,8 +608,8 @@ bool SeqStutterGenotyper::genotype(int max_total_haplotypes, int max_flank_haplo
     return false;
 
   if (haplotype_->num_combs() > max_total_haplotypes){
-    logger << "Aborting genotyping of the locus as too many candidate haplotypes were found (# Found = " << haplotype_->num_combs() <<  ", MAX = " << max_total_haplotypes << ")\n"
-	   << " See the --max-haps option " << "\n";
+    logger << "Aborting genotyping of the locus as too many candidate haplotypes were found (# Found = "
+	   << haplotype_->num_combs() <<  ", MAX = " << max_total_haplotypes << ")\n" << " See the --max-haps option " << "\n";
     return false;
   }
 
@@ -687,13 +688,13 @@ void SeqStutterGenotyper::reorder_alleles(std::vector<std::string>& alleles,
   }
 }
 
-void SeqStutterGenotyper::get_alleles(const Region& region, int block_index, const std::string& chrom_seq,
-				      int32_t& pos, std::vector<std::string>& alleles){
+std::pair<int,int> SeqStutterGenotyper::get_alleles(const Region& region, int block_index, const std::string& chrom_seq,
+						    int32_t& pos, std::vector<std::string>& alleles){
   assert(alleles.size() == 0);
 
   // Extract all the alleles
   HapBlock* block = haplotype_->get_block(block_index);
-  for (int i = 0; i < block->num_options(); i++)
+  for (int i = 0; i < block->num_options(); ++i)
     alleles.push_back(block->get_seq(i));
 
   // Trim from the left until the region boundary or a mismatched character
@@ -737,6 +738,8 @@ void SeqStutterGenotyper::get_alleles(const Region& region, int block_index, con
   std::string left_flank  = (start >= region.start() ? uppercase(chrom_seq.substr(region.start(), start-region.start())) : "");
   std::string right_flank = (end <= region.stop()    ? uppercase(chrom_seq.substr(end, region.stop()-end)) : "");
   pos = std::min((int32_t)region.start(), start);
+  left_trim  -= left_flank.size();
+  right_trim -= right_flank.size();
 
   // If necessary, add 1bp on the left so that all the alleles match the reference sequence
   if (left_flank.empty()){
@@ -748,7 +751,8 @@ void SeqStutterGenotyper::get_alleles(const Region& region, int block_index, con
       }
     }
     if (pad_left){
-      pos -= 1;
+      pos       -= 1;
+      left_trim -= 1;
       left_flank = uppercase(chrom_seq.substr(pos, 1));
     }
   }
@@ -760,6 +764,8 @@ void SeqStutterGenotyper::get_alleles(const Region& region, int block_index, con
   }
 
   pos += 1; // Fix off-by-1 VCF error
+
+  return std::pair<int,int>(left_trim, right_trim);
 }
  
 void SeqStutterGenotyper::debug_sample(int sample_index, std::ostream& logger){
@@ -996,7 +1002,43 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   // Extract the alleles and position for the current haplotype block
   int32_t pos;
   std::vector<std::string> alleles;
-  get_alleles(region, hap_block_index, chrom_seq, pos, alleles);
+  std::pair<int, int> trimmings = get_alleles(region, hap_block_index, chrom_seq, pos, alleles);
+
+  // If we're intereted in reporting full haplotype info, extract the flank information for downstream use
+  // Here we have to take care to add/remove bases modified during get_alleles invocation
+  std::vector<std::string> lflank_seqs, rflank_seqs;
+  std::vector<int> hap_to_lflank, hap_to_rflank;
+  if (OUTPUT_HAPLOTYPE_DATA){
+    assert(hap_blocks_.size() == 3);
+    std::string ref_str_seq = haplotype_->get_block(1)->get_seq(0);
+    int ref_len             = (int)ref_str_seq.size();
+    assert(trimmings.first < ref_len && trimmings.second < ref_len);
+    assert(trimmings.first + trimmings.second < ref_len);
+
+    haps_to_alleles(0, hap_to_lflank);
+    HapBlock* lflank_block  = haplotype_->get_block(0);
+    int trim = trimmings.first;
+    for (int i = 0; i < lflank_block->num_options(); ++i){
+      std::string seq = lflank_block->get_seq(i);
+      assert((int)seq.size() + trim > 0);
+      if (trim < 0)
+	lflank_seqs.push_back(seq.substr(0, (int)seq.size() + trim));
+      else
+	lflank_seqs.push_back(seq + ref_str_seq.substr(0, trim));
+    }
+
+    haps_to_alleles(2, hap_to_rflank);
+    HapBlock* rflank_block = haplotype_->get_block(2);
+    trim = trimmings.second;
+    for (int i = 0; i < rflank_block->num_options(); ++i){
+      std::string seq = rflank_block->get_seq(i);
+      assert((int)seq.size() + trim > 0);
+      if (trim < 0)
+	rflank_seqs.push_back(seq.substr(trim));
+      else
+	rflank_seqs.push_back(ref_str_seq.substr(ref_len-trim, trim) + seq);
+    }
+  }
 
   //debug_sample(sample_indices_["LP6005442-DNA_D08"], logger);
   //std::vector<bool> clobbered;
@@ -1040,12 +1082,14 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
       continue;
     }
 
+    int sample_index = sample_label_[read_index];
+
     // Extract read's phase posterior conditioned on the determined sample genotype
-    int hap_a            = haplotypes[sample_label_[read_index]].first;
-    int hap_b            = haplotypes[sample_label_[read_index]].second;
+    int hap_a            = haplotypes[sample_index].first;
+    int hap_b            = haplotypes[sample_index].second;
     double total_read_LL = log_sum_exp(LOG_ONE_HALF+log_p1_[read_index]+read_LL_ptr[hap_a], LOG_ONE_HALF+log_p2_[read_index]+read_LL_ptr[hap_b]);
     double log_phase_one = LOG_ONE_HALF + log_p1_[read_index] + read_LL_ptr[hap_a] - total_read_LL; 
-    log_read_phases[sample_label_[read_index]].push_back(log_phase_one);
+    log_read_phases[sample_index].push_back(log_phase_one);
 
     // Determine which of the two genotypes each read is associated with
     int read_strand = 0;
@@ -1054,12 +1098,12 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
       if (std::fabs(v1-v2) > STRAND_TOLERANCE){
 	read_strand = (v1 > v2 ? 0 : 1);
 	if (read_strand == 0) {
-	  unique_reads_hap_one[sample_label_[read_index]]++;
-	  if (alns_[read_index].is_from_reverse_strand()) rv_unique_reads_hap_one[sample_label_[read_index]]++;
+	  unique_reads_hap_one[sample_index]++;
+	  if (alns_[read_index].is_from_reverse_strand()) rv_unique_reads_hap_one[sample_index]++;
 	}
 	else {
-	  unique_reads_hap_two[sample_label_[read_index]]++;
-	  if (alns_[read_index].is_from_reverse_strand()) rv_unique_reads_hap_two[sample_label_[read_index]]++;
+	  unique_reads_hap_two[sample_index]++;
+	  if (alns_[read_index].is_from_reverse_strand()) rv_unique_reads_hap_two[sample_index]++;
 	}
       }
     }
@@ -1078,30 +1122,30 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
       trace = trace_iter->second;
 
     if (trace->has_stutter())
-      num_reads_with_stutter[sample_label_[read_index]]++;
+      num_reads_with_stutter[sample_index]++;
     if (trace->flank_ins_size() != 0 || trace->flank_del_size() != 0)
-      num_reads_with_flank_indels[sample_label_[read_index]]++;
+      num_reads_with_flank_indels[sample_index]++;
 
     if (viz_left_alns)
-      (read_strand == 0 ? left_alns_strand_one : left_alns_strand_two)[sample_label_[read_index]].push_back(alns_[read_index]);
-    (read_strand == 0 ? max_LL_alns_strand_one : max_LL_alns_strand_two)[sample_label_[read_index]].push_back(trace->traced_aln());
+      (read_strand == 0 ? left_alns_strand_one : left_alns_strand_two)[sample_index].push_back(alns_[read_index]);
+    (read_strand == 0 ? max_LL_alns_strand_one : max_LL_alns_strand_two)[sample_index].push_back(trace->traced_aln());
     total_aln_trace_time_ += (clock() - trace_start)/CLOCKS_PER_SEC;
 
     // Adjust number of aligned reads per sample
-    num_aligned_reads[sample_label_[read_index]]++;
+    num_aligned_reads[sample_index]++;
 
     // Adjust number of reads with SNP information for each sample
     if (std::fabs(log_p1_[read_index] - log_p2_[read_index]) > TOLERANCE){
-      num_reads_with_snps[sample_label_[read_index]]++;
+      num_reads_with_snps[sample_index]++;
       if (log_p1_[read_index] > log_p2_[read_index])
-	num_reads_strand_one[sample_label_[read_index]]++;
+	num_reads_strand_one[sample_index]++;
       else
-	num_reads_strand_two[sample_label_[read_index]]++;
+	num_reads_strand_two[sample_index]++;
     }
 
     // Extract the bp difference observed in read from left-alignment
     got_size = ExtractCigar(alns_[read_index].get_cigar_list(), alns_[read_index].get_start(), region.start()-region.period(), region.stop()+region.period(), bp_diff);
-    if (got_size) bps_per_sample[sample_label_[read_index]].push_back(bp_diff);
+    if (got_size) bps_per_sample[sample_index].push_back(bp_diff);
 
     // Extract the ML bp difference observed in read based on the ML genotype,
     // but only for reads that span the original repeat region by 5 bp
@@ -1213,13 +1257,31 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
       << "DSTUTTER="    << tot_dstutter    << ";"
       << "DFLANKINDEL=" << tot_dflankindel << ";";
 
-  // Add allele counts
+  // Add allele counts to INFO
   out << "AN=" << allele_number << ";" << "REFAC=" << allele_counts[0];
   if (allele_counts.size() > 1){
     out << ";AC=";
     for (unsigned int i = 1; i < allele_counts.size()-1; i++)
       out << allele_counts[new_to_old[i]] << ",";
     out << allele_counts[new_to_old.back()];
+  }
+
+  // Add information about the haplotype flank sequences to INFO
+  bool output_lflanks = false, output_rflanks = false;
+  if (OUTPUT_HAPLOTYPE_DATA){
+    if (lflank_seqs.size() > 1){
+      output_lflanks = true;
+      out << ";LFLANKS=" << lflank_seqs[0];
+      for (unsigned int i = 1; i < lflank_seqs.size(); ++i)
+	out << "," << lflank_seqs[i];
+    }
+
+    if (rflank_seqs.size() > 1){
+      output_rflanks = true;
+      out << ";RFLANKS=" << rflank_seqs[0];
+      for (unsigned int i = 1; i < rflank_seqs.size(); ++i)
+	out << "," << rflank_seqs[i];
+    }
   }
 
   // If we used all reads during genotyping and performed assembly, we'll output the allele bias and Fisher strand bias
@@ -1244,13 +1306,13 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   if (OUTPUT_PLS == 1)       out << ":PL";
   if (!haploid_ && (OUTPUT_PHASED_GLS == 1))
     out << ":PHASEDGL";
-  if (OUTPUT_HAPLOTYPE_DATA) out << ":HQ:PHQ";
+  if (OUTPUT_HAPLOTYPE_DATA) out << (output_lflanks || output_rflanks ? ":HQ:PHQ" : "") << (output_lflanks ? ":LFGT" : "") << (output_rflanks ? ":RFGT" : "");
   if (OUTPUT_FILTERS == 1)   out << ":FILTER";
 
   // Build the missing genotype string
   // Exclude OUTPUT_FILTERS, as we won't use that to build the missing genotype string
   num_fields += ((output_allele_bias ? 2 : 0) + (output_strand_bias ? 1 : 0)) + (!haploid_ && (OUTPUT_PHASED_GLS == 1) ? 1 : 0);
-  num_fields += (OUTPUT_ALLREADS + OUTPUT_MALLREADS + OUTPUT_GLS + OUTPUT_PLS + 2*OUTPUT_HAPLOTYPE_DATA);
+  num_fields += (OUTPUT_ALLREADS + OUTPUT_MALLREADS + OUTPUT_GLS + OUTPUT_PLS + (output_lflanks || output_rflanks ? 2 : 0) + (output_lflanks ? 1 : 0) + (output_rflanks ? 1 : 0));
   std::stringstream empty_gt;
   for (int n = 0; n < num_fields; n++)
     empty_gt << ".:";
@@ -1313,16 +1375,16 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     }
 
     if (!haploid_){
-      out << old_to_new[gts[sample_index].first] << "|" << old_to_new[gts[sample_index].second]     // Genotype
+      out << old_to_new[gts[sample_index].first] << "|" << old_to_new[gts[sample_index].second]      // Genotype
 	  << ":" << allele_bp_diffs[gts[sample_index].first]
-	  << "|" << allele_bp_diffs[gts[sample_index].second]                                       // Base pair differences from reference
-	  << ":" << exp(log_unphased_posteriors[sample_index])                                      // Unphased posterior
-	  << ":" << exp(log_phased_posteriors[sample_index])                                        // Phased posterior
-	  << ":" << num_aligned_reads[sample_index]                                                 // Total reads used to genotype (after filtering)
-	  << ":" << num_reads_with_snps[sample_index]                                               // Total reads with SNP information
-	  << ":" << num_reads_with_stutter[sample_index]                                            // Total reads with a non-zero stutter artifact in ML alignment
-	  << ":" << num_reads_with_flank_indels[sample_index]                                       // Total reads with an indel in flank in ML alignment
-	  << ":" << phase1_reads << "|" << phase2_reads                                             // Reads per allele
+	  << "|" << allele_bp_diffs[gts[sample_index].second]                                        // Base pair differences from reference
+	  << ":" << exp(log_unphased_posteriors[sample_index])                                       // Unphased posterior
+	  << ":" << exp(log_phased_posteriors[sample_index])                                         // Phased posterior
+	  << ":" << num_aligned_reads[sample_index]                                                  // Total reads used to genotype (after filtering)
+	  << ":" << num_reads_with_snps[sample_index]                                                // Total reads with SNP information
+	  << ":" << num_reads_with_stutter[sample_index]                                             // Total reads with a non-zero stutter artifact in ML alignment
+	  << ":" << num_reads_with_flank_indels[sample_index]                                        // Total reads with an indel in flank in ML alignment
+	  << ":" << phase1_reads << "|" << phase2_reads                                              // Reads per allele
 	  << ":" << num_reads_strand_one[sample_index] << "|" << num_reads_strand_two[sample_index]; // Reads with SNPs supporting each haploid genotype
 
       // Difference in GL between the current and next best genotype
@@ -1419,8 +1481,22 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
       }
     }
 
-    if (OUTPUT_HAPLOTYPE_DATA)
+    // Output information about the quality scores for full haplotypes as well as the corresponding flank genotypes
+    if (OUTPUT_HAPLOTYPE_DATA && (output_lflanks || output_rflanks)){
       out << ":" << exp(hap_log_unphased_posteriors[sample_index]) << ":" << exp(hap_log_phased_posteriors[sample_index]);
+      if (!haploid_){
+	if (output_lflanks)
+	  out << ":" << hap_to_lflank[haplotypes[sample_index].first] << "|" << hap_to_lflank[haplotypes[sample_index].second];
+	if (output_rflanks)
+	  out << ":" << hap_to_rflank[haplotypes[sample_index].first] << "|" << hap_to_rflank[haplotypes[sample_index].second];
+      }
+      else {
+	if (output_lflanks)
+	  out << ":" << hap_to_lflank[haplotypes[sample_index].first];
+	if (output_rflanks)
+	  out << ":" << hap_to_rflank[haplotypes[sample_index].first];
+      }
+    }
 
     // Reason for filtering the call, which is none if we made it here
     if (OUTPUT_FILTERS == 1)
