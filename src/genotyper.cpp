@@ -280,8 +280,8 @@ std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::
       << "##INFO=<ID=" << "DSTUTTER"       << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with a stutter indel in the STR region"                 << "\">\n"
       << "##INFO=<ID=" << "DFLANKINDEL"    << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with an indel in the regions flanking the STR"          << "\">\n";
   if (OUTPUT_HAPLOTYPE_DATA == 1)
-    out << "##INFO=<ID=" << "LFLANKS" << ",Number=1,Type=String,Description=\"" << "Comma-separated sequence(s) of flank to the left of the repeat"  << "\">\n"
-	<< "##INFO=<ID=" << "RFLANKS" << ",Number=1,Type=String,Description=\"" << "Comma-separated sequence(s) of flank to the right of the repeat" << "\">\n";
+    out << "##INFO=<ID=" << "LFLANKS" << ",Number=.,Type=String,Description=\"" << "Comma-separated sequence(s) of flank to the  left of the repeat. Only output if 1 or more non-ref  left flanks were detected"  << "\">\n"
+	<< "##INFO=<ID=" << "RFLANKS" << ",Number=.,Type=String,Description=\"" << "Comma-separated sequence(s) of flank to the right of the repeat. Only output if 1 or more non-ref right flanks were detected" << "\">\n";
 
   // Format field descriptors
   out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""  << "Genotype" << "\">" << "\n"
@@ -302,10 +302,10 @@ std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::
       << "##FORMAT=<ID=" << "DAB"         << ",Number=1,Type=Integer,Description=\"" << "Number of reads used in the AB and FS calculations" << "\">" << "\n";
 
   if (OUTPUT_HAPLOTYPE_DATA == 1)
-    out << "##FORMAT=<ID=" << "HQ"   << ",Number=1,Type=Float,Description=\"" << "Posterior probability of unphased haplotypes" << "\">" << "\n"
-	<< "##FORMAT=<ID=" << "PHQ"  << ",Number=1,Type=Float,Description=\"" << "Posterior probability of phased haplotypes"   << "\">" << "\n"
-	<< "##FORMAT=<ID=" << "LFGT" << ",Number=1,Type=String,Description=\"" << "Genotype of left flank sequence"             << "\">" << "\n"
-	<< "##FORMAT=<ID=" << "RFGT" << ",Number=1,Type=String,Description=\"" << "Genotype of right flank sequence"            << "\">" << "\n";
+    out << "##FORMAT=<ID=" << "HQ"   << ",Number=1,Type=Float,Description=\""  << "Posterior probability of unphased haplotypes. Only output if 1 or more non-ref flanks were detected" << "\">" << "\n"
+	<< "##FORMAT=<ID=" << "PHQ"  << ",Number=1,Type=Float,Description=\""  << "Posterior probability of   phased haplotypes. Only output if 1 or more non-ref flanks were detected" << "\">" << "\n"
+	<< "##FORMAT=<ID=" << "LFGT" << ",Number=1,Type=String,Description=\"" << "Genotype of  left flank with corresponding sequences reported in LFLANKS. Only output if 1 or more non-ref  left flanks were detected" << "\">" << "\n"
+	<< "##FORMAT=<ID=" << "RFGT" << ",Number=1,Type=String,Description=\"" << "Genotype of right flank with corresponding sequences reported in RFLANKS. Only output if 1 or more non-ref right flanks were detected" << "\">" << "\n";
 
   if (OUTPUT_ALLREADS == 1)
     out << "##FORMAT=<ID=" << "ALLREADS" << ",Number=1,Type=String,Description=\"" << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n";
