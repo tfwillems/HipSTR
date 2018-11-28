@@ -1,11 +1,70 @@
 import argparse
 import collections
+import os
 import sys
 
+# Special import required as python2/python3 have different StringIO packages
 try:
-     import vcf
+    from StringIO import StringIO
 except ImportError:
-     exit("This script requires the PyVCF python package. Please install using pip or conda")
+    from io import StringIO
+
+try:
+    import vcf
+except ImportError:
+    exit("This script requires the PyVCF python package. Please install using pip or conda")
+
+# Simple class that writes out VCF records that only contain entries for a subset of samples in the original VCF
+# NOTE: The INFO fields are not modified by this class, so any desired INFO changes must occur prior to calling write_record()
+class SampleFilterVCFWriter:
+    def __init__(self, samples_to_keep, output_stream, vcf_reader):
+        self.output_stream_ = output_stream
+
+        good_samples               = set(samples_to_keep)
+        self.valid_sample_indices_ = []
+        for index,sample in enumerate(vcf_reader.samples):
+            if sample in good_samples:
+                self.valid_sample_indices_.append(index)
+
+        # We pass the VCF writer's output to the string stream, which is then read and modified 
+        # accordingly before ouputting the data for the subset of samples
+        self.string_stream_ = StringIO()
+        self.vcf_writer_    = vcf.Writer(self.string_stream_, vcf_reader)
+
+        # Output header lines after modifying the included samples
+        for line in self.string_stream_.getvalue().split("\n"):
+            if len(line) == 0:
+                continue
+            if line.startswith("##"):
+                output_stream.write(line + "\n")
+            else:
+                tokens = line.strip().split("\t")
+                output_stream.write("\t".join([tokens[i] for i in [0, 1, 2, 3, 4, 5, 6, 7, 8] + list(map(lambda x: x + 9, self.valid_sample_indices_))]) + "\n")
+
+        # Clear and reset the string stream                    
+        self.string_stream_.truncate(0)
+        self.string_stream_.seek(0)
+
+    def write_record(self, record):
+        # Modify the record's samples to contain only our subset of interest
+        old_samples    = record.samples
+        new_samples    = [old_samples[i] for i in self.valid_sample_indices_]
+        record.samples = new_samples
+
+        # Write out the modified record
+        self.vcf_writer_.write_record(record)
+        self.output_stream_.write(self.string_stream_.getvalue())
+
+        # Clear and reset the string stream
+        self.string_stream_.truncate(0)
+        self.string_stream_.seek(0)
+
+        # Restore the record back to its original form
+        record.samples = old_samples
+          
+    def close(self):
+        self.string_stream_.close()
+
 
 def filter_call(sample, filters):
      if sample['DP'] < filters.DEPTH:
@@ -40,62 +99,86 @@ def filter_call(sample, filters):
                     return "Spanning depth"
           return None
 
+# Read in a text file of sample names, one per line
+def read_sample_list(path):
+     if not os.path.exists(path):
+          exit("ERROR: File argument to --samples-to-keep does not exist : %s"%(path))
+
+     samples_to_keep = set()
+     data = open(path, "r")
+     for line in data:
+          sample = line.strip()
+          if len(sample) > 0:
+               samples_to_keep.add(sample)
+     data.close()
+
+     return samples_to_keep
+          
+
 def main():
-     parser = argparse.ArgumentParser()
-     parser.add_argument("--vcf", help="Input VCF to filter", type=str, required=True, dest="VCF")
+     # Dictionary of help messages for most of the command line arguments
+     help_dict = {
+         "--min-call-allele-depth"   : "Omit a sample's call if the minimum allele depth (smallest value in PDP FORMAT field) < ALLELE_DEPTH",
+         "--min-call-depth-ratio"    : "Omit a sample's call if the minimum ratio of allele depths (values in PDP FORMAT field) < ALLELE_RATIO",
+         "--max-call-flank-indel"    : "Omit a sample's call if the fraction of reads with flank indels (FORMAT fields DFLANKINDEL/DP) > FLANK_INDEL_FRAC",
+         "--max-call-stutter"        : "Omit a sample's call if the fraction of reads with a stutter artifact (FORMAT fields DSTUTTER/DP) > STUTTER_FRAC",
+         "--min-call-spanning-depth" : "Omit a sample's call if the minimum number of spanning reads supporting an allele < SPAN_DEPTH",
+         "--min-loc-depth"           : "Omit locus if the total depth (DP INFO field) < MIN_LOC_DEPTH",
+         "--max-loc-depth"           : "Omit locus if the total depth (DP INFO field) > MAX_LOC_DEPTH",
+         "--max-loc-flank-indel"     : "Omit locus if the total fraction of reads with an indel in the flanks (INFO fields DFLANKINDEL/DP) > LOC_FLANK_INDEL_FRAC",
+         "--max-loc-stutter"         : "Omit locus if the total fraction of reads with a stutter artifact (INFO fields DSTUTTER/DP) > LOC_STUTTER",
+         "--min-loc-calls"           : "Omit locus if the number of valid samples after filtering < MIN_CALLS",
+         "--samples-to-keep"         : "File of samples to keep in the VCF, one-per-line. By default, all samples are kept",
+         "--keep-all-alleles"        : "Don't remove any ALT alleles, even if no unfiltered samples have the corresponding GT. (Default = Remove unless VCF contains likelihoods",
+     }
 
-     parser.add_argument("--min-call-depth", type=int, required=False, default=0, dest="DEPTH",
-                         help="Omit a sample's call if DP < DEPTH")
+     description = """Apply the provided set of sample-level (i.e. call-level) and locus-level filters to the input VCF file.
+     Filtered samples are masked as missing while filtered loci are entirely removed from the VCF.
+     All INFO fields are updated accordingly to refer to the unfiltered sample set.
+     The resulting filtered VCF is output to stdout
+     """
 
-     parser.add_argument("--min-call-qual", type=float, required=False, default=0.0, dest="QUAL",
-                         help="Omit a sample's call if Q < QUAL")
-
-     parser.add_argument("--min-call-allele-depth", type=float, required=False, default=0.0, dest="ALLELE_DEPTH",
-                         help="Omit a sample's call if the minimum allele depth (smallest value in PDP FORMAT field) < ALLELE_DEPTH")
-
-     parser.add_argument("--min-call-depth-ratio", type=float, required=False, default=0.0, dest="ALLELE_RATIO",
-                         help="Omit a sample's call if the minimum ratio of allele depths (values in PDP FORMAT field) < ALLELE_RATIO")                         
-
-     parser.add_argument("--max-call-flank-indel", type=float, required=False, default=1.0, dest="FLANK_INDEL_FRAC",
-                         help="Omit a sample's call if the fraction of reads with flank indels (FORMAT fields DFLANKINDEL/DP) > FLANK_INDEL_FRAC")
-                         
-     parser.add_argument("--max-call-stutter", type=float, required=False, default=1.0, dest="STUTTER_FRAC",
-                         help="Omit a sample's call if the fraction of reads with a stutter artifact (FORMAT fields DSTUTTER/DP) > STUTTER_FRAC")
-                         
-     parser.add_argument("--min-call-allele-bias", type=float, required=False, default=-100.0, dest="ALLELE_BIAS",
-                         help="Omit a sample's call if AB < ALLELE_BIAS")
-
-     parser.add_argument("--min-call-strand-bias", type=float, required=False, default=-100.0, dest="STRAND_BIAS",
-                         help="Omit a sample's call if FS < STRAND_BIAS")
-
-     parser.add_argument("--min-call-spanning-depth", type=int, required=False, default=0.0, dest="SPAN_DEPTH",
-                         help="Omit a sample's call if the minimum number of spanning reads supporting an allele < SPAN_DEPTH")
-
-     parser.add_argument("--min-loc-depth", type=int, required=False, default=0, dest="MIN_LOC_DEPTH",
-                         help="Omit locus if the total depth (DP INFO field) < MIN_LOC_DEPTH")
-
-     parser.add_argument("--max-loc-depth", type=int, required=False, default=1000000000, dest="MAX_LOC_DEPTH",
-                         help="Omit locus if the total depth (DP INFO field) > MAX_LOC_DEPTH")
-
-     parser.add_argument("--max-loc-flank-indel", type=float, required=False, default=1.0, dest="LOC_FLANK_INDEL_FRAC",
-                         help="Omit locus if the total fraction of reads with an indel in the flanks (INFO fields DFLANKINDEL/DP) > LOC_FLANK_INDEL_FRAC")
-
-     parser.add_argument("--max-loc-stutter", type=float, required=False, default=1.0, dest="LOC_STUTTER",
-                         help="Omit locus if the total fraction of reads with a stutter artifact (INFO fields DSTUTTER/DP) > LOC_STUTTER")
-
-     parser.add_argument("--min-loc-calls",type=int,   required=False, default=0, dest="MIN_CALLS",
-                         help="Omit locus if the number of valid samples after filtering < MIN_CALLS")
-                         
+     parser = argparse.ArgumentParser(description=description)
+     parser.add_argument("--vcf",                     type=str,   required=True,  dest="VCF",                                      help="Input VCF to filter (- for stdin)")
+     parser.add_argument("--min-call-depth",          type=int,   required=False, dest="DEPTH",                default=0,          help="Omit a sample's call if DP < DEPTH")
+     parser.add_argument("--min-call-qual",           type=float, required=False, dest="QUAL",                 default=0.0,        help="Omit a sample's call if Q < QUAL")
+     parser.add_argument("--min-call-allele-depth",   type=float, required=False, dest="ALLELE_DEPTH",         default=0.0,        help=help_dict["--min-call-allele-depth"])
+     parser.add_argument("--min-call-depth-ratio",    type=float, required=False, dest="ALLELE_RATIO",         default=0.0,        help=help_dict["--min-call-depth-ratio"])
+     parser.add_argument("--max-call-flank-indel",    type=float, required=False, dest="FLANK_INDEL_FRAC",     default=1.0,        help=help_dict["--max-call-flank-indel"])
+     parser.add_argument("--max-call-stutter",        type=float, required=False, dest="STUTTER_FRAC",         default=1.0,        help=help_dict["--max-call-stutter"])
+     parser.add_argument("--min-call-spanning-depth", type=int,   required=False, dest="SPAN_DEPTH",           default=0.0,        help=help_dict["--min-call-spanning-depth"])
+     parser.add_argument("--min-call-allele-bias",    type=float, required=False, dest="ALLELE_BIAS",          default=-100.0,     help="Omit a sample's call if AB < ALLELE_BIAS")
+     parser.add_argument("--min-call-strand-bias",    type=float, required=False, dest="STRAND_BIAS",          default=-100.0,     help="Omit a sample's call if FS < STRAND_BIAS")
+     parser.add_argument("--min-loc-depth",           type=int,   required=False, dest="MIN_LOC_DEPTH",        default=0,          help=help_dict["--min-loc-depth"])
+     parser.add_argument("--max-loc-depth",           type=int,   required=False, dest="MAX_LOC_DEPTH",        default=1000000000, help=help_dict["--max-loc-depth"])
+     parser.add_argument("--max-loc-flank-indel",     type=float, required=False, dest="LOC_FLANK_INDEL_FRAC", default=1.0,        help=help_dict["--max-loc-flank-indel"])
+     parser.add_argument("--max-loc-stutter",         type=float, required=False, dest="LOC_STUTTER",          default=1.0,        help=help_dict["--max-loc-stutter"])
+     parser.add_argument("--min-loc-calls",           type=int,   required=False, dest="MIN_CALLS",            default=0,          help=help_dict["--min-loc-calls"])
+     parser.add_argument("--samples-to-keep",         type=str,   required=False, dest="SAMPLES_TO_KEEP",      default=None,       help=help_dict["--samples-to-keep"])
+     parser.add_argument("--keep-all-alleles",        action="store_true",        dest="KEEP_ALL_ALLELES",     default=False,      help=help_dict["--keep-all-alleles"])
      args = parser.parse_args()
      if args.VCF == "-":
           vcf_reader = vcf.Reader(sys.stdin)
      else:
           vcf_reader = vcf.Reader(filename=args.VCF)
-     vcf_writer    = vcf.Writer(sys.stdout, vcf_reader)
+
      total_counts  = collections.defaultdict(int)
      filter_counts = {}
      for sample in vcf_reader.samples:
           filter_counts[sample] = collections.defaultdict(int)
+
+     # Read a list of samples to keep and ensure they're all in the VCF
+     samples_to_keep = None if args.SAMPLES_TO_KEEP is None else read_sample_list(args.SAMPLES_TO_KEEP)
+     if samples_to_keep is not None:
+          for sample in samples_to_keep:
+               if sample not in filter_counts:
+                    exit("ERROR: Sample %s was present in the --samples-to-keep file, but no such sample is present in the VCF"%(sample))
+
+     # Open the appropriate VCF writer
+     if samples_to_keep is None:
+          vcf_writer = vcf.Writer(sys.stdout, vcf_reader)
+     else:
+          vcf_writer = SampleFilterVCFWriter(samples_to_keep, sys.stdout, vcf_reader)
 
      for record in vcf_reader:
           if record.INFO['DP'] < args.MIN_LOC_DEPTH:
@@ -117,7 +200,7 @@ def main():
           # Determine if we can remove alleles with 0 counts based on whether any genotype-likelhood associated
           # format fields are present
           fmt_tokens         = record.FORMAT.split(":")
-          can_remove_alleles = not ("GL" in fmt_tokens or "PL" in fmt_tokens or "PHASEDGL" in fmt_tokens)
+          can_remove_alleles = (not args.KEEP_ALL_ALLELES and not ("GL" in fmt_tokens or "PL" in fmt_tokens or "PHASEDGL" in fmt_tokens))
                
           nfields       = len(samp_fmt._fields)
           num_filt      = 0
@@ -127,7 +210,11 @@ def main():
                if sample['GT'] is None or sample['GT'] == "./." or sample['GT'] == ".":
                     continue
 
-               filter_reason = filter_call(sample, args)
+               if samples_to_keep is not None and sample.sample not in samples_to_keep:
+                    filter_reason = "NOT_IN_SAMPLES_TO_KEEP"
+               else:
+                    filter_reason = filter_call(sample, args)
+
                if filter_reason is None:
                     gt_a, gt_b = map(int, sample['GT'].split('|'))
                     allele_counts[gt_a] += 1
@@ -155,7 +242,11 @@ def main():
                     new_samples.append(sample)
                     continue
 
-               filter_reason = filter_call(sample, args)
+               if samples_to_keep is not None and sample.sample not in samples_to_keep:
+                    filter_reason = "NOT_IN_SAMPLES_TO_KEEP"
+               else:
+                    filter_reason = filter_call(sample, args)
+
                if filter_reason is not None:
                     num_filt += 1
                     sampdat   = []
@@ -228,6 +319,9 @@ def main():
                record.INFO['AN'] = sum(allele_counts)
                   
           vcf_writer.write_record(record)
+
+     if samples_to_keep is not None:
+          vcf_writer.close()
 
 if __name__ == "__main__":
     main()
