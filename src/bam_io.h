@@ -308,6 +308,8 @@ public:
   void TrimAlignment(int32_t min_read_start, int32_t max_read_stop, char min_base_qual='~');
 
   void TrimLowQualityEnds(char min_base_qual);
+
+  void TrimNumBases(int left_trim, int right_trim);
 };
 
 
@@ -316,32 +318,41 @@ std::string BuildCigarString(const std::vector<CigarOp>& cigar_data);
 
 class ReadGroup {
  private:
-  std::string id_;
-  std::string sample_;
-  std::string library_;
+  std::map<std::string, std::string> tag_dict_;
 
  public:
   ReadGroup(){}
 
-  ReadGroup(const std::string& id, const std::string& sample, const std::string& library)
-    : id_(id), sample_(sample), library_(library){}
+  ReadGroup(const std::string& id, const std::string& sample, const std::string& library){
+    SetID(id);
+    SetSample(sample);
+    SetLibrary(library);
+  }
 
-  bool HasID()      const { return !id_.empty();      }
-  bool HasSample()  const { return !sample_.empty();  }
-  bool HasLibrary() const { return !library_.empty(); }
+  bool HasTag(const std::string& tag) const {
+    return tag_dict_.find(tag) != tag_dict_.end();
+  }
+  bool HasID()      const { return HasTag("ID"); }
+  bool HasSample()  const { return HasTag("SM"); }
+  bool HasLibrary() const { return HasTag("LB"); }
 
-  const std::string& GetID()      const { return id_;      }
-  const std::string& GetSample()  const { return sample_;  }
-  const std::string& GetLibrary() const { return library_; }
+  const std::string& GetTag(const std::string& tag) const {
+    auto iter = tag_dict_.find(tag);
+    if (iter == tag_dict_.end())
+      printErrorAndDie("Read group does not contain a " + tag + " tag");
+    return iter->second;
+  }
+  const std::string& GetID()      const { return GetTag("ID"); }
+  const std::string& GetSample()  const { return GetTag("SM"); }
+  const std::string& GetLibrary() const { return GetTag("LB"); }
 
-  void SetID(const std::string& id)          { id_      = id;      }
-  void SetSample(const std::string& sample)  { sample_  = sample;  }
-  void SetLibrary(const std::string& library){ library_ = library; }
+  void SetTag(const std::string& tag, const std::string& value){
+    tag_dict_[tag] = value;
+  }
+  void SetID(const std::string& id)          { SetTag("ID", id);      }
+  void SetSample(const std::string& sample)  { SetTag("SM", sample);  }
+  void SetLibrary(const std::string& library){ SetTag("LB", library); }
 };
-
-
-
-
 
 
 class BamHeader {

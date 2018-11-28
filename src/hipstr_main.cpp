@@ -80,8 +80,8 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--bam-libs      <list_of_libraries>   "  << "\t" << "Comma separated list of libraries in same order as BAM/CRAM files. "                 << "\n"
 	    << "\t" << "                                      "  << "\t" << "  Assign each read the library corresponding to its file. By default, "              << "\n"
 	    << "\t" << "                                      "  << "\t" << "  each read must have an RG tag and the library is determined from the LB field"     << "\n"
-	    << "\t" << "--lib-from-samp                       "  << "\t" << " Assign each read the library corresponding to its sample name. By default,  "       << "\n"
-	    << "\t" << "                                      "  << "\t" << "  each read must have an RG tag and the library is determined from the LB field"     << "\n" << "\n"
+	    << "\t" << "--lib-field                           "  << "\t" << "Read group field used to assign each read a library. By default,  "                  << "\n"
+	    << "\t" << "                                      "  << "\t" << "  the library is determined from the LB field associated with RG"                    << "\n" << "\n"
 
 	    << "Optional haplotype filtering parameters:" << "\n"
 	    << "\t" << "--max-haps <max_haplotypes>           "  << "\t" << "Maximum allowable candidate haplotypes for an STR (Default = " << def_max_haplotypes << ")" << "\n"
@@ -123,7 +123,7 @@ void parse_command_line_args(int argc, char** argv,
 			     std::string& haploid_chr_string, std::string& hap_chr_file,      std::string& fasta_file,        std::string& region_file,   std::string& snp_vcf_file,
 			     std::string& chrom,              std::string& bam_pass_out_file, std::string& bam_filt_out_file, std::string& ref_vcf_file,
 			     std::string& str_vcf_out_file,   std::string& fam_file,          std::string& log_file,
-			     int& bam_lib_from_samp, int& skip_genotyping, GenotyperBamProcessor& bam_processor){
+			     std::string& lib_field, int& skip_genotyping, GenotyperBamProcessor& bam_processor){
   int def_mdist             = bam_processor.MAX_MATE_DIST;
   int def_min_reads         = bam_processor.MIN_TOTAL_READS;
   int def_max_reads         = bam_processor.MAX_TOTAL_READS;
@@ -153,6 +153,7 @@ void parse_command_line_args(int argc, char** argv,
     {"min-flank-freq",  required_argument, 0, 'I'},
     {"read-qual-trim",  required_argument, 0, 'j'},
     {"log",             required_argument, 0, 'l'},
+    {"lib-field",       required_argument, 0, 'L'},
     {"max-reads",       required_argument, 0, 'n'},
     {"max-flank-indel", required_argument, 0, 'F'},
     {"str-vcf",         required_argument, 0, 'o'},
@@ -171,7 +172,6 @@ void parse_command_line_args(int argc, char** argv,
     {"10x-bams",           no_argument, &bams_from_10x, 1},
     {"h",                  no_argument, &print_help, 1},
     {"help",               no_argument, &print_help, 1},
-    {"lib-from-samp",      no_argument, &bam_lib_from_samp, 1},
     {"hide-allreads",      no_argument, &(Genotyper::OUTPUT_ALLREADS),         0},
     {"hide-mallreads",     no_argument, &(Genotyper::OUTPUT_MALLREADS),        0},
     {"output-gls",         no_argument, &(Genotyper::OUTPUT_GLS),              1},
@@ -194,7 +194,7 @@ void parse_command_line_args(int argc, char** argv,
   std::string filename;
   while (true){
     int option_index = 0;
-    int c = getopt_long(argc, argv, "b:B:c:d:D:e:f:F:g:G:i:I:j:k:l:m:n:o:p:q:r:s:S:t:u:v:w:x:y:z:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "b:B:c:d:D:e:f:F:g:G:i:I:j:k:l:L:m:n:o:p:q:r:s:S:t:u:v:w:x:y:z:", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -255,6 +255,9 @@ void parse_command_line_args(int argc, char** argv,
       break;
     case 'l':
       log_file = std::string(optarg);
+      break;
+    case 'L':
+      lib_field = std::string(optarg);
       break;
     case 'm':
       filename = std::string(optarg);
@@ -359,14 +362,15 @@ int main(int argc, char** argv){
 
   GenotyperBamProcessor bam_processor(true, true);
 
-  int bam_lib_from_samp = 0, skip_genotyping = 0;
+  std::string lib_field = "LB";
+  int skip_genotyping = 0;
   std::string bamfile_string="", bamlist_string="", rg_sample_string="", rg_lib_string="", hap_chr_string="", hap_chr_file="";
   std::string region_file="", fasta_file="", chrom="", snp_vcf_file="";
   std::string bam_pass_out_file="", bam_filt_out_file="", str_vcf_out_file="", fam_file = "", log_file = "", ref_vcf_file="";
 
   parse_command_line_args(argc, argv,
 			  bamfile_string, bamlist_string, rg_sample_string, rg_lib_string, hap_chr_string, hap_chr_file, fasta_file, region_file, snp_vcf_file,
-			  chrom, bam_pass_out_file, bam_filt_out_file, ref_vcf_file, str_vcf_out_file, fam_file, log_file, bam_lib_from_samp, skip_genotyping, bam_processor);
+			  chrom, bam_pass_out_file, bam_filt_out_file, ref_vcf_file, str_vcf_out_file, fam_file, log_file, lib_field, skip_genotyping, bam_processor);
 
   if (!log_file.empty())
     bam_processor.set_log(log_file);
@@ -419,7 +423,7 @@ int main(int argc, char** argv){
   std::set<std::string> rg_samples, rg_libs;
   std::map<std::string, std::string> rg_ids_to_sample, rg_ids_to_library;
   if (!rg_sample_string.empty()){
-    if ((bam_lib_from_samp == 0) && rg_lib_string.empty())
+    if (rg_lib_string.empty())
       printErrorAndDie("--bam-libs option required when --bam-samps option specified");
 
     std::vector<std::string> read_groups, libraries;
@@ -427,12 +431,12 @@ int main(int argc, char** argv){
     split_by_delim(rg_lib_string, ',', libraries);
     if (bam_files.size() != read_groups.size())
       printErrorAndDie("Number of BAM/CRAM files in --bams and samples in --bam-samps must match");
-    if ((bam_lib_from_samp == 0) && (bam_files.size() != libraries.size()))
+    if (bam_files.size() != libraries.size())
       printErrorAndDie("Number of BAM/CRAM files in --bams and libraries in --bam-libs must match");
 
     for (unsigned int i = 0; i < bam_files.size(); i++){
       rg_ids_to_sample[bam_files[i]]  = read_groups[i];
-      rg_ids_to_library[bam_files[i]] = (bam_lib_from_samp == 0 ? libraries[i]: read_groups[i]);
+      rg_ids_to_library[bam_files[i]] = libraries[i];
       rg_samples.insert(read_groups[i]);
     }
     bam_processor.use_custom_read_groups();
@@ -447,9 +451,9 @@ int main(int argc, char** argv){
       for (auto rg_iter = read_groups.begin(); rg_iter != read_groups.end(); rg_iter++){
 	if (!rg_iter->HasID())     printErrorAndDie("RG in BAM/CRAM header is lacking the ID tag");
 	if (!rg_iter->HasSample()) printErrorAndDie("RG in BAM/CRAM header is lacking the SM tag");
-	if ((bam_lib_from_samp == 0) && !rg_iter->HasLibrary())
-	  printErrorAndDie("RG in BAM/CRAM header is lacking the LB tag");
-	std::string rg_library = (bam_lib_from_samp == 0 ? rg_iter->GetLibrary() : rg_iter->GetSample());
+	if (!rg_iter->HasTag(lib_field))
+	  printErrorAndDie("RG in BAM/CRAM header is missing the " + lib_field + " tag. See the --lib-field option for more details");
+	std::string rg_library = rg_iter->GetTag(lib_field);
 
 	// Ensure that there aren't identical read group ids that map to different samples or libraries
 	if (rg_ids_to_sample.find(rg_iter->GetID()) != rg_ids_to_sample.end())
