@@ -113,7 +113,9 @@ def read_sample_list(path):
      data.close()
 
      return samples_to_keep
-          
+
+def gt_is_diploid(gt):
+    return (gt.count("/") + gt.count("|") == 1)
 
 def main():
      # Dictionary of help messages for most of the command line arguments
@@ -209,6 +211,10 @@ def main():
           for sample in record:
                if sample['GT'] is None or sample['GT'] == "./." or sample['GT'] == ".":
                     continue
+               if not gt_is_diploid(sample['GT']):
+                   msg = "ERROR: Genotype '%s' for sample %s at %s:%d is not diploid as required by this script"%(sample['GT'], sample.sample, record.CHROM, record.POS)
+                   msg += "\n\t Please use filter_haploid_vcf.py to filter calls for haploid chromosomes"
+                   exit(msg)
 
                if samples_to_keep is not None and sample.sample not in samples_to_keep:
                     filter_reason = "NOT_IN_SAMPLES_TO_KEEP"
