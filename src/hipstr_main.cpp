@@ -70,6 +70,7 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--output-gls                          "  << "\t" << "Write genotype likelihoods to the VCF (Default = False)"                             << "\n"
 	    << "\t" << "--output-pls                          "  << "\t" << "Write phred-scaled genotype likelihoods to the VCF (Default = False)"                << "\n"
 	    << "\t" << "--output-phased-gls                   "  << "\t" << "Write phased genotype likelihoods to the VCF (Default = False)"                      << "\n"
+    //    << "\t" << "--output-hap-fields                   "  << "\t" << "Write additional fields about the full haplotypes to the VCF (Default = False)"      << "\n"
 	    << "\t" << "--output-filters                      "  << "\t" << "Write why individual calls were filtered to the VCF (Default = False)"               << "\n" << "\n"
 
 	    << "Optional BAM/CRAM tweaking parameters:" << "\n"
@@ -171,12 +172,13 @@ void parse_command_line_args(int argc, char** argv,
     {"10x-bams",           no_argument, &bams_from_10x, 1},
     {"h",                  no_argument, &print_help, 1},
     {"help",               no_argument, &print_help, 1},
-    {"hide-allreads",      no_argument, &(Genotyper::OUTPUT_ALLREADS),      0},
-    {"hide-mallreads",     no_argument, &(Genotyper::OUTPUT_MALLREADS),     0},
-    {"output-gls",         no_argument, &(Genotyper::OUTPUT_GLS),           1},
-    {"output-pls",         no_argument, &(Genotyper::OUTPUT_PLS),           1},
-    {"output-phased-gls",  no_argument, &(Genotyper::OUTPUT_PHASED_GLS),    1},
-    {"output-filters",     no_argument, &(Genotyper::OUTPUT_FILTERS),       1},
+    {"hide-allreads",      no_argument, &(Genotyper::OUTPUT_ALLREADS),         0},
+    {"hide-mallreads",     no_argument, &(Genotyper::OUTPUT_MALLREADS),        0},
+    {"output-gls",         no_argument, &(Genotyper::OUTPUT_GLS),              1},
+    {"output-pls",         no_argument, &(Genotyper::OUTPUT_PLS),              1},
+    {"output-phased-gls",  no_argument, &(Genotyper::OUTPUT_PHASED_GLS),       1},
+    {"output-hap-fields",  no_argument, &(Genotyper::OUTPUT_HAPLOTYPE_DATA),   1},
+    {"output-filters",     no_argument, &(Genotyper::OUTPUT_FILTERS),          1},
     {"no-rmdup",           no_argument, &(bam_processor.REMOVE_PCR_DUPS),      0},
     {"use-unpaired",       no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 0},
     {"dont-use-all-reads", no_argument, &(bam_processor.REQUIRE_SPANNING),     1},
