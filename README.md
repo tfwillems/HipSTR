@@ -365,8 +365,8 @@ DSNP      | Total number of reads with SNP information
 PSNP      | Number of reads with SNPs supporting each haploid genotype
 DSTUTTER  | Number of reads with a stutter indel in the STR region
 DFLANKINDEL | Number of reads with an indel in the regions flanking the STR
-AB        | log10 of the allele bias pvalue, where 0 is no bias and more negative values are increasingly biased. 0 for all homozygous genotypes
-FS        | log10 of the strand bias pvalue from Fisher's exact test, where 0 is no bias and more negative values are increasingly biased. 0 for all homozygous genotypes
+AB        | log10 of the allele bias pvalue, where 0 is no bias and more negative values are increasingly biased. For homozygous genotypes, this can be only negative if the haplotypes are heterozygous
+FS        | log10 of the strand bias pvalue from Fisher's exact test, where 0 is no bias and more negative values are increasingly biased. For homozygous genotypes, this can be only negative if the haplotypes are heterozygous
 DAB       | Number of reads used in the allele bias calculation
 ALLREADS  | Base pair difference observed in each read's Needleman-Wunsch alignment
 MALLREADS | Maximum likelihood bp diff in each read based on haplotype alignments

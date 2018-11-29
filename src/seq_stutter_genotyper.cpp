@@ -1360,13 +1360,13 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     sample_results[sample_names[i]] = samp_info.str();
 
     double allele_bias = 1.01;
-    if (!haploid_ && (gts[sample_index].first != gts[sample_index].second))
+    if (!haploid_ && (haplotypes[sample_index].first != haplotypes[sample_index].second))
       allele_bias = compute_allele_bias(unique_reads_hap_one[sample_index], unique_reads_hap_two[sample_index]);
 
     // Compute the strand bias p-value using the kt_fisher_exact function from htslib
     // For the bias, we use the two-sided p-value
     double strand_bias = 1.01;
-    if (!haploid_ && (gts[sample_index].first != gts[sample_index].second)){
+    if (!haploid_ && (haplotypes[sample_index].first != haplotypes[sample_index].second)){
       double left, right, two;
       kt_fisher_exact(unique_reads_hap_one[sample_index] - rv_unique_reads_hap_one[sample_index], rv_unique_reads_hap_one[sample_index],
 		      unique_reads_hap_two[sample_index] - rv_unique_reads_hap_two[sample_index], rv_unique_reads_hap_two[sample_index],
