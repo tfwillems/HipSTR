@@ -104,8 +104,6 @@ void print_usage(int def_mdist, int def_min_reads, int def_max_reads, int def_ma
 	    << "\t" << "--max-reads          <num_reads>      "  << "\t" << "Skip a locus if it has more than NUM_READS reads (Default = " << def_max_reads << ")" << "\n"
 	    << "\t" << "--max-str-len        <max_bp>         "  << "\t" << "Only genotype STRs in the provided BED file with length < MAX_BP (Default = " << def_max_str_len << ")" << "\n"
     //<< "\t" << "--skip-genotyping                     "  << "\t" << "Don't perform any STR genotyping and merely compute the stutter model for each STR"  << "\n"
-    //<< "\t" << "--dont-use-all-reads                  "  << "\t" << "Only utilize the reads HipSTR thinks will be informative for genotyping"   << "\n"
-    //<< "\t" << "                                      "  << "\t" << " Enabling this option usually slightly decreases accuracy but shortens runtimes (~2x)"      << "\n"
     //<< "\t" << "--read-qual-trim     <min_qual>       "  << "\t" << "Trim both ends of a read until a base has quality score > MIN_QUAL (Default = 5)"    << "\n"
 	    << "\t" << "--fam <fam_file>                      "  << "\t" << "FAM file containing pedigree information for samples of interest. Use the pedigree"  << "\n"
 	    << "\t" << "                                      "  << "\t" << "  information to filter SNPs prior to phasing STRs (Default = use all SNPs)"         << "\n"
@@ -181,7 +179,6 @@ void parse_command_line_args(int argc, char** argv,
     {"output-filters",     no_argument, &(Genotyper::OUTPUT_FILTERS),          1},
     {"no-rmdup",           no_argument, &(bam_processor.REMOVE_PCR_DUPS),      0},
     {"use-unpaired",       no_argument, &(bam_processor.REQUIRE_PAIRED_READS), 0},
-    {"dont-use-all-reads", no_argument, &(bam_processor.REQUIRE_SPANNING),     1},
     {"viz-left-alns",      no_argument, &(bam_processor.VIZ_LEFT_ALNS),        1},
     {"def-stutter-model",  no_argument, &def_stutter_model, 1},
     {"version",            no_argument, &print_version, 1},

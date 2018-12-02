@@ -170,22 +170,6 @@ std::string BamProcessor::trim_alignment_name(const BamAlignment& aln) const {
   return aln_name;
 }
 
-// Returns true if the alignment spans at least one region in the group.
-// Reads that don't actually span the region but start/end with a soft clip are also counted as spanning,
-// as the clipped sequence frequently extends past the region
-bool BamProcessor::spans_a_region(const std::vector<Region>& regions, BamAlignment& alignment) const {
-  for (auto region_iter = regions.begin(); region_iter != regions.end(); region_iter++){
-    if (alignment.Position() > region_iter->stop() || alignment.GetEndPosition() < region_iter->start())
-      continue;
-    if (alignment.Position() > region_iter->start() && !alignment.StartsWithSoftClip())
-      continue;
-    if (alignment.GetEndPosition() < region_iter->stop() && !alignment.EndsWithSoftClip())
-      continue;
-    return true;
-  }
-  return false;
-}
-
 void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::string& chrom_seq, const RegionGroup& region_group,
 					 const std::map<std::string, std::string>& rg_to_sample, std::vector<std::string>& rg_names,
 					 std::vector<BamAlnList>& paired_strs_by_rg, std::vector<BamAlnList>& mate_pairs_by_rg, std::vector<BamAlnList>& unpaired_strs_by_rg,
@@ -279,10 +263,6 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
       else if (base_quality_.sum_log_prob_correct(alignment.Qualities()) < MIN_SUM_QUAL_LOG_PROB){
 	low_qual_score++;
 	filter.append("LOW_BASE_QUALS");
-      }
-      else if ((REQUIRE_SPANNING == 1) && !spans_a_region(regions, alignment)){
-	not_spanning++;
-	filter.append("NOT_SPANNING");
       }
       else
 	pass_one = true;
@@ -445,10 +425,8 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 		     << read_count << " reads overlapped region, of which "
 		     << "\n\t" << hard_clip      << " were hard clipped"
 		     << "\n\t" << read_has_N     << " had an 'N' base call"
-		     << "\n\t" << low_qual_score << " had low base quality scores";
-  if (REQUIRE_SPANNING == 1)
-    selective_logger() << "\n\t" << not_spanning << " did not span the STR";
-  selective_logger() << "\n\t" << unique_mapping << " did not have a unique mapping";
+		     << "\n\t" << low_qual_score << " had low base quality scores"
+		     << "\n\t" << unique_mapping << " did not have a unique mapping";
   if (REQUIRE_PAIRED_READS)
     selective_logger() << "\n\t" << num_filt_unpaired_reads << " did not have a mate pair";
   selective_logger() << "\n\t" << (paired_str_alns.size()+unpaired_str_alns.size()) << " PASSED ALL FILTERS" << "\n"

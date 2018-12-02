@@ -49,8 +49,6 @@ class BamProcessor {
 
  std::string trim_alignment_name(const BamAlignment& aln) const;
 
- bool spans_a_region(const std::vector<Region>& regions, BamAlignment& alignment) const;
-
  void verify_chromosomes(const std::vector<std::string>& chroms, const BamHeader* bam_header, FastaReader& fasta_reader);
 
  virtual void verify_vcf_chromosomes(const std::vector<std::string>& chroms) = 0;
@@ -85,7 +83,6 @@ class BamProcessor {
    MIN_FLANK                = 5;
    MIN_READ_END_MATCH       = 10;
    MAXIMAL_END_MATCH_WINDOW = 15;
-   REQUIRE_SPANNING         = 0;
    REQUIRE_PAIRED_READS     = 1;
    total_bam_seek_time_     = 0;
    locus_bam_seek_time_     = -1;
@@ -159,11 +156,8 @@ class BamProcessor {
  int32_t MIN_READ_END_MATCH;
  int32_t MAXIMAL_END_MATCH_WINDOW;
  int32_t MAX_STR_LENGTH;
-
  int     REMOVE_PCR_DUPS;
- int     REQUIRE_SPANNING;
  int     REQUIRE_PAIRED_READS;  // Only utilize paired STR reads to genotype individuals
-
  double  MIN_SUM_QUAL_LOG_PROB;
  int32_t MAX_TOTAL_READS;       // Skip loci where the number of STR reads passing all filters exceeds this limit
  char    BASE_QUAL_TRIM;        // Trim boths ends of the read until encountering a base with quality greater than this threshold

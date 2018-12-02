@@ -79,7 +79,8 @@ void GenotyperBamProcessor::left_align_reads(const RegionGroup& region_group, co
         Alignment& prev_aln = left_alns[iter->second];
         assert(prev_aln.get_sequence().size() == alignments[i][j].QueryBases().size());
 	std::string bases = uppercase(alignments[i][j].QueryBases());
-        Alignment new_aln(prev_aln.get_start(), prev_aln.get_stop(), alignments[i][j].IsReverseStrand(), alignments[i][j].Name(), alignments[i][j].Qualities(), bases, prev_aln.get_alignment());
+        Alignment new_aln(prev_aln.get_start(), prev_aln.get_stop(), alignments[i][j].IsReverseStrand(),
+			  alignments[i][j].Name(), alignments[i][j].Qualities(), bases, prev_aln.get_alignment());
         new_aln.set_cigar_list(prev_aln.get_cigar_list());
         left_alns.push_back(new_aln);
       }
@@ -224,7 +225,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
     left_align_reads(region_group, chrom_seq, alignments, log_p1s, log_p2s, filt_log_p1s,
 		     filt_log_p2s, left_alignments);
 
-    bool run_assembly = (REQUIRE_SPANNING == 0);
+    bool run_assembly = true;
     seq_genotyper = new SeqStutterGenotyper(region_group, haploid, run_assembly, left_alignments, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq,
 					    stutter_models, ref_vcf_, selective_logger());
 
@@ -234,7 +235,8 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
       // If appropriate, recalculate the stutter model using the haplotype ML alignments,
       // realign the reads and regenotype the samples
       if (recalc_stutter_model_)
-	pass = seq_genotyper->recompute_stutter_models(selective_logger(), MAX_TOTAL_HAPLOTYPES, MAX_FLANK_HAPLOTYPES, MIN_FLANK_FREQ, MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
+	pass = seq_genotyper->recompute_stutter_models(selective_logger(), MAX_TOTAL_HAPLOTYPES, MAX_FLANK_HAPLOTYPES,
+						       MIN_FLANK_FREQ, MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
 
       if (pass){
 	num_genotype_success_++;
