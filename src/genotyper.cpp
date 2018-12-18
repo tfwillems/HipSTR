@@ -296,9 +296,9 @@ std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::
       << "##FORMAT=<ID=" << "DSTUTTER"    << ",Number=1,Type=Integer,Description=\"" << "Number of reads with a stutter indel in the STR region"        << "\">" << "\n"
       << "##FORMAT=<ID=" << "DFLANKINDEL" << ",Number=1,Type=Integer,Description=\"" << "Number of reads with an indel in the regions flanking the STR" << "\">" << "\n"
       << "##FORMAT=<ID=" << "AB"          << ",Number=1,Type=Float,Description=\""   << "log10 of the allele bias pvalue, "
-      << "where 0 is no bias and more negative values are increasingly biased. For homozygous genotypes, this can be only negative if the haplotypes are heterozygous" << "\">" << "\n"
+      << "where 0 is no bias and more negative values are increasingly biased. For homozygous genotypes, this can be negative if the haplotypes are heterozygous" << "\">" << "\n"
       << "##FORMAT=<ID=" << "FS"          << ",Number=1,Type=Float,Description=\""   << "log10 of the strand bias pvalue from Fisher's exact test, "
-      << "where 0 is no bias and more negative values are increasingly biased. For homozygous genotypes, this can only be negative if the haplotypes are heterozygous" << "\">" << "\n"
+      << "where 0 is no bias and more negative values are increasingly biased. For homozygous genotypes, this can be negative if the haplotypes are heterozygous" << "\">" << "\n"
       << "##FORMAT=<ID=" << "DAB"         << ",Number=1,Type=Integer,Description=\"" << "Number of reads used in the AB and FS calculations" << "\">" << "\n";
 
   if (OUTPUT_HAPLOTYPE_DATA == 1)
