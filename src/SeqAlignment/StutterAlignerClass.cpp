@@ -42,7 +42,8 @@ void StutterAlignerClass::load_read(const int base_seq_len,       const char* ba
       if (j % period_ < block_len_)
 	log_ins_prob += (base_seq[-i-j] == block_seq_[-(j%period_)] ? base_log_correct[-i-j] : base_log_wrong[-i-j]);
       else
-	log_ins_prob += base_log_correct[-i-j]; // No base to match to, so assume observed without error. We could potentially match to upstream flank?
+	log_ins_prob += base_log_correct[-i-j]; // No base to match to, so assume observed without error
+                                                // We could potentially match to upstream flank?
       if ((j+1) % period_ == 0)
 	ins_probs_[ins_index++] = log_ins_prob;
     }
@@ -100,7 +101,7 @@ double StutterAlignerClass::align_pcr_insertion_reverse(const int base_seq_len, 
     log_probs_.push_back(int_log(block_len_+i)+log_prob);
 
   // Convert to raw probabilities, add, take the log while avoiding underflow
-  return fast_log_sum_exp(log_probs_);
+  return fast_log_sum_exp(log_probs_, std::max(best_LL, log_probs_.back()));
 }
 
 double StutterAlignerClass::align_pcr_deletion_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
@@ -146,7 +147,7 @@ double StutterAlignerClass::align_pcr_deletion_reverse(const int base_seq_len,  
     log_probs_.push_back(int_log(block_len_+D+i)+log_prob);
 
   // Convert to raw probabilities, add, take the log while avoiding underflow
-  return fast_log_sum_exp(log_probs_);
+  return fast_log_sum_exp(log_probs_, std::max(best_LL, log_probs_.back()));
 }
 
 double StutterAlignerClass::align_stutter_region_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
