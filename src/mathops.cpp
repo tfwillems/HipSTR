@@ -95,12 +95,20 @@ double fast_log_sum_exp(double log_v1, double log_v2){
 }
 
 double fast_log_sum_exp(const std::vector<double>& log_vals){
-  double max_val = *std::max_element(log_vals.begin(), log_vals.end());
-  double total   = 0;
-  for (auto iter = log_vals.begin(); iter != log_vals.end(); iter++){
-    double diff = *iter - max_val;
-    if (diff > LOG_THRESH)
-      total += fasterexp(diff);
-  }
-  return max_val + fasterlog(total);
+  const double max_val = *std::max_element(log_vals.begin(), log_vals.end());
+  const double thresh  = LOG_THRESH + max_val;
+  double total         = 0;
+  for (auto iter = log_vals.begin(); iter != log_vals.end(); ++iter)
+    if (*iter > thresh)
+      total += fastexp(*iter-max_val);
+  return max_val + fastlog(total);
+}
+
+double fast_log_sum_exp(const std::vector<double>& log_vals, const double max_val){
+  const double thresh = LOG_THRESH + max_val;
+  double total        = 0;
+  for (auto iter = log_vals.begin(); iter != log_vals.end(); ++iter)
+    if (*iter > thresh)
+      total += fastexp(*iter-max_val);
+  return max_val + fastlog(total);
 }

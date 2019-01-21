@@ -37,5 +37,6 @@ const double LOG_THRESH = log(0.001);
 
 double fast_log_sum_exp(double log_v1, double log_v2);
 double fast_log_sum_exp(const std::vector<double>& log_vals);
+double fast_log_sum_exp(const std::vector<double>& log_vals, const double max_val);
 
 #endif
