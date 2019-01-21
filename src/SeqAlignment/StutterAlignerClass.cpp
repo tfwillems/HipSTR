@@ -2,8 +2,6 @@
 #include <math.h>
 
 #include <algorithm>
-#include <iostream>
-#include <vector>
 
 #include "../error.h"
 #include "../mathops.h"
@@ -61,15 +59,12 @@ double StutterAlignerClass::align_pcr_insertion_reverse(const int base_seq_len, 
 							const double* base_log_wrong, const double* base_log_correct, const int D,
 							int& best_ins_pos){
   assert(D > 0 && base_seq_len <= block_len_+D && D%period_ == 0);
-  log_probs_.clear();
-  double log_prior      = -int_log(block_len_+1);
   int* upstream_matches = upstream_match_lengths_[0] + block_len_ - 1;
 
   // Compute probability for i = 0
-  double log_prob = log_prior + ins_probs_[num_insertions_*offset + D/period_ - 1] + (base_seq_len > D ? match_probs_[offset+D] : 0);
+  double log_prob = ins_probs_[num_insertions_*offset + D/period_ - 1] + (base_seq_len > D ? match_probs_[offset+D] : 0);
   best_ins_pos    = 0;
   double best_LL  = log_prob;
-  log_probs_.push_back(log_prob);
 
   // Compute for all other i's, reusing previous result to accelerate computation
   int i = 0;
@@ -80,15 +75,10 @@ double StutterAlignerClass::align_pcr_insertion_reverse(const int base_seq_len, 
           log_prob -= (base_seq[index] == block_seq_[i]         ? base_log_correct[index] : base_log_wrong[index]);
           log_prob += (base_seq[index] == block_seq_[i-period_] ? base_log_correct[index] : base_log_wrong[index]);
         }
-	log_probs_.push_back(log_prob);
       }
-      else {
-	log_probs_.push_back(int_log(upstream_matches[i])+log_prob);
+      else
 	i -= (upstream_matches[i]-1);
-      }
     }
-    else
-      log_probs_.push_back(log_prob);
     
     if (log_prob > best_LL || (left_align_ && (log_prob == best_LL))){
       best_ins_pos = 1-i;
@@ -96,22 +86,16 @@ double StutterAlignerClass::align_pcr_insertion_reverse(const int base_seq_len, 
     }
   }  
 
-  // Remaining configurations all have same likelihood so count all of them
-  if (i > -block_len_)
-    log_probs_.push_back(int_log(block_len_+i)+log_prob);
-
-  // Convert to raw probabilities, add, take the log while avoiding underflow
-  return fast_log_sum_exp(log_probs_, std::max(best_LL, log_probs_.back()));
+  // Any remaining configurations all have the same likelihood
+  return best_LL;
 }
 
 double StutterAlignerClass::align_pcr_deletion_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
 						       const double* base_log_wrong, const double* base_log_correct, const int D,
 						       int& best_del_pos){
   assert(D < 0 && block_len_+D >= 0 && base_seq_len <= block_len_+D);
-  log_probs_.clear();
   int* upstream_matches = upstream_match_lengths_[-D/period_ - 1] + block_len_ - 1;
-  double log_prior = -int_log(block_len_+D+1);
-  double log_prob  = log_prior;
+  double log_prob       = 0;
 
   // Compute probability for i = 0
   if (offset+D >= 0)
@@ -121,20 +105,16 @@ double StutterAlignerClass::align_pcr_deletion_reverse(const int base_seq_len,  
       log_prob += (block_seq_[j+D] == base_seq[j] ? base_log_correct[j] : base_log_wrong[j]);
   best_del_pos   = 0;
   double best_LL = log_prob;
-  log_probs_.push_back(log_prob);
 
   // Compute for all other i's, reusing previous result to accelerate computation
   int i;
   for (i = 0; i > -base_seq_len; i--){
     if (upstream_matches[i] == 0){
-      log_prob    -= (block_seq_[i+D] == base_seq[i] ? base_log_correct[i] : base_log_wrong[i]);
-      log_prob    += (block_seq_[i]   == base_seq[i] ? base_log_correct[i] : base_log_wrong[i]);
-      log_probs_.push_back(log_prob);
+      log_prob -= (block_seq_[i+D] == base_seq[i] ? base_log_correct[i] : base_log_wrong[i]);
+      log_prob += (block_seq_[i]   == base_seq[i] ? base_log_correct[i] : base_log_wrong[i]);
     }
-    else {
-      log_probs_.push_back(int_log(upstream_matches[i])+log_prob);
+    else
       i -= (upstream_matches[i]-1);
-    }
     
     if (log_prob > best_LL || (left_align_ && (log_prob == best_LL))){
       best_del_pos = 1-i;
@@ -142,12 +122,8 @@ double StutterAlignerClass::align_pcr_deletion_reverse(const int base_seq_len,  
     }
   }
 
-  // Remaining configurations all have same likelihood so count all of them
-  if(-i < block_len_+D)
-    log_probs_.push_back(int_log(block_len_+D+i)+log_prob);
-
-  // Convert to raw probabilities, add, take the log while avoiding underflow
-  return fast_log_sum_exp(log_probs_, std::max(best_LL, log_probs_.back()));
+  // Any remaining configurations all have the same likelihood
+  return best_LL;
 }
 
 double StutterAlignerClass::align_stutter_region_reverse(const int base_seq_len,       const char*   base_seq, const int offset,

@@ -8,7 +8,6 @@
 
 class StutterAlignerClass {
  private:
-  std::vector<double> log_probs_;
   char* block_seq_;
   const int  block_len_;
   const int  period_;
@@ -49,7 +48,6 @@ class StutterAlignerClass {
  StutterAlignerClass(const std::string& block_seq, int period, bool left_align, const RepeatStutterInfo* stutter_info)
    : block_len_(block_seq.size()), period_(period), left_align_(left_align){
     assert(stutter_info->max_insertion()%period_ == 0 && stutter_info->max_deletion()% period == 0);
-    log_probs_.reserve(block_len_+1);
 
     // Create and fill the array and make the pointer refer to the last character
     if (block_len_ == 0)
