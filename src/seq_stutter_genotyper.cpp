@@ -44,7 +44,7 @@ bool SeqStutterGenotyper::assemble_flanks(int max_total_haplotypes, int max_flan
   double locus_assembly_time = clock();
   logger << "Reassembling flanking sequences" << std::endl;
   std::vector< std::vector<std::string> > alleles_to_add (haplotype_->num_blocks());
-  std::vector<bool> realign_sample(num_samples_, false);
+  std::vector<bool> realign_sample(num_samples_, true);
   int new_total_haps = haplotype_->num_combs();
 
   for (int flank = 0; flank < 2; flank++){
@@ -207,7 +207,7 @@ bool SeqStutterGenotyper::assemble_flanks(int max_total_haplotypes, int max_flan
       get_unused_alleles(false, true, unused_indices, num_aff_blocks, num_aff_alleles);
       if (num_aff_alleles != 0){
 	logger << "Recomputing sample posteriors after removing " << num_aff_alleles
-	       << " uncalled alleles across " << num_aff_blocks << " blocks" << std::endl;
+	       << " uncalled allele(s) across " << num_aff_blocks << " block(s)" << std::endl;
 	remove_alleles(unused_indices);
       }
     }
@@ -649,7 +649,7 @@ bool SeqStutterGenotyper::genotype(int max_total_haplotypes, int max_flank_haplo
     get_unused_alleles(false, true, unused_indices, num_aff_blocks, num_aff_alleles);
     if (num_aff_alleles != 0){
       logger << "Recomputing sample posteriors after removing " << num_aff_alleles
-	     << " uncalled alleles across " << num_aff_blocks << " blocks" << std::endl;
+	     << " uncalled allele(s) across " << num_aff_blocks << " block(s)" << std::endl;
       remove_alleles(unused_indices);
     }
 
@@ -658,7 +658,7 @@ bool SeqStutterGenotyper::genotype(int max_total_haplotypes, int max_flank_haplo
     get_unused_alleles(true, false, unused_indices, num_aff_blocks, num_aff_alleles);
     if (num_aff_alleles != 0){
       logger << "Recomputing sample posteriors after removing " << num_aff_alleles
-	     << " alleles with no spanning reads across " << num_aff_blocks << " blocks" << std::endl;
+	     << " allele(s) with no spanning reads across " << num_aff_blocks << " block(s)" << std::endl;
       remove_alleles(unused_indices);
     }
   }
@@ -822,13 +822,14 @@ void SeqStutterGenotyper::retrace_alignments(std::vector<AlignmentTrace*>& trace
 
     int hap_a    = haps[sample_label_[read_index]].first;
     int hap_b    = haps[sample_label_[read_index]].second;
-    int best_hap = ((LOG_ONE_HALF+log_p1_[read_index]+read_LL_ptr[hap_a] > LOG_ONE_HALF+log_p2_[read_index]+read_LL_ptr[hap_b]) ? hap_a : hap_b);
+    int best_hap = ((LOG_ONE_HALF+log_p1_[read_index]+read_LL_ptr[hap_a] >
+		     LOG_ONE_HALF+log_p2_[read_index]+read_LL_ptr[hap_b]) ? hap_a : hap_b);
 
     AlignmentTrace* trace = NULL;
     std::pair<int,int> trace_key(pool_index_[read_index], best_hap);
     auto trace_iter = trace_cache_.find(trace_key);
     if (trace_iter == trace_cache_.end()){
-      trace = hap_aligner.trace_optimal_aln(pooled_alns[pool_index_[read_index]], seed_positions_[read_index], best_hap, &base_quality_);
+      trace = hap_aligner.trace_optimal_aln(pooled_alns[pool_index_[read_index]], seed_positions_[read_index], best_hap, &base_quality_, false);
       trace_cache_[trace_key] = trace;
     }
     else
@@ -1087,7 +1088,8 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     // Extract read's phase posterior conditioned on the determined sample genotype
     int hap_a            = haplotypes[sample_index].first;
     int hap_b            = haplotypes[sample_index].second;
-    double total_read_LL = log_sum_exp(LOG_ONE_HALF+log_p1_[read_index]+read_LL_ptr[hap_a], LOG_ONE_HALF+log_p2_[read_index]+read_LL_ptr[hap_b]);
+    double total_read_LL = log_sum_exp(LOG_ONE_HALF+log_p1_[read_index]+read_LL_ptr[hap_a],
+				       LOG_ONE_HALF+log_p2_[read_index]+read_LL_ptr[hap_b]);
     double log_phase_one = LOG_ONE_HALF + log_p1_[read_index] + read_LL_ptr[hap_a] - total_read_LL; 
     log_read_phases[sample_index].push_back(log_phase_one);
 
@@ -1115,7 +1117,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     std::pair<int,int> trace_key(pool_index_[read_index], best_hap);
     auto trace_iter = trace_cache_.find(trace_key);
     if (trace_iter == trace_cache_.end()){
-      trace  = hap_aligner.trace_optimal_aln(alns_[read_index], seed_positions_[read_index], best_hap, &base_quality_);
+      trace = hap_aligner.trace_optimal_aln(alns_[read_index], seed_positions_[read_index], best_hap, &base_quality_, false);
       trace_cache_[trace_key] = trace;
     }
     else
