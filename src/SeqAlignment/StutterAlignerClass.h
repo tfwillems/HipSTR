@@ -9,6 +9,7 @@
 class StutterAlignerClass {
  private:
   char* block_seq_;
+  int*  mods_;
   const int  block_len_;
   const int  period_;
   const bool left_align_;
@@ -75,6 +76,11 @@ class StutterAlignerClass {
     ins_probs_   = NULL;
     del_probs_   = NULL;
     match_probs_ = NULL;
+
+    // Precompute various modulus values to avoid expensive downstream operations
+    mods_ = new int[500];
+    for (int i = 0; i < 500; ++i)
+      mods_[i] = (i % period_);
   }
 
   ~StutterAlignerClass(){
@@ -90,6 +96,7 @@ class StutterAlignerClass {
     delete [] ins_probs_;
     delete [] del_probs_;
     delete [] match_probs_;
+    delete [] mods_;
   }
 
   void load_read(const int base_seq_len,       const char* base_seq,

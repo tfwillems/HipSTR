@@ -25,11 +25,11 @@ void StutterAlignerClass::load_read(const int base_seq_len,       const char* ba
     double log_prob = 0.0;
     for (j = 0; j < std::min(base_seq_len-i, -max_deletion_); j++){
       log_prob += (base_seq[-i-j] == block_seq_[-j] ? base_log_correct[-i-j] : base_log_wrong[-i-j]);
-      if ((j+1) % period_ == 0)
+      if (mods_[j+1] == 0)
 	del_probs_[del_index++] = log_prob;
     }
     for (; j < -max_deletion_; j++)
-      if ((j+1) % period_ == 0)
+      if (mods_[j+1] == 0)
 	del_index++;
     for (; j < std::min(base_seq_len-i, block_len_); j++)
       log_prob += (base_seq[-i-j] == block_seq_[-j] ? base_log_correct[-i-j] : base_log_wrong[-i-j]);
@@ -37,16 +37,16 @@ void StutterAlignerClass::load_read(const int base_seq_len,       const char* ba
 
     double log_ins_prob = 0.0;
     for (j = 0; j < std::min(max_insertion_, base_seq_len-i); j++){
-      if (j % period_ < block_len_)
-	log_ins_prob += (base_seq[-i-j] == block_seq_[-(j%period_)] ? base_log_correct[-i-j] : base_log_wrong[-i-j]);
+      if (mods_[j] < block_len_)
+	log_ins_prob += (base_seq[-i-j] == block_seq_[-mods_[j]] ? base_log_correct[-i-j] : base_log_wrong[-i-j]);
       else
 	log_ins_prob += base_log_correct[-i-j]; // No base to match to, so assume observed without error
                                                 // We could potentially match to upstream flank?
-      if ((j+1) % period_ == 0)
+      if (mods_[j+1] == 0)
 	ins_probs_[ins_index++] = log_ins_prob;
     }
     for (; j < max_insertion_; j++)
-      if ((j+1) % period_ == 0)
+      if (mods_[j+1] == 0)
 	ins_probs_[ins_index++] = log_ins_prob;
   }
 }
@@ -58,7 +58,7 @@ double StutterAlignerClass::align_no_artifact_reverse(const int offset){
 double StutterAlignerClass::align_pcr_insertion_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
 							const double* base_log_wrong, const double* base_log_correct, const int D,
 							int& best_ins_pos){
-  assert(D > 0 && base_seq_len <= block_len_+D && D%period_ == 0);
+  assert(D > 0 && base_seq_len <= block_len_+D && mods_[D] == 0);
   int* upstream_matches = upstream_match_lengths_[0] + block_len_ - 1;
 
   // Compute probability for i = 0
@@ -68,7 +68,8 @@ double StutterAlignerClass::align_pcr_insertion_reverse(const int base_seq_len, 
 
   // Compute for all other i's, reusing previous result to accelerate computation
   int i = 0;
-  for (; i > -std::min(std::max(0, base_seq_len-D), block_len_); i--){
+  const int thresh = -std::min(std::max(0, base_seq_len-D), block_len_);
+  for (; i > thresh; --i){
     if (-i+period_ < block_len_) {
       if (upstream_matches[i] == 0){
         for (int index = i-period_; index >= i-D; index -= period_){
