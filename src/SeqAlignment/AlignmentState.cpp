@@ -323,15 +323,16 @@ void stitch(AlignmentState& fw_state, AlignmentState& rv_state, const Alignment&
    // Determine the seed for the full alignment and the index of its matched haplotype base
    // NOTE: This is NOT the seed used during alignment, but rather a conveniently selected base that 
    // is matched to a haplotype base
-   int seed_base, hap_index, read_aln_index_v2;
+   // Calculate the seed's index in the read vs. haplotype alignment string
+   int seed_base, hap_index, read_aln_index;
    bool ok = false;
    if (fw_state.hap_index_ != -1){
-     seed_base = fw_state.seq_index_;
-     hap_index = fw_state.hap_index_;
-     read_aln_index_v2 = (int)left_aln.size() - 1;
+     seed_base      = fw_state.seq_index_;
+     hap_index      = fw_state.hap_index_;
+     read_aln_index = (int)left_aln.size() - 1;
 
      // Find first matching base and use it as the seed
-     for (auto iter = left_aln.rbegin(); iter != left_aln.rend(); ++iter, --read_aln_index_v2){
+     for (auto iter = left_aln.rbegin(); iter != left_aln.rend(); ++iter, --read_aln_index){
        if (*iter == 'M'){
 	 ok = true;
 	 break;
@@ -344,12 +345,12 @@ void stitch(AlignmentState& fw_state, AlignmentState& rv_state, const Alignment&
      }
    }
    if (!ok && rv_state.hap_index_ != -1){
-     seed_base = rv_state.seq_len_         - rv_state.seq_index_ - 1;
-     hap_index = rv_state.hap_->cur_size() - rv_state.hap_index_ - 1;
-     read_aln_index_v2 = left_aln.size();
+     seed_base      = rv_state.seq_len_         - rv_state.seq_index_ - 1;
+     hap_index      = rv_state.hap_->cur_size() - rv_state.hap_index_ - 1;
+     read_aln_index = left_aln.size();
 
      // Find first matching base and use it as the seed
-     for (auto iter = right_aln.begin(); iter != right_aln.end(); ++iter, ++read_aln_index_v2){
+     for (auto iter = right_aln.begin(); iter != right_aln.end(); ++iter, ++read_aln_index){
        if (*iter == 'M'){
 	 ok = true;
 	 break;
@@ -362,7 +363,7 @@ void stitch(AlignmentState& fw_state, AlignmentState& rv_state, const Alignment&
      }
    }
    assert(ok);
-   assert(read_aln_index_v2 >= 0 && read_aln_index_v2 < read_aln_to_hap.size());
+   assert(read_aln_index >= 0 && read_aln_index < read_aln_to_hap.size());
 
    // Retrieve pre-computed alignment of haplotype to reference genome
    std::string hap_aln_to_ref = fw_state.hap_->get_aln_info();
@@ -383,19 +384,6 @@ void stitch(AlignmentState& fw_state, AlignmentState& rv_state, const Alignment&
      // TO DO: Is there an error here? Shouldn't we be increasing seed_pos?
    }
    assert(hap_aln_index != hap_aln_to_ref.size());
-
-   // Calculate the seed's index in the read vs. haplotype alignment string
-   // TO DO : Remove the code below once we verify that v2 == v1
-   int read_aln_index = 0;
-   while (seed_base > 0 && read_aln_index < read_aln_to_hap.size()){
-     if (read_aln_to_hap[read_aln_index] == 'M' || read_aln_to_hap[read_aln_index] == 'I' || read_aln_to_hap[read_aln_index] == 'S')
-       seed_base--;
-     read_aln_index++;
-   }
-   while (read_aln_index < read_aln_to_hap.size() && read_aln_to_hap[read_aln_index] == 'D')
-     read_aln_index++;
-   assert(read_aln_index != read_aln_to_hap.size());
-   assert(read_aln_index == read_aln_index_v2);
 
    // Stitch the two sets of alignments together to generate read vs. ref genome alignments
    // Use the seed to separately handle the left and right sequences
