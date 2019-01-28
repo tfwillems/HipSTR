@@ -96,9 +96,13 @@ int HapAligner::calc_seed_base(const Alignment& aln){
 }
 
 void HapAligner::process_reads(const std::vector<Alignment>& alignments,
+			       std::vector<AlignmentMatrixCache*>& fw_matrix_caches,
+			       std::vector<AlignmentMatrixCache*>& rv_matrix_caches,
 			       const BaseQuality* base_quality, const std::vector<bool>& realign_read,
 			       double* aln_probs, int* seed_positions){
   assert(alignments.size() == realign_read.size());
+  assert((alignments.size() == fw_matrix_caches.size()) && (alignments.size() == rv_matrix_caches.size()));
+
   AlignmentTrace trace(fw_haplotype_->num_blocks());
   double* prob_ptr = aln_probs;
   for (unsigned int i = 0; i < alignments.size(); ++i){
@@ -115,13 +119,15 @@ void HapAligner::process_reads(const std::vector<Alignment>& alignments,
 	*prob_ptr = 0;
     }
     else {
-      process_read(alignments[i], seed_base, base_quality, false, prob_ptr, trace, false);
+      process_read(alignments[i], seed_base, base_quality, false, fw_matrix_caches[i], rv_matrix_caches[i],
+		   prob_ptr, trace, false);
       prob_ptr += fw_haplotype_->num_combs();
     }
   }
 }
 
 void HapAligner::process_read(const Alignment& aln, int seed, const BaseQuality* base_quality, bool retrace_aln,
+			      AlignmentMatrixCache* fw_cache, AlignmentMatrixCache* rv_cache,
 			      double* prob_ptr, AlignmentTrace& trace, bool debug){
   assert(seed != -1);
   assert(aln.get_sequence().size() > 0);
@@ -161,8 +167,8 @@ void HapAligner::process_read(const Alignment& aln, int seed, const BaseQuality*
     }
 
     // Perform alignment to current haplotype and compute the LL of the optimal alignment
-    fw_state.align_seq_to_haplotype(reuse_alns);
-    rv_state.align_seq_to_haplotype(reuse_alns);
+    fw_state.align_seq_to_haplotype(reuse_alns, fw_cache);
+    rv_state.align_seq_to_haplotype(reuse_alns, rv_cache);
     double LL = calc_maximum_likelihood_alignment(fw_state, rv_state);
     
     *prob_ptr = LL;
@@ -183,9 +189,15 @@ void HapAligner::process_read(const Alignment& aln, int seed, const BaseQuality*
   delete [] rv_log_wrong;
   delete [] rv_log_right;
   delete [] rv_seq;
+
+  // Clear the matrix caches if appropriate
+  // TO DO: Add clause to control when this occurs
+  fw_cache->clear();
+  rv_cache->clear();
 }
 
 AlignmentTrace* HapAligner::trace_optimal_aln(const Alignment& orig_aln, int seed, int best_haplotype, const BaseQuality* base_quality,
+					      AlignmentMatrixCache* fw_cache, AlignmentMatrixCache* rv_cache,
 					      bool debug){
   fw_haplotype_->go_to(best_haplotype);
   fw_haplotype_->fix();
@@ -193,7 +205,7 @@ AlignmentTrace* HapAligner::trace_optimal_aln(const Alignment& orig_aln, int see
   fw_haplotype_->fix();
   double prob;
   AlignmentTrace* trace = new AlignmentTrace(fw_haplotype_->num_blocks());
-  process_read(orig_aln, seed, base_quality, true, &prob, *trace, debug);
+  process_read(orig_aln, seed, base_quality, true, fw_cache, rv_cache, &prob, *trace, debug);
   fw_haplotype_->unfix();
   rv_haplotype_->unfix();
   return trace;

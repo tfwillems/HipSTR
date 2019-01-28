@@ -175,6 +175,7 @@ class SeqStutterGenotyper : public Genotyper {
     delete [] second_mate_;
 
     for (int pool_index = 0; pool_index < pooler_.num_pools(); ++pool_index){
+      // Clear the alignment matrix cache as it stores allocated matrices that won't otherwise be freed
       fw_matrix_caches_[pool_index]->clear();
       rv_matrix_caches_[pool_index]->clear();
       delete fw_matrix_caches_[pool_index];

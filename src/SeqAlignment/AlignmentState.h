@@ -34,9 +34,6 @@ class AlignmentState {
   int* best_artifact_size_;
   int* best_artifact_pos_;
 
-  // Cache of sub-matrices that have already been computed
-  AlignmentMatrixCache matrix_cache_;
-
   // Static members
   const static double IMPOSSIBLE;               // Large negative value to prevent impossible or undesirable configurations
   const static double MIN_SNP_LOG_PROB_CORRECT; // Only consider a base as a SNP if the log prob is above this threshold
@@ -86,7 +83,7 @@ class AlignmentState {
     matrix_type_  = NONE;
   }
 
-  void align_seq_to_haplotype(const bool reuse_alns);
+  void align_seq_to_haplotype(const bool reuse_alns, AlignmentMatrixCache* matrix_cache);
 
   friend double calc_maximum_likelihood_alignment(AlignmentState& fw_state, AlignmentState& rv_state);
 
@@ -94,9 +91,6 @@ class AlignmentState {
 		     AlignmentTrace& trace, bool debug);
 
   ~AlignmentState(){
-    // Clear the alignment matrix cache as it stores allocated matrices that won't otherwise be freed
-    matrix_cache_.clear();
-
     // Deallocate full scoring matrices
     delete [] match_matrix_;
     delete [] ins_matrix_;

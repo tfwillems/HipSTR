@@ -606,7 +606,7 @@ void AlignmentState::align_seq_to_nonstutter_block(const int block_index,
   }
 }
 
-void AlignmentState::align_seq_to_haplotype(const bool reuse_alns){
+void AlignmentState::align_seq_to_haplotype(const bool reuse_alns, AlignmentMatrixCache* matrix_cache){
   // NOTE: Matrix structure: Row = Haplotype position, Column = Read index, fill in row-by-row
   // First row is alignment to haplotype position -1, which serves as a padding row 
   // that prevents out-of-bounds indexes during traceback
@@ -644,14 +644,14 @@ void AlignmentState::align_seq_to_haplotype(const bool reuse_alns){
 	double *sub_match_matrix;
 	int *sub_artifact_size, *sub_artifact_pos;
 	int sub_matrix_size = seq_len_;
-	if (matrix_cache_.has(block_index, block_option))
-	  matrix_cache_.get(block_index, block_option, sub_match_matrix, sub_artifact_size, sub_artifact_pos);
+	if (matrix_cache->has(block_index, block_option))
+	  matrix_cache->get(block_index, block_option, sub_match_matrix, sub_artifact_size, sub_artifact_pos);
 	else {
 	  sub_match_matrix  = new double[sub_matrix_size];
 	  sub_artifact_size = new int[sub_matrix_size];
 	  sub_artifact_pos  = new int[sub_matrix_size];
 	  align_seq_to_stutter_block(block_index, sub_match_matrix, sub_artifact_size, sub_artifact_pos, NULL, true);
-	  matrix_cache_.add(block_index, block_option, sub_match_matrix, sub_artifact_size, sub_artifact_pos);
+	  matrix_cache->add(block_index, block_option, sub_match_matrix, sub_artifact_size, sub_artifact_pos);
 	}
 
 	// Copy the results to the main arrays
@@ -671,14 +671,14 @@ void AlignmentState::align_seq_to_haplotype(const bool reuse_alns){
       else {
 	double* sub_match_matrix, *sub_ins_matrix, *sub_del_matrix;
 	int sub_matrix_size = seq_len_*block_len;
-	if (matrix_cache_.has(block_index, block_option))
-	  matrix_cache_.get(block_index, block_option, sub_match_matrix, sub_ins_matrix, sub_del_matrix);
+	if (matrix_cache->has(block_index, block_option))
+	  matrix_cache->get(block_index, block_option, sub_match_matrix, sub_ins_matrix, sub_del_matrix);
 	else {
 	  sub_match_matrix = new double[sub_matrix_size];
 	  sub_ins_matrix   = new double[sub_matrix_size];
 	  sub_del_matrix   = new double[sub_matrix_size];
 	  align_seq_to_nonstutter_block(block_index, sub_match_matrix, sub_ins_matrix, sub_del_matrix, NULL);
-	  matrix_cache_.add(block_index, block_option, sub_match_matrix, sub_ins_matrix, sub_del_matrix);
+	  matrix_cache->add(block_index, block_option, sub_match_matrix, sub_ins_matrix, sub_del_matrix);
 	}
 
 	// Copy the results to the main arrays

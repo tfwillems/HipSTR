@@ -26,6 +26,7 @@ class HapAligner {
   int calc_seed_base(const Alignment& alignment);
 
   void process_read(const Alignment& aln, int seed_base, const BaseQuality* base_quality, bool retrace_aln,
+		    AlignmentMatrixCache* fw_cache, AlignmentMatrixCache* rv_cache,
 		    double* prob_ptr, AlignmentTrace& traced_aln, bool debug);
 
   // Private unimplemented copy constructor and assignment operator to prevent operations
@@ -56,6 +57,8 @@ class HapAligner {
   }
 
   void process_reads(const std::vector<Alignment>& alignments,
+		     std::vector<AlignmentMatrixCache*>& fw_matrix_caches,
+		     std::vector<AlignmentMatrixCache*>& rv_matrix_caches,
 		     const BaseQuality* base_quality, const std::vector<bool>& realign_read,
 		     double* aln_probs, int* seed_positions);
 
@@ -64,6 +67,7 @@ class HapAligner {
     Returns the result as a new Alignment relative to the reference haplotype
    */
   AlignmentTrace* trace_optimal_aln(const Alignment& orig_aln, int seed_base, int best_haplotype, const BaseQuality* base_quality,
+				    AlignmentMatrixCache* fw_cache, AlignmentMatrixCache* rv_cache,
 				    bool debug);
 };
 

@@ -532,7 +532,8 @@ void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplo
   AlnList& pooled_alns       = pooler_.get_alignments();
   double* log_pool_aln_probs = new double[pooled_alns.size()*num_alleles_];
   int* pool_seed_positions   = new int[pooled_alns.size()];
-  hap_aligner.process_reads(pooled_alns, &base_quality_, realign_pool, log_pool_aln_probs, pool_seed_positions);
+  hap_aligner.process_reads(pooled_alns, fw_matrix_caches_, rv_matrix_caches_,
+			    &base_quality_, realign_pool, log_pool_aln_probs, pool_seed_positions);
 
   // Copy each pool's alignment probabilities to the entries for its constituent reads, but only for realigned haplotypes
   double* log_aln_ptr = log_aln_probs_;
@@ -833,10 +834,12 @@ void SeqStutterGenotyper::retrace_alignments(std::vector<AlignmentTrace*>& trace
 		     LOG_ONE_HALF+log_p2_[read_index]+read_LL_ptr[hap_b]) ? hap_a : hap_b);
 
     AlignmentTrace* trace = NULL;
-    std::pair<int,int> trace_key(pool_index_[read_index], best_hap);
+    const int pool = pool_index_[read_index];
+    std::pair<int,int> trace_key(pool, best_hap);
     auto trace_iter = trace_cache_.find(trace_key);
     if (trace_iter == trace_cache_.end()){
-      trace = hap_aligner.trace_optimal_aln(pooled_alns[pool_index_[read_index]], seed_positions_[read_index], best_hap, &base_quality_, false);
+      trace = hap_aligner.trace_optimal_aln(pooled_alns[pool], seed_positions_[read_index], best_hap,
+					    &base_quality_, fw_matrix_caches_[pool], rv_matrix_caches_[pool], false);
       trace_cache_[trace_key] = trace;
     }
     else
@@ -1121,10 +1124,12 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     double trace_start = clock();
     int best_hap = (read_strand == 0 ? hap_a : hap_b);
     AlignmentTrace* trace = NULL;
-    std::pair<int,int> trace_key(pool_index_[read_index], best_hap);
+    const int pool = pool_index_[read_index];
+    std::pair<int,int> trace_key(pool, best_hap);
     auto trace_iter = trace_cache_.find(trace_key);
     if (trace_iter == trace_cache_.end()){
-      trace = hap_aligner.trace_optimal_aln(alns_[read_index], seed_positions_[read_index], best_hap, &base_quality_, false);
+      trace = hap_aligner.trace_optimal_aln(alns_[read_index], seed_positions_[read_index], best_hap,
+					    &base_quality_, fw_matrix_caches_[pool], rv_matrix_caches_[pool], false);
       trace_cache_[trace_key] = trace;
     }
     else
