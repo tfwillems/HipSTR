@@ -20,6 +20,7 @@
 #include "vcf_writer.h"
 
 #include "SeqAlignment/AlignmentData.h"
+#include "SeqAlignment/AlignmentMatrixCache.h"
 #include "SeqAlignment/AlignmentTraceback.h"
 #include "SeqAlignment/Haplotype.h"
 #include "SeqAlignment/HapBlock.h"
@@ -31,14 +32,16 @@ class SeqStutterGenotyper : public Genotyper {
 
   BaseQuality base_quality_;
   ReadPooler pooler_;
-  int* pool_index_;                               // Pool index for each read
+  int* pool_index_;                                 // Pool index for each read
 
   typedef std::vector<Alignment> AlnList;
-  AlnList alns_;                                  // Vector of left-aligned alignments
-  std::vector<HapBlock*> hap_blocks_;             // Haplotype blocks
-  Haplotype* haplotype_;                          // Potential STR haplotypes
-  std::vector<std::string> call_sample_;          // True iff we should try to genotype the sample with the associated index
-                                                  // Based on the deletion boundaries in the sample's reads
+  AlnList alns_;                                        // Vector of left-aligned alignments
+  std::vector<AlignmentMatrixCache*> fw_matrix_caches_; // Matrix caches for each pool
+  std::vector<AlignmentMatrixCache*> rv_matrix_caches_; // Matrix caches for each pool
+  std::vector<HapBlock*> hap_blocks_;                   // Haplotype blocks
+  Haplotype* haplotype_;                                // Potential STR haplotypes
+  std::vector<std::string> call_sample_;                // True iff we should try to genotype the sample with the associated index
+                                                        // Based on the deletion boundaries in the sample's reads
 
   bool initialized_; // True iff initialization succeeded and genotyping can proceed
 
@@ -128,8 +131,8 @@ class SeqStutterGenotyper : public Genotyper {
 
   double compute_allele_bias(int hap_a_read_count, int hap_b_read_count);
 
-  void write_vcf_record(const std::vector<std::string>& sample_names, int hap_block_index, const Region& region, const std::string& chrom_seq,
-			bool output_viz, bool viz_left_alns,
+  void write_vcf_record(const std::vector<std::string>& sample_names, int hap_block_index, const Region& region,
+			const std::string& chrom_seq, bool output_viz, bool viz_left_alns,
 			std::ostream& html_output, VCFWriter* vcf_writer, std::ostream& logger);
 
   RegionGroup* region_group_;
@@ -141,7 +144,8 @@ class SeqStutterGenotyper : public Genotyper {
 
  public:
   SeqStutterGenotyper(const RegionGroup& region_group, bool haploid, bool reassemble_flanks,
-		      std::vector<Alignment>& alignments, std::vector< std::vector<double> >& log_p1, std::vector< std::vector<double> >& log_p2,
+		      std::vector<Alignment>& alignments, std::vector< std::vector<double> >& log_p1,
+		      std::vector< std::vector<double> >& log_p2,
 		      const std::vector<std::string>& sample_names, const std::string& chrom_seq,
 		      std::vector<StutterModel*>& stutter_models, VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(haploid, sample_names, log_p1, log_p2){
     region_group_          = region_group.copy();
@@ -169,6 +173,14 @@ class SeqStutterGenotyper : public Genotyper {
     delete [] seed_positions_;
     delete [] pool_index_;
     delete [] second_mate_;
+
+    for (int pool_index = 0; pool_index < pooler_.num_pools(); ++pool_index){
+      fw_matrix_caches_[pool_index]->clear();
+      rv_matrix_caches_[pool_index]->clear();
+      delete fw_matrix_caches_[pool_index];
+      delete rv_matrix_caches_[pool_index];
+    }
+
     for (auto trace_iter = trace_cache_.begin(); trace_iter != trace_cache_.end(); trace_iter++)
       delete trace_iter->second;
     for (unsigned int i = 0; i < hap_blocks_.size(); i++)

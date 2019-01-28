@@ -147,7 +147,8 @@ bool SeqStutterGenotyper::assemble_flanks(int max_total_haplotypes, int max_flan
 	}
 
 	// Remove flank from flank candidates
-	logger << "\t" << "Pruning low frequency " << flank_dir << " flank" << "\t" << hap_iter->first << "\t" << hap_samples.size() << "\n";
+	logger << "\t" << "Pruning low frequency " << flank_dir << " flank" << "\t" << hap_iter->first
+	       << "\t" << hap_samples.size() << "\n";
 	haplotype_indexes.erase(hap_iter++);
       }
       else
@@ -174,7 +175,8 @@ bool SeqStutterGenotyper::assemble_flanks(int max_total_haplotypes, int max_flan
 
   // Verify that the new flanks won't result in too many candidate haplotypes
   if (new_total_haps > max_total_haplotypes){
-    logger << "Aborting genotyping of the locus as too many candidate haplotypes were found (# Found = " << new_total_haps <<  ", MAX = " << max_total_haplotypes << ")\n"
+    logger << "Aborting genotyping of the locus as too many candidate haplotypes were found (# Found = "
+	   << new_total_haps <<  ", MAX = " << max_total_haplotypes << ")\n"
            << " See the --max-haps option " << "\n";
     return false;
   }
@@ -501,6 +503,11 @@ void SeqStutterGenotyper::init(std::vector<StutterModel*>& stutter_models, const
     prev_aln_name = alns_[read_index].get_name();
   }
 
+  for (unsigned int pool_index = 0; pool_index < pooler_.num_pools(); ++pool_index){
+    fw_matrix_caches_.push_back(new AlignmentMatrixCache());
+    rv_matrix_caches_.push_back(new AlignmentMatrixCache());
+  }
+
   initialized_ = build_haplotype(chrom_seq, stutter_models, logger);
   if (initialized_){
     // Allocate the remaining data structures
@@ -525,7 +532,7 @@ void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplo
   AlnList& pooled_alns       = pooler_.get_alignments();
   double* log_pool_aln_probs = new double[pooled_alns.size()*num_alleles_];
   int* pool_seed_positions   = new int[pooled_alns.size()];
-  hap_aligner.process_reads(pooled_alns, 0, &base_quality_, realign_pool, log_pool_aln_probs, pool_seed_positions);
+  hap_aligner.process_reads(pooled_alns, &base_quality_, realign_pool, log_pool_aln_probs, pool_seed_positions);
 
   // Copy each pool's alignment probabilities to the entries for its constituent reads, but only for realigned haplotypes
   double* log_aln_ptr = log_aln_probs_;

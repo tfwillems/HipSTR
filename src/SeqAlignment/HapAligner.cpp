@@ -95,12 +95,12 @@ int HapAligner::calc_seed_base(const Alignment& aln){
   return best_seed;
 }
 
-void HapAligner::process_reads(const std::vector<Alignment>& alignments, int init_read_index,
+void HapAligner::process_reads(const std::vector<Alignment>& alignments,
 			       const BaseQuality* base_quality, const std::vector<bool>& realign_read,
 			       double* aln_probs, int* seed_positions){
   assert(alignments.size() == realign_read.size());
   AlignmentTrace trace(fw_haplotype_->num_blocks());
-  double* prob_ptr = aln_probs + (init_read_index*fw_haplotype_->num_combs());
+  double* prob_ptr = aln_probs;
   for (unsigned int i = 0; i < alignments.size(); ++i){
     if (!realign_read[i]){
       prob_ptr += fw_haplotype_->num_combs();
@@ -108,7 +108,7 @@ void HapAligner::process_reads(const std::vector<Alignment>& alignments, int ini
     }
 
     int seed_base = calc_seed_base(alignments[i]);
-    seed_positions[init_read_index+i] = seed_base;
+    seed_positions[i] = seed_base;
     if (seed_base == -1){
       // Assign all haplotypes the same zero LL
       for (unsigned int i = 0; i < fw_haplotype_->num_combs(); ++i, ++prob_ptr)

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "AlignmentData.h"
+#include "AlignmentMatrixCache.h"
 #include "AlignmentTraceback.h"
 #include "../base_quality.h"
 #include "../error.h"
@@ -54,7 +55,7 @@ class HapAligner {
     delete rv_haplotype_;
   }
 
-  void process_reads(const std::vector<Alignment>& alignments, int init_read_index,
+  void process_reads(const std::vector<Alignment>& alignments,
 		     const BaseQuality* base_quality, const std::vector<bool>& realign_read,
 		     double* aln_probs, int* seed_positions);
 
