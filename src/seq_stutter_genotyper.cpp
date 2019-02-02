@@ -387,6 +387,23 @@ void SeqStutterGenotyper::add_and_remove_alleles(std::vector< std::vector<int> >
   delete [] log_aln_probs_;
   log_aln_probs_ = fixed_log_aln_probs;
 
+  // Determine the mapping from old sequence indices to new sequence indices within each block
+  // Use this mapping to reindex the alignment matrix caches
+  std::map< std::pair<int, int>, int> fw_block_allele_mapping, rv_block_allele_mapping;
+  for (int i = 0; i < updated_blocks.size(); ++i){
+    for (int j = 0; j < hap_blocks_[i]->num_options(); ++j){
+      int new_index = updated_blocks[i]->index_of(hap_blocks_[i]->get_seq(j));
+      if (new_index != -1){
+	fw_block_allele_mapping[std::pair<int,int>(i, j)] = new_index;
+	rv_block_allele_mapping[std::pair<int,int>(haplotype_->num_blocks()-1-i, j)] = new_index;
+      }
+    }
+  }
+  for (int pool_index = 0; pool_index < pooler_.num_pools(); ++pool_index){
+    fw_matrix_caches_[pool_index]->reindex(fw_block_allele_mapping);
+    rv_matrix_caches_[pool_index]->reindex(rv_block_allele_mapping);
+  }
+
   // Delete the old haplotype data structures and replace them with the updated ones
   delete haplotype_;
   for (int i = 0; i < hap_blocks_.size(); i++)
@@ -526,7 +543,7 @@ void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplo
 void SeqStutterGenotyper::calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype, std::vector<bool>& realign_pool, std::vector<bool>& copy_read){
   double locus_hap_aln_time = clock();
   assert(haplotype_->num_combs() == realign_to_haplotype.size() && haplotype_->num_combs() == num_alleles_);
-  HapAligner hap_aligner(haplotype_, realign_to_haplotype);
+  HapAligner hap_aligner(haplotype_, clear_caches_, realign_to_haplotype);
 
   // Align each pooled read to each haplotype
   AlnList& pooled_alns       = pooler_.get_alignments();
@@ -819,7 +836,7 @@ void SeqStutterGenotyper::retrace_alignments(std::vector<AlignmentTrace*>& trace
 
   AlnList& pooled_alns = pooler_.get_alignments();
   std::vector<bool> realign_to_haplotype(num_alleles_, true);
-  HapAligner hap_aligner(haplotype_, realign_to_haplotype);
+  HapAligner hap_aligner(haplotype_, clear_caches_, realign_to_haplotype);
   double* read_LL_ptr = log_aln_probs_;
   for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
     if (seed_positions_[read_index] < 0){
@@ -1084,7 +1101,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   std::vector<AlnList> max_LL_alns_strand_one(num_samples_), left_alns_strand_one(num_samples_);
   std::vector<AlnList> max_LL_alns_strand_two(num_samples_), left_alns_strand_two(num_samples_);
   std::vector<bool> realign_to_haplotype(num_alleles_, true);
-  HapAligner hap_aligner(haplotype_, realign_to_haplotype);
+  HapAligner hap_aligner(haplotype_, clear_caches_, realign_to_haplotype);
   double* read_LL_ptr = log_aln_probs_;
   int bp_diff; bool got_size;
   for (unsigned int read_index = 0; read_index < num_reads_; read_index++){

@@ -191,9 +191,10 @@ void HapAligner::process_read(const Alignment& aln, int seed, const BaseQuality*
   delete [] rv_seq;
 
   // Clear the matrix caches if appropriate
-  // TO DO: Add clause to control when this occurs
-  fw_cache->clear();
-  rv_cache->clear();
+  if (clear_caches_){
+    fw_cache->clear();
+    rv_cache->clear();
+  }
 }
 
 AlignmentTrace* HapAligner::trace_optimal_aln(const Alignment& orig_aln, int seed, int best_haplotype, const BaseQuality* base_quality,

@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include "../error.h"
 #include "../stringops.h"
 #include "RepeatStutterInfo.h"
 #include "StutterAlignerClass.h"
@@ -131,7 +130,6 @@ class HapBlock {
     for (unsigned int i = 0; i < alt_seqs_.size(); i++)
       if (seq.compare(alt_seqs_[i]) == 0)
 	return i+1;
-    printErrorAndDie("Sequence not contained in haplotype block");
     return -1;
   }
 

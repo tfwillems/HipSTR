@@ -38,6 +38,8 @@ class AlignmentMatrixCache {
   void get(int block_index, int block_option,
 	   double*& match_matrix, int*& artifact_sizes, int*& artifact_positions);
 
+  void reindex(const std::map< std::pair<int, int>, int>& block_allele_mapping);
+
   void clear();
   
   ~AlignmentMatrixCache(){

@@ -44,6 +44,18 @@ void AlignmentMatrixCache::get(int block_index, int block_option,
   artifact_positions = std::get<2>(stutter_matrices_[index]);
 }
 
+void AlignmentMatrixCache::reindex(const std::map< std::pair<int, int>, int>& block_allele_mapping){
+  std::map< std::pair<int, int>, std::pair<int, int> > updated_entries;
+  for (auto entry_iter = entries_.begin(); entry_iter != entries_.end(); ++entry_iter){
+    int block_index = entry_iter->first.first;
+    std::pair<int,int> key(block_index, entry_iter->first.second);
+    auto value_iter = block_allele_mapping.find(key);
+    if (value_iter != block_allele_mapping.end())
+      updated_entries[std::pair<int, int>(block_index, value_iter->second)] = entry_iter->second;
+  }
+  entries_.swap(updated_entries);
+}
+
 void AlignmentMatrixCache::clear(){
   entries_.clear();
   

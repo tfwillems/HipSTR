@@ -18,6 +18,7 @@ class HapAligner {
   std::vector<bool> realign_to_hap_;
   std::vector<HapBlock*> rv_blocks_;
   std::vector<int32_t> repeat_starts_, repeat_ends_;
+  bool clear_caches_; // True iff we should clear a read's cache after processing it
 
   void calc_best_seed_position(int32_t region_start, int32_t region_end,
 			       int32_t& best_dist, int32_t& best_pos);
@@ -34,10 +35,11 @@ class HapAligner {
   HapAligner& operator=(const HapAligner& other);
 
  public:
-  HapAligner(Haplotype* haplotype, std::vector<bool>& realign_to_haplotype){
+  HapAligner(Haplotype* haplotype, bool clear_caches, std::vector<bool>& realign_to_haplotype){
     assert(realign_to_haplotype.size() == haplotype->num_combs());
     fw_haplotype_   = haplotype;
     rv_haplotype_   = haplotype->reverse(rv_blocks_);
+    clear_caches_   = clear_caches;
     realign_to_hap_ = realign_to_haplotype;
 
     for (int i = 0; i < fw_haplotype_->num_blocks(); i++){

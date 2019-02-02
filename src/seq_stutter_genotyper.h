@@ -52,8 +52,12 @@ class SeqStutterGenotyper : public Genotyper {
   // VCF containing STR and SNP genotypes for a reference panel
   VCF::VCFReader* ref_vcf_;
 
-  // If this flag is set, the genotyper will reassemble the flanking sequencesAfter an initial round of genotyping
+  // If this flag is set, the genotyper will reassemble the flanking sequences after an initial round of genotyping
   bool reassemble_flanks_;
+
+  // If true, clear matrix caches between each round of genotyping. Otherwise, allow them to persist
+  // to reduce computation time but at the expense of increased memory usage
+  bool clear_caches_;
 
   // Timing statistics (in seconds)
   double total_hap_build_time_;
@@ -161,6 +165,7 @@ class SeqStutterGenotyper : public Genotyper {
     STRAND_TOLERANCE       = 0.1;
     initialized_           = false;
     reassemble_flanks_     = reassemble_flanks;
+    clear_caches_          = false;
     total_hap_build_time_  = total_hap_aln_time_  = 0;
     total_aln_trace_time_  = total_assembly_time_ = 0;
     ref_vcf_               = ref_vcf;
