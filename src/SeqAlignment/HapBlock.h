@@ -25,7 +25,6 @@ class HapBlock {
 
   std::vector<int*> l_homopolymer_lens_;
   std::vector<int*> r_homopolymer_lens_;
-  std::vector<int>  suffix_matches_;
 
   // Compute the homopolymer lengths and store them in the resulting vectors
   void calc_homopolymer_lengths(const std::string& seq, std::vector<int*>& llen_vec, std::vector<int*>& rlen_vec);
@@ -41,7 +40,6 @@ class HapBlock {
     end_      = end;
     min_size_ = (int)ref_seq.size();
     max_size_ = (int)ref_seq.size();
-    suffix_matches_.push_back(0);
     seq_set_.insert(ref_seq);
     calc_homopolymer_lengths(ref_seq, l_homopolymer_lens_, r_homopolymer_lens_);
   }
@@ -69,10 +67,6 @@ class HapBlock {
     alt_seqs_.push_back(alt);
     min_size_ = std::min(min_size_, (int)alt.size());
     max_size_ = std::max(max_size_, (int)alt.size());
-    if (alt_seqs_.size() == 1)
-      suffix_matches_.push_back(length_suffix_match(ref_seq_, alt));
-    else
-      suffix_matches_.push_back(length_suffix_match(alt_seqs_[alt_seqs_.size()-2], alt));
     seq_set_.insert(alt);
     calc_homopolymer_lengths(alt, l_homopolymer_lens_, r_homopolymer_lens_);
   }
@@ -95,11 +89,6 @@ class HapBlock {
       return alt_seqs_[index-1];
     else
       throw std::out_of_range("Index out of bounds in HapBlock::get_seq()");
-  }
-
-  inline int suffix_match_len(unsigned int seq_index) const {
-    assert(seq_index < suffix_matches_.size());
-    return suffix_matches_[seq_index];
   }
 
   inline unsigned int left_homopolymer_len(unsigned int seq_index, int base_index) const {
