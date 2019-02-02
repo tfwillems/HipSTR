@@ -855,7 +855,7 @@ void SeqStutterGenotyper::retrace_alignments(std::vector<AlignmentTrace*>& trace
     std::pair<int,int> trace_key(pool, best_hap);
     auto trace_iter = trace_cache_.find(trace_key);
     if (trace_iter == trace_cache_.end()){
-      trace = hap_aligner.trace_optimal_aln(pooled_alns[pool], seed_positions_[read_index], best_hap,
+      trace = hap_aligner.trace_optimal_aln(pooled_alns[pool], pool, seed_positions_[read_index], best_hap,
 					    &base_quality_, fw_matrix_caches_[pool], rv_matrix_caches_[pool], false);
       trace_cache_[trace_key] = trace;
     }
@@ -868,7 +868,8 @@ void SeqStutterGenotyper::retrace_alignments(std::vector<AlignmentTrace*>& trace
   total_aln_trace_time_ += (clock() - trace_start)/CLOCKS_PER_SEC;
 }
 
-void SeqStutterGenotyper::get_stutter_candidate_alleles(int str_block_index, std::ostream& logger, std::vector<std::string>& candidate_seqs){
+void SeqStutterGenotyper::get_stutter_candidate_alleles(int str_block_index,
+							std::ostream& logger, std::vector<std::string>& candidate_seqs){
   assert(candidate_seqs.size() == 0 && haplotype_->get_block(str_block_index)->get_repeat_info() != NULL);
   HapBlock* str_block = haplotype_->get_block(str_block_index);
   std::vector<AlignmentTrace*> traced_alns;
@@ -1145,7 +1146,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     std::pair<int,int> trace_key(pool, best_hap);
     auto trace_iter = trace_cache_.find(trace_key);
     if (trace_iter == trace_cache_.end()){
-      trace = hap_aligner.trace_optimal_aln(alns_[read_index], seed_positions_[read_index], best_hap,
+      trace = hap_aligner.trace_optimal_aln(alns_[read_index], pool, seed_positions_[read_index], best_hap,
 					    &base_quality_, fw_matrix_caches_[pool], rv_matrix_caches_[pool], false);
       trace_cache_[trace_key] = trace;
     }

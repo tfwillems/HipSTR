@@ -7,8 +7,11 @@
 #include "../mathops.h"
 #include "StutterAlignerClass.h"
 
-void StutterAlignerClass::load_read(const int base_seq_len,       const char* base_seq,
+void StutterAlignerClass::load_read(const int read_id,
+				    const int base_seq_len,       const char* base_seq,
 				    const double* base_log_wrong, const double* base_log_correct){
+  read_id_ = read_id;
+
   delete [] ins_probs_;
   delete [] del_probs_;
   delete [] match_probs_;

@@ -17,6 +17,7 @@ class AlignmentState {
   // Sequence and quality score information for the read
   const char* seq_;
   const int seq_len_;
+  const int read_id_;
   const double* log_wrong_;
   const double* log_right_;
   const int seed_;
@@ -37,7 +38,6 @@ class AlignmentState {
   // Static members
   const static double IMPOSSIBLE;               // Large negative value to prevent impossible or undesirable configurations
   const static double MIN_SNP_LOG_PROB_CORRECT; // Only consider a base as a SNP if the log prob is above this threshold
-  //const static double TRACE_LL_TOL;             // Threshold below which two alignments are treated as have identical likelihoods  
   
   // Types of alignment matrices
   const static int NONE = -1;
@@ -63,8 +63,9 @@ class AlignmentState {
   AlignmentState& operator=(const AlignmentState& other);
 
  public:
- AlignmentState(Haplotype* haplotype, const char* seq, const int seq_len, const double* log_wrong, const double* log_right, int seed): 
-  hap_(haplotype), seq_(seq), seq_len_(seq_len), log_wrong_(log_wrong), log_right_(log_right), seed_(seed){
+ AlignmentState(Haplotype* haplotype, const char* seq, const int seq_len, const int read_id,
+		const double* log_wrong, const double* log_right, int seed):
+  hap_(haplotype), seq_(seq), seq_len_(seq_len), read_id_(read_id), log_wrong_(log_wrong), log_right_(log_right), seed_(seed){
     int max_hap_size    = hap_->max_size();
     int num_hap_blocks  = hap_->num_blocks();
     int max_matrix_size = seq_len_*(max_hap_size + num_hap_blocks + 1); // +1 for padding row

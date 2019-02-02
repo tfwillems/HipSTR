@@ -26,7 +26,7 @@ class HapAligner {
   // Returns the 0-based index into the sequence string that should be used as the seed for alignment or -1 if no valid seed exists
   int calc_seed_base(const Alignment& alignment);
 
-  void process_read(const Alignment& aln, int seed_base, const BaseQuality* base_quality, bool retrace_aln,
+  void process_read(const Alignment& aln, int read_id, int seed_base, const BaseQuality* base_quality, bool retrace_aln,
 		    AlignmentMatrixCache* fw_cache, AlignmentMatrixCache* rv_cache,
 		    double* prob_ptr, AlignmentTrace& traced_aln, bool debug);
 
@@ -68,7 +68,8 @@ class HapAligner {
     Retraces the Alignment's optimal alignment to the provided haplotype.
     Returns the result as a new Alignment relative to the reference haplotype
    */
-  AlignmentTrace* trace_optimal_aln(const Alignment& orig_aln, int seed_base, int best_haplotype, const BaseQuality* base_quality,
+  AlignmentTrace* trace_optimal_aln(const Alignment& orig_aln, int read_id, int seed_base, int best_haplotype,
+				    const BaseQuality* base_quality,
 				    AlignmentMatrixCache* fw_cache, AlignmentMatrixCache* rv_cache,
 				    bool debug);
 };

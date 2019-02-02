@@ -14,7 +14,7 @@ class StutterAlignerClass {
   const int  period_;
   const bool left_align_;
   std::vector<int*> upstream_match_lengths_;
-
+  int read_id_; // id of most recently aligned read (or -1 otherwise)
   int num_insertions_, num_deletions_;
   int max_insertion_,  max_deletion_;
 
@@ -47,7 +47,7 @@ class StutterAlignerClass {
   
  public:
  StutterAlignerClass(const std::string& block_seq, int period, bool left_align, const RepeatStutterInfo* stutter_info)
-   : block_len_(block_seq.size()), period_(period), left_align_(left_align){
+   : block_len_(block_seq.size()), period_(period), left_align_(left_align), read_id_(-1){
     assert(stutter_info->max_insertion()%period_ == 0 && stutter_info->max_deletion()% period == 0);
 
     // Create and fill the array and make the pointer refer to the last character
@@ -99,7 +99,10 @@ class StutterAlignerClass {
     delete [] mods_;
   }
 
-  void load_read(const int base_seq_len,       const char* base_seq,
+  int get_read_id(){ return read_id_; }
+
+  void load_read(const int read_id,
+		 const int base_seq_len,       const char* base_seq,
 		 const double* base_log_wrong, const double* base_log_correct);
   
   /* Returns the total log-likelihood of the base sequence given the block sequence and the associated quality scores.

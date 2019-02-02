@@ -469,7 +469,7 @@ void AlignmentState::align_seq_to_stutter_block(const int block_index,
   const int block_len                  = block_seq.size();
   const int num_stutter_artifacts      = (rep_info->max_insertion()-rep_info->max_deletion())/period + 1;
   StutterAlignerClass* stutter_aligner = hap_->get_block(block_index)->get_stutter_aligner(block_option);
-  stutter_aligner->load_read(seq_len_, seq_+seq_len_-1, log_wrong_+seq_len_-1, log_right_+seq_len_-1);
+  stutter_aligner->load_read(read_id_, seq_len_, seq_+seq_len_-1, log_wrong_+seq_len_-1, log_right_+seq_len_-1);
 
   // Maximum base in read to consider before we know there can't be any valid alignments
   const int max_base_index = (!nonspanning_only ? seq_len_ : std::min(seq_len_, block_len+rep_info->max_insertion()-1));
