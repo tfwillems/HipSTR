@@ -204,7 +204,7 @@ AlignmentTrace* HapAligner::trace_optimal_aln(const Alignment& orig_aln, int rea
   fw_haplotype_->go_to(best_haplotype);
   fw_haplotype_->fix();
   rv_haplotype_->go_to(best_haplotype);
-  fw_haplotype_->fix();
+  rv_haplotype_->fix();
   double prob;
   AlignmentTrace* trace = new AlignmentTrace(fw_haplotype_->num_blocks());
   process_read(orig_aln, read_id, seed, base_quality, true, fw_cache, rv_cache, &prob, *trace, debug);
