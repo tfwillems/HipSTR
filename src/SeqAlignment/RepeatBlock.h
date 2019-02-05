@@ -17,16 +17,19 @@ class RepeatBlock : public HapBlock {
     RepeatStutterInfo* repeat_info_;
     std::vector<StutterAlignerClass*> stutter_aligners_;
     bool reversed_;
+    std::vector< std::vector<int> > suffix_match_lengths_;
 
     // Private unimplemented copy constructor and assignment operator to prevent operations
     RepeatBlock(const RepeatBlock& other);
     RepeatBlock& operator=(const RepeatBlock& other);
 
  public:
- RepeatBlock(int32_t start, int32_t end, const std::string& ref_seq, int period, const StutterModel* stutter_model, const bool reversed=false): HapBlock(start, end, ref_seq){
+ RepeatBlock(int32_t start, int32_t end, const std::string& ref_seq, int period, const StutterModel* stutter_model,
+	     const bool reversed=false): HapBlock(start, end, ref_seq){
       repeat_info_ = new RepeatStutterInfo(period, ref_seq, stutter_model);
       reversed_    = reversed;
       stutter_aligners_.push_back(new StutterAlignerClass(ref_seq, period, !reversed_, repeat_info_));
+      suffix_match_lengths_.push_back(std::vector<int>(1, 0));
     }
     
     ~RepeatBlock(){
@@ -36,11 +39,7 @@ class RepeatBlock : public HapBlock {
       stutter_aligners_.clear();
     }
 
-    void add_alternate(const std::string& alt){
-      HapBlock::add_alternate(alt);
-      repeat_info_->add_alternate_allele(alt);
-      stutter_aligners_.push_back(new StutterAlignerClass(alt, repeat_info_->get_period(), !reversed_, repeat_info_));
-    }
+    void add_alternate(const std::string& alt);
 
     StutterAlignerClass* get_stutter_aligner(int seq_index){ return stutter_aligners_[seq_index]; }
     RepeatStutterInfo* get_repeat_info()                   { return repeat_info_; }
@@ -48,7 +47,8 @@ class RepeatBlock : public HapBlock {
     HapBlock* reverse(){
       std::string rev_ref_seq = ref_seq_;
       std::reverse(rev_ref_seq.begin(), rev_ref_seq.end());
-      RepeatBlock* rev_block = new RepeatBlock(start_, end_, rev_ref_seq, repeat_info_->get_period(), repeat_info_->get_stutter_model(), !reversed_);
+      RepeatBlock* rev_block = new RepeatBlock(start_, end_, rev_ref_seq, repeat_info_->get_period(),
+					       repeat_info_->get_stutter_model(), !reversed_);
       for (unsigned int i = 0; i < alt_seqs_.size(); i++) {
 	std::string alt = alt_seqs_[i];
 	std::reverse(alt.begin(), alt.end());
@@ -61,7 +61,8 @@ class RepeatBlock : public HapBlock {
       std::set<int> bad_alleles(allele_indices.begin(), allele_indices.end());
       assert(bad_alleles.find(0) == bad_alleles.end());
 
-      RepeatBlock* new_block = new RepeatBlock(start_, end_, ref_seq_, repeat_info_->get_period(), repeat_info_->get_stutter_model(), reversed_);
+      RepeatBlock* new_block = new RepeatBlock(start_, end_, ref_seq_, repeat_info_->get_period(),
+					       repeat_info_->get_stutter_model(), reversed_);
       for (unsigned int i = 0; i < alt_seqs_.size(); i++)
 	if (bad_alleles.find(i+1) == bad_alleles.end())
 	  new_block->add_alternate(alt_seqs_[i]);
