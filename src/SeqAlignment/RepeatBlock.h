@@ -10,12 +10,12 @@
 #include "HapBlock.h"
 #include "RepeatStutterInfo.h"
 
-#include "StutterAlignerClass.h"
+#include "StutterAligner.h"
 
 class RepeatBlock : public HapBlock {
  private:
     RepeatStutterInfo* repeat_info_;
-    std::vector<StutterAlignerClass*> stutter_aligners_;
+    std::vector<StutterAligner*> stutter_aligners_;
     bool reversed_;
     std::vector< std::vector<int> > suffix_match_lengths_;
 
@@ -28,7 +28,7 @@ class RepeatBlock : public HapBlock {
 	     const bool reversed=false): HapBlock(start, end, ref_seq){
       repeat_info_ = new RepeatStutterInfo(period, ref_seq, stutter_model);
       reversed_    = reversed;
-      stutter_aligners_.push_back(new StutterAlignerClass(ref_seq, period, !reversed_, repeat_info_));
+      stutter_aligners_.push_back(new StutterAligner(ref_seq, period, !reversed_, repeat_info_));
       suffix_match_lengths_.push_back(std::vector<int>(1, 0));
     }
     
@@ -41,8 +41,8 @@ class RepeatBlock : public HapBlock {
 
     void add_alternate(const std::string& alt);
 
-    StutterAlignerClass* get_stutter_aligner(int seq_index){ return stutter_aligners_[seq_index]; }
-    RepeatStutterInfo* get_repeat_info()                   { return repeat_info_; }
+    StutterAligner* get_stutter_aligner(int seq_index)  { return stutter_aligners_[seq_index]; }
+    RepeatStutterInfo* get_repeat_info()                { return repeat_info_; }
 
     HapBlock* reverse(){
       std::string rev_ref_seq = ref_seq_;

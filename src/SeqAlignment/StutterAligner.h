@@ -1,12 +1,12 @@
-#ifndef STUTTER_ALIGNER_CLASS_H_
-#define STUTTER_ALIGNER_CLASS_H_
+#ifndef STUTTER_ALIGNER_H_
+#define STUTTER_ALIGNER_H_
 
 #include <string>
 #include <vector>
 
 #include "RepeatStutterInfo.h"
 
-class StutterAlignerClass {
+class StutterAligner {
  private:
   char* block_seq_;
   int*  mods_;
@@ -42,11 +42,11 @@ class StutterAlignerClass {
   }
 
   // Private unimplemented copy constructor to prevent operation
-  StutterAlignerClass(const StutterAlignerClass& other);
-  StutterAlignerClass& operator=(const StutterAlignerClass& other);
+  StutterAligner(const StutterAligner& other);
+  StutterAligner& operator=(const StutterAligner& other);
   
  public:
- StutterAlignerClass(const std::string& block_seq, int period, bool left_align, const RepeatStutterInfo* stutter_info)
+ StutterAligner(const std::string& block_seq, int period, bool left_align, const RepeatStutterInfo* stutter_info)
    : block_len_(block_seq.size()), period_(period), left_align_(left_align), read_id_(-1){
     assert(stutter_info->max_insertion()%period_ == 0 && stutter_info->max_deletion()% period == 0);
 
@@ -83,7 +83,7 @@ class StutterAlignerClass {
       mods_[i] = (i % period_);
   }
 
-  ~StutterAlignerClass(){
+  ~StutterAligner(){
     // Point back to front of array and delete allocated space
     if (block_seq_ != NULL)
       block_seq_ -= (block_len_-1);

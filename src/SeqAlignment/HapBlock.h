@@ -12,7 +12,7 @@
 
 #include "../stringops.h"
 #include "RepeatStutterInfo.h"
-#include "StutterAlignerClass.h"
+#include "StutterAligner.h"
 
 class HapBlock {
  protected:
@@ -53,8 +53,8 @@ class HapBlock {
     r_homopolymer_lens_.clear();
   }
 
-  virtual RepeatStutterInfo* get_repeat_info()                    { return NULL; }
-  virtual StutterAlignerClass* get_stutter_aligner(int seq_index) { return NULL; }
+  virtual RepeatStutterInfo* get_repeat_info()               { return NULL; }
+  virtual StutterAligner* get_stutter_aligner(int seq_index) { return NULL; }
 
   int32_t start()   const { return start_; }
   int32_t end()     const { return end_;   }

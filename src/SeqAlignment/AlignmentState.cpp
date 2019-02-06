@@ -7,7 +7,7 @@
 #include "HapBlock.h"
 #include "../mathops.h"
 #include "RepeatBlock.h"
-#include "StutterAlignerClass.h"
+#include "StutterAligner.h"
 
 // Initialize static class members
 const double AlignmentState::IMPOSSIBLE               = -1000000000;
@@ -462,13 +462,13 @@ void AlignmentState::align_seq_to_stutter_block(const int block_index,
   assert(hap_->get_block(block_index)->get_repeat_info() != NULL);
   assert((nonspanning_only && (prev_match_matrix == NULL)) || (!nonspanning_only && (prev_match_matrix != NULL)));
 
-  RepeatStutterInfo* rep_info          = hap_->get_block(block_index)->get_repeat_info();
-  const int period                     = rep_info->get_period();
-  const int block_option               = hap_->cur_index(block_index);
-  const std::string& block_seq         = hap_->get_seq(block_index);
-  const int block_len                  = block_seq.size();
-  const int num_stutter_artifacts      = (rep_info->max_insertion()-rep_info->max_deletion())/period + 1;
-  StutterAlignerClass* stutter_aligner = hap_->get_block(block_index)->get_stutter_aligner(block_option);
+  RepeatStutterInfo* rep_info     = hap_->get_block(block_index)->get_repeat_info();
+  const int period                = rep_info->get_period();
+  const int block_option          = hap_->cur_index(block_index);
+  const std::string& block_seq    = hap_->get_seq(block_index);
+  const int block_len             = block_seq.size();
+  const int num_stutter_artifacts = (rep_info->max_insertion()-rep_info->max_deletion())/period + 1;
+  StutterAligner* stutter_aligner = hap_->get_block(block_index)->get_stutter_aligner(block_option);
   stutter_aligner->load_read(read_id_, seq_len_, seq_+seq_len_-1, log_wrong_+seq_len_-1, log_right_+seq_len_-1);
 
   // Maximum base in read to consider before we know there can't be any valid alignments

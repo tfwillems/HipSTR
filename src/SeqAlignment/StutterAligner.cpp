@@ -5,11 +5,11 @@
 
 #include "../error.h"
 #include "../mathops.h"
-#include "StutterAlignerClass.h"
+#include "StutterAligner.h"
 
-void StutterAlignerClass::load_read(const int read_id,
-				    const int base_seq_len,       const char* base_seq,
-				    const double* base_log_wrong, const double* base_log_correct){
+void StutterAligner::load_read(const int read_id,
+			       const int base_seq_len,       const char* base_seq,
+			       const double* base_log_wrong, const double* base_log_correct){
   read_id_ = read_id;
 
   delete [] ins_probs_;
@@ -54,13 +54,13 @@ void StutterAlignerClass::load_read(const int read_id,
   }
 }
 
-double StutterAlignerClass::align_no_artifact_reverse(const int offset){
+double StutterAligner::align_no_artifact_reverse(const int offset){
   return match_probs_[offset];
 }
 
-double StutterAlignerClass::align_pcr_insertion_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
-							const double* base_log_wrong, const double* base_log_correct, const int D,
-							int& best_ins_pos){
+double StutterAligner::align_pcr_insertion_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
+						   const double* base_log_wrong, const double* base_log_correct, const int D,
+						   int& best_ins_pos){
   assert(D > 0 && base_seq_len <= block_len_+D && mods_[D] == 0);
   int* upstream_matches = upstream_match_lengths_[0] + block_len_ - 1;
 
@@ -94,9 +94,9 @@ double StutterAlignerClass::align_pcr_insertion_reverse(const int base_seq_len, 
   return best_LL;
 }
 
-double StutterAlignerClass::align_pcr_deletion_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
-						       const double* base_log_wrong, const double* base_log_correct, const int D,
-						       int& best_del_pos){
+double StutterAligner::align_pcr_deletion_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
+						  const double* base_log_wrong, const double* base_log_correct, const int D,
+						  int& best_del_pos){
   assert(D < 0 && block_len_+D >= 0 && base_seq_len <= block_len_+D);
   int* upstream_matches = upstream_match_lengths_[-D/period_ - 1] + block_len_ - 1;
   double log_prob       = 0;
@@ -130,9 +130,9 @@ double StutterAlignerClass::align_pcr_deletion_reverse(const int base_seq_len,  
   return best_LL;
 }
 
-double StutterAlignerClass::align_stutter_region_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
-							 const double* base_log_wrong, const double* base_log_correct, const int D,
-							 int& best_pos){
+double StutterAligner::align_stutter_region_reverse(const int base_seq_len,       const char*   base_seq, const int offset,
+						    const double* base_log_wrong, const double* base_log_correct, const int D,
+						    int& best_pos){
   best_pos = -1;
   if (D == 0)
     return align_no_artifact_reverse(offset);
