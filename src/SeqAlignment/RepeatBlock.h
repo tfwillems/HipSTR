@@ -9,7 +9,6 @@
 #include "../stutter_model.h"
 #include "HapBlock.h"
 #include "RepeatStutterInfo.h"
-
 #include "StutterAligner.h"
 
 class RepeatBlock : public HapBlock {
@@ -17,7 +16,6 @@ class RepeatBlock : public HapBlock {
     RepeatStutterInfo* repeat_info_;
     std::vector<StutterAligner*> stutter_aligners_;
     bool reversed_;
-    std::vector< std::vector<int> > suffix_match_lengths_;
 
     // Private unimplemented copy constructor and assignment operator to prevent operations
     RepeatBlock(const RepeatBlock& other);
@@ -29,7 +27,6 @@ class RepeatBlock : public HapBlock {
       repeat_info_ = new RepeatStutterInfo(period, ref_seq, stutter_model);
       reversed_    = reversed;
       stutter_aligners_.push_back(new StutterAligner(ref_seq, period, !reversed_, repeat_info_));
-      suffix_match_lengths_.push_back(std::vector<int>(1, 0));
     }
     
     ~RepeatBlock(){
@@ -45,12 +42,12 @@ class RepeatBlock : public HapBlock {
     RepeatStutterInfo* get_repeat_info()                { return repeat_info_; }
 
     HapBlock* reverse(){
-      std::string rev_ref_seq = ref_seq_;
+      std::string rev_ref_seq = seqs_[0];
       std::reverse(rev_ref_seq.begin(), rev_ref_seq.end());
       RepeatBlock* rev_block = new RepeatBlock(start_, end_, rev_ref_seq, repeat_info_->get_period(),
 					       repeat_info_->get_stutter_model(), !reversed_);
-      for (unsigned int i = 0; i < alt_seqs_.size(); i++) {
-	std::string alt = alt_seqs_[i];
+      for (unsigned int i = 1; i < seqs_.size(); ++i){
+	std::string alt = seqs_[i];
 	std::reverse(alt.begin(), alt.end());
 	rev_block->add_alternate(alt);
       }
@@ -60,12 +57,11 @@ class RepeatBlock : public HapBlock {
     RepeatBlock* remove_alleles(const std::vector<int>& allele_indices){
       std::set<int> bad_alleles(allele_indices.begin(), allele_indices.end());
       assert(bad_alleles.find(0) == bad_alleles.end());
-
-      RepeatBlock* new_block = new RepeatBlock(start_, end_, ref_seq_, repeat_info_->get_period(),
+      RepeatBlock* new_block = new RepeatBlock(start_, end_, seqs_[0], repeat_info_->get_period(),
 					       repeat_info_->get_stutter_model(), reversed_);
-      for (unsigned int i = 0; i < alt_seqs_.size(); i++)
-	if (bad_alleles.find(i+1) == bad_alleles.end())
-	  new_block->add_alternate(alt_seqs_[i]);
+      for (unsigned int i = 1; i < seqs_.size(); ++i)
+	if (bad_alleles.find(i) == bad_alleles.end())
+	  new_block->add_alternate(seqs_[i]);
       return new_block;
     }
 };

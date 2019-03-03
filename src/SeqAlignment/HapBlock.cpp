@@ -33,9 +33,9 @@ void HapBlock::print(std::ostream& out) const {
   out << "Haplotype Block: {"          << std::endl 
       << start_ << " -> " << end_      << std::endl
       << "\t"   << "Reference seq:   " << std::endl
-      << "\t\t" << ref_seq_            << std::endl
+      << "\t\t" << seqs_[0]            << std::endl
       << "\t"   << "Alternate seq(s):" << std::endl;
-  for (unsigned int i = 0; i < alt_seqs_.size(); i++)
-    out << "\t\t" << alt_seqs_[i] << std::endl;
+  for (unsigned int i = 1; i < seqs_.size(); ++i)
+    out << "\t\t" << seqs_[i] << std::endl;
   out << "}" << std::endl;
 }
