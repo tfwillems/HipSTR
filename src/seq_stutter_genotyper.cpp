@@ -1105,6 +1105,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   HapAligner hap_aligner(haplotype_, clear_caches_, realign_to_haplotype);
   double* read_LL_ptr = log_aln_probs_;
   int bp_diff; bool got_size;
+  AlnList& pooled_alns = pooler_.get_alignments();
   for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
     if (seed_positions_[read_index] < 0){
       read_LL_ptr += num_alleles_;
@@ -1146,7 +1147,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
     std::pair<int,int> trace_key(pool, best_hap);
     auto trace_iter = trace_cache_.find(trace_key);
     if (trace_iter == trace_cache_.end()){
-      trace = hap_aligner.trace_optimal_aln(alns_[read_index], pool, seed_positions_[read_index], best_hap,
+      trace = hap_aligner.trace_optimal_aln(pooled_alns[pool], pool, seed_positions_[read_index], best_hap,
 					    &base_quality_, fw_matrix_caches_[pool], rv_matrix_caches_[pool], false);
       trace_cache_[trace_key] = trace;
     }
