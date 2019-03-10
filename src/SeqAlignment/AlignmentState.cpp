@@ -1,3 +1,5 @@
+#include <time.h>
+
 #include <algorithm>
 #include <climits>
 #include <sstream>
@@ -461,6 +463,7 @@ void AlignmentState::align_seq_to_stutter_block(const int block_index,
 						const double* prev_match_matrix, const bool nonspanning_only){
   assert(hap_->get_block(block_index)->get_repeat_info() != NULL);
   assert((nonspanning_only && (prev_match_matrix == NULL)) || (!nonspanning_only && (prev_match_matrix != NULL)));
+  double time = clock();
 
   RepeatStutterInfo* rep_info     = hap_->get_block(block_index)->get_repeat_info();
   const int period                = rep_info->get_period();
@@ -474,7 +477,6 @@ void AlignmentState::align_seq_to_stutter_block(const int block_index,
   // Maximum base in read to consider before we know there can't be any valid alignments
   const int max_base_index = (!nonspanning_only ? seq_len_ : std::min(seq_len_, block_len+rep_info->max_insertion()-1));
 
-  std::vector<double> block_probs(num_stutter_artifacts); // Reuse in each iteration to avoid reallocation penalty
   int offset = seq_len_-1;
   int j      = 0;
   for (; j < max_base_index; ++j, --offset){
@@ -482,30 +484,32 @@ void AlignmentState::align_seq_to_stutter_block(const int block_index,
     int art_idx           = 0;
     double best_LL        = IMPOSSIBLE;
     best_artifact_size[j] = -10000;
+    double block_prob;
     for (int artifact_size = rep_info->max_deletion(); artifact_size <= rep_info->max_insertion(); artifact_size += period){
       int art_pos  = -1;
       int base_len = std::min(block_len+artifact_size, j+1);
       if (base_len >= 0){
 	double prior_prob = rep_info->log_prob_pcr_artifact(block_option, artifact_size);
 	if (j-base_len < 0)
-	  block_probs[art_idx] = prior_prob + 
+	  block_prob = prior_prob +
 	    stutter_aligner->align_stutter_region_reverse(base_len, seq_+j, offset, log_wrong_+j, log_right_+j, artifact_size, art_pos);
 	else if (!nonspanning_only)
-	  block_probs[art_idx] = prior_prob + prev_match_matrix[j-base_len] + 
+	  block_prob = prior_prob + prev_match_matrix[j-base_len] +
 	    stutter_aligner->align_stutter_region_reverse(base_len, seq_+j, offset, log_wrong_+j, log_right_+j, artifact_size, art_pos);
 	else
-	  block_probs[art_idx] = IMPOSSIBLE;
+	  block_prob = IMPOSSIBLE;
       }
       else
-	block_probs[art_idx] = IMPOSSIBLE;
-      if (block_probs[art_idx] > best_LL){
+	block_prob = IMPOSSIBLE;
+      if (block_prob > best_LL){
 	best_artifact_size[j] = artifact_size;
 	best_artifact_pos[j]  = art_pos;
-	best_LL               = block_probs[art_idx];
+	best_LL               = block_prob;
       }
       art_idx++;
     }
-    match_matrix[j] = fast_log_sum_exp(block_probs, best_LL);
+
+    match_matrix[j] = best_LL;
   }
 
   // Populate values for bases where no valid alignments were attainable due to the restrictions
@@ -513,12 +517,15 @@ void AlignmentState::align_seq_to_stutter_block(const int block_index,
     best_artifact_size[j] = -10000;
     match_matrix[j]       = IMPOSSIBLE;
   }
+  total_stutter_time_ += (clock() - time)/CLOCKS_PER_SEC;
 }
 
 void AlignmentState::align_seq_to_nonstutter_block(const int block_index,
 						   double* match_matrix, double* ins_matrix, double* del_matrix,
 						   const double* prev_match_matrix){
   assert(hap_->get_block(block_index)->get_repeat_info() == NULL);
+  double time = clock();
+
   const std::string& block_seq = hap_->get_seq(block_index);
   const int block_len          = block_seq.size();
 
@@ -604,11 +611,14 @@ void AlignmentState::align_seq_to_nonstutter_block(const int block_index,
       match_probs.clear();
     }
   }
+  total_nonstutter_time_ += (clock() - time)/CLOCKS_PER_SEC;
 }
 
-void AlignmentState::align_seq_to_haplotype(const bool reuse_alns, AlignmentMatrixCache* matrix_cache){
+void AlignmentState::align_seq_to_haplotype(AlignmentMatrixCache* matrix_cache){
+  double time = clock();
+
   // NOTE: Matrix structure: Row = Haplotype position, Column = Read index, fill in row-by-row
-  // First row is alignment to haplotype position -1, which serves as a padding row 
+  // First row is alignment to haplotype position -1, which serves as a padding row
   // that prevents out-of-bounds indexes during traceback
 
   // Fill in padding row
@@ -619,6 +629,8 @@ void AlignmentState::align_seq_to_haplotype(const bool reuse_alns, AlignmentMatr
   int haplotype_index = 0, matrix_index = seq_len_; // seq_len due to padding row
   const int num_blocks = hap_->num_blocks();
 
+  bool reuse_alns = true;
+
   // Fill in matrix row by row by iterating through each haplotype block
   for (int block_index = 0; block_index < num_blocks; ++block_index){
     const std::string& block_seq = hap_->get_seq(block_index);
@@ -626,9 +638,12 @@ void AlignmentState::align_seq_to_haplotype(const bool reuse_alns, AlignmentMatr
     const int block_len          = block_seq.size();
     const int block_option       = hap_->cur_index(block_index);
 
+    reuse_alns &= (block_indexes_[block_index] == block_option);
+    block_indexes_[block_index] = block_option;
+
     // Skip any blocks to the left of the last changed block (as we can reuse the alignments) and
     // skip any irrelevant non-stutter blocks for the Rv haplotype that will be exclusively handled by the Fw haplotype and vice-versa
-    if ((reuse_alns && block_index < hap_->last_changed()) ||
+    if (reuse_alns ||
 	(!hap_->reversed() && !stutter_block && (block_index+1 == num_blocks)) ||
 	( hap_->reversed() && !stutter_block && (block_index != 0))){
       haplotype_index += block_len;
@@ -668,24 +683,8 @@ void AlignmentState::align_seq_to_haplotype(const bool reuse_alns, AlignmentMatr
 	for (int i = 0; i < seq_len_; ++i)
 	  ins_ptr[i]= del_ptr[i] = IMPOSSIBLE;
       }
-      else {
-	double* sub_match_matrix, *sub_ins_matrix, *sub_del_matrix;
-	int sub_matrix_size = seq_len_*block_len;
-	if (matrix_cache->has(block_index, block_option))
-	  matrix_cache->get(block_index, block_option, sub_match_matrix, sub_ins_matrix, sub_del_matrix);
-	else {
-	  sub_match_matrix = new double[sub_matrix_size];
-	  sub_ins_matrix   = new double[sub_matrix_size];
-	  sub_del_matrix   = new double[sub_matrix_size];
-	  align_seq_to_nonstutter_block(block_index, sub_match_matrix, sub_ins_matrix, sub_del_matrix, NULL);
-	  matrix_cache->add(block_index, block_option, sub_match_matrix, sub_ins_matrix, sub_del_matrix);
-	}
-
-	// Copy the results to the main arrays
-	std::copy(sub_match_matrix, sub_match_matrix+sub_matrix_size, match_matrix_+matrix_index);
-	std::copy(  sub_ins_matrix, sub_ins_matrix+sub_matrix_size,     ins_matrix_+matrix_index);
-	std::copy(  sub_del_matrix, sub_del_matrix+sub_matrix_size,     del_matrix_+matrix_index);
-      }
+      else
+	align_seq_to_nonstutter_block(block_index, match_matrix_+matrix_index, ins_matrix_+matrix_index, del_matrix_+matrix_index, NULL);
     }
     else {
       if (stutter_block){
@@ -711,6 +710,7 @@ void AlignmentState::align_seq_to_haplotype(const bool reuse_alns, AlignmentMatr
     matrix_index    += seq_len_*std::max(1, block_len);
   }
   assert(haplotype_index == hap_->cur_size());
+  total_hap_aln_time_ += (clock() - time)/CLOCKS_PER_SEC;
 }
 
 double calc_maximum_likelihood_alignment(AlignmentState& fw_state, AlignmentState& rv_state){

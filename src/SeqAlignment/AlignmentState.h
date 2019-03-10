@@ -1,6 +1,7 @@
 #ifndef ALIGNMENT_STATE_H_
 #define ALIGNMENT_STATE_H_
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -11,6 +12,8 @@
 
 class AlignmentState {
  private:
+  double total_stutter_time_, total_nonstutter_time_, total_hap_aln_time_;
+
   // Haplotype relative to which the alignment is made
   Haplotype* hap_;
 
@@ -34,6 +37,9 @@ class AlignmentState {
   double* del_matrix_;
   int* best_artifact_size_;
   int* best_artifact_pos_;
+
+  // Index of allele in each haplotype block for most recent alignment
+  int* block_indexes_;
 
   // Static members
   const static double IMPOSSIBLE;               // Large negative value to prevent impossible or undesirable configurations
@@ -66,6 +72,9 @@ class AlignmentState {
  AlignmentState(Haplotype* haplotype, const char* seq, const int seq_len, const int read_id,
 		const double* log_wrong, const double* log_right, int seed):
   hap_(haplotype), seq_(seq), seq_len_(seq_len), read_id_(read_id), log_wrong_(log_wrong), log_right_(log_right), seed_(seed){
+    total_stutter_time_    = 0.0;
+    total_nonstutter_time_ = 0.0;
+    total_hap_aln_time_    = 0.0;
     int max_hap_size    = hap_->max_size();
     int num_hap_blocks  = hap_->num_blocks();
     int max_matrix_size = seq_len_*(max_hap_size + num_hap_blocks + 1); // +1 for padding row
@@ -74,6 +83,8 @@ class AlignmentState {
     del_matrix_         = new double [max_matrix_size];
     best_artifact_size_ = new int    [seq_len_*num_hap_blocks];
     best_artifact_pos_  = new int    [seq_len_*num_hap_blocks];
+    block_indexes_      = new int    [num_hap_blocks];
+    std::fill(block_indexes_, block_indexes_+num_hap_blocks, -1);
     reset_traceback();
   }
 
@@ -84,12 +95,16 @@ class AlignmentState {
     matrix_type_  = NONE;
   }
 
-  void align_seq_to_haplotype(const bool reuse_alns, AlignmentMatrixCache* matrix_cache);
+  void align_seq_to_haplotype(AlignmentMatrixCache* matrix_cache);
 
   friend double calc_maximum_likelihood_alignment(AlignmentState& fw_state, AlignmentState& rv_state);
 
   friend void stitch(AlignmentState& fw_state, AlignmentState& rv_state, const Alignment& orig_aln,
 		     AlignmentTrace& trace, bool debug);
+
+  double total_stutter_time()   { return total_stutter_time_;    }
+  double total_nonstutter_time(){ return total_nonstutter_time_; }
+  double total_hap_aln_time()   { return total_hap_aln_time_;    }
 
   ~AlignmentState(){
     // Deallocate full scoring matrices
@@ -98,6 +113,7 @@ class AlignmentState {
     delete [] del_matrix_;
     delete [] best_artifact_size_;
     delete [] best_artifact_pos_;
+    delete [] block_indexes_;
   }
 };
 
