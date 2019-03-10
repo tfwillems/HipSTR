@@ -124,6 +124,20 @@ void HapAligner::process_reads(const std::vector<Alignment>& alignments,
       prob_ptr += fw_haplotype_->num_combs();
     }
   }
+
+  /*
+  // Print timing statistics
+  std::cerr << repeat_starts_[0]         << " " << repeat_ends_[0]           << " "
+	    << total_fw_hap_aln_time_    << " " << total_rv_hap_aln_time_    << " "
+	    << total_fw_stutter_time_    << " " << total_rv_stutter_time_    << " " 
+	    << total_fw_nonstutter_time_ << " " << total_rv_nonstutter_time_ << std::endl;
+
+  do {
+    fw_haplotype_->print_counter_state(std::cerr);
+  } while (fw_haplotype_->next() && rv_haplotype_->next());
+  fw_haplotype_->reset(); rv_haplotype_->reset();
+  std::cerr << std::endl << std::endl;
+  */
 }
 
 void HapAligner::process_read(const Alignment& aln, int read_id, int seed, const BaseQuality* base_quality, bool retrace_aln,
@@ -151,9 +165,6 @@ void HapAligner::process_read(const Alignment& aln, int read_id, int seed, const
     rv_seq[k]       = fw_seq[j];
   }
 
-  // True iff we should reuse alignment information from the previous haplotype to accelerate computations
-  bool reuse_alns = false;
-
   // Generate data structures we'll use to perform and keep track of the Fw and Rv alignments
   AlignmentState fw_state(fw_haplotype_, fw_seq, seq_len, read_id, fw_log_wrong, fw_log_right, seed);
   AlignmentState rv_state(rv_haplotype_, rv_seq, seq_len, read_id, rv_log_wrong, rv_log_right, seq_len-1-seed);
@@ -162,18 +173,16 @@ void HapAligner::process_read(const Alignment& aln, int read_id, int seed, const
   do {
     if (!realign_to_hap_[fw_haplotype_->cur_index()]){
       prob_ptr++;
-      reuse_alns = false;
       continue;
     }
 
     // Perform alignment to current haplotype and compute the LL of the optimal alignment
-    fw_state.align_seq_to_haplotype(reuse_alns, fw_cache);
-    rv_state.align_seq_to_haplotype(reuse_alns, rv_cache);
+    fw_state.align_seq_to_haplotype(fw_cache);
+    rv_state.align_seq_to_haplotype(rv_cache);
     double LL = calc_maximum_likelihood_alignment(fw_state, rv_state);
     
     *prob_ptr = LL;
     prob_ptr++;
-    reuse_alns = true;
 
     if (LL > max_LL){
       max_LL = LL;
@@ -182,6 +191,15 @@ void HapAligner::process_read(const Alignment& aln, int read_id, int seed, const
     }
   } while (fw_haplotype_->next() && rv_haplotype_->next());
   fw_haplotype_->reset(); rv_haplotype_->reset();
+
+  // Update timing statistics
+  total_fw_stutter_time_    += fw_state.total_stutter_time();
+  total_rv_stutter_time_    += rv_state.total_stutter_time();
+  total_fw_nonstutter_time_ += fw_state.total_nonstutter_time();
+  total_rv_nonstutter_time_ += rv_state.total_nonstutter_time();
+  total_fw_hap_aln_time_    += fw_state.total_hap_aln_time();
+  total_rv_hap_aln_time_    += rv_state.total_hap_aln_time();
+  total_ml_time_;
 
   // Deallocate arrays
   delete [] fw_log_wrong;
