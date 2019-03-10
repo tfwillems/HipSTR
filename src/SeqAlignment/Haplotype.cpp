@@ -124,7 +124,7 @@ void Haplotype::init(){
   ncombs_   = 1;
   cur_size_ = 0;
 
-  if (inc_rev_){
+  if (!inc_rev_){
     for (int i = blocks_.size()-1; i >= 0; i--){
       factors_[i]  = ncombs_;
       ncombs_     *= nopts_[i];
@@ -163,7 +163,7 @@ bool Haplotype::next(){
   int index = -1;
   int t     = counter_+1;
 
-  if (inc_rev_){
+  if (!inc_rev_){
     for (int j = 0; j < blocks_.size(); j++){
       t %= factors_[j];
       if (t == 0){
