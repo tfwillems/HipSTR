@@ -381,29 +381,13 @@ void compare_bam_headers(const BamHeader* hdr_a, const BamHeader* hdr_b, const s
 }
 
 
-void BamAlignment::TrimAlignment(int32_t min_read_start, int32_t max_read_stop, char min_base_qual){
-  if (!built_)
-    ExtractSequenceFields();
+void BamAlignment::TrimAlignment(int32_t min_read_start, int32_t max_read_stop){
+  if (!built_) ExtractSequenceFields();
   assert(bases_.size() == qualities_.size());
 
   int ltrim = 0;
   int32_t start_pos = pos_;
   while ((start_pos < min_read_start) && cigar_ops_.size() > 0){
-    // Check if we should stop trimming b/c the quality score is above the threshold
-    bool qual_above_thresh = false;
-    switch (cigar_ops_.front().Type){
-    case 'M': case '=': case 'X': case 'I': case 'S':
-      qual_above_thresh = (qualities_[ltrim] > min_base_qual);
-      break;
-    case 'D': case 'H':
-      break;
-    default:
-      printErrorAndDie("Invalid CIGAR option encountered in trimAlignment");
-      break;
-    }
-    if (qual_above_thresh)
-      break;
-
     switch(cigar_ops_.front().Type){
     case 'M': case '=': case 'X':
       ltrim++;
@@ -430,21 +414,6 @@ void BamAlignment::TrimAlignment(int32_t min_read_start, int32_t max_read_stop, 
   int rtrim = 0, qual_string_len = qualities_.size()-1;
   int32_t end_pos = end_pos_;
   while ((end_pos > max_read_stop) && cigar_ops_.size() > 0){
-    // Check if we should stop trimming b/c the quality score is above the threshold
-    bool qual_above_thresh = false;
-    switch(cigar_ops_.back().Type){
-    case 'M': case '=': case 'X': case 'I': case 'S':
-      qual_above_thresh = (qualities_[qual_string_len-rtrim] > min_base_qual);
-      break;
-    case 'D': case 'H':
-      break;
-    default:
-      printErrorAndDie("Invalid CIGAR option encountered in TrimAlignment");
-      break;
-    }
-    if (qual_above_thresh)
-      break;
-
     switch(cigar_ops_.back().Type){
     case 'M': case '=': case 'X':
       rtrim++;
@@ -476,13 +445,8 @@ void BamAlignment::TrimAlignment(int32_t min_read_start, int32_t max_read_stop, 
   end_pos_   = end_pos;
 }
 
-void BamAlignment::TrimLowQualityEnds(char min_base_qual){
-  return TrimAlignment(end_pos_+1, pos_-1, min_base_qual);
-}
-
 void BamAlignment::TrimNumBases(int left_trim, int right_trim){
-  if (!built_)
-    ExtractSequenceFields();
+  if (!built_) ExtractSequenceFields();
   assert(bases_.size() == qualities_.size());
   assert(left_trim+right_trim <= bases_.size());
 
@@ -544,4 +508,35 @@ void BamAlignment::TrimNumBases(int left_trim, int right_trim){
   length_   -= (left_trim + right_trim);
   pos_       = start_pos;
   end_pos_   = end_pos;
+}
+
+template<typename Iterator>
+int BamAlignment::TrimHelper(Iterator begin, Iterator end, char base_qual_cutoff){
+  int best_index = 0, best_score = 0, index = 0, score = 0;
+  for (Iterator qual_iter = begin; qual_iter != end; ++qual_iter){
+      ++index;
+      if (*qual_iter >= base_qual_cutoff){
+	++score;
+	if (score >= best_score){
+	  best_index = index;
+	  best_score = score;
+	}
+      }
+      else
+	--score;
+  }
+  return length_-best_index;
+}
+
+void BamAlignment::TrimLowQualityEnds(char base_qual_cutoff){
+  if (!built_) ExtractSequenceFields();
+  if (bases_.empty()) return;
+
+  // Determine how much to trim from the left by scanning from right to left
+  int ltrim = ( IsReverseStrand() ? TrimHelper(qualities_.rbegin(), qualities_.rend(), base_qual_cutoff) : 0);
+
+  // Determine how much to trim from the right by scanning from left to right
+  int rtrim = (!IsReverseStrand() ? TrimHelper(qualities_.begin(),  qualities_.end(),  base_qual_cutoff) : 0);
+
+  TrimNumBases(ltrim, rtrim);
 }

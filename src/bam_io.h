@@ -46,6 +46,9 @@ private:
 
   void ExtractSequenceFields();
 
+  template<typename Iterator>
+    int TrimHelper(Iterator begin, Iterator end, char base_qual_cutoff);
+
 public:
   bam1_t *b_;
   std::string file_;
@@ -305,11 +308,11 @@ public:
    *  Modifies the alignment such that subsequent calls to each function reflect the trimmming
    *  However, if the aligment is written to a new BAM file, the original alignment will be output
    */
-  void TrimAlignment(int32_t min_read_start, int32_t max_read_stop, char min_base_qual='~');
-
-  void TrimLowQualityEnds(char min_base_qual);
+  void TrimAlignment(int32_t min_read_start, int32_t max_read_stop);
 
   void TrimNumBases(int left_trim, int right_trim);
+
+  void TrimLowQualityEnds(char min_base_qual);
 };
 
 
