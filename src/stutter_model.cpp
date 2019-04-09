@@ -58,7 +58,7 @@ void StutterModel::write(std::ostream& output) const {
 }
 
 void StutterModel::write_model(const std::string& chrom, int32_t start, int32_t end, std::ostream& output) const {
-  output << chrom << "\t" << start << "\t" << end << "\t";
+  output << chrom << "\t" << start+1 << "\t" << end << "\t";
   write(output);
 }
 
@@ -83,9 +83,9 @@ void StutterModel::read_models(std::istream& input, std::map<Region, StutterMode
   while (input){
     std::string chrom;
     int32_t start, end;
-    if(input >> chrom >> start >> end){
+    if (input >> chrom >> start >> end){
       StutterModel* model = read(input);
-      models.insert(std::pair<Region,StutterModel*>(Region(chrom, start, end, model->period()), model));
+      models.insert(std::pair<Region,StutterModel*>(Region(chrom, start-1, end, model->period()), model));
     }
     else
       break;
