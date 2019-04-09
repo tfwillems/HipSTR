@@ -385,13 +385,13 @@ To model PCR stutter artifacts, we assume that there are three types of stutter 
 
 Stutter model files contain the information necessary to model each of these artifacts in a **tab-delimited BED-like** format with exactly 9 columns. An example of such a file is as follows:
 
-CHROM  | START       | END      | IGEOM | IDOWN | IUP   | OGEOM | ODOWN | OUP
------  | ----------- | -------- | ----  | ----  | ---   | ----  | ---   | ---
-chr1   | 13784267    | 13784306 | 0.95  | 0.05  | 0.01  | 0.9   | 0.01  | 0.001
-chr1   | 18789523    | 18789555 | 0.8   | 0.01  | 0.05  | 0.9   | 0.001 | 0.001
-chr2   | 32079410    | 32079469 | 0.9   | 0.01  | 0.01  | 0.9   | 0.001 | 0.001
-chr17  | 38994441    | 38994492 | 0.9   | 0.001 | 0.001 | 0.9   | 0.001 | 0.001 
-chr17  | 55299940    | 55299992 | 0.95  | 0.01  | 0.01  | 0.9   | 0.001 | 0.001
+CHROM  | START      | END       | IGEOM | IDOWN | IUP   | OGEOM | ODOWN | OUP   | PERIOD
+-----  | ---------- | --------  | ----  | ----  | ---   | ----  | ---   | ---   | ---
+chr1   | 18789523   | 18789555  | 0.8   | 0.01  | 0.05  | 0.9   | 0.001 | 0.001 | 3
+chr2   | 32079410   | 32079469  | 0.9   | 0.01  | 0.01  | 0.9   | 0.001 | 0.001 | 4
+chr17  | 38994441   | 38994492  | 0.9   | 0.001 | 0.001 | 0.9   | 0.001 | 0.001 | 4
+chr9   | 3859351    | 3859400   | 0.9   | 0.1   | 0.02  | 0.9   | 0.001 | 0.001 | 2
+
 
 **NOTE: The table header is for descriptive purposes. The stutter file should not have a header**
 
@@ -406,6 +406,7 @@ Each of the stutter parameters is defined as follows:
 | OUP      |  Probability that out-of-frame changes increase the size of the observed STR allele
 | IGEOM    | Parameter governing geometric step size distribution for in-frame changes
 | OGEOM    | Paramter  governing geometric step size distribution for out-of-frame changes
+| PERIOD   | Length of STR motif
 
 ## FAQ
 1. **Can I run HipSTR if my dataset only contains single-ended reads?**     
