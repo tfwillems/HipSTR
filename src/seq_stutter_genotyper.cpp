@@ -1610,5 +1610,9 @@ bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max
     block->get_repeat_info()->set_stutter_model(length_genotyper.get_stutter_model());
   }
   trace_cache_.clear();
+  for (int pool_index = 0; pool_index < pooler_.num_pools(); ++pool_index){
+    fw_matrix_caches_[pool_index]->clear();
+    rv_matrix_caches_[pool_index]->clear();
+  }
   return genotype(max_total_haplotypes, max_flank_haplotypes, min_flank_freq, logger);
 }
