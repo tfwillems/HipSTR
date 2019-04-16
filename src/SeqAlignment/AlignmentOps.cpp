@@ -27,13 +27,13 @@ bool realign(BamAlignment& alignment, const std::string& ref_sequence, Alignment
     // Calculate number of leading spaces in read's alignment and start position
     unsigned int num_lead = 0;
     while (num_lead < read_al.size() && read_al[num_lead] == '-')
-        num_lead++;
+      num_lead++;
     int32_t start_position = start + num_lead;
     
     // Calculate number of trailing spaces in read's alignment
     int trail_index = read_al.size()-1;
     while (trail_index >= 0 && read_al[trail_index] == '-')
-        trail_index--;
+      trail_index--;
     int num_trail = read_al.size()-1-trail_index;
     
     // Calculate alignment end position
@@ -61,9 +61,9 @@ bool realign(BamAlignment& alignment, const std::string& ref_sequence, Alignment
     // Determine if any leading and trailing soft-clips should be applied in new alignment
     int num_head_sclips = 0, num_back_sclips = ref_al.size()-1;
     while (num_head_sclips < ref_al.size() && ref_al[num_head_sclips] == '-')
-        num_head_sclips++;
+      num_head_sclips++;
     while (num_back_sclips > 0 && ref_al[num_back_sclips] == '-')
-        num_back_sclips--;
+      num_back_sclips--;
     num_back_sclips = ref_al.size()-1-num_back_sclips;
 
     // Store new alignment information

@@ -383,18 +383,21 @@ void stitch(AlignmentState& fw_state, AlignmentState& rv_state, const Alignment&
    }
    while (hap_aln_index < hap_aln_to_ref.size() && hap_aln_to_ref[hap_aln_index] == 'D'){
      hap_aln_index++;
-     // TO DO: Is there an error here? Shouldn't we be increasing seed_pos?
+     seed_pos++;
    }
    assert(hap_aln_index != hap_aln_to_ref.size());
 
    // Stitch the two sets of alignments together to generate read vs. ref genome alignments
    // Use the seed to separately handle the left and right sequences
-   // Merge the two stitches together after omitting the double counted seed
+   // Merge the two stitches together after omitting the double counted seed from the right sequence
    assert(read_aln_to_hap[read_aln_index] == 'M');
    std::string left_to_ref  = fw_state.stitch(hap_aln_to_ref, read_aln_to_hap, hap_aln_index, read_aln_index, -1);
    std::reverse(left_to_ref.begin(), left_to_ref.end());
    std::string right_to_ref = rv_state.stitch(hap_aln_to_ref, read_aln_to_hap, hap_aln_index, read_aln_index,  1);
-   std::string full_to_ref  = left_to_ref + right_to_ref.substr(1);
+   int rtrim = 0;
+   while (right_to_ref[rtrim] == 'D')
+     rtrim++;
+   std::string full_to_ref = left_to_ref + right_to_ref.substr(rtrim+1);
    
    // Convert leading insertions to soft clips
    for (int i = 0; i < full_to_ref.size(); ++i){
@@ -404,15 +407,19 @@ void stitch(AlignmentState& fw_state, AlignmentState& rv_state, const Alignment&
        break;
    }
    
-   // Determine alignment start and end coordinates
-   int32_t start = seed_pos+1; // +1 as left  stitch contains seed base
-   int32_t stop  = seed_pos-1; // -1 as right stitch contains seed base
-   for (auto iter = left_to_ref.begin(); iter != left_to_ref.end(); ++iter)
+   // Determine alignment start and end coordinates. Care is required as the seed base position is only
+   // valid if the next base is a match
+   int32_t start  = seed_pos - (left_to_ref.back() == 'S' || left_to_ref.back() == 'I' ? 1 : 0);
+   int32_t stop   = seed_pos;
+   for (auto iter = left_to_ref.rbegin(); iter != left_to_ref.rend(); ++iter){
      if (*iter == 'D' || *iter == 'M')
        start--;
+   }
+   start++;
    for (auto iter = right_to_ref.begin(); iter != right_to_ref.end(); ++iter)
      if (*iter == 'D' || *iter == 'M')
        stop++;
+   stop--;
    
    // Construct the CIGAR string elements
    std::vector<CigarElement> cigar_list;
