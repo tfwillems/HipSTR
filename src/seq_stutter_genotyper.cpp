@@ -625,7 +625,13 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(int max_total_haplotyp
   return true;
 }
 
+
 bool SeqStutterGenotyper::genotype(int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq, std::ostream& logger){
+  return genotype_samples(true, max_total_haplotypes, max_flank_haplotypes, min_flank_freq, logger);
+}
+
+bool SeqStutterGenotyper::genotype_samples(bool first_round, int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq,
+					   std::ostream& logger){
   // Unsuccessful initialization. May be due to
   // 1) Failing to find the corresponding alleles in the VCF (if one has been provided)
   // 2) Large deletion extending past STR
@@ -638,23 +644,25 @@ bool SeqStutterGenotyper::genotype(int max_total_haplotypes, int max_flank_haplo
     return false;
   }
 
-  // Check if we can assemble the sequences flanking the STR
-  // If not, it's likely that the flanks are too repetitive and will introduce genotyping errors
-  for (int flank = 0; flank < 2; flank++){
-    int block_index     = (flank == 0 ? 0 : haplotype_->num_blocks()-1);
-    std::string ref_seq = hap_blocks_[block_index]->get_seq(0);
-    int max_k           = std::min(MAX_KMER, ref_seq.size() == 0 ? -1 : (int)ref_seq.size()-1);
-    int kmer_length;
-    if (!DebruijnGraph::calc_kmer_length(ref_seq, MIN_KMER, max_k, kmer_length)){
-      logger << "Aborting genotyping of the locus as the sequence " << (flank == 0 ? "upstream" : "downstream")
-	     << " of the repeat is too repetitive for accurate genotyping" << "\n";
-      logger << "\tFlanking sequence = " << ref_seq << std::endl;
-      return false;
+  if (first_round){
+    // Check if we can assemble the sequences flanking the STR
+    // If not, it's likely that the flanks are too repetitive and will introduce genotyping errors
+    for (int flank = 0; flank < 2; flank++){
+      int block_index     = (flank == 0 ? 0 : haplotype_->num_blocks()-1);
+      std::string ref_seq = hap_blocks_[block_index]->get_seq(0);
+      int max_k           = std::min(MAX_KMER, ref_seq.size() == 0 ? -1 : (int)ref_seq.size()-1);
+      int kmer_length;
+      if (!DebruijnGraph::calc_kmer_length(ref_seq, MIN_KMER, max_k, kmer_length)){
+	logger << "Aborting genotyping of the locus as the sequence " << (flank == 0 ? "upstream" : "downstream")
+	       << " of the repeat is too repetitive for accurate genotyping" << "\n";
+	logger << "\tFlanking sequence = " << ref_seq << std::endl;
+	return false;
+      }
     }
-  }
 
-  init_alignment_model();
-  pooler_.pool(base_quality_);
+    init_alignment_model();
+    pooler_.pool(base_quality_);
+  }
 
   // Align each read to each candidate haplotype and store them in the provided arrays
   logger << "Aligning reads to each candidate haplotype" << std::endl;
@@ -688,7 +696,7 @@ bool SeqStutterGenotyper::genotype(int max_total_haplotypes, int max_flank_haplo
     }
   }
 
-  if (reassemble_flanks_)
+  if (first_round && reassemble_flanks_)
     if (!assemble_flanks(max_total_haplotypes, max_flank_haplotypes, min_flank_freq, logger))
       return false;
 
@@ -1578,6 +1586,7 @@ bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max
   std::vector<AlignmentTrace*> traced_alns;
   retrace_alignments(traced_alns);
 
+  bool rerun_genotyping = false;
   for (int block_index = 0; block_index < haplotype_->num_blocks(); ++block_index){
     HapBlock* block = haplotype_->get_block(block_index);
     if (block->get_repeat_info() == NULL)
@@ -1607,12 +1616,26 @@ bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max
     }
 
     logger << "Learned stutter model for block #" << block_index << ":" << (*length_genotyper.get_stutter_model()) << std::endl;
+
+    // Determine whether this model is sufficiently different from its predecessor to warrant re-genotyping
+    // Note that we always update the stutter model, even if it didn't trigger re-genotyping
+    StutterModel* new_model = length_genotyper.get_stutter_model();
+    StutterModel* cur_model = block->get_repeat_info()->get_stutter_model();
+    double new_amt = new_model->get_parameter(true, 'U') + new_model->get_parameter(true, 'D');
+    double cur_amt = cur_model->get_parameter(true, 'U') + cur_model->get_parameter(true, 'D');
+    if (new_amt > 0.01 || cur_amt > 0.01)
+      rerun_genotyping |= (new_amt/cur_amt < 0.75 || cur_amt/new_amt < 0.75);
     block->get_repeat_info()->set_stutter_model(length_genotyper.get_stutter_model());
   }
+
+  // The caches are no longer valid as the altered stutter model could lead to new alignments
   trace_cache_.clear();
   for (int pool_index = 0; pool_index < pooler_.num_pools(); ++pool_index){
     fw_matrix_caches_[pool_index]->clear();
     rv_matrix_caches_[pool_index]->clear();
   }
-  return genotype(max_total_haplotypes, max_flank_haplotypes, min_flank_freq, logger);
+  if (rerun_genotyping){
+    logger << "Rerunning genotyping with updated stutter model(s)" << std::endl;
+    return genotype_samples(false, max_total_haplotypes, max_flank_haplotypes, min_flank_freq, logger);
+  }
 }

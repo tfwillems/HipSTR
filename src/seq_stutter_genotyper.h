@@ -133,6 +133,9 @@ class SeqStutterGenotyper : public Genotyper {
 			      std::vector< std::vector<std::string> >& alleles_to_add,
 			      std::vector<bool>& realign_pool, std::vector<bool>& copy_read);
 
+  bool genotype_samples(bool first_round, int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq,
+			std::ostream& logger);
+
   double compute_allele_bias(int hap_a_read_count, int hap_b_read_count);
 
   void write_vcf_record(const std::vector<std::string>& sample_names, int hap_block_index, const Region& region,
