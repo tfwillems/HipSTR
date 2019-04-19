@@ -1629,6 +1629,8 @@ bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max
   }
 
   // The caches are no longer valid as the altered stutter model could lead to new alignments
+  for (auto trace_iter = trace_cache_.begin(); trace_iter != trace_cache_.end(); trace_iter++)
+    delete trace_iter->second;
   trace_cache_.clear();
   for (int pool_index = 0; pool_index < pooler_.num_pools(); ++pool_index){
     fw_matrix_caches_[pool_index]->clear();
