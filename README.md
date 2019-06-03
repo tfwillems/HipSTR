@@ -5,6 +5,7 @@
 #### Author: Thomas Willems <hipstrtool@gmail.com> <br> License: GNU v2
 
 [Introduction](#introduction)  
+[Requirements](#requirements)  
 [Installation](#installation)  
 [Quick Start](#quick-start)       
 [Tutorial](#tutorial)  
@@ -33,6 +34,19 @@ Despite their utility, STRs are particularly difficult to genotype. The repetiti
 4. Utilizing phased SNP haplotypes to genotype and phase STRs
 
 In our opinion, all of these factors make **HipSTR** the most reliable tool for genotyping STRs from **Illumina** sequencing data.
+
+## Requirements
+To compile HipSTR, the following packages are required:
+- make
+- g++
+- zlib
+- libhts
+- libbz2
+- liblzma
+
+If you are running Ubuntu 16+, they can be easily installed by running:
+
+    apt install make g++ zlib1g-dev libhts-dev libbz2-dev liblzma-dev
 
 ## Installation
 HipSTR requires a standard c++ compiler. To obtain HipSTR, use:
