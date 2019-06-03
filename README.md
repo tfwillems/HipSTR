@@ -36,7 +36,7 @@ Despite their utility, STRs are particularly difficult to genotype. The repetiti
 In our opinion, all of these factors make **HipSTR** the most reliable tool for genotyping STRs from **Illumina** sequencing data.
 
 ## Requirements
-To compile HipSTR are required the following packages:
+To compile HipSTR, the following packages are required:
 - make
 - g++
 - zlib
@@ -44,7 +44,7 @@ To compile HipSTR are required the following packages:
 - libbz2
 - liblzma
 
-If you are running Ubuntu 16+, they can be easily installed running:
+If you are running Ubuntu 16+, they can be easily installed by running:
 
     apt install make g++ zlib1g-dev libhts-dev libbz2-dev liblzma-dev
 
