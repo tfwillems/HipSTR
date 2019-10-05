@@ -1636,8 +1636,12 @@ bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max
     fw_matrix_caches_[pool_index]->clear();
     rv_matrix_caches_[pool_index]->clear();
   }
+
   if (rerun_genotyping){
     logger << "Rerunning genotyping with updated stutter model(s)" << std::endl;
     return genotype_samples(false, max_total_haplotypes, max_flank_haplotypes, min_flank_freq, logger);
   }
+
+  // Otherwise, the process succeeded b/c the stutter models did not change substantially
+  return true;
 }
