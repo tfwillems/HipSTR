@@ -42,9 +42,9 @@ std::string AlignmentState::retrace_helper(AlignmentTrace& trace){
   int seq_index    = seq_index_;
   int matrix_type  = matrix_type_;
   int matrix_index = matrix_index_; 
-  int block_index, base_index;
   assert(hap_index_ >= 0 && hap_index_ < hap_->cur_size());
-  hap_->get_coordinates(hap_index_, block_index, base_index);
+  int block_index = block_index_;
+  int base_index  = base_index_;
 
   // Set function to select from alignments with ~ identical likelihoods
   int (*pair_index_fn)(double, double);
@@ -65,7 +65,8 @@ std::string AlignmentState::retrace_helper(AlignmentTrace& trace){
     const int block_len          = block_seq.size();
 
     if (stutter_block){
-      assert(matrix_type == MATCH && base_index+1 == block_len);
+      assert(matrix_type == MATCH);
+      assert(base_index+1 == block_len || (block_len == 0 && base_index == 0));
       int* artifact_size_ptr = best_artifact_size_ + seq_len_*block_index;
       int* artifact_pos_ptr  = best_artifact_pos_  + seq_len_*block_index;
       const int stutter_pos  = artifact_pos_ptr[seq_index];
@@ -194,7 +195,6 @@ std::string AlignmentState::retrace_helper(AlignmentTrace& trace){
 	switch (matrix_type){
 	case MATCH:
 	  assert(matrix_index-seq_len_-1 >= 0);
-	  
 	  best_opt = triple_index_fn(ins_matrix_[matrix_index-1]            + LOG_MATCH_TO_INS[homopolymer_len],
 				     del_matrix_[matrix_index-seq_len_-1]   + LOG_MATCH_TO_DEL[homopolymer_len],
 				     match_matrix_[matrix_index-seq_len_-1] + LOG_MATCH_TO_MATCH[homopolymer_len]);
@@ -688,7 +688,7 @@ void AlignmentState::align_seq_to_haplotype(AlignmentMatrixCache* matrix_cache){
 	double* ins_ptr = ins_matrix_ + matrix_index + seq_len_*std::max(0, block_len-1);
 	double* del_ptr = del_matrix_ + matrix_index + seq_len_*std::max(0, block_len-1);
 	for (int i = 0; i < seq_len_; ++i)
-	  ins_ptr[i]= del_ptr[i] = IMPOSSIBLE;
+	  ins_ptr[i] = del_ptr[i] = IMPOSSIBLE;
       }
       else
 	align_seq_to_nonstutter_block(block_index, match_matrix_+matrix_index, ins_matrix_+matrix_index, del_matrix_+matrix_index, NULL);
@@ -705,7 +705,7 @@ void AlignmentState::align_seq_to_haplotype(AlignmentMatrixCache* matrix_cache){
 	double* ins_ptr = ins_matrix_ + matrix_index + seq_len_*std::max(0, block_len-1);
 	double* del_ptr = del_matrix_ + matrix_index + seq_len_*std::max(0, block_len-1);
 	for (int i = 0; i < seq_len_; ++i)
-	  ins_ptr[i]= del_ptr[i] = IMPOSSIBLE;
+	  ins_ptr[i] = del_ptr[i] = IMPOSSIBLE;
       }
       else
 	align_seq_to_nonstutter_block(block_index, match_matrix_+matrix_index, ins_matrix_+matrix_index, del_matrix_+matrix_index,
@@ -777,6 +777,8 @@ double calc_maximum_likelihood_alignment(AlignmentState& fw_state, AlignmentStat
 	  state.seq_index_    = seq_len-1;
 	  state.matrix_index_ = matrix_index;
 	  state.matrix_type_  = AlignmentState::MATCH;
+	  state.block_index_  = block_index;
+	  state.base_index_   = block_len-1;
 	}
 
 	hap_index    += (block_len > 0 ? 1 : 0);
@@ -809,7 +811,10 @@ double calc_maximum_likelihood_alignment(AlignmentState& fw_state, AlignmentStat
 	    state.seq_index_    = seq_len-1;
 	    state.matrix_index_ = matrix_index;
 	    state.matrix_type_  = AlignmentState::MATCH;
+	    state.block_index_  = block_index;
+	    state.base_index_   = j;
 	  }
+
 	  if (j != 0 && v2 > max_LL){
 	    max_LL  = v2;
 	    max_dir = i;
@@ -817,6 +822,8 @@ double calc_maximum_likelihood_alignment(AlignmentState& fw_state, AlignmentStat
 	    state.seq_index_    = seq_len-1;
 	    state.matrix_index_ = matrix_index;
 	    state.matrix_type_  = AlignmentState::INS;
+	    state.block_index_  = block_index;
+	    state.base_index_   = j-1;
 	  }
 	  
 	  matrix_index += seq_len;
@@ -846,6 +853,7 @@ double calc_maximum_likelihood_alignment(AlignmentState& fw_state, AlignmentStat
   for (int block_index = 0; block_index < num_blocks-1; ++block_index){
     const std::string& block_seq = fw_state.hap_->get_seq(block_index);
     const int block_len          = block_seq.size();
+    const int next_block_len     = fw_state.hap_->get_seq(block_index+1).size();
 
     // Merge Fw and Rev alignments
     // Base j is aligned with the last character in BLOCK_INDEX, while base j+1 is aligned with the first character in BLOCK_INDEX+1
@@ -858,13 +866,16 @@ double calc_maximum_likelihood_alignment(AlignmentState& fw_state, AlignmentStat
       if (LL > max_LL){
 	max_LL  = LL;
 	max_dir = 2;
-	fw_state.hap_index_    = hap_index;
+	fw_state.hap_index_    = hap_index - (block_len == 0 ? 1 : 0);
 	fw_state.seq_index_    = j;
 	fw_state.matrix_index_ = fw_matrix_index + j;
 	fw_state.matrix_type_  = AlignmentState::MATCH;
+	fw_state.block_index_  = block_index;
+	fw_state.base_index_   = block_len-1;
 
 	// Save here as we know Case II is optimal and the last best alignment will set these appropriately
 	// Other Rv state characteristics will be set later to avoid extra assignments
+        rv_state.hap_index_    = hap_size-1 - (fw_state.hap_index_ + (next_block_len == 0 ? 0 : 1));
 	rv_state.matrix_index_ = rv_matrix_index - (j+1);
       }
     }
@@ -875,10 +886,11 @@ double calc_maximum_likelihood_alignment(AlignmentState& fw_state, AlignmentStat
 
   // Optimal alignment is part Fw and part Rv from Case II. Set the remaining reverse alignment state based on the fw alignment parameters
   if (max_dir == 2){ 
-    rv_state.hap_index_   = hap_size - fw_state.hap_index_ - 2;
     rv_state.seq_index_   = seq_len  - fw_state.seq_index_ - 2;
     rv_state.matrix_type_ = AlignmentState::MATCH;
-    // NOTE: Matrix index was already saved in the for-loop above 
+    rv_state.block_index_ = num_blocks-1 - (fw_state.block_index_+1);
+    rv_state.base_index_  = (int)(rv_state.hap_->get_seq(rv_state.block_index_).size())-1;
+    // NOTE: Matrix index and hap index were already saved in the for-loop above 
   }
 
   // Ensure we've found an alignment whose raw likelihood is <= 1

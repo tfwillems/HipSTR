@@ -26,6 +26,8 @@ class AlignmentState {
   const int seed_;
 
   // Counters that describe the current endpoint of the alignment if one has been set
+  int block_index_;
+  int base_index_;
   int hap_index_;
   int seq_index_;
   int matrix_index_;
