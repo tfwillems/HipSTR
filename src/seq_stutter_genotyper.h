@@ -27,7 +27,6 @@
 
 class SeqStutterGenotyper : public Genotyper {
  private:
-  int MAX_REF_FLANK_LEN;
   double STRAND_TOLERANCE;
 
   BaseQuality base_quality_;
@@ -162,7 +161,6 @@ class SeqStutterGenotyper : public Genotyper {
     pool_index_            = NULL;
     haplotype_             = NULL;
     second_mate_           = NULL;
-    MAX_REF_FLANK_LEN      = 30;
     MIN_PATH_WEIGHT        = 2;
     MIN_KMER               = 10;
     MAX_KMER               = 15;
@@ -201,7 +199,6 @@ class SeqStutterGenotyper : public Genotyper {
   void write_vcf_record(const std::vector<std::string>& sample_names, const std::string& chrom_seq,
 			bool output_viz, bool viz_left_alns,
 			std::ostream& html_output, VCFWriter* vcf_writer, std::ostream& logger);
-
 
   double hap_build_time() { return total_hap_build_time_;  }
   double hap_aln_time()   { return total_hap_aln_time_;    }
