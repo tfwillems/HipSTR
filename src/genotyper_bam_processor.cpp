@@ -35,9 +35,12 @@ int getUsedPhysicalMemoryKB(){
   Left align BamAlignments in the provided vector and store those that successfully realign in the provided vector.
   Also extracts other information for successfully realigned reads into provided vectors.
  */
-void GenotyperBamProcessor::left_align_reads(const RegionGroup& region_group, const std::string& chrom_seq, std::vector<BamAlnList>& alignments,
-					     const std::vector< std::vector<double> >& log_p1, const std::vector< std::vector<double> >& log_p2,
-					     std::vector< std::vector<double> >& filt_log_p1,  std::vector< std::vector<double> >& filt_log_p2,
+void GenotyperBamProcessor::left_align_reads(const RegionGroup& region_group, const std::string& chrom_seq,
+					     std::vector<BamAlnList>& alignments,
+					     const std::vector< std::vector<double> >& log_p1,
+					     const std::vector< std::vector<double> >& log_p2,
+					     std::vector< std::vector<double> >& filt_log_p1,
+					     std::vector< std::vector<double> >& filt_log_p2,
 					     std::vector<Alignment>& left_alns){
   locus_left_aln_time_ = clock();
   selective_logger() << "Left aligning reads" << std::endl;
@@ -104,7 +107,8 @@ void GenotyperBamProcessor::left_align_reads(const RegionGroup& region_group, co
 StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>& alignments,
 							 const std::vector< std::vector<double> >& log_p1s,
 							 const std::vector< std::vector<double> >& log_p2s,
-							 bool haploid, const std::vector<std::string>& rg_names, const Region& region){
+							 bool haploid, const std::vector<std::string>& rg_names,
+							 const Region& region){
   std::vector< std::vector<int> > str_bp_lengths(alignments.size());
   std::vector< std::vector<double> > str_log_p1s(alignments.size()), str_log_p2s(alignments.size());
   int inf_reads = 0;
@@ -114,7 +118,8 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
   for (unsigned int i = 0; i < alignments.size(); ++i){
     for (unsigned int j = 0; j < alignments[i].size(); ++j){
       int bp_diff;
-      bool got_size = ExtractCigar(alignments[i][j].CigarData(), alignments[i][j].Position(), region.start()-region.period(), region.stop()+region.period(), bp_diff);
+      bool got_size = ExtractCigar(alignments[i][j].CigarData(), alignments[i][j].Position(),
+				   region.start()-region.period(), region.stop()+region.period(), bp_diff);
       if (got_size){
 	if (bp_diff < -(int)(region.stop()-region.start()+1))
 	  continue;
@@ -133,7 +138,8 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
   }
 
   if (inf_reads < MIN_TOTAL_READS){
-    full_logger() << "Skipping locus with too few informative reads for stutter training: TOTAL=" << inf_reads << ", MIN=" << MIN_TOTAL_READS << std::endl;
+    full_logger() << "Skipping locus with too few informative reads for stutter training: TOTAL="
+		  << inf_reads << ", MIN=" << MIN_TOTAL_READS << std::endl;
     too_few_reads_++;
     return NULL;
   }
@@ -152,7 +158,8 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
   }
   else {
     num_em_fail_++;
-    full_logger() << "Stutter model training failed for locus " << region.chrom() << ":" << region.start() << "-" << region.stop()
+    full_logger() << "Stutter model training failed for locus "
+		  << region.chrom() << ":" << region.start() << "-" << region.stop()
 		  << " with " << inf_reads << " informative reads" << std::endl;
     return NULL;
   }
@@ -161,7 +168,8 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
 void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
 						      std::vector< std::vector<double> >& log_p1s,
 						      std::vector< std::vector<double> >& log_p2s,
-						      const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq){
+						      const std::vector<std::string>& rg_names,
+						      const RegionGroup& region_group, const std::string& chrom_seq){
   int32_t total_reads = 0;
   for (unsigned int i = 0; i < alignments.size(); i++)
     total_reads += alignments[i].size();
@@ -170,8 +178,9 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
     too_few_reads_++;
     return;
   }
-  // Can't simply check the total number of reads because the bam processor may have stopped reading at the threshold and then removed PCR duplicates
-  // Instead, we check this flag which it sets when too many reads are encountered during filtering
+  // Can't simply check the total number of reads because the bam processor may have stopped 
+  // reading at the threshold and then removed PCR duplicates. Instead, we check this flag
+  // which is set when too many reads are encountered during filtering
   if (TOO_MANY_READS){
     full_logger() << "Skipping locus with too many reads: TOTAL=" << total_reads << ", MAX=" << MAX_TOTAL_READS << std::endl;
     too_many_reads_++;
@@ -199,7 +208,8 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
       if (model_iter != stutter_models_.end())
 	stutter_model = model_iter->second->copy();
       else {
-	full_logger() << "WARNING: No stutter model found for " << region_iter->chrom() << ":" << region_iter->start() << "-" << region_iter->stop() << std::endl;
+	full_logger() << "WARNING: No stutter model found for "
+		      << region_iter->chrom() << ":" << region_iter->start() << "-" << region_iter->stop() << std::endl;
 	num_missing_models_++;
       }
     }
@@ -223,7 +233,8 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
 		     filt_log_p2s, left_alignments);
 
     bool run_assembly = true;
-    seq_genotyper = new SeqStutterGenotyper(region_group, haploid, run_assembly, left_alignments, filt_log_p1s, filt_log_p2s, rg_names, chrom_seq,
+    seq_genotyper = new SeqStutterGenotyper(region_group, haploid, run_assembly, left_alignments,
+					    filt_log_p1s, filt_log_p2s, rg_names, chrom_seq,
 					    stutter_models, ref_vcf_, selective_logger());
 
     if (seq_genotyper->genotype(MAX_TOTAL_HAPLOTYPES, MAX_FLANK_HAPLOTYPES, MIN_FLANK_FREQ, selective_logger())) {
@@ -237,7 +248,8 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
 
       if (pass){
 	num_genotype_success_++;
-	seq_genotyper->write_vcf_record(samples_to_genotype_, chrom_seq, output_viz_, (VIZ_LEFT_ALNS == 1), viz_out_, &vcf_writer_, selective_logger());
+	seq_genotyper->write_vcf_record(samples_to_genotype_, chrom_seq, output_viz_,
+					(VIZ_LEFT_ALNS == 1), viz_out_, &vcf_writer_, selective_logger());
       }
       else
 	num_genotype_fail_++;
@@ -251,6 +263,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
   selective_logger() << "Locus timing:"                                          << "\n"
 		     << " BAM seek time       = " << locus_bam_seek_time()       << " seconds\n"
 		     << " Read filtering      = " << locus_read_filter_time()    << " seconds\n"
+		     << "    Adapter trimming = " << adapter_trimmer_.locus_trimming_time() << " seconds\n"
 		     << " SNP info extraction = " << locus_snp_phase_info_time() << " seconds\n"
 		     << " Stutter estimation  = " << locus_stutter_time()        << " seconds\n";
   if (stutter_success && vcf_writer_.is_open()){
