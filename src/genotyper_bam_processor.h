@@ -117,7 +117,7 @@ public:
     locus_left_aln_time_   = -1;
     total_genotype_time_   = 0;
     locus_genotype_time_   = -1;
-    recalc_stutter_model_  = false;
+    recalc_stutter_model_  = true;
     def_stutter_model_     = NULL;
     ref_vcf_               = NULL;
   }
