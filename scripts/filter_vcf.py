@@ -68,13 +68,15 @@ class SampleFilterVCFWriter:
         self.string_stream_.close()
 
 
-def filter_call(sample, filters, MIN_HAP_QUAL):
+def filter_call(sample, filters, MIN_HAP_QUAL, MIN_PHAP_QUAL):
     if sample['DP'] < filters.DEPTH:
         return "DEPTH"
     elif sample['Q'] < filters.QUAL:
         return "QUALITY"
     elif MIN_HAP_QUAL > 0 and sample['HQ'] < MIN_HAP_QUAL:
         return "HAPLOTYPE_QUALITY"
+    elif MIN_PHAP_QUAL > 0 and sample['PHQ'] < MIN_PHAP_QUAL:
+        return "PHASED_HAPLOTYPE_QUALITY"
     else:
         d_1, d_2 = map(float, sample['PDP'].split('|'))
         if d_1 == 0 or d_2 == 0:
@@ -150,6 +152,7 @@ def main():
     parser.add_argument("--min-call-depth",          type=int,   required=False, dest="DEPTH",                default=0,          help="Omit a sample's call if DP < DEPTH")
     parser.add_argument("--min-call-qual",           type=float, required=False, dest="QUAL",                 default=0.0,        help="Omit a sample's call if Q < QUAL")
     parser.add_argument("--min-call-hap-qual",       type=float, required=False, dest="HAP_QUAL",             default=0.0,        help="Omit a sample's call if HQ < HAP_QUAL")
+    parser.add_argument("--min-call-phap-qual",      type=float, required=False, dest="PHAP_QUAL",            default=0.0,        help="Omit a sample's call if PHQ < PHAP_QUAL")
     parser.add_argument("--min-call-allele-depth",   type=float, required=False, dest="ALLELE_DEPTH",         default=0.0,        help=help_dict["--min-call-allele-depth"])
     parser.add_argument("--min-call-depth-ratio",    type=float, required=False, dest="ALLELE_RATIO",         default=0.0,        help=help_dict["--min-call-depth-ratio"])
     parser.add_argument("--max-call-flank-indel",    type=float, required=False, dest="FLANK_INDEL_FRAC",     default=1.0,        help=help_dict["--max-call-flank-indel"])
@@ -213,7 +216,9 @@ def main():
         lflank_counts = [0] if not proc_lflanks else len(record.INFO["LFLANKS"])*[0]
         proc_rflanks  = "RFGT" in fmt_tokens
         rflank_counts = [0] if not proc_rflanks else len(record.INFO["RFLANKS"])*[0]
+
         min_hap_qual  = (0 if "HQ" not in fmt_tokens else args.HAP_QUAL)
+        min_phap_qual = (0 if "PHQ" not in fmt_tokens else args.PHAP_QUAL)
 
         # Process each sample and determine whether it should be included in the filtered VCF
         sample_filt_dict = {}
@@ -225,7 +230,8 @@ def main():
                 msg += "\n\t Please use filter_haploid_vcf.py to filter calls for haploid chromosomes"
                 exit(msg)
             
-            filter_reason = "NOT_IN_SAMPLES_TO_KEEP" if (samples_to_keep is not None and sample.sample not in samples_to_keep) else filter_call(sample, args, min_hap_qual)
+            filter_reason = "NOT_IN_SAMPLES_TO_KEEP" if (samples_to_keep is not None and sample.sample not in samples_to_keep) else filter_call(sample, args, 
+                                                                                                                                                min_hap_qual, min_phap_qual)
             sample_filt_dict[sample.sample] = filter_reason
             if filter_reason is None:
                 gt_a, gt_b           = map(int, sample['GT'].split('|'))
@@ -252,7 +258,7 @@ def main():
         for indexes,counts in zip([allele_indices, lflank_indices, rflank_indices], [allele_counts, lflank_counts, rflank_counts]):
             num_alleles = 1
             for i in range(1, len(counts)):
-                if counts[i] != 0 or not can_remove_alleles:
+                if counts[i] != 0 or (not can_remove_alleles and indexes == allele_indices):
                     indexes[i]   = num_alleles
                     num_alleles += 1
 
