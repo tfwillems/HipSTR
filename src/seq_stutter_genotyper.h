@@ -27,6 +27,7 @@
 
 class SeqStutterGenotyper : public Genotyper {
  private:
+  int REF_FLANK_LEN;
   double STRAND_TOLERANCE;
 
   BaseQuality base_quality_;
@@ -149,12 +150,12 @@ class SeqStutterGenotyper : public Genotyper {
   SeqStutterGenotyper& operator=(const SeqStutterGenotyper& other);
 
  public:
-  SeqStutterGenotyper(const RegionGroup& region_group, bool haploid, bool reassemble_flanks,
-		      std::vector<Alignment>& alignments, std::vector< std::vector<double> >& log_p1,
-		      std::vector< std::vector<double> >& log_p2,
-		      const std::vector<std::string>& sample_names, const std::string& chrom_seq,
-		      std::vector<StutterModel*>& stutter_models,
-		      VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(haploid, sample_names, log_p1, log_p2){
+ SeqStutterGenotyper(const RegionGroup& region_group, bool haploid, bool reassemble_flanks, int ref_flank_len,
+		     std::vector<Alignment>& alignments, std::vector< std::vector<double> >& log_p1,
+		     std::vector< std::vector<double> >& log_p2,
+		     const std::vector<std::string>& sample_names, const std::string& chrom_seq,
+		     std::vector<StutterModel*>& stutter_models,
+		     VCF::VCFReader* ref_vcf, std::ostream& logger): Genotyper(haploid, sample_names, log_p1, log_p2){
     region_group_          = region_group.copy();
     alns_                  = alignments;
     seed_positions_        = NULL;
@@ -165,6 +166,7 @@ class SeqStutterGenotyper : public Genotyper {
     MIN_KMER               = 10;
     MAX_KMER               = 15;
     STRAND_TOLERANCE       = 0.1;
+    REF_FLANK_LEN          = ref_flank_len;
     initialized_           = false;
     reassemble_flanks_     = reassemble_flanks;
     clear_caches_          = false;

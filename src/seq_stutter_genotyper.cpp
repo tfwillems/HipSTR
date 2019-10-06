@@ -450,7 +450,7 @@ bool SeqStutterGenotyper::build_haplotype(const std::string& chrom_seq, std::vec
     max_aln_stop  = std::max(max_aln_stop,  alns_[read_index].get_stop());
   }
 
-  HaplotypeGenerator hap_generator(min_aln_start, max_aln_stop);
+  HaplotypeGenerator hap_generator(min_aln_start, max_aln_stop, REF_FLANK_LEN);
   const std::vector<Region>& regions = region_group_->regions();
   bool success = true;
   for (int region_index = 0; region_index < regions.size(); region_index++){

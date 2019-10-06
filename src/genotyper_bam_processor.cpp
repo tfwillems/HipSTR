@@ -48,14 +48,16 @@ void GenotyperBamProcessor::left_align_reads(const RegionGroup& region_group, co
   int32_t align_fail_count = 0, total_reads = 0;
   left_alns.clear(); filt_log_p1.clear(); filt_log_p2.clear();
 
+  const int32_t trim = REF_FLANK_LEN + 10;
   std::vector<bool> passes_region_filters; passes_region_filters.reserve(region_group.num_regions());
   for (unsigned int i = 0; i < alignments.size(); ++i){
     filt_log_p1.push_back(std::vector<double>());
     filt_log_p2.push_back(std::vector<double>());
 
     for (unsigned int j = 0; j < alignments[i].size(); ++j, ++total_reads){
-      // Trim alignment if it extends very far upstream or downstream of the STR. For tractability, we limit it to 40bp
-      alignments[i][j].TrimAlignment((region_group.start() > 40 ? region_group.start()-40 : 1), region_group.stop()+40);
+      // Trim alignment if it extends very far upstream or downstream of the STR
+      // For tractability, we limit it to 10bp + REF_FLANK_LEN
+      alignments[i][j].TrimAlignment((region_group.start() > trim ? region_group.start()-trim : 1), region_group.stop()+trim);
       if (alignments[i][j].Length() == 0)
         continue;
 
@@ -233,7 +235,7 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
 		     filt_log_p2s, left_alignments);
 
     bool run_assembly = true;
-    seq_genotyper = new SeqStutterGenotyper(region_group, haploid, run_assembly, left_alignments,
+    seq_genotyper = new SeqStutterGenotyper(region_group, haploid, run_assembly, REF_FLANK_LEN, left_alignments,
 					    filt_log_p1s, filt_log_p2s, rg_names, chrom_seq,
 					    stutter_models, ref_vcf_, selective_logger());
 

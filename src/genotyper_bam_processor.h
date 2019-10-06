@@ -103,6 +103,7 @@ public:
     num_missing_models_    = 0;
     num_genotype_success_  = 0;
     num_genotype_fail_     = 0;
+    REF_FLANK_LEN          = 35;
     MAX_EM_ITER            = 100;
     ABS_LL_CONVERGE        = 0.01;
     FRAC_LL_CONVERGE       = 0.001;
@@ -207,12 +208,13 @@ public:
       full_logger() << "Skipped " << num_too_long_   << " loci whose lengths were above the maximum threshold.\n"
 		    << "\t If this is a sizeable portion of your loci, see the --max-str-len command line option\n";
     if (too_many_reads_ != 0)
-      full_logger() << "Skipped " << too_many_reads_ << " loci with too many reads.\n\t If this comprises a sizeable portion of your loci, see the --max-reads command line option\n";
+      full_logger() << "Skipped " << too_many_reads_ << " loci with too many reads.\n"
+		    << "\t If this comprises a sizeable portion of your loci, see the --max-reads command line option\n";
     if (too_few_reads_ != 0)
       full_logger() << "Skipped " << too_few_reads_  << " loci with too few reads for stutter model model training or genotyping.\n"
 		    << "\t If this is a sizeable portion of your loci, see the --min-reads command line option\n";
     if (num_missing_models_ != 0)
-      full_logger() << "Skipped " << num_missing_models_ << " loci that did not have a stutter model in the file provided to --stutter-in\n";
+      full_logger() << "Skipped " << num_missing_models_ << " loci that did not have a stutter model in the --stutter-in file\n";
     if (num_em_converge_+num_em_fail_ != 0)
       full_logger() << "Stutter model training succeeded for " << num_em_converge_ << "/" << num_em_converge_+num_em_fail_ << " loci\n";
     full_logger() << "Genotyping succeeded for " << num_genotype_success_ << "/" << num_genotype_success_+num_genotype_fail_ << " loci\n";
@@ -238,6 +240,7 @@ public:
   double FRAC_LL_CONVERGE;  // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
   int32_t MIN_TOTAL_READS;  // Minimum total reads required to genotype locus
 
+  int REF_FLANK_LEN;
   int MAX_TOTAL_HAPLOTYPES;
   int MAX_FLANK_HAPLOTYPES;
   double MIN_FLANK_FREQ;    // Minimum fraction of samples that must have an alternate flank to consider it

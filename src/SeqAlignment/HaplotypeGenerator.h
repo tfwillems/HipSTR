@@ -49,7 +49,7 @@ class HaplotypeGenerator {
   HaplotypeGenerator& operator=(const HaplotypeGenerator& other);
 
  public:
-  HaplotypeGenerator(int32_t min_aln_start, int32_t max_aln_stop){
+  HaplotypeGenerator(int32_t min_aln_start, int32_t max_aln_stop, int32_t ref_flank_len){
     finished_                = false;
     MIN_FRAC_READS           = 0.05;
     MIN_FRAC_SAMPLES         = 0.05;
@@ -59,7 +59,7 @@ class HaplotypeGenerator {
     LEFT_PAD                 = 5;
     RIGHT_PAD                = 5;
     MIN_BLOCK_SPACING        = 10;
-    REF_FLANK_LEN            = 35;
+    REF_FLANK_LEN            = ref_flank_len;
     min_aln_start_           = min_aln_start;
     max_aln_stop_            = max_aln_stop;
   }
