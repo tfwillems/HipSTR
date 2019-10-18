@@ -136,7 +136,7 @@ class Genotyper {
 
   void calc_PLs(const std::vector<double>& gls, std::vector<int>& pls) const;
 
-  double calc_gl_diff(const std::vector<double>& gls, int gt_a, int gt_b) const;
+  double calc_GL_diff(const std::vector<double>& gls, int gt_a, int gt_b) const;
 
   void extract_genotypes_and_likelihoods(int num_variants, std::vector<int>& hap_to_allele,
 					 std::vector< std::pair<int,int>  >& best_haplotypes,
@@ -157,6 +157,7 @@ class Genotyper {
   static float MAX_FLANK_INDEL_FRAC;  // Only output genotypes if the fraction of a sample's reads with
                                       // indels in the flank is less than this threshold
   static int OUTPUT_HAPLOTYPE_DATA;   // Output information about the haplotypes (in addition to the genotypes)
+  static double MIN_READ_LL;          // Bound for the minimum value that a single read's LL can contribute
 };
 
 #endif

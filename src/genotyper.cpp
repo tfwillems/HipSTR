@@ -103,17 +103,20 @@ void Genotyper::calc_PLs(const std::vector<double>& gls, std::vector<int>& pls) 
     pls.push_back(std::min(999, (int)(-10*(gls[i]-max_gl))));
 }
 
-double Genotyper::calc_gl_diff(const std::vector<double>& gls, int gt_a, int gt_b) const {
+double Genotyper::calc_GL_diff(const std::vector<double>& gls, int gt_a, int gt_b) const {
   if (num_alleles_ == 1)
     return -1000;
 
-  double max_gl    = *(std::max_element(gls.begin(), gls.end()));
+  double max_gl    = -DBL_MAX;
   double second_gl = -DBL_MAX;
-  for (unsigned int i = 0; i < gls.size(); i++)
-    if (gls[i] < max_gl)
-      second_gl = std::max(second_gl, gls[i]);
-  if (second_gl == -DBL_MAX)
-    second_gl = max_gl;
+  for (unsigned int i = 0; i < gls.size(); i++){
+    if (gls[i] >= max_gl){
+      second_gl = max_gl;
+      max_gl    = gls[i];
+    }
+    else if (gls[i] >= second_gl)
+      second_gl = gls[i];
+  }
 
   int gl_index;
   if (haploid_)
@@ -236,7 +239,7 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
 
     // GLDIFFs
     for (int sample_index = 0; sample_index < num_samples_; sample_index++)
-      gl_diffs.push_back(calc_gl_diff(gls[sample_index], best_gts[sample_index].first, best_gts[sample_index].second));
+      gl_diffs.push_back(calc_GL_diff(gls[sample_index], best_gts[sample_index].first, best_gts[sample_index].second));
 
     // PLs
     if (calc_pls){
@@ -250,7 +253,8 @@ void Genotyper::extract_genotypes_and_likelihoods(int num_variants, std::vector<
   }
 }
 
-std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::string& full_command, const std::vector<std::string>& chroms, const std::vector<std::string>& sample_names){
+std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::string& full_command,
+				      const std::vector<std::string>& chroms, const std::vector<std::string>& sample_names){
   std::stringstream out;
   out << "##fileformat=VCFv4.1" << "\n"
       << "##command="   << full_command << "\n"
@@ -280,8 +284,10 @@ std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::
       << "##INFO=<ID=" << "DSTUTTER"       << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with a stutter indel in the STR region"                 << "\">\n"
       << "##INFO=<ID=" << "DFLANKINDEL"    << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with an indel in the regions flanking the STR"          << "\">\n";
   if (OUTPUT_HAPLOTYPE_DATA == 1)
-    out << "##INFO=<ID=" << "LFLANKS" << ",Number=.,Type=String,Description=\"" << "Comma-separated sequence(s) of flank to the  left of the repeat. Only output if 1 or more non-ref  left flanks were detected" << "\">\n"
-	<< "##INFO=<ID=" << "RFLANKS" << ",Number=.,Type=String,Description=\"" << "Comma-separated sequence(s) of flank to the right of the repeat. Only output if 1 or more non-ref right flanks were detected" << "\">\n";
+    out << "##INFO=<ID=" << "LFLANKS" << ",Number=.,Type=String,Description=\""
+	<< "Comma-separated sequence(s) of flank to the  left of the repeat. Only output if 1 or more non-ref  left flanks were detected" << "\">\n"
+	<< "##INFO=<ID=" << "RFLANKS" << ",Number=.,Type=String,Description=\""
+	<< "Comma-separated sequence(s) of flank to the right of the repeat. Only output if 1 or more non-ref right flanks were detected" << "\">\n";
 
   // Format field descriptors
   out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""  << "Genotype" << "\">" << "\n"
@@ -302,10 +308,14 @@ std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::
       << "##FORMAT=<ID=" << "DAB"         << ",Number=1,Type=Integer,Description=\"" << "Number of reads used in the AB and FS calculations" << "\">" << "\n";
 
   if (OUTPUT_HAPLOTYPE_DATA == 1)
-    out << "##FORMAT=<ID=" << "HQ"   << ",Number=1,Type=Float,Description=\""  << "Posterior probability of unphased haplotypes. Only output if 1 or more non-ref flanks were detected" << "\">" << "\n"
-	<< "##FORMAT=<ID=" << "PHQ"  << ",Number=1,Type=Float,Description=\""  << "Posterior probability of   phased haplotypes. Only output if 1 or more non-ref flanks were detected" << "\">" << "\n"
-	<< "##FORMAT=<ID=" << "LFGT" << ",Number=1,Type=String,Description=\"" << "Genotype of  left flank with corresponding sequences reported in LFLANKS. Only output if 1 or more non-ref  left flanks were detected" << "\">" << "\n"
-	<< "##FORMAT=<ID=" << "RFGT" << ",Number=1,Type=String,Description=\"" << "Genotype of right flank with corresponding sequences reported in RFLANKS. Only output if 1 or more non-ref right flanks were detected" << "\">" << "\n";
+    out << "##FORMAT=<ID=" << "HQ"   << ",Number=1,Type=Float,Description=\""
+	<< "Posterior probability of unphased haplotypes. Only output if 1 or more non-ref flanks were detected" << "\">" << "\n"
+	<< "##FORMAT=<ID=" << "PHQ"  << ",Number=1,Type=Float,Description=\""
+	<< "Posterior probability of   phased haplotypes. Only output if 1 or more non-ref flanks were detected" << "\">" << "\n"
+	<< "##FORMAT=<ID=" << "LFGT" << ",Number=1,Type=String,Description=\""
+	<< "Genotype of  left flank with corresponding sequences reported in LFLANKS. Only output if 1 or more non-ref  left flanks were detected" << "\">" << "\n"
+	<< "##FORMAT=<ID=" << "RFGT" << ",Number=1,Type=String,Description=\""
+	<< "Genotype of right flank with corresponding sequences reported in RFLANKS. Only output if 1 or more non-ref right flanks were detected" << "\">" << "\n";
 
   if (OUTPUT_ALLREADS == 1)
     out << "##FORMAT=<ID=" << "ALLREADS" << ",Number=1,Type=String,Description=\"" << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n";
@@ -341,3 +351,5 @@ int Genotyper::OUTPUT_MALLREADS       = 1;
 int Genotyper::OUTPUT_FILTERS         = 0;
 int Genotyper::OUTPUT_HAPLOTYPE_DATA  = 0;
 float Genotyper::MAX_FLANK_INDEL_FRAC = 0.15;
+double Genotyper::MIN_READ_LL         = -11.512925465; // ln(10^-5)
+
