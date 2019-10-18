@@ -78,7 +78,8 @@ public:
   virtual void analyze_reads_and_phasing(std::vector<BamAlnList>& alignments,
 					 std::vector< std::vector<double> >& log_p1s, 
 					 std::vector< std::vector<double> >& log_p2s,
-					 const std::vector<std::string>& rg_names, const RegionGroup& region_group, const std::string& chrom_seq) = 0;
+					 const std::vector<std::string>& rg_names,
+					 const RegionGroup& region_group, const std::string& chrom_seq) = 0;
 
   void set_input_snp_vcf(const std::string& vcf_file){
     if (phased_snp_vcf_ != NULL)

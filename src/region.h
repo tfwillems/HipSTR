@@ -59,7 +59,8 @@ public:
 
 };
 
-void readRegions(const std::string& input_file, uint32_t max_regions, const std::string& chrom_limit, std::vector<Region>& regions, std::ostream& logger);
+void readRegions(const std::string& input_file, uint32_t max_regions, const std::string& chrom_limit,
+		 std::vector<Region>& regions, std::ostream& logger);
 
 void orderRegions(std::vector<Region>& regions);
 

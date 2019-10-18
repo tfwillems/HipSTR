@@ -22,7 +22,8 @@ void filter_snps(std::vector<SNP>& snps, const std::set<int32_t>& bad_sites){
   snps.resize(insert_index);
 }
 
-bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, const std::vector<Region>& skip_regions, int32_t skip_padding, VCF::VCFReader* snp_vcf, HaplotypeTracker* tracker,
+bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, const std::vector<Region>& skip_regions,
+		      int32_t skip_padding, VCF::VCFReader* snp_vcf, HaplotypeTracker* tracker,
                       std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees, std::ostream& logger){
   logger << "Building SNP tree for region " << chrom << ":" << start << "-" << end << std::endl;
   assert(sample_indices.size() == 0 && snp_trees.size() == 0);
@@ -80,10 +81,12 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, co
     int family_index = 0;
     for (auto family_iter = families.begin(); family_iter != families.end(); ++family_iter, ++family_index){
       std::vector<int> maternal_indices, paternal_indices;
-      bool good_haplotypes = tracker->infer_haplotype_inheritance(*family_iter, DenovoScanner::MAX_BEST_SCORE, DenovoScanner::MIN_SECOND_BEST_SCORE,
+      bool good_haplotypes = tracker->infer_haplotype_inheritance(*family_iter,
+								  DenovoScanner::MAX_BEST_SCORE, DenovoScanner::MIN_SECOND_BEST_SCORE,
 								  maternal_indices, paternal_indices, bad_sites_by_family[family_index]);
 
-      // If the family haplotypes aren't good enough, clear all of the sample's SNPs. Otherwise, remove only the bad sites from each sample's list
+      // If the family haplotypes aren't good enough, clear all of the sample's SNPs.
+      // Otherwise, remove only the bad sites from each sample's list
       for (auto sample_iter = family_iter->get_samples().begin(); sample_iter != family_iter->get_samples().end(); sample_iter++){
 	auto sample_index = sample_indices.find(*sample_iter);
 	if (sample_index != sample_indices.end()){
@@ -97,14 +100,13 @@ bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, co
 	}
       }
     }
-    logger << "Removed " << filt_count << " out of " << filt_count+unfilt_count << " individual heterozygous SNP calls due to pedigree uncertainties or inconsistencies" << std::endl;
+    logger << "Removed " << filt_count << " out of " << filt_count+unfilt_count
+	   << " individual heterozygous SNP calls due to pedigree uncertainties or inconsistencies" << std::endl;
   }
 
   // Create SNP trees
-  for (unsigned int i = 0; i < snps_by_sample.size(); i++){
-    //logger << "Building SNP tree for " << variant_file.sampleNames[i] << " containing " << snps_by_sample[i].size() << " heterozygous SNPs" << std::endl;
+  for (unsigned int i = 0; i < snps_by_sample.size(); i++)
     snp_trees.push_back(new SNPTree(snps_by_sample[i]));
-  }
 
   // Discard SNPs
   snps_by_sample.clear();

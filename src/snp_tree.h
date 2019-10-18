@@ -138,7 +138,8 @@ class SNPTree {
 };
 
 
-bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, const std::vector<Region>& skip_regions, int32_t skip_padding, VCF::VCFReader* snp_vcf, HaplotypeTracker* tracker,
+bool create_snp_trees(const std::string& chrom, uint32_t start, uint32_t end, const std::vector<Region>& skip_regions,
+		      int32_t skip_padding, VCF::VCFReader* snp_vcf, HaplotypeTracker* tracker,
                       std::map<std::string, unsigned int>& sample_indices, std::vector<SNPTree*>& snp_trees, std::ostream& logger);
 
 void destroy_snp_trees(std::vector<SNPTree*>& snp_trees);
