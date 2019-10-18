@@ -57,7 +57,8 @@ namespace ZAlgorithm{
     for (int i = s2_left; i <= s2_right; i++){
       if (i >= rightmost){
 	int index_a = 0, index_b = i;
-	while (index_a < static_cast<int>(s1.size()) && index_b < static_cast<int>(s2.size()) && (char)tolower(s1[index_a]) == (char)tolower(s2[index_b])){
+	while (index_a < static_cast<int>(s1.size()) && index_b < static_cast<int>(s2.size())
+	       && (char)tolower(s1[index_a]) == (char)tolower(s2[index_b])){
 	  index_a++;
 	  index_b++;
 	}
@@ -76,7 +77,8 @@ namespace ZAlgorithm{
 	  num_matches[i-s2_left+offset] = rightmost-i+1;
 	else {
 	  int index_a = rightmost+1-i, index_b = rightmost+1;
-	  while (index_a < static_cast<int>(s1.size()) && index_b < static_cast<int>(s2.size()) && (char)tolower(s1[index_a]) == (char)tolower(s2[index_b])){
+	  while (index_a < static_cast<int>(s1.size()) && index_b < static_cast<int>(s2.size()) 
+		 && (char)tolower(s1[index_a]) == (char)tolower(s2[index_b])){
 	    index_a++;
 	    index_b++;
 	  }
