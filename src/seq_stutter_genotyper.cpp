@@ -192,6 +192,13 @@ bool SeqStutterGenotyper::assemble_flanks(int max_total_haplotypes, int max_flan
     copy_reads[read_index] = sample_flag;
   }
 
+  // Return true if no new flanking alleles were identified
+  bool have_new_alleles = false;
+  for (unsigned int i = 0; i < alleles_to_add.size(); ++i)
+    have_new_alleles |= (!alleles_to_add[i].empty());
+  if (!have_new_alleles)
+    return true;
+  
   // Realign reads for samples with new candidate flanking sequences
   int realign_count = 0;
   for (unsigned int i = 0; i < realign_pools.size(); i++)
