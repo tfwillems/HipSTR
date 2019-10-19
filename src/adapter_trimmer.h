@@ -56,7 +56,8 @@ class AdapterTrimmer {
   const static int    MIN_OVERLAP;
   const static double MAX_ERROR_RATE;
 
-  // Commonly used Illumina adapter pairs (see https://support.illumina.com/bulletins/2016/12/what-sequences-do-i-use-for-adapter-trimming.html)
+  // Commonly used Illumina adapter pairs
+  // See https://support.illumina.com/bulletins/2016/12/what-sequences-do-i-use-for-adapter-trimming.html
   // i)  Applicable to most WGS experiments
   const static std::string TRUSEQ_R1_ADAPTER;
   const static std::string TRUSEQ_R2_ADAPTER;
@@ -102,8 +103,8 @@ class AdapterTrimmer {
   double locus_trimming_time(){ return locus_trimming_time_; }
   double total_trimming_time(){ return total_trimming_time_; }
 
-  /* Identify any exact or 1 mismatch adapter sequences present in the alignment's sequence
-     Uses information about the alignment's orientation to check for 5' or 3' adapters (as reverse alignments have already been reverse complemented)
+  /* Identify any exact or 1 mismatch adapter sequences present in the alignment's sequence. Uses information about the
+     alignment's orientation to check for 5' or 3' adapters (as reverse alignments have already been reverse complemented)
      Removes the adapter sequence from the alignment's bases and modifies the alignment properties accordingly
   */
   void trim_adapters(BamAlignment& aln);
