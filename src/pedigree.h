@@ -21,7 +21,8 @@ class NuclearFamily {
   std::vector<int> vcf_indices_;
 
  public:
-  NuclearFamily(const std::string& family_id, const std::string& mother, const std::string& father, const std::vector<std::string>& children)
+  NuclearFamily(const std::string& family_id, const std::string& mother, const std::string& father,
+		const std::vector<std::string>& children)
     : family_id_(family_id), mother_(mother), father_(father), children_(children){
     samples_.push_back(mother_);
     samples_.push_back(father_);

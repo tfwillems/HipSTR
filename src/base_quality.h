@@ -44,11 +44,13 @@ class BaseQuality {
   double log_prob_error(char quality) const {
     int qual_index = quality - MIN_BASE_QUALITY;
     if (quality < MIN_BASE_QUALITY){
-      //std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using minimum expected score " << std::endl; 
+      //std::cerr << "WARNING: Base quality " << quality
+      //	<< " outside of expected range. Proceeding using minimum expected score " << std::endl; 
       return log_error_[0];
     }
     else if (quality > MAX_BASE_QUALITY) {
-      //std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using maximum expected score " << std::endl;
+      //std::cerr << "WARNING: Base quality " << quality
+      //	<< " outside of expected range. Proceeding using maximum expected score " << std::endl;
       return log_error_[MAX_QUAL_INDEX];
     }
     else
@@ -63,11 +65,13 @@ class BaseQuality {
   double log_prob_correct(char quality) const {
     int qual_index = quality - MIN_BASE_QUALITY;
     if (quality < MIN_BASE_QUALITY){
-      ///std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using minimum expected score " << std::endl; 
+      //std::cerr << "WARNING: Base quality " << quality
+      //	<< " outside of expected range. Proceeding using minimum expected score " << std::endl; 
       return log_correct_[0];
     }
     else if (quality > MAX_BASE_QUALITY) {
-      //std::cerr << "WARNING: Base quality " << quality << " outside of expected range. Proceeding using maximum expected score " << std::endl;
+      //std::cerr << "WARNING: Base quality " << quality
+      //	<< " outside of expected range. Proceeding using maximum expected score " << std::endl;
       return log_correct_[MAX_QUAL_INDEX];
     }
     else

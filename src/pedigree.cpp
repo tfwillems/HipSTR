@@ -49,7 +49,8 @@ bool PedigreeGraph::topological_sort(std::vector<PedigreeNode*>& nodes){
       if (count_iter == parent_counts.end()){
 	source->print(std::cerr);
 	(*child_iter)->print(std::cerr);
-	printErrorAndDie("Logical error in topological_sort() for parent " + source->get_name() + " and child " + (*child_iter)->get_name());
+	printErrorAndDie("Logical error in topological_sort() for parent " +
+			 source->get_name() + " and child " + (*child_iter)->get_name());
       }
       else if (count_iter->second == 1){
 	sources.push_back(*child_iter);

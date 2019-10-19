@@ -179,7 +179,8 @@ public:
       printErrorAndDie("Failed to open output file for stutter models");
   }
 
-  void set_output_str_vcf(const std::string& vcf_file, const std::string& fasta_path, const std::string& full_command, const std::set<std::string>& samples_to_output){
+  void set_output_str_vcf(const std::string& vcf_file, const std::string& fasta_path, const std::string& full_command,
+			  const std::set<std::string>& samples_to_output){
     vcf_writer_.open(vcf_file);
     
     // Assemble a list of sample names for genotype output

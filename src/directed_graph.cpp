@@ -73,6 +73,7 @@ void DirectedGraph::print(std::ostream& out) const {
 
   out << "EDGES " << edges_.size() <<  "\n";
   for (unsigned int i = 0; i < edges_.size(); i++)
-    out << "\t" << i << "\t" << edges_[i]->get_source() << "\t" << edges_[i]->get_destination() << "\t" << edges_[i]->get_weight() << "\n";
+    out << "\t" << i << "\t" << edges_[i]->get_source() << "\t" << edges_[i]->get_destination()
+	<< "\t" << edges_[i]->get_weight() << "\n";
   out << "\n" << std::endl;
 }
