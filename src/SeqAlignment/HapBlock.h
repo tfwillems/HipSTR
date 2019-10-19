@@ -80,7 +80,7 @@ class HapBlock {
   }
 
   const std::string& get_seq(unsigned int index) const {
-    if (index < seqs_.size() && index >= 0)
+    if (index < seqs_.size())
       return seqs_[index];
     else
       throw std::out_of_range("Index out of bounds in HapBlock::get_seq()");
