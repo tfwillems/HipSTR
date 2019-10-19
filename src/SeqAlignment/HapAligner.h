@@ -17,7 +17,6 @@ class HapAligner {
   double total_fw_stutter_time_,    total_rv_stutter_time_;
   double total_fw_nonstutter_time_, total_rv_nonstutter_time_;
   double total_fw_hap_aln_time_,    total_rv_hap_aln_time_;
-  double total_ml_time_;
 
   Haplotype *fw_haplotype_, *rv_haplotype_;
   std::vector<bool> realign_to_hap_;
@@ -59,7 +58,6 @@ class HapAligner {
     total_rv_stutter_time_    = 0.0;
     total_fw_nonstutter_time_ = 0.0;
     total_rv_nonstutter_time_ = 0.0;
-    total_ml_time_            = 0.0;
     total_fw_hap_aln_time_    = 0.0;
     total_rv_hap_aln_time_    = 0.0;
   }

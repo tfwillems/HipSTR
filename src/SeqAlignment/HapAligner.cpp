@@ -199,7 +199,6 @@ void HapAligner::process_read(const Alignment& aln, int read_id, int seed, const
   total_rv_nonstutter_time_ += rv_state.total_nonstutter_time();
   total_fw_hap_aln_time_    += fw_state.total_hap_aln_time();
   total_rv_hap_aln_time_    += rv_state.total_hap_aln_time();
-  total_ml_time_;
 
   // Deallocate arrays
   delete [] fw_log_wrong;
