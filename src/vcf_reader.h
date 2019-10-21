@@ -14,6 +14,7 @@ extern "C" {
 }
 
 #include "error.h"
+#include "stringops.h"
 
 namespace VCF {
 
@@ -91,12 +92,12 @@ public:
       return "";
   }
 
-  bool has_format_field(const std::string& fieldname) const {
-    return (bcf_get_fmt(vcf_header_, vcf_record_, fieldname.c_str()) != NULL);
+  bool has_format_field(const std::string& field) const {
+    return (bcf_get_fmt(vcf_header_, vcf_record_, field.c_str()) != NULL);
   }
 
-  bool has_info_field(const std::string& fieldname) const {
-    return (bcf_get_info(vcf_header_, vcf_record_, fieldname.c_str()) != NULL);
+  bool has_info_field(const std::string& field) const {
+    return (bcf_get_info(vcf_header_, vcf_record_, field.c_str()) != NULL);
   }
 
   bool sample_call_phased(int sample_index) const {
@@ -109,32 +110,45 @@ public:
 
   bool sample_call_missing(const std::string& sample) const;
 
-  void get_INFO_value_single_int(const std::string& fieldname, int32_t& val) const {
+  void get_INFO_value_single_int(const std::string& field, int32_t& val) const {
     int mem            = 0;
     int32_t* info_vals = NULL;
-    if (bcf_get_info_int32(vcf_header_, vcf_record_, fieldname.c_str(), &info_vals, &mem) != 1)
+    if (bcf_get_info_int32(vcf_header_, vcf_record_, field.c_str(), &info_vals, &mem) != 1)
       printErrorAndDie("Failed to extract single INFO value from the VCF record");
     val = info_vals[0];
     free(info_vals);
   }
 
-  void get_INFO_value_multiple_ints(const std::string& fieldname, std::vector<int32_t>& vals) const {
+  void get_INFO_value_multiple_ints(const std::string& field, std::vector<int32_t>& vals) const {
     vals.clear();
-    int mem             = 0;
-    int32_t* info_vals  = NULL;
-    int num_entries = bcf_get_info_int32(vcf_header_, vcf_record_, fieldname.c_str(), &info_vals, &mem);
-    if (num_entries <= 1)
+    int mem            = 0;
+    int32_t* info_vals = NULL;
+    int num_entries    = bcf_get_info_int32(vcf_header_, vcf_record_, field.c_str(), &info_vals, &mem);
+    if (num_entries < 1)
       printErrorAndDie("Failed to extract multiple INFO values from the VCF record");
     for (int i = 0; i < num_entries; i++)
       vals.push_back(info_vals[i]);
     free(info_vals);
   }
 
-  void get_FORMAT_value_multiple_floats(const std::string& fieldname, std::vector< std::vector<float> >& vals) const {
+  void get_INFO_value_multiple_strings(const std::string& field, std::vector<std::string>& vals) const {
+    vals.clear();
+    int mem         = 0;
+    char* info_vals = NULL;
+    int num_entries = bcf_get_info_string(vcf_header_, vcf_record_, field.c_str(), &info_vals, &mem);
+    if (num_entries < 1)
+      printErrorAndDie("Failed to extract multiple INFO values from the VCF record");
+
+    std::string info_string(info_vals);
+    split_by_delim(info_string, ',', vals);
+    free(info_vals);
+  }
+
+  void get_FORMAT_value_multiple_floats(const std::string& field, std::vector< std::vector<float> >& vals) const {
     vals.clear();
     int mem            = 0;
     float* format_vals = NULL;
-    int num_entries    = bcf_get_format_float(vcf_header_, vcf_record_, fieldname.c_str(), &format_vals, &mem);
+    int num_entries    = bcf_get_format_float(vcf_header_, vcf_record_, field.c_str(), &format_vals, &mem);
     if (num_entries <= num_samples())
       printErrorAndDie("Failed to extract multiple FORMAT values from the VCF record");
     int entries_per_sample = num_entries/num_samples();
