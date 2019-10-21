@@ -72,69 +72,78 @@ namespace VCF {
     free(gts_);
   }
 
-void VCFReader::open(const std::string& filename){
-  const char* cfilename = filename.c_str();
-  char *fnidx = (char*) calloc(strlen(cfilename) + 5, 1);
-  strcat(strcpy(fnidx, cfilename), ".tbi");
-  struct stat stat_tbi, stat_vcf;
-  stat(fnidx, &stat_tbi);
-  stat(cfilename, &stat_vcf);
-  if (stat_vcf.st_mtime > stat_tbi.st_mtime)
-    printErrorAndDie("The tabix index for the VCF file is older than the VCF itself. Please reindex the VCF with tabix");
-  free(fnidx);
-  
-  if ((vcf_input_ = hts_open(cfilename, "r")) == NULL)
-    printErrorAndDie("Failed to open the VCF file");
-  if (vcf_input_->format.format != vcf)
-    printErrorAndDie("Provided VCF file is improperly formatted");
-  if (vcf_input_->format.compression != bgzf)
-    printErrorAndDie("VCF file is not bgzipped. Please ensure bgzip was used to compress it");
-  if ((tbx_input_ = tbx_index_load(cfilename)) == NULL)
-    printErrorAndDie("Failed to open the VCF file's tabix index");
-  
-  int nseq;
-  const char** seq = tbx_seqnames(tbx_input_, &nseq);
-  for (int i = 0; i < nseq; i++)
-    chroms_.push_back(seq[i]);
-  free(seq);
-  
-  if (chroms_.size() == 0)
-    printErrorAndDie("VCF does not contain any chromosomes");
-  
-  vcf_header_  = bcf_hdr_read(vcf_input_);
-  tbx_iter_    = tbx_itr_querys(tbx_input_, chroms_.front().c_str());
-  chrom_index_ = 0;
-  
-  for (int i = 0; i < bcf_hdr_nsamples(vcf_header_); i++){
-    samples_.push_back(vcf_header_->samples[i]);
-    sample_indices_[vcf_header_->samples[i]] = i;
-  }
-}
+  void VCFReader::open(const std::string& filename){
+    const char* cfilename = filename.c_str();
+    char *fnidx = (char*) calloc(strlen(cfilename) + 5, 1);
+    strcat(strcpy(fnidx, cfilename), ".tbi");
+    struct stat stat_tbi, stat_vcf;
+    stat(fnidx, &stat_tbi);
+    stat(cfilename, &stat_vcf);
+    if (stat_vcf.st_mtime > stat_tbi.st_mtime)
+      printErrorAndDie("The tabix index for the VCF file is older than the VCF itself. Please reindex the VCF with tabix");
+    free(fnidx);
 
-bool VCFReader::get_next_variant(Variant& variant){
-  if ((tbx_iter_ != NULL) && tbx_itr_next(vcf_input_, tbx_input_, tbx_iter_, &vcf_line_) >= 0){
-    if (vcf_parse(&vcf_line_, vcf_header_, vcf_record_) < 0)
-      printErrorAndDie("Failed to parse VCF record");
-    variant = Variant(vcf_header_, vcf_record_, this);
-    return true;
+    if ((vcf_input_ = hts_open(cfilename, "r")) == NULL)
+      printErrorAndDie("Failed to open the VCF file");
+    if (vcf_input_->format.format != vcf)
+      printErrorAndDie("Provided VCF file is improperly formatted");
+    if (vcf_input_->format.compression != bgzf)
+      printErrorAndDie("VCF file is not bgzipped. Please ensure bgzip was used to compress it");
+    if ((tbx_input_ = tbx_index_load(cfilename)) == NULL)
+      printErrorAndDie("Failed to open the VCF file's tabix index");
+
+    int nseq;
+    const char** seq = tbx_seqnames(tbx_input_, &nseq);
+    for (int i = 0; i < nseq; i++)
+      chroms_.push_back(seq[i]);
+    free(seq);
+
+    if (chroms_.size() == 0)
+      printErrorAndDie("VCF does not contain any chromosomes");
+
+    vcf_header_  = bcf_hdr_read(vcf_input_);
+    tbx_iter_    = tbx_itr_querys(tbx_input_, chroms_.front().c_str());
+    chrom_index_ = 0;
+
+    for (int i = 0; i < bcf_hdr_nsamples(vcf_header_); i++){
+      samples_.push_back(vcf_header_->samples[i]);
+      sample_indices_[vcf_header_->samples[i]] = i;
+    }
   }
-  
-  if (jumped_)
-    return false;
-  
-  while (chrom_index_+1 < chroms_.size()){
-    chrom_index_++;
-    tbx_itr_destroy(tbx_iter_);
-    tbx_iter_ = tbx_itr_querys(tbx_input_, chroms_[chrom_index_].c_str());
-    
+
+  bool VCFReader::get_next_variant(Variant& variant){
     if ((tbx_iter_ != NULL) && tbx_itr_next(vcf_input_, tbx_input_, tbx_iter_, &vcf_line_) >= 0){
       if (vcf_parse(&vcf_line_, vcf_header_, vcf_record_) < 0)
 	printErrorAndDie("Failed to parse VCF record");
       variant = Variant(vcf_header_, vcf_record_, this);
       return true;
     }
-  }
-  return false;
-}
 
+    if (jumped_)
+      return false;
+
+    while (chrom_index_+1 < chroms_.size()){
+      chrom_index_++;
+      tbx_itr_destroy(tbx_iter_);
+      tbx_iter_ = tbx_itr_querys(tbx_input_, chroms_[chrom_index_].c_str());
+
+      if ((tbx_iter_ != NULL) && tbx_itr_next(vcf_input_, tbx_input_, tbx_iter_, &vcf_line_) >= 0){
+	if (vcf_parse(&vcf_line_, vcf_header_, vcf_record_) < 0)
+	  printErrorAndDie("Failed to parse VCF record");
+	variant = Variant(vcf_header_, vcf_record_, this);
+	return true;
+      }
+    }
+    return false;
+  }
+
+  bool VCFReader::has_info_field(const std::string& field){
+    int id = bcf_hdr_id2int(vcf_header_, BCF_DT_ID, field.c_str());
+    return bcf_hdr_idinfo_exists(vcf_header_, BCF_HL_INFO, id);
+  }
+
+  bool VCFReader::has_format_field(const std::string& field){
+    int id = bcf_hdr_id2int(vcf_header_, BCF_DT_ID, field.c_str());
+    return bcf_hdr_idinfo_exists(vcf_header_, BCF_HL_FMT, id);
+  }
 }
