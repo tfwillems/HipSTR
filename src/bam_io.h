@@ -387,13 +387,16 @@ class BamHeader {
     return read_groups_;
   }
 
-
   int32_t num_seqs() const { return header_->n_targets; }
   int32_t ref_id(const std::string& ref) const {
     auto iter = seq_indices_.find(ref);
     if (iter == seq_indices_.end())
       return -1;
     return iter->second;
+  }
+
+  bool has_sequence(const std::string& chrom) const {
+    return ref_id(chrom) != -1;
   }
   
   std::string ref_name(int32_t ref_id) const {

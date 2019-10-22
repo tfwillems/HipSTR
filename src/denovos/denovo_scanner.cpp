@@ -55,16 +55,16 @@ void DenovoScanner::initialize_vcf_record(const VCF::Variant& str_variant){
   denovo_vcf_ << "\t" << "." << "\t" << "." << "\t";
 
   // INFO field
-  int32_t start;  str_variant.get_INFO_value_single_int(START_KEY, start);
-  int32_t end;    str_variant.get_INFO_value_single_int(END_KEY, end);
-  int32_t period; str_variant.get_INFO_value_single_int(PERIOD_KEY, period);
+  int32_t start;  str_variant.get_info_value_single_int(START_KEY, start);
+  int32_t end;    str_variant.get_info_value_single_int(END_KEY, end);
+  int32_t period; str_variant.get_info_value_single_int(PERIOD_KEY, period);
 
   std::vector<int32_t> bp_diffs;
   if (str_variant.num_alleles() > 2)
-    str_variant.get_INFO_value_multiple_ints(BPDIFFS_KEY, bp_diffs);
+    str_variant.get_info_value_multiple_ints(BPDIFFS_KEY, bp_diffs);
   else {
     int32_t diff;
-    str_variant.get_INFO_value_single_int(BPDIFFS_KEY, diff);
+    str_variant.get_info_value_single_int(BPDIFFS_KEY, diff);
     bp_diffs.push_back(diff);
   }
   assert(bp_diffs.size()+1 == str_variant.num_alleles());
@@ -118,8 +118,8 @@ void DenovoScanner::scan(const std::string& snp_vcf_file, VCF::VCFReader& str_vc
     if (str_variant.num_samples() == str_variant.num_missing())
       continue;
 
-    int32_t start;  str_variant.get_INFO_value_single_int(START_KEY, start);
-    int32_t end;    str_variant.get_INFO_value_single_int(END_KEY, end);
+    int32_t start;  str_variant.get_info_value_single_int(START_KEY, start);
+    int32_t end;    str_variant.get_info_value_single_int(END_KEY, end);
     logger << "Processing STR region " << str_variant.get_chromosome() << ":" << start << "-" << end << " with " << num_alleles << " alleles" << "\n";
 
     PhasedGL phased_gls(str_variant);

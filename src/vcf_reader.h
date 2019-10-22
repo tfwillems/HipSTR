@@ -110,7 +110,7 @@ public:
 
   bool sample_call_missing(const std::string& sample) const;
 
-  void get_INFO_value_single_int(const std::string& field, int32_t& val) const {
+  void get_info_value_single_int(const std::string& field, int32_t& val) const {
     int mem            = 0;
     int32_t* info_vals = NULL;
     if (bcf_get_info_int32(vcf_header_, vcf_record_, field.c_str(), &info_vals, &mem) != 1)
@@ -119,7 +119,7 @@ public:
     free(info_vals);
   }
 
-  void get_INFO_value_multiple_ints(const std::string& field, std::vector<int32_t>& vals) const {
+  void get_info_value_multiple_ints(const std::string& field, std::vector<int32_t>& vals) const {
     vals.clear();
     int mem            = 0;
     int32_t* info_vals = NULL;
@@ -131,7 +131,7 @@ public:
     free(info_vals);
   }
 
-  void get_INFO_value_multiple_strings(const std::string& field, std::vector<std::string>& vals) const {
+  void get_info_value_multiple_strings(const std::string& field, std::vector<std::string>& vals) const {
     vals.clear();
     int mem         = 0;
     char* info_vals = NULL;
@@ -144,7 +144,7 @@ public:
     free(info_vals);
   }
 
-  void get_FORMAT_value_multiple_floats(const std::string& field, std::vector< std::vector<float> >& vals) const {
+  void get_format_value_multiple_floats(const std::string& field, std::vector< std::vector<float> >& vals) const {
     vals.clear();
     int mem            = 0;
     float* format_vals = NULL;
@@ -214,7 +214,7 @@ public:
     return sample_indices_.find(sample) != sample_indices_.end();
   }
 
-  bool has_chromosome(const std::string& chrom) const {
+  bool has_sequence(const std::string& chrom) const {
     return tbx_name2id(tbx_input_, chrom.c_str()) != -1;
   }
 

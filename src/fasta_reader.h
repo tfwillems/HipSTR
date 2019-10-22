@@ -60,6 +60,10 @@ class FastaReader {
       fai_destroy(fasta_indices_[i]);
   }
 
+  bool has_sequence(const std::string& chrom) const {
+    return (chrom_to_index_.find(chrom) != chrom_to_index_.end());
+  }
+
   /*
    * Retrieves the sequence with name CHROM from the relevant FASTA file and stores it in SEQ
    */
