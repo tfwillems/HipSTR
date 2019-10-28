@@ -22,7 +22,7 @@ bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector
     assert(alleles.size() == 0 && ref_vcf != NULL);
     int32_t pad_start = (region.start() < pad ? 0 : region.start()-pad);
     if (!ref_vcf->set_region(region.chrom(), pad_start, region.stop()+pad)){
-	pos     = -1;
+	pos = -1;
 	return false;
     }
    
@@ -34,8 +34,9 @@ bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector
 	continue;
 
       int32_t str_start, str_stop;
-      variant.get_INFO_value_single_int(START_INFO_TAG, str_start);
-      variant.get_INFO_value_single_int(STOP_INFO_TAG, str_stop);
+      variant.get_info_value_single_int(START_INFO_TAG, str_start);
+      variant.get_info_value_single_int(STOP_INFO_TAG, str_stop);
+
       if (str_start == region.start()+1 && str_stop == region.stop()){
 	pos = variant.get_position()-1;
 	alleles.insert(alleles.end(), variant.get_alleles().begin(), variant.get_alleles().end());
@@ -51,7 +52,7 @@ bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector
 
 bool UnphasedGL::build(const VCF::Variant& variant){
   std::vector< std::vector<float> > values;
-  variant.get_FORMAT_value_multiple_floats(UNPHASED_GL_KEY, values);
+  variant.get_format_value_multiple_floats(UNPHASED_GL_KEY, values);
   num_samples_         = 0;
   num_alleles_         = variant.num_alleles();
   int vcf_sample_index = 0;
@@ -79,7 +80,7 @@ bool UnphasedGL::build(const VCF::Variant& variant){
 
 bool PhasedGL::build(const VCF::Variant& variant){
   std::vector< std::vector<float> > values;
-  variant.get_FORMAT_value_multiple_floats(PHASED_GL_KEY, values);
+  variant.get_format_value_multiple_floats(PHASED_GL_KEY, values);
   num_samples_         = 0;
   num_alleles_         = variant.num_alleles();
   int vcf_sample_index = 0;
