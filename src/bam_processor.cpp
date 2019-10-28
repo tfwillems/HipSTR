@@ -471,50 +471,10 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
 
 // Ensure that all of the chromosomes are present in i) the FASTA file, ii) the BAM files and iii) the SNP VCF file, if provided
 void BamProcessor::verify_chromosomes(const std::vector<std::string>& chroms, const BamHeader* bam_header, FastaReader& fasta_reader){
-  for (auto chrom_iter = chroms.begin(); chrom_iter != chroms.end(); chrom_iter++){
-    std::string chrom = (*chrom_iter);
-
-    std::vector<std::string> alt_names(1, "chr" + chrom);
-    if (chrom.size() > 3 && chrom.substr(0, 3).compare("chr") == 0)
-      alt_names.push_back(chrom.substr(3));
-
-    // 1. Check FASTA
-    if (fasta_reader.get_sequence_length(chrom) == -1){
-      std::stringstream err_msg;
-      err_msg << "No sequence for chromosome " << chrom << " found in the FASTA file" << "\n"
-	      << "\t" << "Please ensure that the chromosome names in your region BED file match those in you FASTA file";
-      full_logger() << "\n" << "ERROR: " << err_msg.str() << std::endl;
-
-      // Prompt if simple changes to the chromosome name would solve the issue
-      for (auto alt_iter = alt_names.begin(); alt_iter != alt_names.end(); alt_iter++)
-	if (fasta_reader.get_sequence_length(*alt_iter) != -1)
-	  full_logger() << "\t" << "NOTE: Found chromosome " << (*alt_iter) << " in the FASTA, but not chromosome " << chrom << std::endl;
-
-      // Abort execution
-      printErrorAndDie("Terminating HipSTR as chromosomes in the region file are missing from the FASTA file. Please see the log for details");
-    }
-
-    // 2. Check BAMs
-    if (bam_header->ref_id(chrom) == -1){
-      std::stringstream err_msg;
-      err_msg << "No entries for chromosome " << chrom << " found in the BAM/CRAM(s)" << "\n"
-	      << "\t" << "Please ensure that the chromosome names in your region BED file match those in your BAM/CRAM(s)";
-      full_logger() << "\n" << "ERROR: " << err_msg.str() << std::endl;
-
-      // Prompt if simple changes to the chromosome name would solve the issue
-      for (auto alt_iter = alt_names.begin(); alt_iter != alt_names.end(); alt_iter++)
-	if (bam_header->ref_id(*alt_iter) != -1)
-	  full_logger() << "\t" << "NOTE: Found chromosome " << (*alt_iter) << " in the BAM/CRAM(s), but not chromosome " << chrom << std::endl;
-
-      // Abort execution
-      printErrorAndDie("Terminating HipSTR as chromosomes in the region file are missing from the BAM/CRAM(s). Please see the log for details");
-    }
-  }
-
-  // 3. Check SNP VCF file
+  verify_chromosomes(chroms, fasta_reader, "FASTA file");
+  verify_chromosomes(chroms, *bam_header,  "BAM/CRAM files");
   verify_vcf_chromosomes(chroms);
 }
-
 
 void BamProcessor::process_regions(BamCramMultiReader& reader, const std::string& region_file, const std::string& fasta_file,
 				   const std::map<std::string, std::string>& rg_to_sample, const std::map<std::string, std::string>& rg_to_library, const std::string& full_command,

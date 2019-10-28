@@ -43,11 +43,15 @@ private:
   // Extract the haplotype for an alignment based on the HP tag
   int get_haplotype(BamAlignment& aln) const;
 
-  void verify_vcf_chromosomes(const std::vector<std::string>& chroms);
-
   // Private unimplemented copy constructor and assignment operator to prevent operations
   SNPBamProcessor(const SNPBamProcessor& other);
   SNPBamProcessor& operator=(const SNPBamProcessor& other);
+
+ protected:
+  void verify_vcf_chromosomes(const std::vector<std::string>& chroms){
+    if (phased_snp_vcf_ != NULL)
+      verify_chromosomes(chroms, *phased_snp_vcf_, "SNP VCF file");
+  }
 
 public:
  SNPBamProcessor(bool use_bam_rgs, bool remove_pcr_dups) : BamProcessor(use_bam_rgs, remove_pcr_dups){

@@ -5,33 +5,6 @@
 #include "snp_phasing_quality.h"
 #include "snp_tree.h"
 
-void SNPBamProcessor::verify_vcf_chromosomes(const std::vector<std::string>& chroms){
-  if (phased_snp_vcf_ == NULL)
-    return;
-
-  for (auto chrom_iter = chroms.begin(); chrom_iter != chroms.end(); chrom_iter++){
-    std::string chrom = (*chrom_iter);
-    if (!(phased_snp_vcf_->has_chromosome(chrom))){
-      std::stringstream err_msg;
-      err_msg << "No entries for chromosome " << chrom << " found in the SNP VCF file" << "\n"
-	      << "\t" << "Please ensure that the chromosome names in your BED file match those in your SNP VCF file";
-      full_logger() << "\n" << "ERROR: " << err_msg.str() << std::endl;
-
-      std::vector<std::string> alt_names(1, "chr" + chrom);
-      if (chrom.size() > 3 && chrom.substr(0, 3).compare("chr") == 0)
-	alt_names.push_back(chrom.substr(3));
-
-      // Prompt if simple changes to the chromosome name would solve the issue
-      for (auto alt_iter = alt_names.begin(); alt_iter != alt_names.end(); alt_iter++)
-	if (phased_snp_vcf_->has_chromosome(*alt_iter))
-	  full_logger() << "\t" << "NOTE: Found chromosome " << (*alt_iter) << " in the VCF, but not chromosome " << chrom << std::endl;
-
-      // Abort execution
-      printErrorAndDie("Chromosomes in the region file are missing from the SNP VCF file. Please see the log for details");
-    }
-  }
-}
-
 void SNPBamProcessor::process_reads(std::vector<BamAlnList>& paired_strs_by_rg,
 				    std::vector<BamAlnList>& mate_pairs_by_rg,
 				    std::vector<BamAlnList>& unpaired_strs_by_rg,

@@ -91,6 +91,13 @@ private:
     vcf_writer_.write_header(header);
   }
 
+ protected:
+  void verify_vcf_chromosomes(const std::vector<std::string>& chroms){
+    SNPBamProcessor::verify_vcf_chromosomes(chroms);
+    if (ref_vcf_ != NULL)
+      verify_chromosomes(chroms, *ref_vcf_, "reference STR VCF file");
+  }
+
 public:
  GenotyperBamProcessor(bool use_bam_rgs, bool remove_pcr_dups) : SNPBamProcessor(use_bam_rgs, remove_pcr_dups){
     output_stutter_models_ = false;

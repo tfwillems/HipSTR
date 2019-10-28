@@ -21,6 +21,23 @@ class BamProcessor {
  protected:
   typedef std::vector<BamAlignment> BamAlnList;
 
+  // Counter for number of loci that were skipped b/c they exceeded the maximum length threshold
+ int num_too_long_;
+
+ AdapterTrimmer adapter_trimmer_;
+ BaseQuality base_quality_;
+ bool bams_from_10x_; // True iff BAMs were generated from 10X GEMCODE platform
+ bool quiet_, silent_;
+ bool log_to_file_;
+ NullOstream null_log_;
+ std::ofstream log_;
+ std::set<std::string> sample_set_;
+
+ template <class SeqFile>
+ void verify_chromosomes(const std::vector<std::string>& chroms, const SeqFile& seq_file, std::string file_type);
+
+ virtual void verify_vcf_chromosomes(const std::vector<std::string>& chroms) = 0;
+
  private:
   bool use_bam_rgs_;
 
@@ -29,7 +46,6 @@ class BamProcessor {
   double locus_bam_seek_time_;
   double total_read_filter_time_;
   double locus_read_filter_time_;
-
 
   void  write_passing_alignment(BamAlignment& aln, BamWriter* writer);
   void write_filtered_alignment(BamAlignment& aln, std::string filter, BamWriter* writer);
@@ -51,27 +67,11 @@ class BamProcessor {
 
  void verify_chromosomes(const std::vector<std::string>& chroms, const BamHeader* bam_header, FastaReader& fasta_reader);
 
- virtual void verify_vcf_chromosomes(const std::vector<std::string>& chroms) = 0;
-
  virtual void init_output_vcf(const std::string& fasta_path, const std::vector<std::string>& chroms, const std::string& full_command) = 0;
-
- protected:
- AdapterTrimmer adapter_trimmer_;
- BaseQuality base_quality_;
- bool bams_from_10x_; // True iff BAMs were generated from 10X GEMCODE platform
- bool quiet_, silent_;
- bool log_to_file_;
- NullOstream null_log_;
- std::ofstream log_;
- std::set<std::string> sample_set_;
 
  // Private unimplemented copy constructor and assignment operator to prevent operations
  BamProcessor(const BamProcessor& other);
  BamProcessor& operator=(const BamProcessor& other);
-
- protected:
- // Counter for number of loci that were skipped b/c they exceeded the maximum length threshold
- int num_too_long_;
 
   public:
  BamProcessor(bool use_bam_rgs, bool remove_pcr_dups){
@@ -163,5 +163,35 @@ class BamProcessor {
  char    BASE_QUAL_TRIM;        // Trim boths ends of the read until encountering a base with quality greater than this threshold
  bool    TOO_MANY_READS;        // Flag set if the current locus being processed as too many reads
 };
+
+
+template <class SeqFile>
+void BamProcessor::verify_chromosomes(const std::vector<std::string>& chroms, const SeqFile& seq_file, std::string file_type){
+  for (auto chrom_iter = chroms.begin(); chrom_iter != chroms.end(); ++chrom_iter){
+    std::string chrom = (*chrom_iter);
+
+    std::vector<std::string> alt_names(1, "chr" + chrom);
+    if (chrom.size() > 3 && chrom.substr(0, 3).compare("chr") == 0)
+      alt_names.push_back(chrom.substr(3));
+
+    if (!seq_file.has_sequence(chrom)){
+      std::stringstream err_msg;
+      err_msg << "No entries for chromosome " << chrom << " found in the " << file_type << "\n"
+              << "\t" << "Please ensure that the chromosome names in your region BED file match those in your " << file_type;
+
+      // Prompt if simple changes to the chromosome name would solve the issue
+      for (auto alt_iter = alt_names.begin(); alt_iter != alt_names.end(); ++alt_iter)
+        if (seq_file.has_sequence(*alt_iter))
+          err_msg << "\t" << "NOTE: Found chromosome " << (*alt_iter) << " in the " << file_type << ", but not chromosome " << chrom << std::endl;
+
+      // Output messages to log
+      full_logger() << "\n" << "ERROR: " << err_msg.str() << std::endl;
+
+      // Abort execution
+      printErrorAndDie("Terminating HipSTR as chromosomes in the region file are missing from the " + 
+		       file_type + ". Please see the log for details");
+    }
+  }
+}
 
 #endif
