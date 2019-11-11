@@ -493,7 +493,7 @@ int main(int argc, char** argv){
     if (!file_exists(ref_vcf_file)) 
       printErrorAndDie("Ref VCF file " + ref_vcf_file + " does not exist. Please ensure that the path provided to --ref-vcf is valid");
 
-    // Check that tabix index exists
+    // Check that the tabix index exists
     if (!file_exists(ref_vcf_file + ".tbi"))
 	printErrorAndDie("No .tbi index found for the ref VCF file. Please index using tabix and rerun HipSTR");
 
@@ -508,11 +508,12 @@ int main(int argc, char** argv){
     if (!file_exists(snp_vcf_file))
       printErrorAndDie("SNP VCF file " + snp_vcf_file + " does not exist. Please ensure that the path provided to --snp-vcf is valid");
 
-    // Check that tabix index exists
+    // Check that the tabix index exists
     if (!file_exists(snp_vcf_file + ".tbi"))
 	printErrorAndDie("No .tbi index found for the SNP VCF file. Please index using tabix and rerun HipSTR");
 
     bam_processor.set_input_snp_vcf(snp_vcf_file);
+    Genotyper::OUTPUT_PHASING_FIELDS = 1;
   }
 
   if (!skip_genotyping){
@@ -530,9 +531,11 @@ int main(int argc, char** argv){
   if (!hap_chr_file.empty()){
     if (!file_exists(hap_chr_file))
       printErrorAndDie("File containing haploid chromosome names does not exist: " + hap_chr_file);
+
     std::ifstream input(hap_chr_file.c_str());
     if (!input.is_open())
       printErrorAndDie("Failed to open file containing haploid chromosome names: " + hap_chr_file);
+
     std::string line;
     while (std::getline(input, line))
       if (!line.empty())
@@ -561,7 +564,6 @@ int main(int argc, char** argv){
 
   if (bam_pass_writer != NULL) delete bam_pass_writer;
   if (bam_filt_writer != NULL) delete bam_filt_writer;
-
 
   total_time = (clock() - total_time)/CLOCKS_PER_SEC;
   bam_processor.full_logger() << "HipSTR execution finished: Total runtime = " << total_time << " sec" << "\n"

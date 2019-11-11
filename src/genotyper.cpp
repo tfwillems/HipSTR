@@ -280,58 +280,60 @@ std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::
       << "##INFO=<ID=" << "NSKIP"          << ",Number=1,Type=Integer,Description=\"" << "Number of samples not genotyped due to various issues"                        << "\">\n"
       << "##INFO=<ID=" << "NFILT"          << ",Number=1,Type=Integer,Description=\"" << "Number of samples whose genotypes were filtered due to various issues"        << "\">\n"
       << "##INFO=<ID=" << "DP"             << ",Number=1,Type=Integer,Description=\"" << "Total number of valid reads used to genotype all samples"                     << "\">\n"
-      << "##INFO=<ID=" << "DSNP"           << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with SNP phasing information"                           << "\">\n"
       << "##INFO=<ID=" << "DSTUTTER"       << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with a stutter indel in the STR region"                 << "\">\n"
       << "##INFO=<ID=" << "DFLANKINDEL"    << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with an indel in the regions flanking the STR"          << "\">\n";
+
+  if (OUTPUT_PHASING_FIELDS == 1)
+    out << "##INFO=<ID=" << "DSNP" << ",Number=1,Type=Integer,Description=\"" << "Total number of reads with SNP phasing information" << "\">\n";
   if (OUTPUT_HAPLOTYPE_DATA == 1)
-    out << "##INFO=<ID=" << "LFLANKS" << ",Number=.,Type=String,Description=\""
-	<< "Comma-separated sequence(s) of flank to the  left of the repeat. Only output if 1 or more non-ref  left flanks were detected" << "\">\n"
-	<< "##INFO=<ID=" << "RFLANKS" << ",Number=.,Type=String,Description=\""
-	<< "Comma-separated sequence(s) of flank to the right of the repeat. Only output if 1 or more non-ref right flanks were detected" << "\">\n";
+    out << "##INFO=<ID=" << "LFLANKS" << ",Number=.,Type=String,Description=\""       << "Comma-separated sequence(s) of flank to the  left of the repeat" << "\">\n"
+	<< "##INFO=<ID=" << "RFLANKS" << ",Number=.,Type=String,Description=\""       << "Comma-separated sequence(s) of flank to the right of the repeat" << "\">\n";
 
   // Format field descriptors
   out << "##FORMAT=<ID=" << "GT"          << ",Number=1,Type=String,Description=\""  << "Genotype" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "GB"          << ",Number=1,Type=String,Description=\""  << "Base pair differences of genotype from reference"              << "\">" << "\n"
-      << "##FORMAT=<ID=" << "Q"           << ",Number=1,Type=Float,Description=\""   << "Posterior probability of unphased genotype"                    << "\">" << "\n"
-      << "##FORMAT=<ID=" << "PQ"          << ",Number=1,Type=Float,Description=\""   << "Posterior probability of phased genotype"                      << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\"" << "Number of valid reads used for sample's genotype"              << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\"" << "Number of reads with SNP phasing information"                  << "\">" << "\n"
-      << "##FORMAT=<ID=" << "PSNP"        << ",Number=1,Type=String,Description=\""  << "Number of reads with SNPs supporting each haploid genotype"    << "\">" << "\n"
-      << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""  << "Fractional reads supporting each haploid genotype"             << "\">" << "\n"
-      << "##FORMAT=<ID=" << "GLDIFF"      << ",Number=1,Type=Float,Description=\""   << "Difference in likelihood between the reported and next best genotypes"  << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DSTUTTER"    << ",Number=1,Type=Integer,Description=\"" << "Number of reads with a stutter indel in the STR region"        << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DFLANKINDEL" << ",Number=1,Type=Integer,Description=\"" << "Number of reads with an indel in the regions flanking the STR" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "AB"          << ",Number=1,Type=Float,Description=\""   << "log10 of the allele bias pvalue, "
-      << "where 0 is no bias and more negative values are increasingly biased. For homozygous genotypes, this can be negative if the haplotypes are heterozygous" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "FS"          << ",Number=1,Type=Float,Description=\""   << "log10 of the strand bias pvalue from Fisher's exact test, "
-      << "where 0 is no bias and more negative values are increasingly biased. For homozygous genotypes, this can be negative if the haplotypes are heterozygous" << "\">" << "\n"
-      << "##FORMAT=<ID=" << "DAB"         << ",Number=1,Type=Integer,Description=\"" << "Number of reads used in the AB and FS calculations" << "\">" << "\n";
+      << "##FORMAT=<ID=" << "GB"          << ",Number=1,Type=String,Description=\""  << "Base pair differences of genotype from reference"              << "\">\n"
+      << "##FORMAT=<ID=" << "Q"           << ",Number=1,Type=Float,Description=\""   << "Posterior probability of unphased genotype"                    << "\">\n"
+      << "##FORMAT=<ID=" << "DP"          << ",Number=1,Type=Integer,Description=\"" << "Number of valid reads used for sample's genotype"              << "\">\n"
+      << "##FORMAT=<ID=" << "DSTUTTER"    << ",Number=1,Type=Integer,Description=\"" << "Number of reads with a stutter indel in the STR region"        << "\">\n"
+      << "##FORMAT=<ID=" << "DFLANKINDEL" << ",Number=1,Type=Integer,Description=\"" << "Number of reads with an indel in the regions flanking the STR" << "\">\n"
+      << "##FORMAT=<ID=" << "PDP"         << ",Number=1,Type=String,Description=\""  << "Fractional reads supporting each haploid genotype"             << "\">\n";
 
-  if (OUTPUT_HAPLOTYPE_DATA == 1)
-    out << "##FORMAT=<ID=" << "HQ"   << ",Number=1,Type=Float,Description=\""
-	<< "Posterior probability of unphased haplotypes. Only output if 1 or more non-ref flanks were detected" << "\">" << "\n"
-	<< "##FORMAT=<ID=" << "PHQ"  << ",Number=1,Type=Float,Description=\""
-	<< "Posterior probability of   phased haplotypes. Only output if 1 or more non-ref flanks were detected" << "\">" << "\n"
-	<< "##FORMAT=<ID=" << "LFGT" << ",Number=1,Type=String,Description=\""
-	<< "Genotype of  left flank with corresponding sequences reported in LFLANKS. Only output if 1 or more non-ref  left flanks were detected" << "\">" << "\n"
-	<< "##FORMAT=<ID=" << "RFGT" << ",Number=1,Type=String,Description=\""
-	<< "Genotype of right flank with corresponding sequences reported in RFLANKS. Only output if 1 or more non-ref right flanks were detected" << "\">" << "\n";
+  if (OUTPUT_PHASING_FIELDS == 1)
+    out << "##FORMAT=<ID=" << "PHASEDQ"     << ",Number=1,Type=Float,Description=\""   << "Posterior probability of phased genotype"                      << "\">\n"
+	<< "##FORMAT=<ID=" << "DSNP"        << ",Number=1,Type=Integer,Description=\"" << "Number of reads with SNP phasing information"                  << "\">\n"
+	<< "##FORMAT=<ID=" << "PSNP"        << ",Number=1,Type=String,Description=\""  << "Number of reads with SNPs supporting each haploid genotype"    << "\">\n";
+
+  out << "##FORMAT=<ID=" << "GLDIFF"      << ",Number=1,Type=Float,Description=\""   << "Difference in likelihood between the reported and next best genotypes"   << "\">\n"
+      << "##FORMAT=<ID=" << "AB"          << ",Number=1,Type=Float,Description=\""   << "log10 of the allele bias pvalue, "
+      << "where 0 is no bias and more negative values are increasingly biased. For homozygous genotypes, this can be negative if the haplotypes are heterozygous" << "\">\n"
+      << "##FORMAT=<ID=" << "FS"          << ",Number=1,Type=Float,Description=\""   << "log10 of the strand bias pvalue from Fisher's exact test, "
+      << "where 0 is no bias and more negative values are increasingly biased. For homozygous genotypes, this can be negative if the haplotypes are heterozygous" << "\">\n"
+      << "##FORMAT=<ID=" << "DAB"         << ",Number=1,Type=Integer,Description=\"" << "Number of reads used in the AB and FS calculations"                      << "\">\n";
+
+  if (OUTPUT_HAPLOTYPE_DATA == 1){
+    out << "##FORMAT=<ID=" << "HAPQ" << ",Number=1,Type=Float,Description=\""  << "Posterior probability of unphased haplotypes"                             << "\">\n"
+	<< "##FORMAT=<ID=" << "LFGT" << ",Number=1,Type=String,Description=\"" << "Genotype of  left flank with corresponding sequences reported in LFLANKS" << "\">\n"
+	<< "##FORMAT=<ID=" << "RFGT" << ",Number=1,Type=String,Description=\"" << "Genotype of right flank with corresponding sequences reported in RFLANKS" << "\">\n";
+
+    if (OUTPUT_PHASING_FIELDS == 1)
+      out << "##FORMAT=<ID=" << "PHASEDHAPQ" << ",Number=1,Type=Float,Description=\"" << "Posterior probability of phased haplotypes" << "\">\n";
+  }
 
   if (OUTPUT_ALLREADS == 1)
-    out << "##FORMAT=<ID=" << "ALLREADS" << ",Number=1,Type=String,Description=\"" << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">" << "\n";
+    out << "##FORMAT=<ID=" << "ALLREADS" << ",Number=1,Type=String,Description=\"" << "Base pair difference observed in each read's Needleman-Wunsch alignment" << "\">\n";
   if (OUTPUT_MALLREADS == 1)
     out << "##FORMAT=<ID=" << "MALLREADS" << ",Number=1,Type=String,Description=\""
-	<< "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs" << "\">" << "\n";
+	<< "Maximum likelihood bp diff in each read based on haplotype alignments for reads that span the repeat region by at least 5 base pairs" << "\">\n";
   if (OUTPUT_GLS == 1)
-    out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "log10 genotype likelihoods" << "\">" << "\n";
+    out << "##FORMAT=<ID=" << "GL" << ",Number=G,Type=Float,Description=\"" << "log10 genotype likelihoods" << "\">\n";
   if (OUTPUT_PLS == 1)
-    out << "##FORMAT=<ID=" << "PL" << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">" << "\n";
+    out << "##FORMAT=<ID=" << "PL" << ",Number=G,Type=Integer,Description=\"" << "Phred-scaled genotype likelihoods" << "\">\n";
   if (OUTPUT_PHASED_GLS == 1)
     out << "##FORMAT=<ID=" << "PHASEDGL" << ",Number=.,Type=Float,Description=\""
 	<< "log10 genotype likelihood for each phased genotype. Value for phased genotype X|Y is stored at a 0-based index of X*A + Y, where A is the number of alleles. Not applicable to haploid genotypes"
-	<< "\">" << "\n";
+	<< "\">\n";
   if (OUTPUT_FILTERS == 1)
-    out << "##FORMAT=<ID=" << "FILTER" << ",Number=1,Type=String,Description=\"" << "Reason for filtering the current call, or PASS if the call was not filtered" << "\">" << "\n";
+    out << "##FORMAT=<ID=" << "FT" << ",Number=1,Type=String,Description=\"" << "Reason for filtering the current call, or PASS if the call was not filtered" << "\">\n";
 
   // Sample names
   out << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT";
@@ -343,6 +345,7 @@ std::string Genotyper::get_vcf_header(const std::string& fasta_path, const std::
 }
 
 // Default settings for VCF output
+int Genotyper::OUTPUT_PHASING_FIELDS  = 0;
 int Genotyper::OUTPUT_GLS             = 0;
 int Genotyper::OUTPUT_PLS             = 0;
 int Genotyper::OUTPUT_PHASED_GLS      = 0;

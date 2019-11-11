@@ -88,7 +88,7 @@ public:
   void set_input_snp_vcf(const std::string& vcf_file){
     if (phased_snp_vcf_ != NULL)
       delete phased_snp_vcf_;
-    phased_snp_vcf_ = new VCF::VCFReader(vcf_file);
+    phased_snp_vcf_       = new VCF::VCFReader(vcf_file);
   }
 
   void use_pedigree_to_filter_snps(const std::vector<NuclearFamily>& families, const std::string& snp_vcf_file){

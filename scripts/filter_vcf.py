@@ -73,9 +73,9 @@ def filter_call(sample, filters, MIN_HAP_QUAL, MIN_PHAP_QUAL):
         return "DEPTH"
     elif sample['Q'] < filters.QUAL:
         return "QUALITY"
-    elif MIN_HAP_QUAL > 0 and sample['HQ'] < MIN_HAP_QUAL:
+    elif MIN_HAP_QUAL > 0 and sample['HAPQ'] < MIN_HAP_QUAL:
         return "HAPLOTYPE_QUALITY"
-    elif MIN_PHAP_QUAL > 0 and sample['PHQ'] < MIN_PHAP_QUAL:
+    elif MIN_PHAP_QUAL > 0 and sample['PHASEDHAPQ'] < MIN_PHAP_QUAL:
         return "PHASED_HAPLOTYPE_QUALITY"
     else:
         d_1, d_2 = map(float, sample['PDP'].split('|'))
@@ -151,8 +151,8 @@ def main():
     parser.add_argument("--vcf",                     type=str,   required=True,  dest="VCF",                                      help="Input VCF to filter (- for stdin)")
     parser.add_argument("--min-call-depth",          type=int,   required=False, dest="DEPTH",                default=0,          help="Omit a sample's call if DP < DEPTH")
     parser.add_argument("--min-call-qual",           type=float, required=False, dest="QUAL",                 default=0.0,        help="Omit a sample's call if Q < QUAL")
-    parser.add_argument("--min-call-hap-qual",       type=float, required=False, dest="HAP_QUAL",             default=0.0,        help="Omit a sample's call if HQ < HAP_QUAL")
-    parser.add_argument("--min-call-phap-qual",      type=float, required=False, dest="PHAP_QUAL",            default=0.0,        help="Omit a sample's call if PHQ < PHAP_QUAL")
+    parser.add_argument("--min-call-hap-qual",       type=float, required=False, dest="HAP_QUAL",             default=0.0,        help="Omit a sample's call if HAPQ < HAP_QUAL")
+    parser.add_argument("--min-call-phap-qual",      type=float, required=False, dest="PHAP_QUAL",            default=0.0,        help="Omit a sample's call if PHASEDHAPQ < PHAP_QUAL")
     parser.add_argument("--min-call-allele-depth",   type=float, required=False, dest="ALLELE_DEPTH",         default=0.0,        help=help_dict["--min-call-allele-depth"])
     parser.add_argument("--min-call-depth-ratio",    type=float, required=False, dest="ALLELE_RATIO",         default=0.0,        help=help_dict["--min-call-depth-ratio"])
     parser.add_argument("--max-call-flank-indel",    type=float, required=False, dest="FLANK_INDEL_FRAC",     default=1.0,        help=help_dict["--max-call-flank-indel"])
@@ -217,8 +217,8 @@ def main():
         proc_rflanks  = "RFGT" in fmt_tokens
         rflank_counts = [0] if not proc_rflanks else len(record.INFO["RFLANKS"])*[0]
 
-        min_hap_qual  = (0 if "HQ" not in fmt_tokens else args.HAP_QUAL)
-        min_phap_qual = (0 if "PHQ" not in fmt_tokens else args.PHAP_QUAL)
+        min_hap_qual  = (0 if "HAPQ" not in fmt_tokens else args.HAP_QUAL)
+        min_phap_qual = (0 if "PHASEDHAPQ" not in fmt_tokens else args.PHAP_QUAL)
 
         # Process each sample and determine whether it should be included in the filtered VCF
         sample_filt_dict = {}
@@ -294,7 +294,7 @@ def main():
                     if key == "GT":
                         sampdata.append("./.")
                     else:
-                        sampdata.append(None if key != "FILTER" else (sample["FILTER"] if missing else sample_filt_dict[sample.sample]))
+                        sampdata.append(None if key != "FT" else (sample["FT"] if missing else sample_filt_dict[sample.sample]))
             else:
                 num_kept  += 1
                 gt_a, gt_b = map(int, sample['GT'].split('|'))

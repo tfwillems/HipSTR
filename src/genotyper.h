@@ -148,6 +148,7 @@ class Genotyper {
 					 bool calc_phased_gls, std::vector< std::vector<double> >& phased_gls);
 
   // Parameters that control what is output to the VCF
+  static int OUTPUT_PHASING_FIELDS;   // Output PHASEDQ, DSNP, PSNP and PHQ fields
   static int OUTPUT_GLS;              // Output the GL FORMAT field
   static int OUTPUT_PLS;              // Output the PL FORMAT field
   static int OUTPUT_PHASED_GLS;       // Output the PHASEDGL FORMAT field
