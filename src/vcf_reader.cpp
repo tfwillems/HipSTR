@@ -137,12 +137,12 @@ namespace VCF {
     return false;
   }
 
-  bool VCFReader::has_info_field(const std::string& field){
+  bool VCFReader::has_info_field(const std::string& field) const {
     int id = bcf_hdr_id2int(vcf_header_, BCF_DT_ID, field.c_str());
     return bcf_hdr_idinfo_exists(vcf_header_, BCF_HL_INFO, id);
   }
 
-  bool VCFReader::has_format_field(const std::string& field){
+  bool VCFReader::has_format_field(const std::string& field) const {
     int id = bcf_hdr_id2int(vcf_header_, BCF_DT_ID, field.c_str());
     return bcf_hdr_idinfo_exists(vcf_header_, BCF_HL_FMT, id);
   }

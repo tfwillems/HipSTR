@@ -218,9 +218,9 @@ public:
     return tbx_name2id(tbx_input_, chrom.c_str()) != -1;
   }
 
-  bool has_info_field(const std::string& field);
+  bool has_info_field(const std::string& field) const;
 
-  bool has_format_field(const std::string& field);
+  bool has_format_field(const std::string& field) const;
 
   int get_sample_index(const std::string& sample) const {
     auto sample_iter = sample_indices_.find(sample);
