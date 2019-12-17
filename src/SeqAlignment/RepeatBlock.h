@@ -22,8 +22,8 @@ class RepeatBlock : public HapBlock {
     RepeatBlock& operator=(const RepeatBlock& other);
 
  public:
- RepeatBlock(int32_t start, int32_t end, const std::string& ref_seq, int period, const StutterModel* stutter_model,
-	     const bool reversed=false): HapBlock(start, end, ref_seq){
+ RepeatBlock(int32_t start, int32_t end, const std::string& ref_seq, bool vcf_based, int period, const StutterModel* stutter_model,
+	     const bool reversed=false): HapBlock(start, end, ref_seq, vcf_based){
       repeat_info_ = new RepeatStutterInfo(period, ref_seq, stutter_model);
       reversed_    = reversed;
       stutter_aligners_.push_back(new StutterAligner(ref_seq, period, !reversed_, repeat_info_));
@@ -36,7 +36,7 @@ class RepeatBlock : public HapBlock {
       stutter_aligners_.clear();
     }
 
-    void add_alternate(const std::string& alt);
+    void add_alternate(const std::string& alt, bool removable);
 
     StutterAligner* get_stutter_aligner(int seq_index)  { return stutter_aligners_[seq_index]; }
     RepeatStutterInfo* get_repeat_info()                { return repeat_info_; }
@@ -44,12 +44,12 @@ class RepeatBlock : public HapBlock {
     HapBlock* reverse(){
       std::string rev_ref_seq = seqs_[0];
       std::reverse(rev_ref_seq.begin(), rev_ref_seq.end());
-      RepeatBlock* rev_block = new RepeatBlock(start_, end_, rev_ref_seq, repeat_info_->get_period(),
+      RepeatBlock* rev_block = new RepeatBlock(start_, end_, rev_ref_seq, vcf_based_, repeat_info_->get_period(),
 					       repeat_info_->get_stutter_model(), !reversed_);
       for (unsigned int i = 1; i < seqs_.size(); ++i){
 	std::string alt = seqs_[i];
 	std::reverse(alt.begin(), alt.end());
-	rev_block->add_alternate(alt);
+	rev_block->add_alternate(alt, removable_[i]);
       }
       return rev_block;
     }
@@ -57,11 +57,14 @@ class RepeatBlock : public HapBlock {
     RepeatBlock* remove_alleles(const std::vector<int>& allele_indices){
       std::set<int> bad_alleles(allele_indices.begin(), allele_indices.end());
       assert(bad_alleles.find(0) == bad_alleles.end());
-      RepeatBlock* new_block = new RepeatBlock(start_, end_, seqs_[0], repeat_info_->get_period(),
+      RepeatBlock* new_block = new RepeatBlock(start_, end_, seqs_[0], vcf_based_, repeat_info_->get_period(),
 					       repeat_info_->get_stutter_model(), reversed_);
-      for (unsigned int i = 1; i < seqs_.size(); ++i)
+      for (unsigned int i = 1; i < seqs_.size(); ++i){
 	if (bad_alleles.find(i) == bad_alleles.end())
-	  new_block->add_alternate(seqs_[i]);
+	  new_block->add_alternate(seqs_[i], removable_[i]);
+	else
+	  assert(removable_[i]);
+      }
       return new_block;
     }
 };
