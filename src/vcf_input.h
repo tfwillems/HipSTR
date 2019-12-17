@@ -14,11 +14,14 @@
 extern const std::string GENOTYPE_KEY;
 extern const std::string UNPHASED_GL_KEY;
 extern const std::string PHASED_GL_KEY;
-extern std::string START_INFO_TAG;
-extern std::string STOP_INFO_TAG;
+extern const std::string START_INFO_TAG;
+extern const std::string STOP_INFO_TAG;
+extern const std::string LFLANK_INFO_TAG;
+extern const std::string RFLANK_INFO_TAG;
 extern const int32_t pad;
 
-bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector<std::string>& alleles, int32_t& pos);
+bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector<std::string>& alleles,
+		      std::vector<std::string>& left_flanks, std::vector<std::string>& right_flanks, int32_t& pos);
 
 class GL {
  protected:

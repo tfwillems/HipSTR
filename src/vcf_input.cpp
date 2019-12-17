@@ -10,15 +10,18 @@
 const std::string GT_KEY          = "GT";
 const std::string UNPHASED_GL_KEY = "GL";
 const std::string PHASED_GL_KEY   = "PHASEDGL";
-std::string START_INFO_TAG        = "START";
-std::string STOP_INFO_TAG         = "END";
+const std::string START_INFO_TAG  = "START";
+const std::string STOP_INFO_TAG   = "END";
+const std::string LFLANK_INFO_TAG = "LFLANKS";
+const std::string RFLANK_INFO_TAG = "RFLANKS";
 
 // Because HipSTR extends putative STR regions if there are nearby indels, the STR coordinates in the VCF may
 // not exactly match the original reference region coordinates. As a result, when looking for a particular STR region,
 // we look for entries a window around the locus. The size of this window is controlled by this parameter
 const int32_t pad = 50;
 
-bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector<std::string>& alleles, int32_t& pos){
+bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector<std::string>& alleles,
+		      std::vector<std::string>& left_flanks, std::vector<std::string>& right_flanks, int32_t& pos){
     assert(alleles.size() == 0 && ref_vcf != NULL);
     int32_t pad_start = (region.start() < pad ? 0 : region.start()-pad);
     if (!ref_vcf->set_region(region.chrom(), pad_start, region.stop()+pad)){
@@ -29,7 +32,7 @@ bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector
     // Extract STR and ensure the coordinates match
     VCF::Variant variant;
     while (ref_vcf->get_next_variant(variant)){
-      // Skip variants without the appropriate INFO fields (as they're not STRs)
+      // Skip variants without the appropriate INFO fields (as they're not HipSTR records/STRs)
       if (!variant.has_info_field(START_INFO_TAG) || !variant.has_info_field(STOP_INFO_TAG))
 	continue;
 
@@ -40,6 +43,16 @@ bool read_vcf_alleles(VCF::VCFReader* ref_vcf, const Region& region, std::vector
       if (str_start == region.start()+1 && str_stop == region.stop()){
 	pos = variant.get_position()-1;
 	alleles.insert(alleles.end(), variant.get_alleles().begin(), variant.get_alleles().end());
+
+	// Read the flanking sequences from the record if they're available
+	// By design, a HipSTR VCF that contains these fields in the header should also contain them in every record
+	if (ref_vcf->has_info_field(LFLANK_INFO_TAG)){
+	  assert(ref_vcf->has_info_field(RFLANK_INFO_TAG));
+	  assert(variant.has_info_field(LFLANK_INFO_TAG) && variant.has_info_field(RFLANK_INFO_TAG));
+	  variant.get_info_value_multiple_strings(LFLANK_INFO_TAG, left_flanks);
+	  variant.get_info_value_multiple_strings(RFLANK_INFO_TAG, right_flanks);
+	}
+
 	return true;
       }
       if (variant.get_position() > region.start()+pad)
