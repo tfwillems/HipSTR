@@ -41,7 +41,6 @@ class SeqStutterGenotyper : public Genotyper {
   std::vector<HapBlock*> hap_blocks_;                   // Haplotype blocks
   Haplotype* haplotype_;                                // Potential STR haplotypes
   std::vector<std::string> call_sample_;                // True iff we should try to genotype the sample with the associated index
-                                                        // Based on the deletion boundaries in the sample's reads
 
   bool initialized_; // True iff initialization succeeded and genotyping can proceed
 
@@ -88,7 +87,6 @@ class SeqStutterGenotyper : public Genotyper {
   void debug_sample(int sample_index, std::ostream& logger);
   
   // Modify the internal structures to remove the alleles at the associated indices
-  // Designed to remove alleles who aren't the MAP genotype of any samples
   void remove_alleles(std::vector< std::vector<int> >& allele_indices);
 
   // Retrace the alignment for each read and store the associated pointers in the provided vector
@@ -98,7 +96,7 @@ class SeqStutterGenotyper : public Genotyper {
   // Identify additional candidate STR alleles using the sequences observed in reads with stutter artifacts
   void get_stutter_candidate_alleles(int block_index, std::ostream& logger, std::vector<std::string>& candidate_seqs);
 
-  // Aligns each read to each of the candidate haplotypes and stores the results in internal arrays
+  // Align each read to each of the candidate haplotypes and store the results in internal arrays
   void calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype);
   void calc_hap_aln_probs(std::vector<bool>& realign_to_haplotype, std::vector<bool>& realign_pool, std::vector<bool>& copy_read);
 
@@ -126,12 +124,18 @@ class SeqStutterGenotyper : public Genotyper {
 			  std::vector< std::vector<int> >& allele_indices, int& num_aff_blocks, int& num_aff_alleles);
 
   // Add and/or remove the provided alleles to the underlying haplotype structures. Realigns each read to any novel alleles
-  // and updates the alignment probabilities and genotype posteriors accordingly.
+  // and updates the alignment probabilities and genotype posteriors accordingly
   void add_and_remove_alleles(std::vector< std::vector<int> >& alleles_to_remove,
 			      std::vector< std::vector<std::string> >& alleles_to_add);
   void add_and_remove_alleles(std::vector< std::vector<int> >& alleles_to_remove,
 			      std::vector< std::vector<std::string> >& alleles_to_add,
 			      std::vector<bool>& realign_pool, std::vector<bool>& copy_read);
+
+  // From each haplotype block, retain only non-removable sequences
+  // Mask any samples whose optimal haplotype involves one or more removed alleles
+  // This function is intended to be used when a set of candidate sequences were supplied as input and
+  // we want to restrict the final resulting genotypes to this initial set of sequences
+  void restrict_allele_set(int& num_aff_blocks, int& num_aff_alleles, int& num_aff_samples);
 
   bool genotype_samples(bool first_round, int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq,
 			std::ostream& logger);
@@ -191,9 +195,9 @@ class SeqStutterGenotyper : public Genotyper {
       delete rv_matrix_caches_[pool_index];
     }
 
-    for (auto trace_iter = trace_cache_.begin(); trace_iter != trace_cache_.end(); trace_iter++)
+    for (auto trace_iter = trace_cache_.begin(); trace_iter != trace_cache_.end(); ++trace_iter)
       delete trace_iter->second;
-    for (unsigned int i = 0; i < hap_blocks_.size(); i++)
+    for (unsigned int i = 0; i < hap_blocks_.size(); ++i)
       delete hap_blocks_[i];
     delete haplotype_;
   }

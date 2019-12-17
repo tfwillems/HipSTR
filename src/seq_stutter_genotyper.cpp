@@ -23,8 +23,6 @@
 #include "SeqAlignment/AlignmentViz.h"
 #include "SeqAlignment/HaplotypeGenerator.h"
 #include "SeqAlignment/HapAligner.h"
-#include "SeqAlignment/RepeatStutterInfo.h"
-#include "SeqAlignment/RepeatBlock.h"
 
 #include "cephes/cephes.h"
 #include "htslib/htslib/kfunc.h"
@@ -210,15 +208,13 @@ bool SeqStutterGenotyper::assemble_flanks(int max_total_haplotypes, int max_flan
     add_and_remove_alleles(alleles_to_remove, alleles_to_add, realign_pools, copy_reads);
 
     // Remove alleles with no MAP genotype calls and recompute the posteriors
-    if (ref_vcf_ == NULL){
-      std::vector< std::vector<int> > unused_indices;
-      int num_aff_blocks = 0, num_aff_alleles = 0;
-      get_unused_alleles(false, true, unused_indices, num_aff_blocks, num_aff_alleles);
-      if (num_aff_alleles != 0){
-	logger << "Recomputing sample posteriors after removing " << num_aff_alleles
-	       << " uncalled allele(s) across " << num_aff_blocks << " block(s)" << std::endl;
-	remove_alleles(unused_indices);
-      }
+    std::vector< std::vector<int> > unused_indices;
+    int num_aff_blocks = 0, num_aff_alleles = 0;
+    get_unused_alleles(false, true, unused_indices, num_aff_blocks, num_aff_alleles);
+    if (num_aff_alleles != 0){
+      logger << "Recomputing sample posteriors after removing " << num_aff_alleles
+	     << " uncalled allele(s) across " << num_aff_blocks << " block(s)" << std::endl;
+      remove_alleles(unused_indices);
     }
   }
 
@@ -245,7 +241,7 @@ void SeqStutterGenotyper::get_unused_alleles(bool check_spanned, bool check_call
   std::vector< std::pair<int,int> > haps;
   get_optimal_haplotypes(haps);
 
-  // Retrace the alignments
+   // Retrace the alignments
   std::vector<AlignmentTrace*> traced_alns;
   retrace_alignments(traced_alns);
 
@@ -312,6 +308,8 @@ void SeqStutterGenotyper::get_unused_alleles(bool check_spanned, bool check_call
     // Add non-reference alleles that fail the requirements
     bool block_affected = false;
     for (int allele_index = 1; allele_index < block->num_options(); allele_index++){
+      if (!block->removable(allele_index))
+	continue;
       if ((check_spanned && !spanned[allele_index]) || (check_called && !called[allele_index])){
 	allele_indices.back().push_back(allele_index);
 	block_affected = true;
@@ -353,13 +351,13 @@ void SeqStutterGenotyper::add_and_remove_alleles(std::vector< std::vector<int> >
   bool added_seq = false;
   for (int i = 0; i < updated_blocks.size(); i++){
     for (int j = 0; j < alleles_to_add[i].size(); j++){
-      updated_blocks[i]->add_alternate(alleles_to_add[i][j]);
+      updated_blocks[i]->add_alternate(alleles_to_add[i][j], true); // Assume all novel alleles are removable
       added_seq = true;
     }
   }
 
   // Construct the new haplotype and record its set of haplotype sequences
-  // Determine the mapping from old sequences to new sequences, if they're still present
+  // Determine the mapping from old sequences to new sequences if they're still present
   Haplotype* updated_haplotype = new Haplotype(updated_blocks);
   std::vector<std::string> updated_hap_seqs;
   std::vector<int> allele_mapping(num_alleles_, -1);
@@ -467,13 +465,17 @@ bool SeqStutterGenotyper::build_haplotype(const std::string& chrom_seq, std::vec
       if (alns_[read_index].use_for_hap_generation(region_index))
 	gen_hap_alns[sample_label_[read_index]].push_back(alns_[read_index]);
 
-    std::vector<std::string> vcf_alleles;
+    std::vector<std::string> vcf_alleles, left_flanks, right_flanks;
     if (ref_vcf_ != NULL){
       int32_t pos;
-      if (!read_vcf_alleles(ref_vcf_, regions[region_index], vcf_alleles, pos)){
+      if (!read_vcf_alleles(ref_vcf_, regions[region_index], vcf_alleles, left_flanks, right_flanks, pos)){
 	logger << "Haplotype construction failed: The alleles could not be extracted from the reference VCF" << std::endl;
 	success = false;
 	break;
+      }
+
+      if (!left_flanks.empty()){
+
       }
 
       // Add the haplotype block based on the extracted VCF alleles
@@ -481,6 +483,10 @@ bool SeqStutterGenotyper::build_haplotype(const std::string& chrom_seq, std::vec
 	logger << "Haplotype construction failed: " << hap_generator.failure_msg() << std::endl;
 	success = false;
 	break;
+      }
+
+      if (!right_flanks.empty()){
+
       }
     }
     else {
@@ -632,6 +638,63 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(int max_total_haplotyp
   return true;
 }
 
+void SeqStutterGenotyper::restrict_allele_set(int& num_aff_blocks, int& num_aff_alleles, int& num_aff_samples){
+  num_aff_blocks  = 0;
+  num_aff_alleles = 0;
+  num_aff_samples = 0;
+
+  // Assemble the lists of alleles to remove from each block
+  std::vector< std::vector<int> > alleles_to_remove;
+  for (int block_index = 0; block_index < haplotype_->num_blocks(); ++block_index){
+    HapBlock* block = haplotype_->get_block(block_index);
+    alleles_to_remove.push_back(std::vector<int>());
+
+    // Only remove alleles from blocks that were at least partially informed via a VCF
+    // Avoids masking many genotypes if many samples have alternate flanks but no flank sequences were in the reference VCF
+    if (!(block->fromVCF()))
+      continue;
+
+    bool block_aff = false;
+    for (int allele = 0; allele < block->num_options(); ++allele){
+      if (block->removable(allele)){
+	alleles_to_remove.back().push_back(allele);
+	block_aff = true;
+	num_aff_alleles++;
+      }
+    }
+    if (block_aff)
+      num_aff_blocks++;
+  }
+
+  // Determine which haplotypes will represent valid genotypes after removing these alleles
+  std::vector<bool> keep_hap;
+  haplotype_->reset();
+  do {
+    bool keep = true;
+    for (int block_index = 0; block_index < haplotype_->num_blocks(); ++block_index){
+      HapBlock* block = haplotype_->get_block(block_index);
+      if (block->fromVCF() && block->removable(haplotype_->cur_index(block_index))){
+	keep = false;
+	break;
+      }
+    }
+    keep_hap.push_back(keep);
+  } while (haplotype_->next());
+  haplotype_->reset();
+
+  // Iterate through each sample and mask any samples containing a non-permissible haplotype
+  std::vector< std::pair<int, int> > sample_haps;
+  get_optimal_haplotypes(sample_haps);
+  for (int sample_index = 0; sample_index < num_samples_; ++sample_index)
+    if (!keep_hap[sample_haps[sample_index].first] || !keep_hap[sample_haps[sample_index].second]){
+      num_aff_samples++;
+      call_sample_[sample_index] = "NOVEL_HAPLOTYPE";
+    }
+
+  // Remove all undesired alleles and update the genotyping data structures accordingly
+  remove_alleles(alleles_to_remove);
+}
+
 
 bool SeqStutterGenotyper::genotype(int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq, std::ostream& logger){
   return genotype_samples(true, max_total_haplotypes, max_flank_haplotypes, min_flank_freq, logger);
@@ -678,35 +741,42 @@ bool SeqStutterGenotyper::genotype_samples(bool first_round, int max_total_haplo
   calc_hap_aln_probs(realign_to_haplotype);
   calc_log_sample_posteriors();
 
-  if (ref_vcf_ == NULL){
-    // Look for additional alleles in stutter artifacts and align to them (if necessary)
-    if (!id_and_align_to_stutter_alleles(max_total_haplotypes, logger))
-      return false;
+  // Look for additional alleles in stutter artifacts and align to them (if necessary)
+  if (!id_and_align_to_stutter_alleles(max_total_haplotypes, logger))
+    return false;
 
-    // Remove alleles with no MAP genotype calls and recompute the posteriors
-    std::vector< std::vector<int> > unused_indices;
-    int num_aff_blocks = 0, num_aff_alleles = 0;
-    get_unused_alleles(false, true, unused_indices, num_aff_blocks, num_aff_alleles);
-    if (num_aff_alleles != 0){
-      logger << "Recomputing sample posteriors after removing " << num_aff_alleles
-	     << " uncalled allele(s) across " << num_aff_blocks << " block(s)" << std::endl;
-      remove_alleles(unused_indices);
-    }
+  // Remove alleles with no MAP genotype calls and recompute the posteriors
+  std::vector< std::vector<int> > unused_indices;
+  int num_aff_blocks = 0, num_aff_alleles = 0;
+  get_unused_alleles(false, true, unused_indices, num_aff_blocks, num_aff_alleles);
+  if (num_aff_alleles != 0){
+    logger << "Recomputing sample posteriors after removing " << num_aff_alleles
+	   << " uncalled allele(s) across " << num_aff_blocks << " block(s)" << std::endl;
+    remove_alleles(unused_indices);
+  }
 
-    // Remove alleles with no spanning reads and recompute the posteriors
-    unused_indices.clear();
-    get_unused_alleles(true, false, unused_indices, num_aff_blocks, num_aff_alleles);
-    if (num_aff_alleles != 0){
-      logger << "Recomputing sample posteriors after removing " << num_aff_alleles
-	     << " allele(s) with no spanning reads across " << num_aff_blocks << " block(s)" << std::endl;
-      remove_alleles(unused_indices);
-    }
+  // Remove alleles with no spanning reads and recompute the posteriors
+  unused_indices.clear();
+  get_unused_alleles(true, false, unused_indices, num_aff_blocks, num_aff_alleles);
+  if (num_aff_alleles != 0){
+    logger << "Recomputing sample posteriors after removing " << num_aff_alleles
+	   << " allele(s) with no spanning reads across " << num_aff_blocks << " block(s)" << std::endl;
+    remove_alleles(unused_indices);
   }
 
   if (first_round && reassemble_flanks_)
     if (!assemble_flanks(max_total_haplotypes, max_flank_haplotypes, min_flank_freq, logger))
       return false;
 
+  // Remove alleles not originally present in the reference VCF
+  // Mask any samples whose ML genotype contained such an allele
+  if ((ref_vcf_ != NULL) && true){
+    int num_aff_blocks, num_aff_alleles, num_aff_samples;
+    restrict_allele_set(num_aff_blocks, num_aff_alleles, num_aff_samples);
+    logger << "Removed " << num_aff_alleles << " novel sequences across " << num_aff_blocks << " haplotype blocks that were not present in the reference VCF\n"
+	   << "Masked genotypes for " << num_aff_samples << " whose optimal haplotypes invovled one or more novel sequences" << std::endl;
+  }
+    
   return true;
 }
 
@@ -899,8 +969,13 @@ void SeqStutterGenotyper::get_stutter_candidate_alleles(int str_block_index,
     AlignmentTrace* trace = traced_alns[read_index];
     if (trace->traced_aln().get_start() < str_block->start()){
       if (trace->traced_aln().get_stop() > str_block->end()){
-	if (trace->stutter_size(str_block_index) != 0)
+	bool add_seq = (trace->stutter_size(str_block_index) != 0);
+	// TO DO: Add reads with 0 stutter but with a different sequence???
+	// add_seq |= ...
+
+	if (add_seq)
 	  sample_stutter_counts[sample_label_[read_index]][trace->str_seq(str_block_index)]++;
+
 	sample_counts[sample_label_[read_index]]++;
       }
     }
@@ -921,90 +996,6 @@ void SeqStutterGenotyper::get_stutter_candidate_alleles(int str_block_index,
       logger << "\t" << candidate_seqs[i] << "\n";
   }
 }
-
-/*
-void SeqStutterGenotyper::analyze_flank_snps(std::ostream& logger){
-  std::vector<AlignmentTrace*> traced_alns;
-  std::vector< std::pair<int, int> > haps;
-  retrace_alignments(traced_alns);
-  get_optimal_haplotypes(haps);
-
-  double* read_LL_ptr = log_aln_probs_;
-  int min_read_index = 0, read_index;
-  for (int sample_index = 0; sample_index < num_samples_; sample_index++){
-    int hap_a = haps[sample_index].first;
-    int hap_b = haps[sample_index].second;
-    std::map<std::pair<int32_t, char>, int> hap_snp_counts;
-    std::vector<std::pair<int32_t, int32_t> > hap_read_coords;
-
-    for (read_index = min_read_index; read_index < num_reads_; read_index++){
-      if (traced_alns[read_index] == NULL){
-	read_LL_ptr += num_alleles_;
-	continue;
-      }
-      if (sample_label_[read_index] != sample_index)
-	break;
-
-      AlignmentTrace* trace = traced_alns[read_index];
-      hap_read_coords.push_back(std::pair<int32_t,int32_t>(trace->traced_aln().get_start(), trace->traced_aln().get_stop()));
-      std::vector<std::pair<int32_t, char> >& snp_data = trace->flank_snp_data();
-      for (auto snp_iter = snp_data.begin(); snp_iter != snp_data.end(); snp_iter++)
-	hap_snp_counts[*snp_iter]++;
-      read_LL_ptr += num_alleles_;
-    }
-    min_read_index = read_index;
-
-    for (auto snp_iter = hap_snp_counts.begin(); snp_iter != hap_snp_counts.end(); snp_iter++){
-      if (snp_iter->second >= 2){
-	int32_t pos = snp_iter->first.first;
-	int num_span = 0;
-	for (int i = 0; i < hap_read_coords.size(); i++)
-	  if (hap_read_coords[i].first < pos && hap_read_coords[i].second > pos)
-	    num_span++;
-	const Region& region = region_group_->regions()[0];
-	std::cerr << "SNP INFO " << region.chrom() << " " << region.start()+1 << " " << sample_names_[sample_index] << " " << pos << " " << snp_iter->second << " " << num_span << std::endl;
-      }
-    }
-  }
-}
-
-
-void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
-  std::vector<AlignmentTrace*> traced_alns;
-  retrace_alignments(traced_alns);
-  std::vector<int> sample_counts(num_samples_, 0);
-  std::vector< std::map<std::pair<int,int>, int> > sample_flank_indel_counts(num_samples_);
-
-  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
-    if (traced_alns[read_index] == NULL)
-      continue;
-    AlignmentTrace* trace = traced_alns[read_index];
-
-    if (!trace->has_stutter()){
-      bool use = false;
-      use     |= (trace->flank_ins_size() == 0 && trace->flank_del_size() != 0);
-      use     |= (trace->flank_ins_size() != 0 && trace->flank_del_size() == 0);
-      use     &= (trace->flank_indel_data().size() == 1);
-      if (use)
-	sample_flank_indel_counts[sample_label_[read_index]][trace->flank_indel_data()[0]]++;
-    }
-    sample_counts[sample_label_[read_index]]++;
-  }
-
-  std::map< std::pair<int,int>, int>  candidate_set;
-  for (unsigned int i = 0; i < num_samples_; i++)
-    for (auto indel_iter = sample_flank_indel_counts[i].begin(); indel_iter != sample_flank_indel_counts[i].end(); indel_iter++)
-      if (indel_iter->second >= 2 && 1.0*indel_iter->second/sample_counts[i] >= 0.15){
-	  candidate_set[indel_iter->first]++;
-	  //std::cerr << sample_names_[i] << " " << indel_iter->first.first << " " << indel_iter->first.second << std::endl;
-      }
-
-  if (candidate_set.size() != 0){
-    for (auto candidate_iter = candidate_set.begin(); candidate_iter != candidate_set.end(); candidate_iter++)
-      std::cerr << "FLANK INDEL " << region_group_->chrom() << " " << candidate_iter->first.first << " " << candidate_iter->first.second << " " << candidate_iter->second << std::endl;
-  }
-}
-*/
 
 double SeqStutterGenotyper::compute_allele_bias(int hap_a_read_count, int hap_b_read_count){
   // Compute p-value for allele read depth bias according to the counts of reads uniquely assigned to each haplotype
@@ -1085,8 +1076,6 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   }
 
   //debug_sample(sample_indices_["LP6005442-DNA_D08"], logger);
-  //std::vector<bool> clobbered;
-  //haplotype_->check_indel_clobbering(region.name(), clobbered);
 
   // Compute the base pair differences from the reference
   std::vector<int> allele_bp_diffs;
@@ -1234,7 +1223,7 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
       skip_count++;
   }
 
-  // Determine an ordering for the alleles, in which they're sorted by allele length
+  // Determine an ordering for the alleles in which they're sorted by allele length
   std::vector<int> old_to_new, new_to_old;
   reorder_alleles(alleles, old_to_new, new_to_old);
 
@@ -1658,3 +1647,88 @@ bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max
   // Otherwise, the process succeeded b/c the stutter models did not change substantially
   return true;
 }
+
+
+/*
+void SeqStutterGenotyper::analyze_flank_snps(std::ostream& logger){
+  std::vector<AlignmentTrace*> traced_alns;
+  std::vector< std::pair<int, int> > haps;
+  retrace_alignments(traced_alns);
+  get_optimal_haplotypes(haps);
+
+  double* read_LL_ptr = log_aln_probs_;
+  int min_read_index = 0, read_index;
+  for (int sample_index = 0; sample_index < num_samples_; sample_index++){
+    int hap_a = haps[sample_index].first;
+    int hap_b = haps[sample_index].second;
+    std::map<std::pair<int32_t, char>, int> hap_snp_counts;
+    std::vector<std::pair<int32_t, int32_t> > hap_read_coords;
+
+    for (read_index = min_read_index; read_index < num_reads_; read_index++){
+      if (traced_alns[read_index] == NULL){
+	read_LL_ptr += num_alleles_;
+	continue;
+      }
+      if (sample_label_[read_index] != sample_index)
+	break;
+
+      AlignmentTrace* trace = traced_alns[read_index];
+      hap_read_coords.push_back(std::pair<int32_t,int32_t>(trace->traced_aln().get_start(), trace->traced_aln().get_stop()));
+      std::vector<std::pair<int32_t, char> >& snp_data = trace->flank_snp_data();
+      for (auto snp_iter = snp_data.begin(); snp_iter != snp_data.end(); snp_iter++)
+	hap_snp_counts[*snp_iter]++;
+      read_LL_ptr += num_alleles_;
+    }
+    min_read_index = read_index;
+
+    for (auto snp_iter = hap_snp_counts.begin(); snp_iter != hap_snp_counts.end(); snp_iter++){
+      if (snp_iter->second >= 2){
+	int32_t pos = snp_iter->first.first;
+	int num_span = 0;
+	for (int i = 0; i < hap_read_coords.size(); i++)
+	  if (hap_read_coords[i].first < pos && hap_read_coords[i].second > pos)
+	    num_span++;
+	const Region& region = region_group_->regions()[0];
+	std::cerr << "SNP INFO " << region.chrom() << " " << region.start()+1 << " " << sample_names_[sample_index] << " " << pos << " " << snp_iter->second << " " << num_span << std::endl;
+      }
+    }
+  }
+}
+
+
+void SeqStutterGenotyper::analyze_flank_indels(std::ostream& logger){
+  std::vector<AlignmentTrace*> traced_alns;
+  retrace_alignments(traced_alns);
+  std::vector<int> sample_counts(num_samples_, 0);
+  std::vector< std::map<std::pair<int,int>, int> > sample_flank_indel_counts(num_samples_);
+
+  for (unsigned int read_index = 0; read_index < num_reads_; read_index++){
+    if (traced_alns[read_index] == NULL)
+      continue;
+    AlignmentTrace* trace = traced_alns[read_index];
+
+    if (!trace->has_stutter()){
+      bool use = false;
+      use     |= (trace->flank_ins_size() == 0 && trace->flank_del_size() != 0);
+      use     |= (trace->flank_ins_size() != 0 && trace->flank_del_size() == 0);
+      use     &= (trace->flank_indel_data().size() == 1);
+      if (use)
+	sample_flank_indel_counts[sample_label_[read_index]][trace->flank_indel_data()[0]]++;
+    }
+    sample_counts[sample_label_[read_index]]++;
+  }
+
+  std::map< std::pair<int,int>, int>  candidate_set;
+  for (unsigned int i = 0; i < num_samples_; i++)
+    for (auto indel_iter = sample_flank_indel_counts[i].begin(); indel_iter != sample_flank_indel_counts[i].end(); indel_iter++)
+      if (indel_iter->second >= 2 && 1.0*indel_iter->second/sample_counts[i] >= 0.15){
+	  candidate_set[indel_iter->first]++;
+	  //std::cerr << sample_names_[i] << " " << indel_iter->first.first << " " << indel_iter->first.second << std::endl;
+      }
+
+  if (candidate_set.size() != 0){
+    for (auto candidate_iter = candidate_set.begin(); candidate_iter != candidate_set.end(); candidate_iter++)
+      std::cerr << "FLANK INDEL " << region_group_->chrom() << " " << candidate_iter->first.first << " " << candidate_iter->first.second << " " << candidate_iter->second << std::endl;
+  }
+}
+*/
