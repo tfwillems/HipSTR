@@ -14,16 +14,16 @@ int main(){
   std::string r1   = "GAATCCC" ,   r2 = "GAATTCC";
   std::string rep1 = "ATAT",     rep2 = "ATATAT", rep3 = "ATATATAT";
 
-  HapBlock left_flank(0, 8, l1); 
-  left_flank.add_alternate(l2);
+  HapBlock left_flank(0, 8, l1, false);
+  left_flank.add_alternate(l2, false);
 
   StutterModel stutter_model(0.9,  0.01,  0.02, 0.7, 0.001, 0.001, 2);
-  RepeatBlock rep_block(8, 12, rep1, 2, &stutter_model); 
-  rep_block.add_alternate(rep2); 
-  rep_block.add_alternate(rep3);
+  RepeatBlock rep_block(8, 12, rep1, false, 2, &stutter_model);
+  rep_block.add_alternate(rep2, false);
+  rep_block.add_alternate(rep3, false);
  
-  HapBlock right_flank(12, 19, r1);
-  right_flank.add_alternate(r2);
+  HapBlock right_flank(12, 19, r1, false);
+  right_flank.add_alternate(r2, false);
 
   std::vector<HapBlock*> hap_blocks;
   hap_blocks.push_back(&left_flank);
