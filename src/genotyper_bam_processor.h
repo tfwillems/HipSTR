@@ -119,6 +119,7 @@ public:
     MAX_FLANK_HAPLOTYPES   = 4;
     MIN_FLANK_FREQ         = 0.01;
     VIZ_LEFT_ALNS          = 0;
+    MAX_STUTTERMODEL_READS = 10000;
     total_stutter_time_    = 0;
     locus_stutter_time_    = -1;
     total_left_aln_time_   = 0;
@@ -248,6 +249,7 @@ public:
   double FRAC_LL_CONVERGE;  // For EM convergence, -(new_LL-prev_LL)/prev_LL < FRAC_LL_CONVERGE
   int32_t MIN_TOTAL_READS;  // Minimum total reads required to genotype locus
 
+  int MAX_STUTTERMODEL_READS; // Maximum number of reads to use for training stutter models
   int REF_FLANK_LEN;
   int MAX_TOTAL_HAPLOTYPES;
   int MAX_FLANK_HAPLOTYPES;

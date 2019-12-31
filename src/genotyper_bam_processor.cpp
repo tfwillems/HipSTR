@@ -114,7 +114,6 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
   std::vector< std::vector<int> > str_bp_lengths(alignments.size());
   std::vector< std::vector<double> > str_log_p1s(alignments.size()), str_log_p2s(alignments.size());
   int inf_reads = 0;
-  const int MAX_INF_READS = 10000;
 
   // Extract bp differences and phasing probabilities for each read if we need to train a stutter model
   for (unsigned int i = 0; i < alignments.size(); ++i){
@@ -135,7 +134,7 @@ StutterModel* GenotyperBamProcessor::learn_stutter_model(std::vector<BamAlnList>
 	}
       }
     }
-    if (inf_reads > MAX_INF_READS)
+    if (inf_reads > MAX_STUTTERMODEL_READS)
       break;
   }
 
@@ -245,7 +244,8 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
       // If appropriate, recalculate the stutter model using the haplotype ML alignments,
       // If the model has changed substantially, realign the reads and regenotype the samples
       if (recalc_stutter_model_ && (def_stutter_model_ == NULL && !read_stutter_models_))
-	pass = seq_genotyper->recompute_stutter_models(selective_logger(), MAX_TOTAL_HAPLOTYPES, MAX_FLANK_HAPLOTYPES,
+	pass = seq_genotyper->recompute_stutter_models(selective_logger(), MAX_STUTTERMODEL_READS,
+						       MAX_TOTAL_HAPLOTYPES, MAX_FLANK_HAPLOTYPES,
 						       MIN_FLANK_FREQ, MAX_EM_ITER, ABS_LL_CONVERGE, FRAC_LL_CONVERGE);
 
       if (pass){
