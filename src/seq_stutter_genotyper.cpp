@@ -458,10 +458,10 @@ bool SeqStutterGenotyper::build_haplotype(const std::string& chrom_seq, std::vec
   HaplotypeGenerator hap_generator(min_aln_start, max_aln_stop, REF_FLANK_LEN);
   const std::vector<Region>& regions = region_group_->regions();
   bool success = true;
-  for (int region_index = 0; region_index < regions.size(); region_index++){
+  for (int region_index = 0; region_index < regions.size(); ++region_index){
     // Select only those alignments marked as good for haplotype generation
     std::vector<AlnList> gen_hap_alns(num_samples_);
-    for (unsigned int read_index = 0; read_index < num_reads_; read_index++)
+    for (unsigned int read_index = 0; read_index < num_reads_; ++read_index)
       if (alns_[read_index].use_for_hap_generation(region_index))
 	gen_hap_alns[sample_label_[read_index]].push_back(alns_[read_index]);
 
@@ -474,8 +474,13 @@ bool SeqStutterGenotyper::build_haplotype(const std::string& chrom_seq, std::vec
 	break;
       }
 
-      if (!left_flanks.empty()){
-
+      // HipSTR VCFs should either contain both flanks or neither flank in the VCF INFO field
+      assert(left_flanks.empty() == right_flanks.empty());
+      
+      if (!left_flanks.empty() && !hap_generator.add_vcf_nonrepeat_haplotype_block(pos-left_flanks[0].size(), chrom_seq, left_flanks)){
+	logger << "Haplotype construction failed: " << hap_generator.failure_msg() << std::endl;
+	success = false;
+	break;
       }
 
       // Add the haplotype block based on the extracted VCF alleles
@@ -484,14 +489,21 @@ bool SeqStutterGenotyper::build_haplotype(const std::string& chrom_seq, std::vec
 	success = false;
 	break;
       }
-
-      if (!right_flanks.empty()){
-
+      
+      if (!right_flanks.empty() && !hap_generator.add_vcf_nonrepeat_haplotype_block(pos+vcf_alleles[0].size(), chrom_seq, right_flanks)){
+        logger << "Haplotype construction failed: " << hap_generator.failure_msg() << std::endl;
+        success = false;
+        break;
       }
+      
+      // We don't want to add additional reference flanks when they've already been provided. Marking the generator
+      // as finished effectively causes it to ignore the later call to fuse_haplotype_blocks()
+      if (!left_flanks.empty())
+	hap_generator.mark_finished();
     }
     else {
       // Add the haplotype block in which alleles are derived from the alignments
-      if (!hap_generator.add_haplotype_block(regions[region_index], chrom_seq, gen_hap_alns, vcf_alleles, stutter_models[region_index])){
+      if (!hap_generator.add_haplotype_block(regions[region_index], chrom_seq, gen_hap_alns, stutter_models[region_index])){
 	logger << "Haplotype construction failed: " << hap_generator.failure_msg() << std::endl;
 	success = false;
 	break;
@@ -1582,8 +1594,9 @@ void SeqStutterGenotyper::write_vcf_record(const std::vector<std::string>& sampl
   }
 }
 
-bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq,
-						  int max_em_iter, double abs_ll_converge, double frac_ll_converge){
+bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max_stutter_model_reads, int max_total_haplotypes,
+						   int max_flank_haplotypes, double min_flank_freq,
+						   int max_em_iter, double abs_ll_converge, double frac_ll_converge){
   logger << "Retraining EM stutter genotyper using maximum likelihood alignments" << std::endl;
   std::vector<AlignmentTrace*> traced_alns;
   retrace_alignments(traced_alns);
@@ -1596,14 +1609,18 @@ bool SeqStutterGenotyper::recompute_stutter_models(std::ostream& logger, int max
 
     std::vector< std::vector<int> > str_num_bps(num_samples_);
     std::vector< std::vector<double> > str_log_p1s(num_samples_), str_log_p2s(num_samples_);
+    int32_t inf_reads = 0;
     for (unsigned int read_index = 0; read_index < num_reads_; ++read_index){
       AlignmentTrace* trace = traced_alns[read_index];
       if (trace != NULL){
 	if (trace->traced_aln().get_start() < block->start()){
 	  if (trace->traced_aln().get_stop() > block->end()){
-	    str_num_bps[sample_label_[read_index]].push_back(((int)trace->str_seq(block_index).size())+trace->stutter_size(block_index));
+	    str_num_bps[sample_label_[read_index]].push_back(((int)trace->str_seq(block_index).size()));
 	    str_log_p1s[sample_label_[read_index]].push_back(log_p1_[read_index]);
 	    str_log_p2s[sample_label_[read_index]].push_back(log_p2_[read_index]);
+	    inf_reads++;
+	    if (inf_reads > max_stutter_model_reads)
+	      break;
 	  }
 	}
       }

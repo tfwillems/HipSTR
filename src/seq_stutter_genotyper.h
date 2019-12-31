@@ -217,7 +217,8 @@ class SeqStutterGenotyper : public Genotyper {
    * Recompute the stutter model(s) using the PCR artifacts obtained from the ML alignments
    * and regenotype the samples using this new model
   */
-  bool recompute_stutter_models(std::ostream& logger, int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq,
+  bool recompute_stutter_models(std::ostream& logger, int max_stutter_model_reads, int max_total_haplotypes,
+				int max_flank_haplotypes, double min_flank_freq,
 				int max_em_iter, double abs_ll_converge, double frac_ll_converge);
 };
 
