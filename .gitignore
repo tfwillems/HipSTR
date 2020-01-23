@@ -3,6 +3,7 @@ HipSTR
 PhasingChecker
 src/version.cpp
 test/allele_expansion_test
+test/bam_cram_test
 test/base_qual_test
 test/em_stutter_test
 test/fast_ops_test
