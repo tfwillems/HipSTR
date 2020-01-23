@@ -6,8 +6,6 @@
 #include "error.h"
 #include "zalgorithm.h"
 
-using namespace std;
-
 namespace AlignmentFilters {
   template<typename CigarIterator> int GetDistToIndel(CigarIterator iter, CigarIterator end){
     // Process leading clipping ops
@@ -26,7 +24,7 @@ namespace AlignmentFilters {
       else if (type == 'S' || type == 'H')
 	return -1;
       else {
-	string msg = "Invalid CIGAR char";
+	std::string msg = "Invalid CIGAR char";
 	msg += type;
 	printErrorAndDie(msg);
       }
@@ -35,15 +33,15 @@ namespace AlignmentFilters {
     return -1;
   }
 
-  pair<int,int> GetEndDistToIndel(BamAlignment& aln){
+  std::pair<int,int> GetEndDistToIndel(BamAlignment& aln){
     int head_dist = GetDistToIndel(aln.CigarData().begin(),  aln.CigarData().end());
     int tail_dist = GetDistToIndel(aln.CigarData().rbegin(), aln.CigarData().rend());
-    return pair<int,int>(head_dist, tail_dist);
+    return std::pair<int,int>(head_dist, tail_dist);
   }
   
-  pair<int,int> GetNumEndMatches(BamAlignment& aln, const string& ref_seq, int ref_seq_start){
+  std::pair<int,int> GetNumEndMatches(BamAlignment& aln, const std::string& ref_seq, int ref_seq_start){
     if (aln.Position() < ref_seq_start)
-      return pair<int,int>(-1,-1);
+      return std::pair<int,int>(-1,-1);
     
     unsigned int read_index = 0;
     unsigned int ref_index  = aln.Position()-ref_seq_start;
@@ -64,7 +62,7 @@ namespace AlignmentFilters {
     while (cigar_iter != aln.CigarData().end() && ref_index < ref_seq.size() && read_index < aln.QueryBases().size()){
       if (cigar_iter->Type == 'M'){
 	if (ref_index + cigar_iter->Length > ref_seq.size()) 
-	  return pair<int,int>(-1, -1);
+	  return std::pair<int,int>(-1, -1);
 	if (read_index + cigar_iter->Length > aln.Length())
 	  printErrorAndDie("Nucleotides for aligned read don't correspond to the CIGAR string");
 	for (unsigned int len = cigar_iter->Length; len > 0; len--){
@@ -94,7 +92,7 @@ namespace AlignmentFilters {
       else if (cigar_iter->Type == 'S' || cigar_iter->Type == 'H')
 	break;
       else {
-	string msg = "Invalid CIGAR char";
+	std::string msg = "Invalid CIGAR char";
 	msg += cigar_iter->Type;
 	printErrorAndDie(msg);
       }
@@ -112,7 +110,7 @@ namespace AlignmentFilters {
     // Ensure that we processed all CIGAR options
     if (cigar_iter != aln.CigarData().end()){
       if (ref_index >= ref_seq.size())
-	return pair<int,int>(-1,-1);
+	return std::pair<int,int>(-1,-1);
       else
 	printErrorAndDie("Improperly formatted CIGAR string");
     }
@@ -120,15 +118,15 @@ namespace AlignmentFilters {
     // Ensure that CIGAR string corresponded to aligned bases
     if (read_index != aln.QueryBases().size()){
       if (ref_index >= ref_seq.size())
-	return pair<int,int>(-1,-1);
+	return std::pair<int,int>(-1,-1);
       else
 	printErrorAndDie("CIGAR string does not correspond to alignment bases");
     }
     
     if (beginning)
-      return pair<int,int>(match_run, match_run);
+      return std::pair<int,int>(match_run, match_run);
     else
-      return pair<int,int>(head_match, match_run);
+      return std::pair<int,int>(head_match, match_run);
   } 
 
 
@@ -136,7 +134,7 @@ namespace AlignmentFilters {
      Stores the sequence, start and end position of the read after removing clipped bases
      using the provided references
    */
-  void GetUnclippedInfo(BamAlignment& aln, string& bases, int32_t& unclipped_start, int32_t& unclipped_end){
+  void GetUnclippedInfo(BamAlignment& aln, std::string& bases, int32_t& unclipped_start, int32_t& unclipped_end){
     unclipped_start = aln.Position();
     unclipped_end   = aln.Position()-1;
     bool begin      = true;
@@ -162,7 +160,7 @@ namespace AlignmentFilters {
 	begin      = false;
 	break;
       default:
-	string msg = "Invalid CIGAR char ";
+	std::string msg = "Invalid CIGAR char ";
 	msg += cigar_iter->Type;
 	printErrorAndDie(msg);
 	break;
@@ -171,18 +169,18 @@ namespace AlignmentFilters {
     bases = aln.QueryBases().substr(start_index, num_bases);
   }
 
-  bool HasLargestEndMatches(BamAlignment& aln, const string& ref_seq, int ref_seq_start, int max_external, int max_internal){
+  bool HasLargestEndMatches(BamAlignment& aln, const std::string& ref_seq, int ref_seq_start, int max_external, int max_internal){
     // Extract sequence, start and end coordinates of read after clipping
-    string bases;
+    std::string bases;
     int start, end;
     GetUnclippedInfo(aln, bases, start, end);
 
     // Check that the prefix match is the longest
     if (start >= ref_seq_start && start < ref_seq_start + static_cast<int>(ref_seq.size())){
       int start_index = start - ref_seq_start;
-      int start       = max(0, start_index - max_external);
-      int stop        = min(static_cast<int>((ref_seq.size()-1)), start_index + max_internal);
-      vector<int> match_counts;
+      int start       = std::max(0, start_index - max_external);
+      int stop        = std::min(static_cast<int>((ref_seq.size()-1)), start_index + max_internal);
+      std::vector<int> match_counts;
       ZAlgorithm::GetPrefixMatchCounts(bases, ref_seq, start, stop, match_counts);
 
       int align_index = start_index - start;
@@ -198,9 +196,9 @@ namespace AlignmentFilters {
     // Check that the suffix match is the longest
     if (end >= ref_seq_start && end < ref_seq_start + static_cast<int>(ref_seq.size())){
       int end_index = end - ref_seq_start;
-      int start     = max(0, end_index - max_internal);
-      int stop      = min(static_cast<int>(ref_seq.size()-1), end_index + max_external);
-      vector<int> match_counts;
+      int start     = std::max(0, end_index - max_internal);
+      int stop      = std::min(static_cast<int>(ref_seq.size()-1), end_index + max_external);
+      std::vector<int> match_counts;
       ZAlgorithm::GetSuffixMatchCounts(bases, ref_seq, start, stop, match_counts);
       
       int align_index = end_index - start;
