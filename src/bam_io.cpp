@@ -217,13 +217,12 @@ bool BamCramReader::SetRegion(const std::string& chrom, int32_t start, int32_t e
     cram_done_ = false;
 
     bool reuse_offset = (!in_->is_cram && min_offset_ != 0 && chrom.compare(chrom_) == 0 && start >= start_);
-    if (reuse_offset)
-      if (iter_->n_off == 1 && min_offset_ >= iter_->off[0].u && min_offset_ <= iter_->off[0].v)
-	iter_->off[0].u = min_offset_;
+    reuse_offset     &= (iter_->n_off == 1 && min_offset_ >= iter_->off[0].u && min_offset_ <= iter_->off[0].v);
 
-    if (reuse_offset && first_aln_.GetEndPosition() > start && first_aln_.Position() < end){
-      // NOTE: min_offset_ remains unchanged, as the first valid alignment is the current first alignment
-      reuse_first_aln_ = true;
+    if (reuse_offset){
+      iter_->off[0].u = min_offset_;
+      if (first_aln_.GetEndPosition() > start && first_aln_.Position() < end)
+	reuse_first_aln_ = true;
     }
     else {
       min_offset_      = 0;
@@ -253,7 +252,7 @@ bool BamCramReader::GetNextAlignment(BamAlignment& aln){
   }
 
   int ret = sam_itr_next(in_, iter_, aln.b_);
-  if ((ret < 0) || aln.b_->core.pos > end_+1){
+  if ((ret < 0) || aln.b_->core.pos >= end_){
     if (ret < -1)
       printErrorAndDie("Invalid record encountered in " + path_ + ". Please ensure the BAM/CRAM is not truncated and is properly formatted");
 
