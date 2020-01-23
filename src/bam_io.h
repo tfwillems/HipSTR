@@ -1,6 +1,8 @@
 #ifndef BAM_IO_H_
 #define BAM_IO_H_
 
+#include <unistd.h>
+
 #include <algorithm>
 #include <iostream>
 #include <inttypes.h>
@@ -68,7 +70,7 @@ public:
   BamAlignment(const BamAlignment &aln)
     : bases_(aln.bases_), qualities_(aln.qualities_), cigar_ops_(aln.cigar_ops_), file_(aln.file_), ref_(aln.ref_), mate_ref_(aln.mate_ref_){
     b_ = bam_init1();
-    bam_copy1(b_, aln.b_);
+    assert(bam_copy1(b_, aln.b_) != NULL);
     built_     = aln.built_;
     length_    = aln.length_;
     pos_       = aln.pos_;
@@ -76,7 +78,7 @@ public:
   }
 
   BamAlignment& operator=(const BamAlignment& aln){
-    bam_copy1(b_, aln.b_);
+    assert(bam_copy1(b_, aln.b_) != NULL);
     file_      = aln.file_;
     ref_       = aln.ref_;
     mate_ref_  = aln.mate_ref_;

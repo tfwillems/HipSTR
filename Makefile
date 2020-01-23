@@ -30,13 +30,13 @@ OBJ_DENOVO  := $(SRC_DENOVO:.cpp=.o)
 CEPHES_ROOT=lib/cephes
 HTSLIB_ROOT=lib/htslib
 
-LIBS              = -L./ -lm -L$(HTSLIB_ROOT)/ -lz -L$(CEPHES_ROOT)/ -llzma -lbz2
+LIBS              = -L./ -lm -L$(HTSLIB_ROOT)/ -lz -L$(CEPHES_ROOT)/ -llzma -lbz2 -lcurl
 INCLUDE           = -Ilib -Ilib/htslib
 CEPHES_LIB        = lib/cephes/libprob.a
 HTSLIB_LIB        = $(HTSLIB_ROOT)/libhts.a
 
 .PHONY: all
-all: HipSTR DenovoFinder test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/snp_tree_test test/vcf_snp_tree_test
+all: HipSTR DenovoFinder test/bam_cram_test test/fast_ops_test test/haplotype_test test/read_vcf_alleles_test test/snp_tree_test test/vcf_snp_tree_test
 
 # Create a tarball with static binaries
 .PHONY: static-dist
@@ -81,6 +81,9 @@ DenovoFinder: $(OBJ_DENOVO) $(HTSLIB_LIB)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 PhasingChecker: src/check_phasing.cpp src/region.cpp src/error.cpp src/haplotype_tracker.cpp src/version.cpp src/pedigree.cpp src/vcf_reader.cpp src/stringops.cpp $(HTSLIB_LIB)
+	$(CXX) $(LDFLAGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
+
+test/bam_cram_test: test/bam_cram_test.cpp src/bam_io.cpp src/region.cpp src/stringops.cpp src/error.cpp $(HTSLIB_LIB)
 	$(CXX) $(LDFLAGS) $(CXXFLAGS) $(INCLUDE) -o $@ $^ $(LIBS)
 
 test/haplotype_test: test/haplotype_test.cpp src/SeqAlignment/Haplotype.cpp src/SeqAlignment/HapBlock.cpp src/SeqAlignment/RepeatBlock.cpp src/SeqAlignment/NeedlemanWunsch.cpp src/error.cpp src/stringops.cpp src/stutter_model.cpp
