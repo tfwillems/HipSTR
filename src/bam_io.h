@@ -1,17 +1,17 @@
 #ifndef BAM_IO_H_
 #define BAM_IO_H_
 
+#include <assert.h>
+#include <inttypes.h>
+#include <stdbool.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <algorithm>
 #include <iostream>
-#include <inttypes.h>
-#include <stdbool.h>
-#include <assert.h>
 #include <map>
 #include <sstream>
 #include <vector>
-#include <sys/stat.h>
 
 #include "htslib/bgzf.h"
 #include "htslib/cram/cram.h"

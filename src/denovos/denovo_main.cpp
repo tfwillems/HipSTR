@@ -1,6 +1,7 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <fstream>
 #include <iostream>

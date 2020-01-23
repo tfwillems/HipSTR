@@ -2,13 +2,15 @@
 #define FASTA_READER_H_
 
 #include <assert.h>
+#include <sys/stat.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 #include <iostream>
 #include <map>
-#include <stdlib.h>
 #include <string>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <vector>
+
 
 #include "error.h"
 #include "stringops.h"
