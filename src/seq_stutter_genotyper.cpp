@@ -503,7 +503,7 @@ bool SeqStutterGenotyper::build_haplotype(const std::string& chrom_seq, std::vec
     }
     else {
       // Add the haplotype block in which alleles are derived from the alignments
-      if (!hap_generator.add_haplotype_block(regions[region_index], chrom_seq, gen_hap_alns, stutter_models[region_index])){
+      if (!hap_generator.add_repeat_haplotype_block(regions[region_index], chrom_seq, gen_hap_alns, stutter_models[region_index])){
 	logger << "Haplotype construction failed: " << hap_generator.failure_msg() << std::endl;
 	success = false;
 	break;

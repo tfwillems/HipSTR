@@ -84,7 +84,7 @@ bool HaplotypeGenerator::extract_sequence(const Alignment& aln, int32_t region_s
   if (aln.get_stop()  <= region_end)   return false;
 
   int align_index = 0; // Index into alignment string
-  int char_index  = 0; // Index of current base in current CIGAR element
+  int char_index  = 0; // Index of current operation in current CIGAR element
   int32_t pos     = aln.get_start();
   auto cigar_iter = aln.get_cigar_list().begin();
   
@@ -95,13 +95,6 @@ bool HaplotypeGenerator::extract_sequence(const Alignment& aln, int32_t region_s
       cigar_iter++;
       char_index = 0;
     }
-    else if (pos > region_end){
-      if (reg_seq.str() == "")
-	seq = "";
-      else
-	seq = uppercase(reg_seq.str());
-      return true;
-    }
     else if (pos == region_end){
       if (cigar_iter->get_type() == 'I'){
 	reg_seq << aln.get_alignment().substr(align_index, cigar_iter->get_num());
@@ -110,10 +103,7 @@ bool HaplotypeGenerator::extract_sequence(const Alignment& aln, int32_t region_s
 	cigar_iter++;
       }
       else {
-	if (reg_seq.str() == "")
-	  seq = "";
-	else
-	  seq = uppercase(reg_seq.str());
+	seq = uppercase(reg_seq.str());
 	return true;
       }
     }
@@ -138,6 +128,8 @@ bool HaplotypeGenerator::extract_sequence(const Alignment& aln, int32_t region_s
       align_index += num_bases;
       char_index  += num_bases;
     }
+    else if (pos > region_end)
+      assert(false);
     else {
       int32_t num_bases;
       if (cigar_iter->get_type() == 'I')
@@ -154,90 +146,81 @@ bool HaplotypeGenerator::extract_sequence(const Alignment& aln, int32_t region_s
   return false;
 }
 
-void HaplotypeGenerator::gen_candidate_seqs(const std::string& ref_seq, int ideal_min_length,
-					    const std::vector< std::vector<Alignment> >& alignments, const std::vector<std::string>& vcf_alleles,
-					    int32_t& region_start, int32_t& region_end, std::vector<std::string>& sequences) const {
-  assert(sequences.empty());
-  std::map<std::string, double> sample_counts;
-  std::map<std::string, int> read_counts, must_inc;
-  int tot_reads = 0, tot_samples = 0;
+void HaplotypeGenerator::select_candidate_alleles(const std::string& ref_seq, int ideal_min_length,
+						  const std::vector< std::vector<Alignment> >& alignments, const std::vector<std::string>& vcf_alleles,
+						  int32_t& region_start, int32_t& region_end,
+						  std::vector<std::string>& alleles, std::vector<bool>& from_vcf) const {
+  assert(alleles.empty() && from_vcf.empty());
+  std::map<std::string, double> total_frac_counts;
+  std::map<std::string, int> total_read_counts, must_inc;
+  int total_reads = 0, total_samples = 0;
 
-  // Determine the number of reads and number of samples supporting each allele
-  for (unsigned int i = 0; i < alignments.size(); i++){
-    int samp_reads = 0;
+  // Initialize sequences with reference sequence and VCF alleles
+  alleles.push_back(ref_seq);
+  from_vcf.push_back(true);
+  bool have_ref = false;
+  for (unsigned int i = 0; i < vcf_alleles.size(); ++i)
+    if (vcf_alleles[i].compare(ref_seq) != 0){
+      alleles.push_back(vcf_alleles[i]);
+      from_vcf.push_back(true);
+    }
+    else
+      have_ref = true;
+  assert(vcf_alleles.empty() || have_ref); // VCF should always contain the reference allele
+
+  // Set of currently selected alleles
+  std::set<std::string> allele_set(alleles.begin(), alleles.end());
+
+  // Determine the number of reads and samples supporting each allele
+  for (unsigned int i = 0; i < alignments.size(); ++i){
+    int sample_reads = 0;
     std::map<std::string, int> counts;
-    for (unsigned int j = 0; j < alignments[i].size(); j++){
+    for (unsigned int j = 0; j < alignments[i].size(); ++j){
       std::string subseq;
       if (extract_sequence(alignments[i][j], region_start, region_end, subseq)){
-	read_counts[subseq] += 1;
+	total_read_counts[subseq] += 1;
 	counts[subseq]      += 1;
-	tot_reads++;
-	samp_reads++;
+	total_reads++;
+	sample_reads++;
       }
     }
 
-    // Identify alleles strongly supported by sample
-    for (auto iter = counts.begin(); iter != counts.end(); iter++){
-      if (iter->second >= MIN_READS_STRONG_SAMPLE && iter->second >= MIN_FRAC_STRONG_SAMPLE*samp_reads)
+    // Identify alleles strongly supported by the current sample
+    for (auto iter = counts.begin(); iter != counts.end(); ++iter){
+      if ((iter->second >= MIN_READS_STRONG_SAMPLE) && (iter->second >= MIN_FRAC_STRONG_SAMPLE*sample_reads))
 	must_inc[iter->first] += 1;
-      sample_counts[iter->first] += iter->second*1.0/samp_reads;
+      total_frac_counts[iter->first] += iter->second*1.0/sample_reads;
     }
 
-    if (samp_reads > 0)
-      tot_samples++;
-  }
-
-  // Add VCF alleles to list (apart from reference sequence) and remove from other data structures
-  int ref_index = -1;
-  for (unsigned int i = 0; i < vcf_alleles.size(); i++){
-    sequences.push_back(vcf_alleles[i]);
-    auto iter_1 = sample_counts.find(vcf_alleles[i]);
-    if (iter_1 != sample_counts.end()){
-      sample_counts.erase(iter_1);
-      read_counts.erase(vcf_alleles[i]);
-    }
-    auto iter_2 = must_inc.find(vcf_alleles[i]);
-    if (iter_2 != must_inc.end())
-      must_inc.erase(iter_2);
-    if (vcf_alleles[i].compare(ref_seq) == 0)
-      ref_index = i;
+    if (sample_reads > 0)
+      total_samples++;
   }
   
   // Add alleles with strong support from a subset of samples
-  for (auto iter = must_inc.begin(); iter != must_inc.end(); iter++){
-    if (iter->second >= MIN_STRONG_SAMPLES){
-      auto iter_1 = sample_counts.find(iter->first);
-      auto iter_2 = read_counts.find(iter->first);
-      sample_counts.erase(iter_1);
-      read_counts.erase(iter_2);
-      sequences.push_back(iter->first);
-      if (iter->first.compare(ref_seq) == 0)
-	ref_index = sequences.size()-1;
+  for (auto iter = must_inc.begin(); iter != must_inc.end(); ++iter){
+    if ((iter->second >= MIN_STRONG_SAMPLES) && (allele_set.find(iter->first) == allele_set.end())){
+      alleles.push_back(iter->first);
+      allele_set.insert(iter->first);
+      from_vcf.push_back(false);
     }
   }
 
-  // Identify additional alleles satisfying thresholds
-  for (auto iter = sample_counts.begin(); iter != sample_counts.end(); iter++){
-    if (iter->second > MIN_FRAC_SAMPLES*tot_samples || read_counts[iter->first] > MIN_FRAC_READS*tot_reads){
-      sequences.push_back(iter->first);
-      if (ref_index == -1 && (iter->first.compare(ref_seq) == 0))
-	ref_index = sequences.size()-1;
+  // Add alleles supported by other criteria
+  for (auto iter = total_frac_counts.begin(); iter != total_frac_counts.end(); ++iter){
+    if ((iter->second > MIN_FRAC_SAMPLES*total_samples) || (total_read_counts[iter->first] > MIN_FRAC_READS*total_reads)){
+      if (allele_set.find(iter->first) == allele_set.end()){
+	alleles.push_back(iter->first);
+	allele_set.insert(iter->first);
+	from_vcf.push_back(false);
+      }
     }
   }
   
-  // Arrange reference sequence as first element
-  if (ref_index == -1)
-    sequences.insert(sequences.begin(), ref_seq);
-  else {
-    sequences[ref_index] = sequences[0];
-    sequences[0]         = ref_seq;
-  }
-
   // Sort regions by length and then by sequence (apart from reference sequence)
-  std::sort(sequences.begin()+1, sequences.end(), orderByLengthAndSequence);
+  std::sort(alleles.begin()+1, alleles.end(), orderByLengthAndSequence);
 
   // Clip identical regions
-  trim(ideal_min_length, region_start, region_end, sequences);
+  trim(ideal_min_length, region_start, region_end, alleles);
 }
 
 void HaplotypeGenerator::get_aln_bounds(const std::vector< std::vector<Alignment> >& alignments,
@@ -245,48 +228,60 @@ void HaplotypeGenerator::get_aln_bounds(const std::vector< std::vector<Alignment
   // Determine the minimum and maximum alignment boundaries
   min_aln_start = INT_MAX;
   max_aln_stop  = INT_MIN;
-  for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); vec_iter++){
-    for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); aln_iter++){
+  for (auto vec_iter = alignments.begin(); vec_iter != alignments.end(); ++vec_iter){
+    for (auto aln_iter = vec_iter->begin(); aln_iter != vec_iter->end(); ++aln_iter){
       min_aln_start = std::min(min_aln_start, aln_iter->get_start());
       max_aln_stop  = std::max(max_aln_stop,  aln_iter->get_stop());
     }
   }
 }
 
+bool HaplotypeGenerator::add_vcf_nonrepeat_haplotype_block(int32_t pos, const std::string& chrom_seq,
+							   const std::vector<std::string>& vcf_alleles){
+  add_vcf_haplotype_block(pos, chrom_seq, vcf_alleles, NULL);
+}
+
+
 bool HaplotypeGenerator::add_vcf_haplotype_block(int32_t pos, const std::string& chrom_seq,
 						 const std::vector<std::string>& vcf_alleles, const StutterModel* stutter_model){
-  if (!failure_msg_.empty())
-    printErrorAndDie("Unable to add a VCF haplotype block, as a previous addition failed");
   assert(!vcf_alleles.empty());
-  int32_t region_start = pos;
-  int32_t region_end   = region_start + vcf_alleles[0].size();
-  assert(uppercase(vcf_alleles[0]).compare(uppercase(chrom_seq.substr(region_start, region_end-region_start))) == 0);
+  if (!failure_msg_.empty())
+    printErrorAndDie("Unable to add a VCF haplotype block as a previous addition failed");
+  if (finished_)
+    printErrorAndDie("Unable to add a VCF haplotype block as the haplotype generation process is already finished");
+  
+  // Verify that the first VCF allele matches the reference genome
+  std::string ref = vcf_alleles.front();
+  int32_t ref_len = (int32_t) ref.size();
+  assert(ref.compare(uppercase(chrom_seq.substr(pos, ref_len))) == 0);
 
-  // Ensure that we don't exceed the chromosome bounds
-  if (region_start < REF_FLANK_LEN || region_end + REF_FLANK_LEN >= chrom_seq.size()){
-    failure_msg_ = "Haplotype blocks are too near to the chromosome ends";
-    return false;
-  }
-
-  // Ensure that the haplotype block doesn't overlap with previous blocks
-  if (!hap_blocks_.empty() && (region_start < hap_blocks_.back()->end() + MIN_BLOCK_SPACING)){
+  // Ensure that the new haplotype block won't overlap with previous blocks
+  if (!hap_blocks_.empty() && (pos < hap_blocks_.back()->end())){
     failure_msg_ = "Haplotype blocks are too near to one another";
     return false;
   }
 
-  hap_blocks_.push_back(new RepeatBlock(region_start, region_end, uppercase(vcf_alleles[0]), stutter_model->period(), stutter_model));
-  for (unsigned int i = 1; i < vcf_alleles.size(); i++){
+  // Create the new haplotype block, whose type depends on whether the stutter model is NULL
+  if (stutter_model == NULL)
+    hap_blocks_.push_back(new    HapBlock(pos, pos+ref_len, ref, true));
+  else
+    hap_blocks_.push_back(new RepeatBlock(pos, pos+ref_len, ref, true, stutter_model->period(), stutter_model));
+
+  // Add each alternative allele to the haplotype block
+  for (unsigned int i = 1; i < vcf_alleles.size(); ++i){
     std::string seq = uppercase(vcf_alleles[i]);
-    hap_blocks_.back()->add_alternate(seq);
+    hap_blocks_.back()->add_alternate(seq, false); // VCF-based alleles are designated as not removable
   }
 
   return true;
 }
 
-bool HaplotypeGenerator::add_haplotype_block(const Region& region, const std::string& chrom_seq, const std::vector< std::vector<Alignment> >& alignments,
-					     const std::vector<std::string>& vcf_alleles, const StutterModel* stutter_model){
+bool HaplotypeGenerator::add_repeat_haplotype_block(const Region& region, const std::string& chrom_seq, const std::vector< std::vector<Alignment> >& alignments,
+						    const StutterModel* stutter_model){
   if (!failure_msg_.empty())
     printErrorAndDie("Unable to add a haplotype block, as a previous addition failed");
+  if (finished_)
+    printErrorAndDie("Unable to add a VCF haplotype block as the haplotype generation process is already finished");
 
   // Ensure that we don't exceed the chromosome bounds
   if (region.start() < REF_FLANK_LEN + LEFT_PAD || region.stop() + REF_FLANK_LEN + RIGHT_PAD > chrom_seq.size()){
@@ -307,58 +302,57 @@ bool HaplotypeGenerator::add_haplotype_block(const Region& region, const std::st
     return false;
   }
 
-  // Extend each VCF allele by padding size
-  std::vector<std::string> padded_vcf_alleles;
-  if (vcf_alleles.size() != 0){
-    std::string lflank = uppercase(chrom_seq.substr(region_start,  region.start()-region_start));
-    std::string rflank = uppercase(chrom_seq.substr(region.stop(), region_end-region.stop()));
-    for (unsigned int i = 0; i < vcf_alleles.size(); i++)
-      padded_vcf_alleles.push_back(lflank + uppercase(vcf_alleles[i]) + rflank);
-    assert(padded_vcf_alleles[0].compare(ref_seq) == 0);
-  }
-  
   // Extract candidate STR sequences (using some padding to ensure indels near STR ends are included)
-  std::vector<std::string> sequences;
+  std::vector<std::string> vcf_alleles; // Use an empty list as no VCF input here
+  std::vector<std::string> alleles;
+  std::vector<bool> from_vcf;
   int ideal_min_length = 3*region.period(); // Would ideally have at least 3 repeat units in each allele after trimming
-  gen_candidate_seqs(ref_seq, ideal_min_length, alignments, padded_vcf_alleles, region_start, region_end, sequences);
+  select_candidate_alleles(ref_seq, ideal_min_length, alignments, vcf_alleles, region_start, region_end, alleles, from_vcf);
 
   // Ensure that the new haplotype block won't overlap with previous blocks
-  if (!hap_blocks_.empty() && (region_start < hap_blocks_.back()->end() + MIN_BLOCK_SPACING)){
+  if (!hap_blocks_.empty() && (region_start < hap_blocks_.back()->end())){
     failure_msg_ = "Haplotype blocks are too near to one another";
     return false;
   }
 
   // Add the new haplotype block
-  hap_blocks_.push_back(new RepeatBlock(region_start, region_end, sequences.front(), stutter_model->period(), stutter_model));
-  for (unsigned int i = 1; i < sequences.size(); i++)
-    hap_blocks_.back()->add_alternate(sequences[i]);
+  hap_blocks_.push_back(new RepeatBlock(region_start, region_end, alleles.front(), !vcf_alleles.empty(), stutter_model->period(), stutter_model));
+  for (unsigned int i = 1; i < alleles.size(); i++)
+    hap_blocks_.back()->add_alternate(alleles[i], from_vcf[i]);
 
   return true;
 }
 
 bool HaplotypeGenerator::fuse_haplotype_blocks(const std::string& chrom_seq){
   if (!failure_msg_.empty())
-    printErrorAndDie("Unable to fuse haplotype blocks, as previous additions failed");
+    printErrorAndDie("Unable to fuse haplotype blocks as previous additions failed");
   if (hap_blocks_.empty())
-    printErrorAndDie("Unable to fuse haplotype blocks, as none have been added");
+    printErrorAndDie("Unable to fuse haplotype blocks as none have been added");
+  if (finished_)
+    return true;
+
   assert(REF_FLANK_LEN > 10);
   assert(hap_blocks_.front()->start() >= REF_FLANK_LEN);
   assert(hap_blocks_.back()->end() + REF_FLANK_LEN <= chrom_seq.size());
 
-  // Trim boundaries so that the reference flanks aren't too long
+  // Determine the boundaries for the fixed length reference-only flanking blocks
   int32_t min_start = std::min(hap_blocks_.front()->start()-10, std::max(hap_blocks_.front()->start() - REF_FLANK_LEN, min_aln_start_));
   int32_t max_stop  = std::max(hap_blocks_.back()->end()+10,    std::min(hap_blocks_.back()->end()    + REF_FLANK_LEN, max_aln_stop_));
+  //int32_t min_start = hap_blocks_.front()->start() - REF_FLANK_LEN;
+  //int32_t max_stop  = hap_blocks_.back()->end()    + REF_FLANK_LEN;
 
   // Interleave the existing variant blocks with new reference-only haplotype blocks
   std::vector<HapBlock*> fused_blocks;
   int32_t start = min_start;
-  for (int i = 0; i < hap_blocks_.size(); i++){
+  for (int i = 0; i < hap_blocks_.size(); ++i){
     int32_t end = hap_blocks_[i]->start();
-    fused_blocks.push_back(new HapBlock(start, end, uppercase(chrom_seq.substr(start, end-start))));
+    if (start < end)
+      fused_blocks.push_back(new HapBlock(start, end, uppercase(chrom_seq.substr(start, end-start)), false));
     fused_blocks.push_back(hap_blocks_[i]);
     start = hap_blocks_[i]->end();
   }
-  fused_blocks.push_back(new HapBlock(start, max_stop, uppercase(chrom_seq.substr(start, max_stop-start))));
+  if (start < max_stop)
+    fused_blocks.push_back(new HapBlock(start, max_stop, uppercase(chrom_seq.substr(start, max_stop-start)), false));
 
   hap_blocks_ = fused_blocks;
   finished_   = true;
