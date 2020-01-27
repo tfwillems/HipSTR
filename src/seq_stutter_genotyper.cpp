@@ -101,7 +101,7 @@ bool SeqStutterGenotyper::assemble_flanks(int max_total_haplotypes, int max_flan
 	    total_depth += assembly_data[i].second;
 
 	  for (unsigned int i = 0; i < assembly_data.size(); i++){
-	    if (assembly_data[i].first.compare(ref_seq) != 0){
+	    if (!hap_blocks_[block_index]->contains(assembly_data[i].first)){
 	      if (assembly_data[i].second*1.0/total_depth > 0.25){
 		if (ref_seq.size() != assembly_data[i].first.size()){
 		  // (i) Mask a sample if it supports a flank that contains an indel and (ii) ignore the candidate flanking sequence
@@ -785,8 +785,9 @@ bool SeqStutterGenotyper::genotype_samples(bool first_round, int max_total_haplo
   if ((ref_vcf_ != NULL) && true){
     int num_aff_blocks, num_aff_alleles, num_aff_samples;
     restrict_allele_set(num_aff_blocks, num_aff_alleles, num_aff_samples);
-    logger << "Removed " << num_aff_alleles << " novel sequences across " << num_aff_blocks << " haplotype blocks that were not present in the reference VCF\n"
-	   << "Masked genotypes for " << num_aff_samples << " whose optimal haplotypes invovled one or more novel sequences" << std::endl;
+    if (num_aff_samples > 0)
+      logger << "Removed " << num_aff_alleles << " novel sequence(s) across " << num_aff_blocks << " haplotype block(s) that were not present in the reference VCF\n"
+	     << "Masked genotypes for " << num_aff_samples << " whose optimal haplotypes involved one or more novel sequence(s)" << std::endl;
   }
     
   return true;
