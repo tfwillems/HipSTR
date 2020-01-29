@@ -276,9 +276,9 @@ void SeqStutterGenotyper::get_unused_alleles(bool check_spanned, bool check_call
 	  continue;
 	}
 	AlignmentTrace* trace = traced_alns[read_index];
-	if (trace->traced_aln().get_start() < block->start()){
-	  if (trace->traced_aln().get_stop() > block->end()){
-	    if (trace->stutter_size(block_index) == 0){
+	if (trace->traced_aln().get_start() <= block->start()){
+	  if (trace->traced_aln().get_stop()+1 >= block->end()){
+	    if ((block->get_repeat_info() == NULL) || (trace->stutter_size(block_index) == 0)){
 	      int hap_a    = haps[sample_label_[read_index]].first;
 	      int hap_b    = haps[sample_label_[read_index]].second;
 	      int best_hap = hap_a;
