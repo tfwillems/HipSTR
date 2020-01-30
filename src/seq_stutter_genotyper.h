@@ -131,12 +131,6 @@ class SeqStutterGenotyper : public Genotyper {
 			      std::vector< std::vector<std::string> >& alleles_to_add,
 			      std::vector<bool>& realign_pool, std::vector<bool>& copy_read);
 
-  // From each haplotype block, retain only non-removable sequences
-  // Mask any samples whose optimal haplotype involves one or more removed alleles
-  // This function is intended to be used when a set of candidate sequences were supplied as input and
-  // we want to restrict the final resulting genotypes to this initial set of sequences
-  void restrict_allele_set(int& num_aff_blocks, int& num_aff_alleles, int& num_aff_samples);
-
   bool genotype_samples(bool first_round, int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq,
 			std::ostream& logger);
 
@@ -220,6 +214,12 @@ class SeqStutterGenotyper : public Genotyper {
   bool recompute_stutter_models(std::ostream& logger, int max_stutter_model_reads, int max_total_haplotypes,
 				int max_flank_haplotypes, double min_flank_freq,
 				int max_em_iter, double abs_ll_converge, double frac_ll_converge);
+
+  // From each haplotype block, retain only non-removable sequences
+  // Mask any samples whose optimal haplotype involves one or more removed alleles
+  // This function is intended to be used when a set of candidate sequences were supplied as input and
+  // we want to restrict the final resulting genotypes to this initial set of sequences
+  void restrict_allele_set(std::ostream& logger);
 };
 
 #endif

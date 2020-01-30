@@ -250,6 +250,12 @@ void GenotyperBamProcessor::analyze_reads_and_phasing(std::vector<BamAlnList>& a
 
       if (pass){
 	num_genotype_success_++;
+
+	// Remove alleles not originally present in the reference VCF
+	// Mask any samples whose ML genotype contained such an allele
+	if (ref_vcf_ != NULL)
+	  seq_genotyper->restrict_allele_set(selective_logger());
+
 	seq_genotyper->write_vcf_record(samples_to_genotype_, chrom_seq, output_viz_,
 					(VIZ_LEFT_ALNS == 1), viz_out_, &vcf_writer_, selective_logger());
       }

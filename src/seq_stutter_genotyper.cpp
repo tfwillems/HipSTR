@@ -650,10 +650,8 @@ bool SeqStutterGenotyper::id_and_align_to_stutter_alleles(int max_total_haplotyp
   return true;
 }
 
-void SeqStutterGenotyper::restrict_allele_set(int& num_aff_blocks, int& num_aff_alleles, int& num_aff_samples){
-  num_aff_blocks  = 0;
-  num_aff_alleles = 0;
-  num_aff_samples = 0;
+void SeqStutterGenotyper::restrict_allele_set(std::ostream& logger){
+  int num_aff_blocks = 0, num_aff_alleles = 0, num_aff_samples = 0;
 
   // Assemble the lists of alleles to remove from each block
   std::vector< std::vector<int> > alleles_to_remove;
@@ -705,8 +703,11 @@ void SeqStutterGenotyper::restrict_allele_set(int& num_aff_blocks, int& num_aff_
 
   // Remove all undesired alleles and update the genotyping data structures accordingly
   remove_alleles(alleles_to_remove);
-}
 
+  if (num_aff_samples > 0)
+    logger << "Removed " << num_aff_alleles << " novel sequence(s) across " << num_aff_blocks << " haplotype block(s) that were not present in the reference VCF\n"
+	   << "Masked genotypes for " << num_aff_samples << " samples whose optimal haplotypes involved one or more novel sequence(s)" << std::endl;
+}
 
 bool SeqStutterGenotyper::genotype(int max_total_haplotypes, int max_flank_haplotypes, double min_flank_freq, std::ostream& logger){
   return genotype_samples(true, max_total_haplotypes, max_flank_haplotypes, min_flank_freq, logger);
@@ -757,22 +758,13 @@ bool SeqStutterGenotyper::genotype_samples(bool first_round, int max_total_haplo
   if (!id_and_align_to_stutter_alleles(max_total_haplotypes, logger))
     return false;
 
-  // Remove alleles with no MAP genotype calls and recompute the posteriors
+  // Remove alleles with no MAP genotype calls/spanning reads and recompute the posteriors
   std::vector< std::vector<int> > unused_indices;
   int num_aff_blocks = 0, num_aff_alleles = 0;
-  get_unused_alleles(false, true, unused_indices, num_aff_blocks, num_aff_alleles);
+  get_unused_alleles(true, true, unused_indices, num_aff_blocks, num_aff_alleles);
   if (num_aff_alleles != 0){
     logger << "Recomputing sample posteriors after removing " << num_aff_alleles
-	   << " uncalled allele(s) across " << num_aff_blocks << " block(s)" << std::endl;
-    remove_alleles(unused_indices);
-  }
-
-  // Remove alleles with no spanning reads and recompute the posteriors
-  unused_indices.clear();
-  get_unused_alleles(true, false, unused_indices, num_aff_blocks, num_aff_alleles);
-  if (num_aff_alleles != 0){
-    logger << "Recomputing sample posteriors after removing " << num_aff_alleles
-	   << " allele(s) with no spanning reads across " << num_aff_blocks << " block(s)" << std::endl;
+	   << " allele(s) that were uncalled or had no spanning reads. Alleles affect " << num_aff_blocks << " block(s)" << std::endl;
     remove_alleles(unused_indices);
   }
 
@@ -780,14 +772,14 @@ bool SeqStutterGenotyper::genotype_samples(bool first_round, int max_total_haplo
     if (!assemble_flanks(max_total_haplotypes, max_flank_haplotypes, min_flank_freq, logger))
       return false;
 
-  // Remove alleles not originally present in the reference VCF
-  // Mask any samples whose ML genotype contained such an allele
-  if ((ref_vcf_ != NULL) && true){
-    int num_aff_blocks, num_aff_alleles, num_aff_samples;
-    restrict_allele_set(num_aff_blocks, num_aff_alleles, num_aff_samples);
-    if (num_aff_samples > 0)
-      logger << "Removed " << num_aff_alleles << " novel sequence(s) across " << num_aff_blocks << " haplotype block(s) that were not present in the reference VCF\n"
-	     << "Masked genotypes for " << num_aff_samples << " whose optimal haplotypes involved one or more novel sequence(s)" << std::endl;
+  // Remove alleles with no MAP genotype calls/spanning reads and recompute the posteriors
+  unused_indices.clear();
+  num_aff_blocks = num_aff_alleles = 0;
+  get_unused_alleles(true, true, unused_indices, num_aff_blocks, num_aff_alleles);
+  if (num_aff_alleles != 0){
+    logger << "Recomputing sample posteriors after removing " << num_aff_alleles
+	   << " allele(s) that were uncalled or had no spanning reads. Alleles affect " << num_aff_blocks << " block(s)" << std::endl;
+    remove_alleles(unused_indices);
   }
     
   return true;
