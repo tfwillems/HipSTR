@@ -318,7 +318,7 @@ bool HaplotypeGenerator::add_repeat_haplotype_block(const Region& region, const 
   // Add the new haplotype block
   hap_blocks_.push_back(new RepeatBlock(region_start, region_end, alleles.front(), !vcf_alleles.empty(), stutter_model->period(), stutter_model));
   for (unsigned int i = 1; i < alleles.size(); i++)
-    hap_blocks_.back()->add_alternate(alleles[i], from_vcf[i]);
+    hap_blocks_.back()->add_alternate(alleles[i], !from_vcf[i]);
 
   return true;
 }
