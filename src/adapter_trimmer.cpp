@@ -148,7 +148,7 @@ void AdapterTrimmer::trim_adapters(BamAlignment& aln){
 
   double start_time = clock(); // Start the clock
   int64_t num_trim;
-  if (aln.IsFirstMate()){
+  if (aln.IsFirstMate() || (!aln.IsPaired())){
     if (aln.IsReverseStrand())
       num_trim = trim_five_prime(aln, r1_rc_adapters_);
     else
@@ -168,8 +168,11 @@ void AdapterTrimmer::trim_adapters(BamAlignment& aln){
     locus_r2_trimmed_reads_ += (num_trim > 0 ? 1 : 0);
     locus_r2_total_reads_++;
   }
-  else
+  else {
+    printErrorAndDie(aln.Name());
     assert(false);
+  }
+    
   locus_trimming_time_ += (clock() - start_time)/CLOCKS_PER_SEC; // Turn off the clock
 }
 

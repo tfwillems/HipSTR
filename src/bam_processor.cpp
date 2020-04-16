@@ -189,6 +189,10 @@ void BamProcessor::read_and_filter_reads(BamCramMultiReader& reader, const std::
   std::string file_label = "0_";
 
   while (reader.GetNextAlignment(alignment)){
+    // Discard reads where the 1st/2nd mate info isn't clear
+    if (alignment.IsPaired() && (!alignment.IsFirstMate() && !alignment.IsSecondMate()))
+      continue;
+
     // Discard reads that don't overlap the STR region and whose mate pair has no chance of overlapping the region
     if (alignment.Position() > region_group.stop() || alignment.GetEndPosition() < region_group.start()){
       if (!alignment.IsPaired() || alignment.MatePosition() == alignment.Position())
