@@ -447,4 +447,4 @@ If you encounter a bug/issue or have a feature request:
 	ii. Email us at hipstrtool@gmail.com
 
 ## Citation
-If you found HipSTR useful, we would appreciate it if you could cite our manuscript describing HipSTR and its applications: **[Genome-wide profiling of heritable and de novo STR variations](http://www.nature.com/nmeth/journal/vaop/ncurrent/full/nmeth.4267.html)**
+If you found HipSTR useful, we would appreciate it if you could cite our manuscript describing HipSTR and its applications: **[Genome-wide profiling of heritable and de novo STR variations](https://www.nature.com/articles/nmeth.4267)**
